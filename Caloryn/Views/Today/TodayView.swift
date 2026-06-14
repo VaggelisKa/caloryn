@@ -19,7 +19,9 @@ struct TodayView: View {
     @ScaledMetric private var ringSize: CGFloat = 180
 
     private var profile: UserProfile? { profiles.first }
-    private var baseCalorieTarget: Int { profile?.dailyCalorieTarget ?? 2000 }
+    private var baseCalorieTarget: Int {
+        profile?.calorieBaseTarget(usesActiveEnergy: appleHealthAdjustmentEnabled) ?? 2000
+    }
     private var calorieBudget: ActivityCalorieBudget {
         ActivityCalorieBudget(
             consumed: totalCalories,

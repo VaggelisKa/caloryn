@@ -68,6 +68,36 @@ final class UserProfileTests: XCTestCase {
         XCTAssertEqual(profile.dailyCalorieTarget, 3_310)
     }
 
+    func testActiveEnergyBaseTargetUsesRestingTargetForCalculatedProfiles() {
+        let profile = UserProfile(
+            age: 32,
+            sex: .male,
+            heightCm: 180,
+            weightKg: 82,
+            activityLevel: .veryActive,
+            calorieDeficit: 400
+        )
+
+        XCTAssertEqual(profile.dailyCalorieTarget, 2_687)
+        XCTAssertEqual(profile.calorieBaseTarget(usesActiveEnergy: false), 2_687)
+        XCTAssertEqual(profile.calorieBaseTarget(usesActiveEnergy: true), 1_390)
+    }
+
+    func testActiveEnergyBaseTargetRespectsManualCalorieTargets() {
+        let profile = UserProfile(
+            age: 32,
+            sex: .male,
+            heightCm: 180,
+            weightKg: 82,
+            activityLevel: .veryActive,
+            dailyCalorieTarget: 2_200,
+            manualOverride: true,
+            calorieDeficit: 400
+        )
+
+        XCTAssertEqual(profile.calorieBaseTarget(usesActiveEnergy: true), 2_200)
+    }
+
     func testOptionalNutrientTargetsAreEnabledClampedAndRemovedThroughPublicAPI() {
         let profile = UserProfile(
             age: 35,

@@ -12,7 +12,7 @@ final class ActivityCalorieBudgetTests: XCTestCase {
             activityMessage: nil
         )
 
-        XCTAssertEqual(budget.activityCredit, 350)
+        XCTAssertEqual(budget.activityCredit, 500)
         XCTAssertEqual(budget.adjustedTarget, 2_000)
         XCTAssertEqual(budget.remaining, 200)
         XCTAssertEqual(budget.overAmount, 0)
@@ -21,7 +21,7 @@ final class ActivityCalorieBudgetTests: XCTestCase {
         XCTAssertEqual(budget.baseProgressEnd, 1, accuracy: 0.001)
     }
 
-    func testEnabledAdjustmentCreditsSeventyPercentOfActiveEnergyBeforeRemainingCalories() {
+    func testEnabledAdjustmentCreditsAllActiveEnergyBeforeRemainingCalories() {
         let budget = ActivityCalorieBudget(
             consumed: 1_850,
             baseTarget: 2_000,
@@ -31,13 +31,13 @@ final class ActivityCalorieBudgetTests: XCTestCase {
             activityMessage: nil
         )
 
-        XCTAssertEqual(budget.activityCredit, 350)
-        XCTAssertEqual(budget.adjustedTarget, 2_350)
-        XCTAssertEqual(budget.remaining, 500)
+        XCTAssertEqual(budget.activityCredit, 500)
+        XCTAssertEqual(budget.adjustedTarget, 2_500)
+        XCTAssertEqual(budget.remaining, 650)
         XCTAssertEqual(budget.overAmount, 0)
         XCTAssertFalse(budget.isOver)
         XCTAssertTrue(budget.hasActivityCredit)
-        XCTAssertEqual(budget.baseProgressEnd, 2_000.0 / 2_350.0, accuracy: 0.001)
+        XCTAssertEqual(budget.baseProgressEnd, 2_000.0 / 2_500.0, accuracy: 0.001)
     }
 
     func testNegativeActiveEnergyDoesNotReduceTheDailyTarget() {
@@ -59,7 +59,7 @@ final class ActivityCalorieBudgetTests: XCTestCase {
 
     func testOverTargetMathUsesTheHealthAdjustedTarget() {
         let budget = ActivityCalorieBudget(
-            consumed: 2_500,
+            consumed: 2_700,
             baseTarget: 2_000,
             activeEnergyKcal: 500,
             isActivityAdjustmentEnabled: true,
@@ -67,9 +67,9 @@ final class ActivityCalorieBudgetTests: XCTestCase {
             activityMessage: nil
         )
 
-        XCTAssertEqual(budget.adjustedTarget, 2_350)
+        XCTAssertEqual(budget.adjustedTarget, 2_500)
         XCTAssertEqual(budget.remaining, 0)
-        XCTAssertEqual(budget.overAmount, 150)
+        XCTAssertEqual(budget.overAmount, 200)
         XCTAssertTrue(budget.isOver)
         XCTAssertEqual(budget.displayedRingProgress, 1, accuracy: 0.001)
     }
@@ -107,9 +107,8 @@ final class ActivityCalorieBudgetTests: XCTestCase {
         XCTAssertEqual(budget.baseProgressEnd, 1, accuracy: 0.001)
     }
 
-    func testHealthCreditPolicyCopyMatchesTheBudgetMath() {
-        XCTAssertEqual(ActivityCalorieBudget.activeEnergyCreditPercent, 70)
-        XCTAssertEqual(ActivityCalorieBudget.activeEnergyCreditPolicyText, "70% of Apple Health Active Energy")
-        XCTAssertEqual(ActivityCalorieBudget.activeEnergyCreditShortText, "70% Active Energy credit")
+    func testHealthCreditCopyNamesTheHealthSource() {
+        XCTAssertEqual(ActivityCalorieBudget.activeEnergyCreditPolicyText, "Apple Health Active Energy")
+        XCTAssertEqual(ActivityCalorieBudget.activeEnergyCreditShortText, "Active Energy credit")
     }
 }
