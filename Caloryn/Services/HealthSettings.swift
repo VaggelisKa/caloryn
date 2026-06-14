@@ -14,10 +14,6 @@ enum AppleHealthAdjustmentSettings {
         HealthKitService.isHealthDataAvailable
     }
 
-    static var activeEnergyCreditPercent: Int {
-        ActivityCalorieBudget.activeEnergyCreditPercent
-    }
-
     static var activeEnergyCreditPolicyText: String {
         ActivityCalorieBudget.activeEnergyCreditPolicyText
     }
@@ -36,7 +32,7 @@ enum AppleHealthAdjustmentSettings {
         }
 
         if isEnabled {
-            return "Caloryn reads Active Energy only and applies the adjustment on device."
+            return "Uses Apple Health Active Energy for today's budget."
         }
 
         return "Adjust calories based on activity"

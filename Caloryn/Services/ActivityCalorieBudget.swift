@@ -1,8 +1,6 @@
 import Foundation
 
 struct ActivityCalorieBudget: Equatable {
-    static let activeEnergyCreditRatio = 0.70
-
     let consumed: Double
     let baseTarget: Int
     let activeEnergyKcal: Double
@@ -10,16 +8,12 @@ struct ActivityCalorieBudget: Equatable {
     let isActivityLoading: Bool
     let activityMessage: String?
 
-    static var activeEnergyCreditPercent: Int {
-        Int((activeEnergyCreditRatio * 100).rounded())
-    }
-
     static var activeEnergyCreditPolicyText: String {
-        "\(activeEnergyCreditPercent)% of Apple Health Active Energy"
+        "Apple Health Active Energy"
     }
 
     static var activeEnergyCreditShortText: String {
-        "\(activeEnergyCreditPercent)% Active Energy credit"
+        "Active Energy credit"
     }
 
     var activityCredit: Int {
@@ -66,6 +60,6 @@ struct ActivityCalorieBudget: Equatable {
     }
 
     private static func creditedCalories(from activeEnergyKcal: Double) -> Int {
-        max(0, Int((activeEnergyKcal * activeEnergyCreditRatio).rounded()))
+        max(0, Int(activeEnergyKcal.rounded()))
     }
 }
