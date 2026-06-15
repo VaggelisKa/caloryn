@@ -358,8 +358,8 @@ struct IngredientAmountPickerView: View {
                 TextField("100", text: $gramsText)
                     .font(CalorynTheme.numericBody)
                     .keyboardType(.decimalPad)
-                    .textFieldStyle(.roundedBorder)
                     .focused($isAmountFocused)
+                    .calorynInputField(isFocused: isAmountFocused)
                     .frame(width: 92)
 
                 Text("g")

@@ -8,7 +8,18 @@
 
 /* Begin PBXFileReference section */
 		1C70CDD12F545455007DE238 /* Caloryn.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Caloryn.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2A60E0012F69000100A00001 /* CalorynTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CalorynTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXContainerItemProxy section */
+		2A60E00B2F69000100A00001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1C70CDC92F545455007DE238 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 1C70CDD02F545455007DE238;
+			remoteInfo = Caloryn;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		1C70CDD32F545455007DE238 /* Caloryn */ = {
@@ -16,10 +27,22 @@
 			path = Caloryn;
 			sourceTree = "<group>";
 		};
+		2A60E0022F69000100A00001 /* CalorynTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = CalorynTests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		1C70CDCE2F545455007DE238 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2A60E0052F69000100A00001 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -33,6 +56,7 @@
 			isa = PBXGroup;
 			children = (
 				1C70CDD32F545455007DE238 /* Caloryn */,
+				2A60E0022F69000100A00001 /* CalorynTests */,
 				1C70CDD22F545455007DE238 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,6 +65,7 @@
 			isa = PBXGroup;
 			children = (
 				1C70CDD12F545455007DE238 /* Caloryn.app */,
+				2A60E0012F69000100A00001 /* CalorynTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -70,6 +95,29 @@
 			productReference = 1C70CDD12F545455007DE238 /* Caloryn.app */;
 			productType = "com.apple.product-type.application";
 		};
+		2A60E0032F69000100A00001 /* CalorynTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2A60E0072F69000100A00001 /* Build configuration list for PBXNativeTarget "CalorynTests" */;
+			buildPhases = (
+				2A60E0042F69000100A00001 /* Sources */,
+				2A60E0052F69000100A00001 /* Frameworks */,
+				2A60E0062F69000100A00001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				2A60E00A2F69000100A00001 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				2A60E0022F69000100A00001 /* CalorynTests */,
+			);
+			name = CalorynTests;
+			packageProductDependencies = (
+			);
+			productName = CalorynTests;
+			productReference = 2A60E0012F69000100A00001 /* CalorynTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -82,6 +130,10 @@
 				TargetAttributes = {
 					1C70CDD02F545455007DE238 = {
 						CreatedOnToolsVersion = 26.2;
+					};
+					2A60E0032F69000100A00001 = {
+						CreatedOnToolsVersion = 26.2;
+						TestTargetID = 1C70CDD02F545455007DE238;
 					};
 				};
 			};
@@ -100,12 +152,20 @@
 			projectRoot = "";
 			targets = (
 				1C70CDD02F545455007DE238 /* Caloryn */,
+				2A60E0032F69000100A00001 /* CalorynTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		1C70CDCF2F545455007DE238 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2A60E0062F69000100A00001 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -122,7 +182,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		2A60E0042F69000100A00001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		2A60E00A2F69000100A00001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 1C70CDD02F545455007DE238 /* Caloryn */;
+			targetProxy = 2A60E00B2F69000100A00001 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		1C70CDDC2F545458007DE238 /* Debug */ = {
@@ -258,6 +333,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Caloryn;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Caloryn reads Active Energy from Apple Health to adjust your daily calorie budget on device.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Caloryn does not write data to Apple Health. It only reads Active Energy to adjust your calorie budget on device.";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Caloryn uses the camera to scan food barcodes and look up nutritional information.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -271,7 +348,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.8;
+				MARKETING_VERSION = 1.9;
 				PRODUCT_BUNDLE_IDENTIFIER = www.caloryn;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -296,6 +373,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Caloryn;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Caloryn reads Active Energy from Apple Health to adjust your daily calorie budget on device.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Caloryn does not write data to Apple Health. It only reads Active Energy to adjust your calorie budget on device.";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Caloryn uses the camera to scan food barcodes and look up nutritional information.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -309,7 +388,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.8;
+				MARKETING_VERSION = 1.9;
 				PRODUCT_BUNDLE_IDENTIFIER = www.caloryn;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -319,6 +398,66 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		2A60E0082F69000100A00001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = BN8VYT9W96;
+				ENABLE_TESTING_SEARCH_PATHS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.9;
+				PRODUCT_BUNDLE_IDENTIFIER = www.caloryn.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Caloryn.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Caloryn";
+				TEST_TARGET_NAME = Caloryn;
+				WRAPPER_EXTENSION = xctest;
+			};
+			name = Debug;
+		};
+		2A60E0092F69000100A00001 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = BN8VYT9W96;
+				ENABLE_TESTING_SEARCH_PATHS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.9;
+				PRODUCT_BUNDLE_IDENTIFIER = www.caloryn.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Caloryn.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Caloryn";
+				TEST_TARGET_NAME = Caloryn;
+				WRAPPER_EXTENSION = xctest;
 			};
 			name = Release;
 		};
@@ -339,6 +478,15 @@
 			buildConfigurations = (
 				1C70CDDF2F545458007DE238 /* Debug */,
 				1C70CDE02F545458007DE238 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		2A60E0072F69000100A00001 /* Build configuration list for PBXNativeTarget "CalorynTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2A60E0082F69000100A00001 /* Debug */,
+				2A60E0092F69000100A00001 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

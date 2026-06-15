@@ -2,6 +2,9 @@ import SwiftUI
 
 struct NutrientSelectionStepView: View {
     @Binding var selectedNutrientIDs: String
+    @Binding var wantsAppleHealthAdjustment: Bool
+    var isCompleting = false
+    var healthMessage: String?
     var onComplete: () -> Void
 
     private var selectedNutrients: [TrackedNutrient] {
@@ -54,19 +57,38 @@ struct NutrientSelectionStepView: View {
                         }
                     }
                 }
+
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("OPTIONAL")
+                        .font(CalorynTheme.caption)
+                        .foregroundStyle(CalorynTheme.textSecondary)
+
+                    AppleHealthOptInCard(
+                        isEnabled: $wantsAppleHealthAdjustment,
+                        message: healthMessage
+                    )
+                }
             }
             .padding(.horizontal, CalorynTheme.pagePadding)
             .padding(.bottom, 100)
         }
         .safeAreaInset(edge: .bottom) {
             Button(action: onComplete) {
-                Text("Start Tracking")
-                    .font(.system(.headline, design: .rounded))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
+                HStack(spacing: 8) {
+                    if isCompleting {
+                        ProgressView()
+                            .tint(.white)
+                    }
+
+                    Text("Start Tracking")
+                        .font(.system(.headline, design: .rounded))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
             }
             .adaptiveGlassProminentButton()
             .tint(CalorynTheme.sage)
+            .disabled(isCompleting)
             .padding(.horizontal, CalorynTheme.pagePadding)
             .padding(.bottom, 16)
         }
@@ -169,7 +191,8 @@ private struct NutrientSelectionTile: View {
 #Preview {
     NavigationStack {
         NutrientSelectionStepView(
-            selectedNutrientIDs: .constant(TrackedNutrient.defaultSelectionRaw)
+            selectedNutrientIDs: .constant(TrackedNutrient.defaultSelectionRaw),
+            wantsAppleHealthAdjustment: .constant(false)
         ) { }
     }
 }

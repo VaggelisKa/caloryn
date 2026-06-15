@@ -154,15 +154,15 @@ struct CustomFoodFormView: View {
 
             TextField("Food name (e.g. Nick's Pizza)", text: $name)
                 .font(CalorynTheme.bodyText)
-                .manualEntryInputField()
                 .textInputAutocapitalization(.words)
                 .focused($focusedField, equals: .name)
+                .calorynInputField(isFocused: focusedField == .name)
 
             TextField("Brand (optional)", text: $brand)
                 .font(CalorynTheme.bodyText)
-                .manualEntryInputField()
                 .textInputAutocapitalization(.words)
                 .focused($focusedField, equals: .brand)
+                .calorynInputField(isFocused: focusedField == .brand)
         }
         .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
     }
@@ -340,8 +340,8 @@ struct CustomFoodFormView: View {
             TextField(placeholder, text: text)
                 .font(CalorynTheme.numericBody)
                 .keyboardType(.decimalPad)
-                .manualEntryInputField()
                 .focused($focusedField, equals: focus)
+                .calorynInputField(isFocused: focusedField == focus)
 
             Text(unit)
                 .font(CalorynTheme.caption)
@@ -366,9 +366,9 @@ struct CustomFoodFormView: View {
                 TextField("100", text: $servingSizeGrams)
                     .font(CalorynTheme.numericBody)
                     .keyboardType(.decimalPad)
-                    .manualEntryInputField()
-                    .frame(width: 80)
                     .focused($focusedField, equals: .servingSize)
+                    .calorynInputField(isFocused: focusedField == .servingSize)
+                    .frame(width: 80)
 
                 Text("g")
                     .font(CalorynTheme.caption)
@@ -383,20 +383,9 @@ struct CustomFoodFormView: View {
     }
 
     private var deleteSection: some View {
-        Button(role: .destructive) {
+        DestructiveGlassButton("Delete Manual Entry") {
             showingDeleteConfirmation = true
-        } label: {
-            HStack {
-                Image(systemName: "trash")
-                Text("Delete Manual Entry")
-            }
-            .font(.system(.body, weight: .medium))
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
         }
-        .buttonStyle(.plain)
-        .foregroundStyle(.red)
-        .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
     }
 
     private func populateFromExisting() {
@@ -520,16 +509,6 @@ struct CustomFoodFormView: View {
             modelContext.delete(food)
         }
         dismiss()
-    }
-}
-
-private extension View {
-    func manualEntryInputField() -> some View {
-        self
-            .textFieldStyle(.plain)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(.thinMaterial, in: .rect(cornerRadius: CalorynTheme.smallCornerRadius))
     }
 }
 

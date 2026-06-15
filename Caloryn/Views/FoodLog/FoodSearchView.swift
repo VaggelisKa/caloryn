@@ -177,7 +177,7 @@ struct FoodSearchView: View {
 
     private var recentFoodsList: some View {
         Group {
-            if displayedRecentFoods.isEmpty && customFoods.isEmpty && recipes.isEmpty {
+            if displayedRecentFoods.isEmpty {
                 ContentUnavailableView(
                     "No Recent Foods",
                     systemImage: "clock",
@@ -185,50 +185,24 @@ struct FoodSearchView: View {
                 )
             } else {
                 List {
-                    if !recipes.isEmpty {
-                        Section {
-                            ForEach(recipes) { food in
-                                recipeRow(for: food)
+                    Section {
+                        ForEach(displayedRecentFoods) { food in
+                            FoodRowView(
+                                name: food.name,
+                                brand: food.brand,
+                                caloriesPer100g: food.caloriesPer100g,
+                                nutriscoreGrade: food.nutriscoreGrade,
+                                servingDescription: food.servingDescription
+                            )
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                handleFoodItemSelection(food)
                             }
-                        } header: {
-                            Text("Recipes")
-                                .font(CalorynTheme.caption)
-                                .foregroundStyle(CalorynTheme.textSecondary)
                         }
-                    }
-
-                    if !customFoods.isEmpty {
-                        Section {
-                            ForEach(customFoods) { food in
-                                customFoodRow(for: food)
-                            }
-                        } header: {
-                            Text("Manual Entries")
-                                .font(CalorynTheme.caption)
-                                .foregroundStyle(CalorynTheme.textSecondary)
-                        }
-                    }
-
-                    if !displayedRecentFoods.isEmpty {
-                        Section {
-                            ForEach(displayedRecentFoods) { food in
-                                FoodRowView(
-                                    name: food.name,
-                                    brand: food.brand,
-                                    caloriesPer100g: food.caloriesPer100g,
-                                    nutriscoreGrade: food.nutriscoreGrade,
-                                    servingDescription: food.servingDescription
-                                )
-                                .contentShape(Rectangle())
-                                .onTapGesture {
-                                    handleFoodItemSelection(food)
-                                }
-                            }
-                        } header: {
-                            Text("Recent")
-                                .font(CalorynTheme.caption)
-                                .foregroundStyle(CalorynTheme.textSecondary)
-                        }
+                    } header: {
+                        Text("Recent")
+                            .font(CalorynTheme.caption)
+                            .foregroundStyle(CalorynTheme.textSecondary)
                     }
                 }
                 .listStyle(.plain)

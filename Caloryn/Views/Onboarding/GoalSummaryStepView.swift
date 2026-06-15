@@ -11,6 +11,7 @@ struct GoalSummaryStepView: View {
 
     @State private var manualTarget: String = ""
     @State private var useManualOverride = false
+    @FocusState private var isManualTargetFocused: Bool
 
     private var bmr: Double {
         NutritionCalculator.bmr(sex: sex, weightKg: weightKg, heightCm: heightCm, age: age)
@@ -165,7 +166,8 @@ struct GoalSummaryStepView: View {
                     TextField("Calories", text: $manualTarget)
                         .keyboardType(.numberPad)
                         .font(CalorynTheme.numericBody)
-                        .textFieldStyle(.roundedBorder)
+                        .focused($isManualTargetFocused)
+                        .calorynInputField(isFocused: isManualTargetFocused)
                     Text("kcal/day")
                         .font(CalorynTheme.caption)
                         .foregroundStyle(CalorynTheme.textSecondary)

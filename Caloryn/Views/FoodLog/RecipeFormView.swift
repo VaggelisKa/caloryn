@@ -131,12 +131,9 @@ struct RecipeFormView: View {
 
             TextField("Recipe name (e.g. Greek Salad)", text: $name)
                 .font(CalorynTheme.bodyText)
-                .textFieldStyle(.plain)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .background(.thinMaterial, in: .rect(cornerRadius: CalorynTheme.smallCornerRadius))
                 .textInputAutocapitalization(.words)
                 .focused($isNameFocused)
+                .calorynInputField(isFocused: isNameFocused)
         }
         .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
     }
@@ -266,13 +263,8 @@ struct RecipeFormView: View {
     }
 
     private var deleteSection: some View {
-        Button(role: .destructive) {
+        DestructiveGlassButton("Delete Recipe") {
             showingDeleteConfirmation = true
-        } label: {
-            Label("Delete Recipe", systemImage: "trash")
-            .font(.system(.body, weight: .medium))
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
         }
         .adaptiveGlassButtonStyle()
         .tint(CalorynTheme.terracotta)

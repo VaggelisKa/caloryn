@@ -12,12 +12,16 @@ struct SettingsView: View {
     @AppStorage("themePreference") private var themePreferenceRaw = ThemePreference.system.rawValue
     @AppStorage("showNutriscore") private var showNutriscore = true
     @AppStorage("iCloudSyncEnabled") private var iCloudSyncEnabled = true
+    @AppStorage(AppleHealthAdjustmentSettings.adjustmentEnabledKey) private var appleHealthAdjustmentEnabled = false
 
     @State private var showExportSheet = false
     @State private var exportURL: URL?
     @State private var showRestartAlert = false
+    @State private var isRequestingHealthAuthorization = false
+    @State private var healthStatusMessage: String?
 
     private var profile: UserProfile? { profiles.first }
+    private var isHealthAvailable: Bool { AppleHealthAdjustmentSettings.isHealthAvailable }
 
     var body: some View {
         NavigationStack {
@@ -29,6 +33,7 @@ struct SettingsView: View {
                     profileSection(profile)
                 }
 
+                appleHealthSection
                 dataSection
                 aboutSection
             }
@@ -44,6 +49,81 @@ struct SettingsView: View {
                 Text("iCloud sync changes will take effect the next time you open the app.")
             }
         }
+    }
+
+    private var appleHealthSection: some View {
+        Section {
+            Toggle(isOn: appleHealthToggleBinding) {
+                Label("Apple Health Adjustment", systemImage: "heart.text.square")
+            }
+            .tint(CalorynTheme.sage)
+            .disabled(!isHealthAvailable || isRequestingHealthAuthorization)
+
+            if isRequestingHealthAuthorization {
+                HStack(spacing: 8) {
+                    ProgressView()
+
+                    Text("Requesting Apple Health access")
+                        .foregroundStyle(CalorynTheme.textSecondary)
+                }
+            }
+
+            if appleHealthAdjustmentEnabled {
+                LabeledContent("Credit", value: AppleHealthAdjustmentSettings.activeEnergyCreditPolicyText)
+            }
+
+            if let healthStatusMessage {
+                Text(healthStatusMessage)
+                    .font(CalorynTheme.caption)
+                    .foregroundStyle(CalorynTheme.terracotta)
+            }
+        } header: {
+            Text("Apple Health")
+        } footer: {
+            Text(appleHealthFooterText)
+        }
+    }
+
+    private var appleHealthToggleBinding: Binding<Bool> {
+        Binding(
+            get: {
+                appleHealthAdjustmentEnabled
+            },
+            set: { isOn in
+                if isOn {
+                    Task {
+                        await enableAppleHealthAdjustment()
+                    }
+                } else {
+                    disableAppleHealthAdjustment()
+                }
+            }
+        )
+    }
+
+    private var appleHealthFooterText: String {
+        AppleHealthAdjustmentSettings.footerText(isEnabled: appleHealthAdjustmentEnabled)
+    }
+
+    @MainActor
+    private func enableAppleHealthAdjustment() async {
+        guard !isRequestingHealthAuthorization else { return }
+
+        isRequestingHealthAuthorization = true
+        healthStatusMessage = nil
+        defer {
+            isRequestingHealthAuthorization = false
+        }
+
+        let update = await AppleHealthAdjustmentSettings.enable()
+        appleHealthAdjustmentEnabled = update.isEnabled
+        healthStatusMessage = update.message
+    }
+
+    private func disableAppleHealthAdjustment() {
+        let update = AppleHealthAdjustmentSettings.disable()
+        appleHealthAdjustmentEnabled = update.isEnabled
+        healthStatusMessage = update.message
     }
 
     private var appearanceSection: some View {
@@ -310,7 +390,9 @@ struct GoalEditView: View {
                     HStack {
                         TextField("Target", text: $targetText)
                             .keyboardType(.numberPad)
+                            .font(CalorynTheme.numericBody)
                             .focused($focusedField, equals: .manualTarget)
+                            .calorynInputField(isFocused: focusedField == .manualTarget)
                         Text("kcal")
                             .foregroundStyle(CalorynTheme.textSecondary)
                     }
@@ -511,6 +593,7 @@ private struct NutrientGoalEditRow: View {
                     .multilineTextAlignment(.trailing)
                     .font(CalorynTheme.numericBody)
                     .foregroundStyle(isInvalid ? CalorynTheme.terracotta : CalorynTheme.textPrimary)
+                    .calorynInputField(isFocused: focusedField == .nutrient(nutrient))
                     .frame(width: 92)
                     .accessibilityLabel("\(nutrient.displayName) goal in \(nutrient.unit.inputUnitLabel)")
 

@@ -14,7 +14,11 @@ enum NutritionCalculator {
         (calories * ratio) / caloriesPerGram
     }
 
+    static func defaultTarget(energyExpenditure: Double, deficit: Double = 500) -> Int {
+        Int(max(1200, energyExpenditure - deficit))
+    }
+
     static func defaultTarget(tdee: Double, deficit: Double = 500) -> Int {
-        Int(max(1200, tdee - deficit))
+        defaultTarget(energyExpenditure: tdee, deficit: deficit)
     }
 }

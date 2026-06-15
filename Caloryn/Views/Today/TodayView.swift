@@ -3,6 +3,7 @@ import SwiftData
 
 struct TodayView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.scenePhase) private var scenePhase
     @Query(sort: \UserProfile.updatedAt, order: .reverse) private var profiles: [UserProfile]
     @Query private var allEntries: [FoodLogEntry]
 
@@ -13,9 +14,27 @@ struct TodayView: View {
     @State private var selectedSnackIndex: Int = 1
 
     @AppStorage("showNutriscore") private var showNutriscore = true
+    @AppStorage(AppleHealthAdjustmentSettings.adjustmentEnabledKey) private var appleHealthAdjustmentEnabled = false
+    @State private var activeEnergyTracker = ActiveEnergyDayTracker()
     @ScaledMetric private var ringSize: CGFloat = 180
 
     private var profile: UserProfile? { profiles.first }
+    private var baseCalorieTarget: Int {
+        profile?.calorieBaseTarget(usesActiveEnergy: appleHealthAdjustmentEnabled) ?? 2000
+    }
+    private var calorieBudget: ActivityCalorieBudget {
+        ActivityCalorieBudget(
+            consumed: totalCalories,
+            baseTarget: baseCalorieTarget,
+            activeEnergyKcal: activeEnergyTracker.activeEnergyKcal,
+            isActivityAdjustmentEnabled: appleHealthAdjustmentEnabled,
+            isActivityLoading: activeEnergyTracker.isLoading,
+            activityMessage: activeEnergyTracker.message
+        )
+    }
+    private var healthRefreshKey: String {
+        "\(selectedDate.timeIntervalSinceReferenceDate)-\(appleHealthAdjustmentEnabled)"
+    }
 
     private var todayEntries: [FoodLogEntry] {
         allEntries.filter { Calendar.current.isDate($0.date, inSameDayAs: selectedDate) }
@@ -72,8 +91,7 @@ struct TodayView: View {
                 ScrollView {
                     VStack(spacing: CalorynTheme.cardSpacing) {
                         CalorieRingView(
-                            consumed: totalCalories,
-                            target: profile?.dailyCalorieTarget ?? 2000,
+                            calorieBudget: calorieBudget,
                             ringSize: ringSize
                         ) {
                             withAnimation(.smooth(duration: 0.2)) {
@@ -139,13 +157,26 @@ struct TodayView: View {
                 NutritionDetailsView(
                     date: selectedDate,
                     entries: todayEntries,
-                    calorieTarget: profile?.dailyCalorieTarget ?? 2000,
+                    calorieBudget: calorieBudget,
                     nutrientTargets: profile?.nutrientTargets ?? [:],
                     nutrientGoalKinds: profile?.nutrientGoalKinds ?? [:]
                 )
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
             }
+        }
+        .task(id: healthRefreshKey) {
+            await activeEnergyTracker.configure(
+                date: selectedDate,
+                isEnabled: appleHealthAdjustmentEnabled
+            )
+        }
+        .onDisappear {
+            activeEnergyTracker.stopObserving()
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            guard newPhase == .active else { return }
+            activeEnergyTracker.refreshWhenActive()
         }
     }
 

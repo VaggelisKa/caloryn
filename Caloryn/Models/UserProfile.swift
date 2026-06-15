@@ -100,6 +100,15 @@ final class UserProfile {
         updatedAt = Date()
     }
 
+    var activeEnergyBaseCalorieTarget: Int {
+        guard !manualOverride else { return dailyCalorieTarget }
+        return NutritionCalculator.defaultTarget(energyExpenditure: bmr, deficit: calorieDeficit)
+    }
+
+    func calorieBaseTarget(usesActiveEnergy: Bool) -> Int {
+        usesActiveEnergy ? activeEnergyBaseCalorieTarget : dailyCalorieTarget
+    }
+
     var nutrientTargets: [TrackedNutrient: Double] {
         TrackedNutrient.allCases.reduce(into: [TrackedNutrient: Double]()) { targets, nutrient in
             if let target = target(for: nutrient) {

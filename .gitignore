@@ -1,6 +1,8 @@
 # Xcode
 build/
 DerivedData/
+.derivedData*/
+*.xcuserstate
 *.pbxuser
 !default.pbxuser
 *.mode1v3
@@ -30,4 +32,3 @@ Pods/
 .DS_Store
 *.swp
 *~
-.derivedData/

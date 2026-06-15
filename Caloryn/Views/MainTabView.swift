@@ -6,7 +6,7 @@ struct MainTabView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            Tab("Today", systemImage: "flame.fill", value: 0) {
+            Tab("Today", image: "CalorieRingTabIcon", value: 0) {
                 TodayView()
             }
 

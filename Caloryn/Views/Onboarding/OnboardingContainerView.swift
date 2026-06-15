@@ -26,6 +26,9 @@ struct OnboardingContainerView: View {
     @State private var carbRatio: Double = 0.40
     @State private var fatRatio: Double = 0.30
     @AppStorage("todayTrackedNutrients") private var selectedNutrientIDs = TrackedNutrient.defaultSelectionRaw
+    @State private var wantsAppleHealthAdjustment = false
+    @State private var isCompletingOnboarding = false
+    @State private var appleHealthOnboardingMessage: String?
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -75,11 +78,48 @@ struct OnboardingContainerView: View {
                 case .nutrientSelection:
                     NutrientSelectionStepView(
                         selectedNutrientIDs: $selectedNutrientIDs,
-                        onComplete: saveProfile
+                        wantsAppleHealthAdjustment: $wantsAppleHealthAdjustment,
+                        isCompleting: isCompletingOnboarding,
+                        healthMessage: appleHealthOnboardingMessage,
+                        onComplete: completeOnboarding
                     )
                 }
             }
+            .onChange(of: wantsAppleHealthAdjustment) {
+                appleHealthOnboardingMessage = nil
+            }
         }
+    }
+
+    private func completeOnboarding() {
+        guard !isCompletingOnboarding else { return }
+        appleHealthOnboardingMessage = nil
+
+        guard wantsAppleHealthAdjustment else {
+            AppleHealthAdjustmentSettings.disable()
+            saveProfile()
+            return
+        }
+
+        Task {
+            await requestAppleHealthAndSaveProfile()
+        }
+    }
+
+    @MainActor
+    private func requestAppleHealthAndSaveProfile() async {
+        isCompletingOnboarding = true
+        defer {
+            isCompletingOnboarding = false
+        }
+
+        let update = await AppleHealthAdjustmentSettings.enable()
+        if let message = update.message {
+            appleHealthOnboardingMessage = message
+            return
+        }
+
+        saveProfile()
     }
 
     private func saveProfile() {
