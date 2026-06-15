@@ -341,7 +341,7 @@ struct NutritionDetailsView: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .glassEffect(.regular, in: .rect(cornerRadius: CalorynTheme.smallCornerRadius))
+        .adaptiveGlassCard(cornerRadius: CalorynTheme.smallCornerRadius)
     }
 
     private func detailRow(label: String, value: String) -> some View {
@@ -394,7 +394,7 @@ struct NutritionDetailsView: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, minHeight: 112, alignment: .leading)
-        .glassEffect(.regular, in: .rect(cornerRadius: CalorynTheme.smallCornerRadius))
+        .adaptiveGlassCard(cornerRadius: CalorynTheme.smallCornerRadius)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(metric.accessibilityLabel)
     }

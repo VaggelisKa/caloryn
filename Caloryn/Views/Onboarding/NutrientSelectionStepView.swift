@@ -41,7 +41,7 @@ struct NutrientSelectionStepView: View {
                         .font(CalorynTheme.caption)
                         .foregroundStyle(CalorynTheme.textSecondary)
 
-                    GlassEffectContainer(spacing: 10) {
+                    AdaptiveGlassContainer(spacing: 10) {
                         LazyVGrid(columns: optionalNutrientColumns, spacing: 10) {
                             ForEach(TrackedNutrient.editableGoalNutrients) { nutrient in
                                 NutrientSelectionTile(
@@ -65,7 +65,7 @@ struct NutrientSelectionStepView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
             }
-            .buttonStyle(.glassProminent)
+            .adaptiveGlassProminentButton()
             .tint(CalorynTheme.sage)
             .padding(.horizontal, CalorynTheme.pagePadding)
             .padding(.bottom, 16)
@@ -95,7 +95,7 @@ struct NutrientSelectionStepView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
-                    .glassEffect(.regular, in: .rect(cornerRadius: CalorynTheme.smallCornerRadius))
+                    .adaptiveGlassCard(cornerRadius: CalorynTheme.smallCornerRadius)
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel("\(nutrient.displayName) selected")
                 }
@@ -155,9 +155,9 @@ private struct NutrientSelectionTile: View {
                     .padding(10)
                     .accessibilityHidden(true)
             }
-            .glassEffect(
-                isSelected ? .regular.tint(CalorynTheme.sage).interactive() : .regular.interactive(),
-                in: .rect(cornerRadius: CalorynTheme.smallCornerRadius)
+            .adaptiveSelectableGlass(
+                isSelected: isSelected,
+                cornerRadius: CalorynTheme.smallCornerRadius
             )
             .animation(.smooth(duration: 0.2), value: isSelected)
         }

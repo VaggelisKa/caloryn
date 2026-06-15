@@ -199,7 +199,7 @@ struct TodayView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
         }
-        .buttonStyle(.glass)
+        .adaptiveGlassButtonStyle()
         .tint(CalorynTheme.sage)
     }
 
@@ -220,7 +220,7 @@ struct TodayView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
                 }
-                .buttonStyle(.glass)
+                .adaptiveGlassButtonStyle()
                 .tint(CalorynTheme.sage)
             }
         }

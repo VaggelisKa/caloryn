@@ -155,7 +155,7 @@ struct FoodSearchView: View {
                 }
             }
             .padding(12)
-            .glassEffect(.regular, in: .capsule)
+            .adaptiveCapsuleGlass()
 
             Button {
                 isSearchFocused = false
@@ -166,7 +166,7 @@ struct FoodSearchView: View {
                     .foregroundStyle(CalorynTheme.sage)
                     .frame(width: 44, height: 44)
             }
-            .glassEffect(.regular.interactive(), in: .circle)
+            .adaptiveCapsuleGlass()
         }
         .padding(.horizontal, CalorynTheme.pagePadding)
         .padding(.vertical, 10)

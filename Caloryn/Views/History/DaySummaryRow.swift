@@ -53,7 +53,7 @@ struct DaySummaryRow: View {
         }
         .padding(.vertical, 8)
         .padding(.horizontal, CalorynTheme.cardPadding)
-        .glassEffect(.regular, in: .rect(cornerRadius: CalorynTheme.smallCornerRadius))
+        .adaptiveGlassCard(cornerRadius: CalorynTheme.smallCornerRadius)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(date.shortFormatted), \(entryCount == 0 ? "no entries" : "\(Int(totalCalories)) calories, \(entryCount) items")")
     }

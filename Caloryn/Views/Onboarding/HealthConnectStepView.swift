@@ -22,7 +22,7 @@ struct HealthConnectStepView: View {
                         .font(.system(size: 58, weight: .semibold))
                         .foregroundStyle(CalorynTheme.sage)
                         .frame(width: 108, height: 108)
-                        .glassEffect(.regular, in: .circle)
+                        .adaptiveGlassCircle()
                         .accessibilityHidden(true)
 
                     VStack(spacing: 10) {
@@ -75,7 +75,7 @@ struct HealthConnectStepView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
                 }
-                .buttonStyle(.glassProminent)
+                .adaptiveGlassProminentButton()
                 .tint(CalorynTheme.sage)
                 .disabled(!isHealthAvailable || isRequestingAuthorization)
 

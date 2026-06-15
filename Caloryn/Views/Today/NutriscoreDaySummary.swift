@@ -42,7 +42,7 @@ struct NutriscoreDaySummary: View {
             }
         }
         .padding(CalorynTheme.cardPadding)
-        .glassEffect(.regular, in: .rect(cornerRadius: CalorynTheme.smallCornerRadius))
+        .adaptiveGlassCard(cornerRadius: CalorynTheme.smallCornerRadius)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilitySummary)
     }
