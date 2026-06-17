@@ -9,6 +9,7 @@ struct ActiveEnergyObservation {
 struct ActiveEnergyDataSource {
     let isHealthAvailable: () -> Bool
     let activeEnergyBurnedKcal: (Date) async throws -> Double
+    let dailyActiveEnergyBurnedKcal: (Date, Date) async throws -> [DailyActiveEnergySample]
     let observeActiveEnergyChanges: (@escaping @MainActor () -> Void) -> ActiveEnergyObservation?
 
     static let healthKit = ActiveEnergyDataSource(
@@ -17,6 +18,9 @@ struct ActiveEnergyDataSource {
         },
         activeEnergyBurnedKcal: { date in
             try await HealthKitService.activeEnergyBurnedKcal(for: date)
+        },
+        dailyActiveEnergyBurnedKcal: { startDate, endDate in
+            try await HealthKitService.dailyActiveEnergyBurnedKcal(from: startDate, to: endDate)
         },
         observeActiveEnergyChanges: { onChange in
             guard let query = HealthKitService.observeActiveEnergyChanges(onChange: onChange) else {
@@ -34,8 +38,10 @@ struct ActiveEnergyDataSource {
 @Observable
 final class ActiveEnergyDayTracker {
     private(set) var activeEnergyKcal: Double = 0
+    private(set) var recentActiveEnergySamples: [DailyActiveEnergySample] = []
     private(set) var isLoading = false
     private(set) var message: String?
+    private(set) var lastRefresh: Date?
 
     @ObservationIgnored private let dataSource: ActiveEnergyDataSource
     @ObservationIgnored private var activeEnergyObservation: ActiveEnergyObservation?
@@ -109,15 +115,22 @@ final class ActiveEnergyDayTracker {
         }
 
         do {
-            let kcal = try await dataSource.activeEnergyBurnedKcal(selectedDate)
+            async let todayEnergy = dataSource.activeEnergyBurnedKcal(selectedDate)
+            async let recentSamples = dataSource.dailyActiveEnergyBurnedKcal(historyStartDate, historyEndDate)
+            let (kcal, samples) = try await (todayEnergy, recentSamples)
             if activeEnergyKcal != kcal {
                 activeEnergyKcal = kcal
             }
+            if recentActiveEnergySamples != samples {
+                recentActiveEnergySamples = samples
+            }
+            lastRefresh = Date()
             message = nil
         } catch {
             AppleHealthAdjustmentSettings.disable(message: error.localizedDescription)
             isEnabled = false
             activeEnergyKcal = 0
+            recentActiveEnergySamples = []
             message = error.localizedDescription
             stopObserving()
         }
@@ -125,8 +138,10 @@ final class ActiveEnergyDayTracker {
 
     private func reset() {
         activeEnergyKcal = 0
+        recentActiveEnergySamples = []
         isLoading = false
         message = nil
+        lastRefresh = nil
     }
 
     private func startObservingIfNeeded() {
@@ -139,5 +154,21 @@ final class ActiveEnergyDayTracker {
                 await self.refresh()
             }
         }
+    }
+
+    private var historyStartDate: Date {
+        Calendar.current.date(
+            byAdding: .day,
+            value: -ActivityCalorieBudget.historyLookbackDays,
+            to: historyEndDate
+        ) ?? selectedDate
+    }
+
+    private var historyEndDate: Date {
+        let today = Date.now.startOfDay
+        if selectedDate > today {
+            return today
+        }
+        return selectedDate
     }
 }

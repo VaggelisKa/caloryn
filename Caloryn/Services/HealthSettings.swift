@@ -14,12 +14,12 @@ enum AppleHealthAdjustmentSettings {
         HealthKitService.isHealthDataAvailable
     }
 
-    static var activeEnergyCreditPolicyText: String {
-        ActivityCalorieBudget.activeEnergyCreditPolicyText
+    static var dynamicEnergyPolicyText: String {
+        ActivityCalorieBudget.dynamicEnergyPolicyText
     }
 
-    static var activeEnergyCreditShortText: String {
-        ActivityCalorieBudget.activeEnergyCreditShortText
+    static var dynamicEnergyShortText: String {
+        ActivityCalorieBudget.dynamicEnergyShortText
     }
 
     static var unavailableMessage: String {
@@ -32,10 +32,10 @@ enum AppleHealthAdjustmentSettings {
         }
 
         if isEnabled {
-            return "Uses Apple Health Active Energy for today's budget."
+            return "Uses Apple Health activity to adjust your daily calorie target."
         }
 
-        return "Adjust calories based on activity"
+        return "Use Apple Health activity to update your daily calorie target."
     }
 
     @MainActor

@@ -22,6 +22,7 @@ final class ActiveEnergyDayTrackerTests: XCTestCase {
                 readDates.append(date)
                 return 240
             },
+            dailyActiveEnergyBurnedKcal: { _, _ in [] },
             observeActiveEnergyChanges: { _ in nil }
         ))
 
@@ -33,11 +34,44 @@ final class ActiveEnergyDayTrackerTests: XCTestCase {
         XCTAssertEqual(readDates, [selectedDate.startOfDay])
     }
 
+    func testEnabledConfigurationReadsRecentActivityHistoryBeforeTheSelectedDay() async {
+        var requestedRanges: [(start: Date, end: Date)] = []
+        let selectedDate = makeTestDate(year: 2026, month: 2, day: 14, hour: 8)
+        let historySampleDate = makeTestDate(year: 2026, month: 2, day: 13)
+        let samples = [
+            DailyActiveEnergySample(date: historySampleDate, activeEnergyKcal: 260)
+        ]
+        let tracker = ActiveEnergyDayTracker(dataSource: ActiveEnergyDataSource(
+            isHealthAvailable: { true },
+            activeEnergyBurnedKcal: { _ in 240 },
+            dailyActiveEnergyBurnedKcal: { start, end in
+                requestedRanges.append((start, end))
+                return samples
+            },
+            observeActiveEnergyChanges: { _ in nil }
+        ))
+
+        await tracker.configure(date: selectedDate, isEnabled: true)
+
+        XCTAssertEqual(tracker.recentActiveEnergySamples, samples)
+        XCTAssertEqual(requestedRanges.count, 1)
+        XCTAssertEqual(requestedRanges.first?.end, selectedDate.startOfDay)
+        XCTAssertEqual(
+            requestedRanges.first?.start,
+            Calendar.current.date(
+                byAdding: .day,
+                value: -ActivityCalorieBudget.historyLookbackDays,
+                to: selectedDate.startOfDay
+            )
+        )
+    }
+
     func testDisabledConfigurationClearsEnergyAndStopsObservation() async {
         var stopCount = 0
         let tracker = ActiveEnergyDayTracker(dataSource: ActiveEnergyDataSource(
             isHealthAvailable: { true },
             activeEnergyBurnedKcal: { _ in 120 },
+            dailyActiveEnergyBurnedKcal: { _, _ in [] },
             observeActiveEnergyChanges: { _ in
                 ActiveEnergyObservation {
                     stopCount += 1
@@ -65,6 +99,7 @@ final class ActiveEnergyDayTrackerTests: XCTestCase {
         let tracker = ActiveEnergyDayTracker(dataSource: ActiveEnergyDataSource(
             isHealthAvailable: { true },
             activeEnergyBurnedKcal: { _ in throw TrackerError.denied },
+            dailyActiveEnergyBurnedKcal: { _, _ in [] },
             observeActiveEnergyChanges: { _ in nil }
         ))
 
@@ -89,6 +124,10 @@ final class ActiveEnergyDayTrackerTests: XCTestCase {
             activeEnergyBurnedKcal: { _ in
                 XCTFail("Active energy should not be read when Health data is unavailable.")
                 return 0
+            },
+            dailyActiveEnergyBurnedKcal: { _, _ in
+                XCTFail("Active energy history should not be read when Health data is unavailable.")
+                return []
             },
             observeActiveEnergyChanges: { _ in
                 didStartObservation = true
@@ -116,6 +155,7 @@ final class ActiveEnergyDayTrackerTests: XCTestCase {
                 readCount += 1
                 return Double(readCount * 100)
             },
+            dailyActiveEnergyBurnedKcal: { _, _ in [] },
             observeActiveEnergyChanges: { _ in
                 ActiveEnergyObservation {}
             }
@@ -134,6 +174,7 @@ final class ActiveEnergyDayTrackerTests: XCTestCase {
         let tracker = ActiveEnergyDayTracker(dataSource: ActiveEnergyDataSource(
             isHealthAvailable: { true },
             activeEnergyBurnedKcal: { _ in nextActiveEnergy },
+            dailyActiveEnergyBurnedKcal: { _, _ in [] },
             observeActiveEnergyChanges: { onChange in
                 onActiveEnergyChange = onChange
                 return nil

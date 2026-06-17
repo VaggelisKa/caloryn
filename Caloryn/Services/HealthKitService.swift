@@ -5,6 +5,7 @@ enum HealthKitServiceError: LocalizedError {
     case unavailable
     case authorizationFailed
     case activeEnergyReadDenied
+    case requestTimedOut
 
     var errorDescription: String? {
         switch self {
@@ -12,7 +13,28 @@ enum HealthKitServiceError: LocalizedError {
             return "Apple Health is not available on this device."
         case .authorizationFailed, .activeEnergyReadDenied:
             return "Apple Health permission wasn't given. Allow Active Energy for Caloryn in the Health app, then try again."
+        case .requestTimedOut:
+            return "Apple Health did not respond. Continue with Activity Level Estimate, then try again from Settings."
         }
+    }
+}
+
+private final class HealthKitContinuationGate<Value>: @unchecked Sendable {
+    private let lock = NSLock()
+    private var didResume = false
+
+    @discardableResult
+    func resume(
+        _ result: Result<Value, Error>,
+        continuation: CheckedContinuation<Value, Error>
+    ) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+
+        guard !didResume else { return false }
+        didResume = true
+        continuation.resume(with: result)
+        return true
     }
 }
 
@@ -20,6 +42,7 @@ enum HealthKitServiceError: LocalizedError {
 enum HealthKitService {
     private static let store = HKHealthStore()
     private static let activeEnergyType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned)!
+    private static let healthKitTimeoutNanoseconds: UInt64 = 10_000_000_000
 
     nonisolated static var isHealthDataAvailable: Bool {
         HKHealthStore.isHealthDataAvailable()
@@ -47,6 +70,8 @@ enum HealthKitService {
 
         do {
             _ = try await activeEnergyBurnedKcal(for: Date())
+        } catch HealthKitServiceError.requestTimedOut {
+            throw HealthKitServiceError.requestTimedOut
         } catch {
             throw HealthKitServiceError.activeEnergyReadDenied
         }
@@ -61,7 +86,7 @@ enum HealthKitService {
         let end = calendar.date(byAdding: .day, value: 1, to: start) ?? date
         let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: [.strictStartDate, .strictEndDate])
 
-        return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Double, Error>) in
+        return try await withHealthKitTimeout { finish in
             let query = HKStatisticsQuery(
                 quantityType: activeEnergyType,
                 quantitySamplePredicate: predicate,
@@ -69,17 +94,75 @@ enum HealthKitService {
             ) { _, statistics, error in
                 if let error {
                     if isNoDataError(error) {
-                        continuation.resume(returning: 0)
+                        finish(.success(0))
                         return
                     }
 
-                    continuation.resume(throwing: error)
+                    finish(.failure(error))
                     return
                 }
 
                 let quantity = statistics?.sumQuantity()
                 let kcal = quantity?.doubleValue(for: .kilocalorie()) ?? 0
-                continuation.resume(returning: kcal)
+                finish(.success(kcal))
+            }
+
+            store.execute(query)
+        }
+    }
+
+    static func dailyActiveEnergyBurnedKcal(
+        from startDate: Date,
+        to endDate: Date,
+        calendar: Calendar = .current
+    ) async throws -> [DailyActiveEnergySample] {
+        guard isHealthDataAvailable else {
+            throw HealthKitServiceError.unavailable
+        }
+
+        let start = calendar.startOfDay(for: startDate)
+        let end = calendar.startOfDay(for: endDate)
+        guard start < end else { return [] }
+
+        let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: [.strictStartDate, .strictEndDate])
+        var interval = DateComponents()
+        interval.day = 1
+
+        return try await withHealthKitTimeout { finish in
+            let query = HKStatisticsCollectionQuery(
+                quantityType: activeEnergyType,
+                quantitySamplePredicate: predicate,
+                options: .cumulativeSum,
+                anchorDate: start,
+                intervalComponents: interval
+            )
+
+            query.initialResultsHandler = { _, collection, error in
+                if let error {
+                    if isNoDataError(error) {
+                        finish(.success([]))
+                        return
+                    }
+
+                    finish(.failure(error))
+                    return
+                }
+
+                guard let collection else {
+                    finish(.success([]))
+                    return
+                }
+
+                var samples: [DailyActiveEnergySample] = []
+                collection.enumerateStatistics(from: start, to: end) { statistics, _ in
+                    let kcal = statistics.sumQuantity()?.doubleValue(for: .kilocalorie()) ?? 0
+                    samples.append(DailyActiveEnergySample(
+                        date: calendar.startOfDay(for: statistics.startDate),
+                        activeEnergyKcal: kcal
+                    ))
+                }
+
+                finish(.success(samples))
             }
 
             store.execute(query)
@@ -115,5 +198,22 @@ enum HealthKitService {
 
         let nsError = error as NSError
         return nsError.domain == HKErrorDomain && nsError.code == HKError.Code.errorNoData.rawValue
+    }
+
+    private static func withHealthKitTimeout<Value>(
+        operation: (@escaping (Result<Value, Error>) -> Void) -> Void
+    ) async throws -> Value {
+        try await withCheckedThrowingContinuation { continuation in
+            let gate = HealthKitContinuationGate<Value>()
+
+            operation { result in
+                gate.resume(result, continuation: continuation)
+            }
+
+            Task {
+                try? await Task.sleep(nanoseconds: healthKitTimeoutNanoseconds)
+                gate.resume(.failure(HealthKitServiceError.requestTimedOut), continuation: continuation)
+            }
+        }
     }
 }
