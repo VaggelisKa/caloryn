@@ -39,13 +39,20 @@ enum AppleHealthAdjustmentSettings {
     }
 
     @MainActor
-    static func enable() async -> AppleHealthAdjustmentUpdate {
-        guard isHealthAvailable else {
+    static func enable(
+        isHealthAvailable: () -> Bool = {
+            HealthKitService.isHealthDataAvailable
+        },
+        requestAuthorization: () async throws -> Void = {
+            try await HealthKitService.requestActiveEnergyAuthorization()
+        }
+    ) async -> AppleHealthAdjustmentUpdate {
+        guard isHealthAvailable() else {
             return persist(isEnabled: false, authorizationRequested: false, message: unavailableMessage)
         }
 
         do {
-            try await HealthKitService.requestActiveEnergyAuthorization()
+            try await requestAuthorization()
             return persist(isEnabled: true, authorizationRequested: true, message: nil)
         } catch {
             return persist(isEnabled: false, authorizationRequested: false, message: error.localizedDescription)

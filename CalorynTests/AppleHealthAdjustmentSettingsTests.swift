@@ -46,6 +46,38 @@ final class AppleHealthAdjustmentSettingsTests: XCTestCase {
         XCTAssertFalse(UserDefaults.standard.bool(forKey: AppleHealthAdjustmentSettings.authorizationRequestedKey))
     }
 
+    func testEnableStoresEnabledWhenAuthorizationSucceeds() async {
+        let update = await AppleHealthAdjustmentSettings.enable(
+            isHealthAvailable: { true },
+            requestAuthorization: {}
+        )
+
+        XCTAssertEqual(update, AppleHealthAdjustmentUpdate(
+            isEnabled: true,
+            authorizationRequested: true,
+            message: nil
+        ))
+        XCTAssertTrue(UserDefaults.standard.bool(forKey: AppleHealthAdjustmentSettings.adjustmentEnabledKey))
+        XCTAssertTrue(UserDefaults.standard.bool(forKey: AppleHealthAdjustmentSettings.authorizationRequestedKey))
+    }
+
+    func testEnableStaysDisabledWhenAuthorizationFails() async {
+        let update = await AppleHealthAdjustmentSettings.enable(
+            isHealthAvailable: { true },
+            requestAuthorization: {
+                throw HealthKitServiceError.activeEnergyReadDenied
+            }
+        )
+
+        XCTAssertEqual(update, AppleHealthAdjustmentUpdate(
+            isEnabled: false,
+            authorizationRequested: false,
+            message: HealthKitServiceError.activeEnergyReadDenied.localizedDescription
+        ))
+        XCTAssertFalse(UserDefaults.standard.bool(forKey: AppleHealthAdjustmentSettings.adjustmentEnabledKey))
+        XCTAssertFalse(UserDefaults.standard.bool(forKey: AppleHealthAdjustmentSettings.authorizationRequestedKey))
+    }
+
     private func clearAppleHealthDefaults() {
         UserDefaults.standard.removeObject(forKey: AppleHealthAdjustmentSettings.adjustmentEnabledKey)
         UserDefaults.standard.removeObject(forKey: AppleHealthAdjustmentSettings.authorizationRequestedKey)
