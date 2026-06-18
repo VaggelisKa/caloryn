@@ -41,6 +41,7 @@ final class ActiveEnergyDayTracker {
     private(set) var recentActiveEnergySamples: [DailyActiveEnergySample] = []
     private(set) var isLoading = false
     private(set) var message: String?
+    private(set) var emptyActivityNotice: String?
     private(set) var lastRefresh: Date?
 
     @ObservationIgnored private let dataSource: ActiveEnergyDataSource
@@ -108,6 +109,7 @@ final class ActiveEnergyDayTracker {
             isEnabled = false
             activeEnergyKcal = 0
             message = AppleHealthAdjustmentSettings.unavailableMessage
+            emptyActivityNotice = nil
             isLoading = false
             currentRefreshID = nil
             stopObserving()
@@ -134,6 +136,12 @@ final class ActiveEnergyDayTracker {
             }
             lastRefresh = Date()
             message = nil
+            emptyActivityNotice = refreshDate.startOfDay.isToday
+                ? AppleHealthAdjustmentSettings.recordActiveEnergyRefresh(
+                    activeEnergyKcal: kcal,
+                    recentActiveEnergySamples: samples
+                )
+                : nil
             isLoading = false
             currentRefreshID = nil
         } catch {
@@ -143,6 +151,7 @@ final class ActiveEnergyDayTracker {
             activeEnergyKcal = 0
             recentActiveEnergySamples = []
             message = error.localizedDescription
+            emptyActivityNotice = nil
             isLoading = false
             currentRefreshID = nil
             stopObserving()
@@ -155,6 +164,7 @@ final class ActiveEnergyDayTracker {
         recentActiveEnergySamples = []
         isLoading = false
         message = nil
+        emptyActivityNotice = nil
         lastRefresh = nil
     }
 

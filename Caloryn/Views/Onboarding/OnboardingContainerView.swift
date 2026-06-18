@@ -238,7 +238,7 @@ struct EnergyCalculationModeStepView: View {
                     EnergyCalculationModeCard(
                         title: EnergyCalculationMode.dynamicHealth.displayName,
                         detail: isHealthAvailable
-                            ? "Uses Apple Health activity to keep your calorie target up to date."
+                            ? "Uses Apple Health when activity data is available."
                             : AppleHealthAdjustmentSettings.unavailableMessage,
                         iconName: "heart.text.square.fill",
                         isSelected: selectedMode == .dynamicHealth,

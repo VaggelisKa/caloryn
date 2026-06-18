@@ -1,5 +1,8 @@
 import SwiftUI
 import SwiftData
+#if canImport(UIKit)
+import UIKit
+#endif
 
 private let nutrientGoalExpansionAnimation = Animation.smooth(duration: 0.24)
 private let nutrientGoalAnimationDuration: TimeInterval = 0.24
@@ -8,6 +11,7 @@ private let nutrientGoalPickerHeight: CGFloat = 32
 struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.openURL) private var openURL
     @Query(sort: \UserProfile.updatedAt, order: .reverse) private var profiles: [UserProfile]
     @Query private var allEntries: [FoodLogEntry]
     @AppStorage("themePreference") private var themePreferenceRaw = ThemePreference.system.rawValue
@@ -100,7 +104,23 @@ struct SettingsView: View {
                 }
             }
 
-            if let dynamicStatus = budget.dynamicStatusText {
+            if let emptyActivityNotice = settingsEnergyTracker.emptyActivityNotice {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(emptyActivityNotice)
+                        .font(CalorynTheme.caption)
+                        .foregroundStyle(CalorynTheme.terracotta)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Button {
+                        openHealthAccessSettings()
+                    } label: {
+                        Label("Check Health Access", systemImage: "gearshape")
+                    }
+                    .font(CalorynTheme.caption)
+                    .buttonStyle(.borderless)
+                    .tint(CalorynTheme.sage)
+                }
+            } else if let dynamicStatus = budget.dynamicStatusText {
                 Text(dynamicStatus)
                     .font(CalorynTheme.caption)
                     .foregroundStyle(profile.energyCalculationMode == .dynamicHealth ? CalorynTheme.textSecondary : CalorynTheme.terracotta)
@@ -158,7 +178,7 @@ struct SettingsView: View {
         }
 
         if profile.energyCalculationMode == .dynamicHealth {
-            return "On - using Apple Health activity"
+            return "On - Apple Health connected"
         }
 
         return "Off - using your activity level"
@@ -263,6 +283,13 @@ struct SettingsView: View {
         }
 
         return "Your activity level sets the estimate. Auto-adjust can use Apple Health activity instead."
+    }
+
+    private func openHealthAccessSettings() {
+        #if canImport(UIKit)
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        openURL(url)
+        #endif
     }
 
     private var appearanceSection: some View {

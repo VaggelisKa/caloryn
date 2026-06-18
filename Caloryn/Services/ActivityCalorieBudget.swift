@@ -42,12 +42,20 @@ struct ActivityCalorieBudget: Equatable {
         "Auto-adjust calories"
     }
 
+    static var connectedWaitingText: String {
+        "Apple Health is connected. Waiting for Active Energy data."
+    }
+
     var isDynamicModeRequested: Bool {
         calculationMode == .dynamicHealth
     }
 
     var validActivityDays: Int {
         validActivitySamples.count
+    }
+
+    var hasAnyActiveEnergyData: Bool {
+        activeEnergyKcal > 0 || recentActiveEnergySamples.contains { $0.activeEnergyKcal > 0 }
     }
 
     var activityBaselineKcal: Double? {
@@ -150,13 +158,17 @@ struct ActivityCalorieBudget: Equatable {
     var dynamicStatusText: String? {
         switch dynamicStatus {
         case .staticEstimate:
-            nil
+            return nil
         case .unavailable(let message):
-            message
+            return message
         case .learning(let validDays, let requiredDays):
-            "Needs \(requiredDays) active days to learn your baseline. \(validDays) found so far."
+            if validDays == 0 && !hasAnyActiveEnergyData {
+                return Self.connectedWaitingText
+            }
+
+            return "Needs \(requiredDays) active days to learn your baseline. \(validDays) found so far."
         case .ready:
-            nil
+            return nil
         }
     }
 

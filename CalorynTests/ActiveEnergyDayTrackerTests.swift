@@ -52,6 +52,29 @@ final class ActiveEnergyDayTrackerTests: XCTestCase {
         XCTAssertEqual(tracker.activeEnergyKcal, 0, accuracy: 0.001)
         XCTAssertFalse(tracker.isLoading)
         XCTAssertNil(tracker.message)
+        XCTAssertNil(tracker.emptyActivityNotice)
+        XCTAssertTrue(UserDefaults.standard.bool(forKey: AppleHealthAdjustmentSettings.adjustmentEnabledKey))
+        XCTAssertTrue(UserDefaults.standard.bool(forKey: AppleHealthAdjustmentSettings.authorizationRequestedKey))
+    }
+
+    func testRepeatedZeroActiveEnergyShowsAccessHintWithoutDisablingAdjustment() async {
+        AppleHealthAdjustmentSettings.persist(
+            isEnabled: true,
+            authorizationRequested: true,
+            message: nil
+        )
+
+        for _ in 0..<2 {
+            let tracker = ActiveEnergyDayTracker(dataSource: emptyActivityDataSource)
+            await tracker.configure(date: .now, isEnabled: true)
+            XCTAssertNil(tracker.emptyActivityNotice)
+        }
+
+        let tracker = ActiveEnergyDayTracker(dataSource: emptyActivityDataSource)
+        await tracker.configure(date: .now, isEnabled: true)
+
+        XCTAssertEqual(tracker.emptyActivityNotice, AppleHealthAdjustmentSettings.emptyActivityAccessMessage)
+        XCTAssertNil(tracker.message)
         XCTAssertTrue(UserDefaults.standard.bool(forKey: AppleHealthAdjustmentSettings.adjustmentEnabledKey))
         XCTAssertTrue(UserDefaults.standard.bool(forKey: AppleHealthAdjustmentSettings.authorizationRequestedKey))
     }
@@ -346,6 +369,16 @@ final class ActiveEnergyDayTrackerTests: XCTestCase {
     private func clearAppleHealthDefaults() {
         UserDefaults.standard.removeObject(forKey: AppleHealthAdjustmentSettings.adjustmentEnabledKey)
         UserDefaults.standard.removeObject(forKey: AppleHealthAdjustmentSettings.authorizationRequestedKey)
+        AppleHealthAdjustmentSettings.clearEmptyActiveEnergyTracking()
+    }
+
+    private var emptyActivityDataSource: ActiveEnergyDataSource {
+        ActiveEnergyDataSource(
+            isHealthAvailable: { true },
+            activeEnergyBurnedKcal: { _ in 0 },
+            dailyActiveEnergyBurnedKcal: { _, _ in [] },
+            observeActiveEnergyChanges: { _ in nil }
+        )
     }
 }
 

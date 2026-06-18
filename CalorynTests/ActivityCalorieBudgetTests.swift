@@ -44,7 +44,7 @@ final class ActivityCalorieBudgetTests: XCTestCase {
         XCTAssertEqual(budget.dynamicStatus, .learning(validDays: 0, requiredDays: 7))
         XCTAssertEqual(budget.baseTarget, 2_000)
         XCTAssertEqual(budget.adjustedTarget, 2_000)
-        XCTAssertEqual(budget.dynamicStatusText, "Needs 7 active days to learn your baseline. 0 found so far.")
+        XCTAssertEqual(budget.dynamicStatusText, AppleHealthAdjustmentSettings.connectedWaitingMessage)
     }
 
     func testDynamicModeUsesMedianActiveEnergyBaselineAndThermicEffect() {

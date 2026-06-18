@@ -20,7 +20,7 @@ enum EnergyCalculationMode: String, Codable, CaseIterable, Identifiable {
         case .lifestyleEstimate:
             "Uses your selected activity level."
         case .dynamicHealth:
-            "Uses Apple Health activity."
+            "Uses Apple Health when activity data is available."
         }
     }
 }

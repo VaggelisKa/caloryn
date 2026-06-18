@@ -23,7 +23,7 @@ struct AppleHealthOptInCard: View {
                             .font(CalorynTheme.itemTitle)
                             .foregroundStyle(CalorynTheme.textPrimary)
 
-                        Text(isHealthAvailable ? "Uses Apple Health activity to keep your calorie target up to date." : "Apple Health is not available on this device.")
+                        Text(isHealthAvailable ? "Uses Apple Health when activity data is available." : "Apple Health is not available on this device.")
                             .font(CalorynTheme.caption)
                             .foregroundStyle(CalorynTheme.textSecondary)
                             .fixedSize(horizontal: false, vertical: true)

@@ -78,8 +78,58 @@ final class AppleHealthAdjustmentSettingsTests: XCTestCase {
         XCTAssertTrue(UserDefaults.standard.bool(forKey: AppleHealthAdjustmentSettings.authorizationRequestedKey))
     }
 
+    func testRepeatedEmptyActivityRefreshesSurfaceAccessHint() {
+        let now = Date(timeIntervalSinceReferenceDate: 1_000)
+
+        XCTAssertNil(AppleHealthAdjustmentSettings.recordActiveEnergyRefresh(
+            activeEnergyKcal: 0,
+            recentActiveEnergySamples: [],
+            now: now
+        ))
+        XCTAssertNil(AppleHealthAdjustmentSettings.recordActiveEnergyRefresh(
+            activeEnergyKcal: 0,
+            recentActiveEnergySamples: [],
+            now: now.addingTimeInterval(60)
+        ))
+        XCTAssertEqual(
+            AppleHealthAdjustmentSettings.recordActiveEnergyRefresh(
+                activeEnergyKcal: 0,
+                recentActiveEnergySamples: [],
+                now: now.addingTimeInterval(120)
+            ),
+            AppleHealthAdjustmentSettings.emptyActivityAccessMessage
+        )
+    }
+
+    func testActivityDataClearsTheEmptyActivityHintCounter() {
+        let now = Date(timeIntervalSinceReferenceDate: 1_000)
+
+        _ = AppleHealthAdjustmentSettings.recordActiveEnergyRefresh(
+            activeEnergyKcal: 0,
+            recentActiveEnergySamples: [],
+            now: now
+        )
+        _ = AppleHealthAdjustmentSettings.recordActiveEnergyRefresh(
+            activeEnergyKcal: 0,
+            recentActiveEnergySamples: [],
+            now: now.addingTimeInterval(60)
+        )
+
+        XCTAssertNil(AppleHealthAdjustmentSettings.recordActiveEnergyRefresh(
+            activeEnergyKcal: 12,
+            recentActiveEnergySamples: [],
+            now: now.addingTimeInterval(120)
+        ))
+        XCTAssertNil(AppleHealthAdjustmentSettings.recordActiveEnergyRefresh(
+            activeEnergyKcal: 0,
+            recentActiveEnergySamples: [],
+            now: now.addingTimeInterval(180)
+        ))
+    }
+
     private func clearAppleHealthDefaults() {
         UserDefaults.standard.removeObject(forKey: AppleHealthAdjustmentSettings.adjustmentEnabledKey)
         UserDefaults.standard.removeObject(forKey: AppleHealthAdjustmentSettings.authorizationRequestedKey)
+        AppleHealthAdjustmentSettings.clearEmptyActiveEnergyTracking()
     }
 }
