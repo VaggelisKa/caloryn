@@ -25,8 +25,25 @@ struct SettingsView: View {
     @State private var healthStatusMessage: String?
     @State private var settingsEnergyTracker = ActiveEnergyDayTracker()
 
+    private let isHealthAvailableProvider: () -> Bool
+
+    init() {
+        self.isHealthAvailableProvider = {
+            AppleHealthAdjustmentSettings.isHealthAvailable
+        }
+    }
+
+    @MainActor
+    init(
+        settingsEnergyTracker: ActiveEnergyDayTracker,
+        isHealthAvailable: @escaping () -> Bool
+    ) {
+        _settingsEnergyTracker = State(initialValue: settingsEnergyTracker)
+        self.isHealthAvailableProvider = isHealthAvailable
+    }
+
     private var profile: UserProfile? { profiles.first }
-    private var isHealthAvailable: Bool { AppleHealthAdjustmentSettings.isHealthAvailable }
+    private var isHealthAvailable: Bool { isHealthAvailableProvider() }
 
     var body: some View {
         NavigationStack {
@@ -86,12 +103,28 @@ struct SettingsView: View {
             }
 
             if !profile.manualOverride && profile.energyCalculationMode == .dynamicHealth {
-                LabeledContent("Valid Days", value: "\(budget.validActivityDays)/\(ActivityCalorieBudget.requiredDynamicActivityDays)")
-                LabeledContent("Baseline", value: dynamicBaselineText(for: budget))
-                LabeledContent("Today", value: Int(settingsEnergyTracker.activeEnergyKcal.rounded()).kcalFormatted)
+                CalorieEstimateMetricRow(
+                    title: "Valid Days",
+                    description: "Active Energy days found; \(ActivityCalorieBudget.requiredDynamicActivityDays) days are needed before auto-adjust starts.",
+                    value: "\(budget.validActivityDays)/\(ActivityCalorieBudget.requiredDynamicActivityDays)"
+                )
+                CalorieEstimateMetricRow(
+                    title: "Baseline",
+                    description: "Your typical Active Energy from recent valid days.",
+                    value: dynamicBaselineText(for: budget)
+                )
+                CalorieEstimateMetricRow(
+                    title: "Today",
+                    description: "Active Energy read from Apple Health for today.",
+                    value: Int(settingsEnergyTracker.activeEnergyKcal.rounded()).kcalFormatted
+                )
 
                 if let lastRefresh = settingsEnergyTracker.lastRefresh {
-                    LabeledContent("Updated", value: lastRefresh.shortFormatted)
+                    CalorieEstimateMetricRow(
+                        title: "Updated",
+                        description: "When Health data was last refreshed.",
+                        value: lastRefresh.shortFormatted
+                    )
                 }
             }
 
@@ -475,6 +508,74 @@ struct SettingsView: View {
     try? context.save()
     return SettingsView()
         .modelContainer(container)
+}
+
+#Preview("Settings - Auto-adjust Details") {
+    let config = ModelConfiguration(isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(for: UserProfile.self, FoodItem.self, FoodLogEntry.self, RecipeIngredient.self, configurations: config)
+    let context = ModelContext(container)
+    let profile = UserProfile(
+        age: 34,
+        sex: .female,
+        heightCm: 168,
+        weightKg: 72,
+        activityLevel: .moderatelyActive,
+        calorieDeficit: 400,
+        energyCalculationMode: .dynamicHealth
+    )
+    let samples: [DailyActiveEnergySample] = [410.0, 480, 520, 540, 549, 560, 575, 590, 620].enumerated().compactMap { index, activeEnergyKcal in
+        guard let date = Calendar.current.date(
+            byAdding: .day,
+            value: -(index + 1),
+            to: Date.now.startOfDay
+        ) else {
+            return nil
+        }
+
+        return DailyActiveEnergySample(date: date, activeEnergyKcal: activeEnergyKcal)
+    }
+    let tracker = ActiveEnergyDayTracker(dataSource: ActiveEnergyDataSource(
+        isHealthAvailable: { true },
+        activeEnergyBurnedKcal: { _ in 225 },
+        dailyActiveEnergyBurnedKcal: { _, _ in samples },
+        observeActiveEnergyChanges: { _ in nil }
+    ))
+
+    let _ = context.insert(profile)
+    let _ = try? context.save()
+
+    SettingsView(
+        settingsEnergyTracker: tracker,
+        isHealthAvailable: { true }
+    )
+    .modelContainer(container)
+}
+
+private struct CalorieEstimateMetricRow: View {
+    let title: String
+    let description: String
+    let value: String
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .foregroundStyle(CalorynTheme.textPrimary)
+
+                Text(description)
+                    .font(CalorynTheme.caption)
+                    .foregroundStyle(CalorynTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 12)
+
+            Text(value)
+                .foregroundStyle(CalorynTheme.textSecondary)
+                .multilineTextAlignment(.trailing)
+        }
+        .accessibilityElement(children: .combine)
+    }
 }
 
 private struct ShareSheet: UIViewControllerRepresentable {
