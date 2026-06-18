@@ -14,6 +14,10 @@ enum AppleHealthAdjustmentSettings {
         HealthKitService.isHealthDataAvailable
     }
 
+    static var authorizationRequested: Bool {
+        UserDefaults.standard.bool(forKey: authorizationRequestedKey)
+    }
+
     static var dynamicEnergyPolicyText: String {
         ActivityCalorieBudget.dynamicEnergyPolicyText
     }
@@ -55,7 +59,7 @@ enum AppleHealthAdjustmentSettings {
             try await requestAuthorization()
             return persist(isEnabled: true, authorizationRequested: true, message: nil)
         } catch {
-            return persist(isEnabled: false, authorizationRequested: false, message: error.localizedDescription)
+            return persist(isEnabled: false, authorizationRequested: true, message: error.localizedDescription)
         }
     }
 

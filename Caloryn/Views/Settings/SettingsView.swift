@@ -7,6 +7,7 @@ private let nutrientGoalPickerHeight: CGFloat = 32
 
 struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.scenePhase) private var scenePhase
     @Query(sort: \UserProfile.updatedAt, order: .reverse) private var profiles: [UserProfile]
     @Query private var allEntries: [FoodLogEntry]
     @AppStorage("themePreference") private var themePreferenceRaw = ThemePreference.system.rawValue
@@ -48,6 +49,17 @@ struct SettingsView: View {
             } message: {
                 Text("iCloud sync changes will take effect the next time you open the app.")
             }
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            guard newPhase == .active, let profile else { return }
+
+            Task {
+                await refreshPendingHealthAuthorizationIfNeeded(for: profile)
+            }
+        }
+        .task(id: profile?.id) {
+            guard scenePhase == .active, let profile else { return }
+            await refreshPendingHealthAuthorizationIfNeeded(for: profile)
         }
     }
 
@@ -191,6 +203,30 @@ struct SettingsView: View {
     private func disableDynamicEnergy(for profile: UserProfile) {
         let update = AppleHealthAdjustmentSettings.disable()
         profile.energyCalculationMode = .lifestyleEstimate
+        healthStatusMessage = update.message
+    }
+
+    @MainActor
+    private func refreshPendingHealthAuthorizationIfNeeded(for profile: UserProfile) async {
+        guard !profile.manualOverride else { return }
+        guard profile.energyCalculationMode != .dynamicHealth else {
+            settingsEnergyTracker.refreshWhenActive()
+            return
+        }
+        guard AppleHealthAdjustmentSettings.authorizationRequested else { return }
+        guard isHealthAvailable, !isRequestingHealthAuthorization else { return }
+
+        isRequestingHealthAuthorization = true
+        healthStatusMessage = nil
+        defer {
+            isRequestingHealthAuthorization = false
+        }
+
+        let update = await AppleHealthAdjustmentSettings.enable()
+        if update.isEnabled {
+            profile.energyCalculationMode = .dynamicHealth
+            await settingsEnergyTracker.configure(date: .now, isEnabled: true)
+        }
         healthStatusMessage = update.message
     }
 

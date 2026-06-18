@@ -61,7 +61,7 @@ final class AppleHealthAdjustmentSettingsTests: XCTestCase {
         XCTAssertTrue(UserDefaults.standard.bool(forKey: AppleHealthAdjustmentSettings.authorizationRequestedKey))
     }
 
-    func testEnableStaysDisabledWhenAuthorizationFails() async {
+    func testEnableStaysDisabledAndRecordsAttemptWhenAuthorizationFails() async {
         let update = await AppleHealthAdjustmentSettings.enable(
             isHealthAvailable: { true },
             requestAuthorization: {
@@ -71,11 +71,11 @@ final class AppleHealthAdjustmentSettingsTests: XCTestCase {
 
         XCTAssertEqual(update, AppleHealthAdjustmentUpdate(
             isEnabled: false,
-            authorizationRequested: false,
+            authorizationRequested: true,
             message: HealthKitServiceError.activeEnergyReadDenied.localizedDescription
         ))
         XCTAssertFalse(UserDefaults.standard.bool(forKey: AppleHealthAdjustmentSettings.adjustmentEnabledKey))
-        XCTAssertFalse(UserDefaults.standard.bool(forKey: AppleHealthAdjustmentSettings.authorizationRequestedKey))
+        XCTAssertTrue(UserDefaults.standard.bool(forKey: AppleHealthAdjustmentSettings.authorizationRequestedKey))
     }
 
     private func clearAppleHealthDefaults() {
