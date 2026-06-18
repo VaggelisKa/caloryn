@@ -33,6 +33,20 @@ final class ActivityCalorieBudgetTests: XCTestCase {
         XCTAssertEqual(budget.dynamicStatusText, "Needs 7 active days to learn your baseline. 4 found so far.")
     }
 
+    func testDynamicModeTreatsZeroActivityAsLearningNotUnavailable() {
+        let budget = makeBudget(
+            staticTarget: 2_000,
+            activeEnergyKcal: 0,
+            samples: [],
+            mode: .dynamicHealth
+        )
+
+        XCTAssertEqual(budget.dynamicStatus, .learning(validDays: 0, requiredDays: 7))
+        XCTAssertEqual(budget.baseTarget, 2_000)
+        XCTAssertEqual(budget.adjustedTarget, 2_000)
+        XCTAssertEqual(budget.dynamicStatusText, "Needs 7 active days to learn your baseline. 0 found so far.")
+    }
+
     func testDynamicModeUsesMedianActiveEnergyBaselineAndThermicEffect() {
         let samples = baselineSamples(kcalValues: [200, 240, 260, 280, 300, 320, 340])
         let budget = makeBudget(

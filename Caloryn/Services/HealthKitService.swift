@@ -4,14 +4,13 @@ import Foundation
 enum HealthKitServiceError: LocalizedError {
     case unavailable
     case authorizationFailed
-    case activeEnergyReadDenied
     case requestTimedOut
 
     var errorDescription: String? {
         switch self {
         case .unavailable:
             return "Apple Health is not available on this device."
-        case .authorizationFailed, .activeEnergyReadDenied:
+        case .authorizationFailed:
             return "Apple Health did not share Active Energy with Caloryn. Allow Active Energy in the Health app, then try again."
         case .requestTimedOut:
             return "Apple Health did not respond. Continue with Activity Level Estimate, then try again from Settings."
@@ -136,6 +135,9 @@ enum HealthKitService {
             throw HealthKitServiceError.unavailable
         }
 
+        // HealthKit does not report the read-grant decision here. A completed
+        // request lets the app attempt reads; the activity queries below own
+        // the distinction between zero data and read failures.
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             store.requestAuthorization(toShare: [], read: [activeEnergyType]) { success, error in
                 if let error {
@@ -149,17 +151,6 @@ enum HealthKitService {
                     continuation.resume(throwing: HealthKitServiceError.authorizationFailed)
                 }
             }
-        }
-
-        do {
-            let hasReadableActiveEnergy = try await hasReadableActiveEnergySamples()
-            guard hasReadableActiveEnergy else {
-                throw HealthKitServiceError.activeEnergyReadDenied
-            }
-        } catch HealthKitServiceError.requestTimedOut {
-            throw HealthKitServiceError.requestTimedOut
-        } catch {
-            throw HealthKitServiceError.activeEnergyReadDenied
         }
     }
 
@@ -250,44 +241,6 @@ enum HealthKitService {
                 }
 
                 finish(.success(samples))
-            }
-
-            store.execute(query)
-            return HealthKitQueryCancellation(query)
-        }
-    }
-
-    private static func hasReadableActiveEnergySamples(calendar: Calendar = .current) async throws -> Bool {
-        guard isHealthDataAvailable else {
-            throw HealthKitServiceError.unavailable
-        }
-
-        let end = Date()
-        let start = calendar.date(
-            byAdding: .day,
-            value: -ActivityCalorieBudget.historyLookbackDays,
-            to: end
-        ) ?? end
-        let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: [.strictStartDate, .strictEndDate])
-
-        return try await withHealthKitTimeout { finish in
-            let query = HKSampleQuery(
-                sampleType: activeEnergyType,
-                predicate: predicate,
-                limit: 1,
-                sortDescriptors: nil
-            ) { _, samples, error in
-                if let error {
-                    if isNoDataError(error) {
-                        finish(.success(false))
-                        return
-                    }
-
-                    finish(.failure(error))
-                    return
-                }
-
-                finish(.success(!(samples ?? []).isEmpty))
             }
 
             store.execute(query)

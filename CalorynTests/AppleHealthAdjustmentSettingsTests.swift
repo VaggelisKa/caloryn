@@ -65,14 +65,14 @@ final class AppleHealthAdjustmentSettingsTests: XCTestCase {
         let update = await AppleHealthAdjustmentSettings.enable(
             isHealthAvailable: { true },
             requestAuthorization: {
-                throw HealthKitServiceError.activeEnergyReadDenied
+                throw HealthKitServiceError.authorizationFailed
             }
         )
 
         XCTAssertEqual(update, AppleHealthAdjustmentUpdate(
             isEnabled: false,
             authorizationRequested: true,
-            message: HealthKitServiceError.activeEnergyReadDenied.localizedDescription
+            message: HealthKitServiceError.authorizationFailed.localizedDescription
         ))
         XCTAssertFalse(UserDefaults.standard.bool(forKey: AppleHealthAdjustmentSettings.adjustmentEnabledKey))
         XCTAssertTrue(UserDefaults.standard.bool(forKey: AppleHealthAdjustmentSettings.authorizationRequestedKey))

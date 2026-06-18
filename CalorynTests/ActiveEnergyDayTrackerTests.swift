@@ -34,6 +34,28 @@ final class ActiveEnergyDayTrackerTests: XCTestCase {
         XCTAssertEqual(readDates, [selectedDate.startOfDay])
     }
 
+    func testZeroActiveEnergyKeepsAdjustmentEnabled() async {
+        AppleHealthAdjustmentSettings.persist(
+            isEnabled: true,
+            authorizationRequested: true,
+            message: nil
+        )
+        let tracker = ActiveEnergyDayTracker(dataSource: ActiveEnergyDataSource(
+            isHealthAvailable: { true },
+            activeEnergyBurnedKcal: { _ in 0 },
+            dailyActiveEnergyBurnedKcal: { _, _ in [] },
+            observeActiveEnergyChanges: { _ in nil }
+        ))
+
+        await tracker.configure(date: .now, isEnabled: true)
+
+        XCTAssertEqual(tracker.activeEnergyKcal, 0, accuracy: 0.001)
+        XCTAssertFalse(tracker.isLoading)
+        XCTAssertNil(tracker.message)
+        XCTAssertTrue(UserDefaults.standard.bool(forKey: AppleHealthAdjustmentSettings.adjustmentEnabledKey))
+        XCTAssertTrue(UserDefaults.standard.bool(forKey: AppleHealthAdjustmentSettings.authorizationRequestedKey))
+    }
+
     func testEnabledConfigurationReadsRecentActivityHistoryBeforeTheSelectedDay() async {
         var requestedRanges: [(start: Date, end: Date)] = []
         let selectedDate = makeTestDate(year: 2026, month: 2, day: 14, hour: 8)
