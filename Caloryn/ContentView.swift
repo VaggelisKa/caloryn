@@ -13,18 +13,21 @@ struct ContentView: View {
         (ThemePreference(rawValue: themePreferenceRaw) ?? .system).colorScheme
     }
 
+    private var onboardingTransition: AnyTransition {
+        .opacity.animation(.smooth(duration: 0.4))
+    }
+
     var body: some View {
         Group {
             if hasCompletedOnboarding {
                 MainTabView()
-                    .transition(.opacity)
+                    .transition(onboardingTransition)
             } else {
                 OnboardingContainerView()
-                    .transition(.opacity)
+                    .transition(onboardingTransition)
             }
         }
         .preferredColorScheme(colorScheme)
-        .animation(.smooth(duration: 0.4), value: hasCompletedOnboarding)
     }
 }
 

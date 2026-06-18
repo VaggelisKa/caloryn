@@ -10,6 +10,17 @@ struct CalorieRingView: View {
     @State private var animatedRingProgress: Double = 0
     @State private var isDetailsPressing = false
 
+    init(
+        calorieBudget: ActivityCalorieBudget,
+        ringSize: CGFloat,
+        onDetailsRequested: (() -> Void)? = nil
+    ) {
+        self.calorieBudget = calorieBudget
+        self.ringSize = ringSize
+        self.onDetailsRequested = onDetailsRequested
+        self._animatedRingProgress = State(initialValue: calorieBudget.displayedRingProgress)
+    }
+
     private var animatedBaseProgress: Double {
         calorieBudget.hasDynamicIncrease ? min(animatedRingProgress, calorieBudget.baseProgressEnd) : animatedRingProgress
     }
@@ -124,7 +135,11 @@ struct CalorieRingView: View {
             perform: requestDetails
         )
         .onAppear {
-            animatedRingProgress = calorieBudget.displayedRingProgress
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                animatedRingProgress = calorieBudget.displayedRingProgress
+            }
         }
         .onChange(of: calorieBudget.displayedRingProgress) { _, newProgress in
             withAnimation(.smooth(duration: 0.45)) {
