@@ -11,18 +11,22 @@ struct CalorieRingView: View {
     @State private var isDetailsPressing = false
 
     private var animatedBaseProgress: Double {
-        calorieBudget.hasActivityCredit ? min(animatedRingProgress, calorieBudget.baseProgressEnd) : animatedRingProgress
+        calorieBudget.hasDynamicIncrease ? min(animatedRingProgress, calorieBudget.baseProgressEnd) : animatedRingProgress
     }
 
-    private var animatedCreditProgress: Double {
-        guard calorieBudget.hasActivityCredit, animatedRingProgress > calorieBudget.baseProgressEnd else {
+    private var animatedDynamicProgress: Double {
+        guard calorieBudget.hasDynamicIncrease, animatedRingProgress > calorieBudget.baseProgressEnd else {
             return calorieBudget.baseProgressEnd
         }
         return min(animatedRingProgress, 1)
     }
 
-    private var activityCreditColor: Color {
+    private var dynamicTargetColor: Color {
         CalorynTheme.carbColor
+    }
+
+    private var centerContentWidth: CGFloat {
+        max(96, ringSize * 0.62)
     }
 
     var body: some View {
@@ -36,14 +40,14 @@ struct CalorieRingView: View {
             Circle()
                 .trim(
                     from: calorieBudget.baseProgressEnd,
-                    to: calorieBudget.hasActivityCredit ? 1 : calorieBudget.baseProgressEnd
+                    to: calorieBudget.hasDynamicIncrease ? 1 : calorieBudget.baseProgressEnd
                 )
                 .stroke(
-                    activityCreditColor.opacity(0.42),
+                    dynamicTargetColor.opacity(0.42),
                     style: StrokeStyle(lineWidth: 14, lineCap: .round)
                 )
                 .rotationEffect(.degrees(-90))
-                .opacity(calorieBudget.hasActivityCredit ? 1 : 0)
+                .opacity(calorieBudget.hasDynamicIncrease ? 1 : 0)
 
             Circle()
                 .trim(from: 0, to: animatedBaseProgress)
@@ -55,13 +59,13 @@ struct CalorieRingView: View {
                 .opacity(animatedRingProgress < 0.01 ? 0 : 1)
 
             Circle()
-                .trim(from: calorieBudget.baseProgressEnd, to: animatedCreditProgress)
+                .trim(from: calorieBudget.baseProgressEnd, to: animatedDynamicProgress)
                 .stroke(
-                    calorieBudget.isOver ? CalorynTheme.terracotta : activityCreditColor,
+                    calorieBudget.isOver ? CalorynTheme.terracotta : dynamicTargetColor,
                     style: StrokeStyle(lineWidth: 14, lineCap: .round)
                 )
                 .rotationEffect(.degrees(-90))
-                .opacity(calorieBudget.hasActivityCredit && animatedCreditProgress > calorieBudget.baseProgressEnd ? 1 : 0)
+                .opacity(calorieBudget.hasDynamicIncrease && animatedDynamicProgress > calorieBudget.baseProgressEnd ? 1 : 0)
 
             VStack(spacing: 2) {
                 if calorieBudget.isOver {
@@ -89,7 +93,7 @@ struct CalorieRingView: View {
                     .foregroundStyle(calorieBudget.isOver ? CalorynTheme.terracotta.opacity(0.7) : CalorynTheme.textSecondary.opacity(0.75))
                     .padding(.top, 6)
 
-                activityCreditCue
+                dynamicTargetCue
             }
         }
         .frame(width: ringSize, height: ringSize)
@@ -98,7 +102,7 @@ struct CalorieRingView: View {
         .contentShape(Circle())
         .scaleEffect(isDetailsPressing ? 0.94 : 1)
         .animation(.smooth(duration: 0.2), value: isDetailsPressing)
-        .animation(.smooth(duration: 0.35), value: calorieBudget.activityCredit)
+        .animation(.smooth(duration: 0.35), value: calorieBudget.dynamicAdjustment)
         .animation(.smooth(duration: 0.35), value: calorieBudget.adjustedTarget)
         .animation(.smooth(duration: 0.35), value: calorieBudget.isActivityLoading)
         .accessibilityElement(children: .ignore)
@@ -130,7 +134,7 @@ struct CalorieRingView: View {
     }
 
     @ViewBuilder
-    private var activityCreditCue: some View {
+    private var dynamicTargetCue: some View {
         if calorieBudget.isActivityLoading {
             HStack(spacing: 5) {
                 ProgressView()
@@ -141,25 +145,41 @@ struct CalorieRingView: View {
             }
             .font(.system(.caption2, design: .rounded, weight: .medium))
             .foregroundStyle(CalorynTheme.textSecondary)
+            .frame(maxWidth: centerContentWidth)
             .padding(.top, 2)
-        } else if calorieBudget.hasActivityCredit {
+        } else if calorieBudget.hasDynamicIncrease {
             HStack(spacing: 4) {
                 Image(systemName: "flame.fill")
                     .font(.system(size: 9, weight: .bold))
 
-                Text("+\(calorieBudget.activityCredit) activity")
+                Text("+\(calorieBudget.dynamicIncrease) dynamic")
                     .lineLimit(1)
                     .minimumScaleFactor(0.78)
             }
                 .font(.system(.caption2, design: .rounded, weight: .semibold))
-                .foregroundStyle(activityCreditColor)
+                .foregroundStyle(dynamicTargetColor)
+                .frame(maxWidth: centerContentWidth)
                 .padding(.top, 2)
-                .accessibilityLabel("\(calorieBudget.activityCredit) calorie activity credit")
+                .accessibilityLabel("\(calorieBudget.dynamicIncrease) calorie auto-adjust increase")
+        } else if calorieBudget.hasDynamicReduction {
+            HStack(spacing: 4) {
+                Image(systemName: "arrow.down.circle.fill")
+                    .font(.system(size: 9, weight: .bold))
+
+                Text("\(abs(calorieBudget.dynamicAdjustment)) dynamic")
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.78)
+            }
+                .font(.system(.caption2, design: .rounded, weight: .semibold))
+                .foregroundStyle(CalorynTheme.textSecondary)
+                .frame(maxWidth: centerContentWidth)
+                .padding(.top, 2)
+                .accessibilityLabel("\(abs(calorieBudget.dynamicAdjustment)) calorie auto-adjust reduction")
         }
     }
 
     private var accessibilityDescription: String {
-        let activityDescription = calorieBudget.hasActivityCredit ? ", includes \(calorieBudget.activityCredit) calorie activity credit" : ""
+        let activityDescription = calorieBudget.hasDynamicIncrease ? ", includes \(calorieBudget.dynamicIncrease) calorie auto-adjust increase" : ""
 
         if calorieBudget.isOver {
             return "Calorie ring, \(calorieBudget.roundedConsumed) eaten, \(calorieBudget.overAmount) calories over a \(calorieBudget.adjustedTarget) calorie goal\(activityDescription)"
@@ -188,30 +208,100 @@ struct CalorieRingView: View {
     }
 }
 
-#Preview("Ring - No Activity") {
+#Preview("Ring - Static Estimate") {
     CalorieRingView(
         calorieBudget: ActivityCalorieBudget(
             consumed: 1200,
-            baseTarget: 2000,
+            staticTarget: 2000,
+            bmr: 1700,
+            calorieDeficit: 500,
             activeEnergyKcal: 0,
-            isActivityAdjustmentEnabled: false,
+            recentActiveEnergySamples: [],
+            calculationMode: .lifestyleEstimate,
+            isManualOverride: false,
             isActivityLoading: false,
-            activityMessage: nil
+            activityMessage: nil,
+            date: .now
         ),
         ringSize: 220
     )
     .padding()
 }
 
-#Preview("Ring - Activity Credit") {
+#Preview("Ring - Auto-adjust") {
     CalorieRingView(
         calorieBudget: ActivityCalorieBudget(
             consumed: 2070,
-            baseTarget: 2000,
+            staticTarget: 2000,
+            bmr: 1700,
+            calorieDeficit: 300,
             activeEnergyKcal: 500,
-            isActivityAdjustmentEnabled: true,
+            recentActiveEnergySamples: previewActivitySamples,
+            calculationMode: .dynamicHealth,
+            isManualOverride: false,
             isActivityLoading: false,
-            activityMessage: nil
+            activityMessage: nil,
+            date: .now
+        ),
+        ringSize: 220
+    )
+    .padding()
+}
+
+#Preview("Ring - Dynamic Learning") {
+    CalorieRingView(
+        calorieBudget: ActivityCalorieBudget(
+            consumed: 920,
+            staticTarget: 2000,
+            bmr: 1700,
+            calorieDeficit: 300,
+            activeEnergyKcal: 180,
+            recentActiveEnergySamples: Array(previewActivitySamples.prefix(3)),
+            calculationMode: .dynamicHealth,
+            isManualOverride: false,
+            isActivityLoading: false,
+            activityMessage: nil,
+            date: .now
+        ),
+        ringSize: 220
+    )
+    .padding()
+}
+
+#Preview("Ring - Dynamic Reduction") {
+    CalorieRingView(
+        calorieBudget: ActivityCalorieBudget(
+            consumed: 1440,
+            staticTarget: 2000,
+            bmr: 1700,
+            calorieDeficit: 300,
+            activeEnergyKcal: 120,
+            recentActiveEnergySamples: previewActivitySamples,
+            calculationMode: .dynamicHealth,
+            isManualOverride: false,
+            isActivityLoading: false,
+            activityMessage: nil,
+            date: Calendar.current.date(byAdding: .day, value: -1, to: Date.now) ?? .now
+        ),
+        ringSize: 220
+    )
+    .padding()
+}
+
+#Preview("Ring - Dynamic Unavailable") {
+    CalorieRingView(
+        calorieBudget: ActivityCalorieBudget(
+            consumed: 760,
+            staticTarget: 2000,
+            bmr: 1700,
+            calorieDeficit: 300,
+            activeEnergyKcal: 0,
+            recentActiveEnergySamples: [],
+            calculationMode: .dynamicHealth,
+            isManualOverride: false,
+            isActivityLoading: false,
+            activityMessage: "Apple Health permission wasn't given. Allow Active Energy for Caloryn in the Health app, then try again.",
+            date: .now
         ),
         ringSize: 220
     )
@@ -222,11 +312,16 @@ struct CalorieRingView: View {
     CalorieRingView(
         calorieBudget: ActivityCalorieBudget(
             consumed: 2450,
-            baseTarget: 2000,
+            staticTarget: 2000,
+            bmr: 1700,
+            calorieDeficit: 300,
             activeEnergyKcal: 500,
-            isActivityAdjustmentEnabled: true,
+            recentActiveEnergySamples: previewActivitySamples,
+            calculationMode: .dynamicHealth,
+            isManualOverride: false,
             isActivityLoading: false,
-            activityMessage: nil
+            activityMessage: nil,
+            date: .now
         ),
         ringSize: 220
     )
@@ -237,13 +332,26 @@ struct CalorieRingView: View {
     CalorieRingView(
         calorieBudget: ActivityCalorieBudget(
             consumed: 1200,
-            baseTarget: 2000,
+            staticTarget: 2000,
+            bmr: 1700,
+            calorieDeficit: 300,
             activeEnergyKcal: 0,
-            isActivityAdjustmentEnabled: true,
+            recentActiveEnergySamples: previewActivitySamples,
+            calculationMode: .dynamicHealth,
+            isManualOverride: false,
             isActivityLoading: true,
-            activityMessage: nil
+            activityMessage: nil,
+            date: .now
         ),
         ringSize: 220
     )
     .padding()
+}
+
+private let previewActivitySamples: [DailyActiveEnergySample] = (1...10).compactMap { offset in
+    guard let date = Calendar.current.date(byAdding: .day, value: -offset, to: Date.now.startOfDay) else {
+        return nil
+    }
+
+    return DailyActiveEnergySample(date: date, activeEnergyKcal: 300)
 }

@@ -2,9 +2,7 @@ import SwiftUI
 
 struct NutrientSelectionStepView: View {
     @Binding var selectedNutrientIDs: String
-    @Binding var wantsAppleHealthAdjustment: Bool
     var isCompleting = false
-    var healthMessage: String?
     var onComplete: () -> Void
 
     private var selectedNutrients: [TrackedNutrient] {
@@ -58,16 +56,6 @@ struct NutrientSelectionStepView: View {
                     }
                 }
 
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("OPTIONAL")
-                        .font(CalorynTheme.caption)
-                        .foregroundStyle(CalorynTheme.textSecondary)
-
-                    AppleHealthOptInCard(
-                        isEnabled: $wantsAppleHealthAdjustment,
-                        message: healthMessage
-                    )
-                }
             }
             .padding(.horizontal, CalorynTheme.pagePadding)
             .padding(.bottom, 100)
@@ -188,11 +176,10 @@ private struct NutrientSelectionTile: View {
     }
 }
 
-#Preview {
-    NavigationStack {
-        NutrientSelectionStepView(
-            selectedNutrientIDs: .constant(TrackedNutrient.defaultSelectionRaw),
-            wantsAppleHealthAdjustment: .constant(false)
-        ) { }
+    #Preview {
+        NavigationStack {
+            NutrientSelectionStepView(
+                selectedNutrientIDs: .constant(TrackedNutrient.defaultSelectionRaw)
+            ) { }
+        }
     }
-}

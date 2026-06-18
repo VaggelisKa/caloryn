@@ -19,11 +19,11 @@ struct AppleHealthOptInCard: View {
                         .accessibilityHidden(true)
 
                     VStack(alignment: .leading, spacing: 5) {
-                        Text("Adjust with Apple Health")
+                        Text(EnergyCalculationMode.dynamicHealth.displayName)
                             .font(CalorynTheme.itemTitle)
                             .foregroundStyle(CalorynTheme.textPrimary)
 
-                        Text(isHealthAvailable ? "Optional. Uses Apple Health Active Energy as today's activity credit." : "Apple Health is not available on this device.")
+                        Text(isHealthAvailable ? "Uses Apple Health when activity data is available." : "Apple Health is not available on this device.")
                             .font(CalorynTheme.caption)
                             .foregroundStyle(CalorynTheme.textSecondary)
                             .fixedSize(horizontal: false, vertical: true)
@@ -41,7 +41,7 @@ struct AppleHealthOptInCard: View {
             }
 
             HStack(spacing: 10) {
-                Label(AppleHealthAdjustmentSettings.activeEnergyCreditShortText, systemImage: "flame.fill")
+                Label(AppleHealthAdjustmentSettings.dynamicEnergyShortText, systemImage: "flame.fill")
                 Label("On-device", systemImage: "lock.fill")
             }
             .font(CalorynTheme.caption)

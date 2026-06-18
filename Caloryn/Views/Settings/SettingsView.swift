@@ -1,5 +1,8 @@
 import SwiftUI
 import SwiftData
+#if canImport(UIKit)
+import UIKit
+#endif
 
 private let nutrientGoalExpansionAnimation = Animation.smooth(duration: 0.24)
 private let nutrientGoalAnimationDuration: TimeInterval = 0.24
@@ -7,18 +10,20 @@ private let nutrientGoalPickerHeight: CGFloat = 32
 
 struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.openURL) private var openURL
     @Query(sort: \UserProfile.updatedAt, order: .reverse) private var profiles: [UserProfile]
     @Query private var allEntries: [FoodLogEntry]
     @AppStorage("themePreference") private var themePreferenceRaw = ThemePreference.system.rawValue
     @AppStorage("showNutriscore") private var showNutriscore = true
     @AppStorage("iCloudSyncEnabled") private var iCloudSyncEnabled = true
-    @AppStorage(AppleHealthAdjustmentSettings.adjustmentEnabledKey) private var appleHealthAdjustmentEnabled = false
 
     @State private var showExportSheet = false
     @State private var exportURL: URL?
     @State private var showRestartAlert = false
     @State private var isRequestingHealthAuthorization = false
     @State private var healthStatusMessage: String?
+    @State private var settingsEnergyTracker = ActiveEnergyDayTracker()
 
     private var profile: UserProfile? { profiles.first }
     private var isHealthAvailable: Bool { AppleHealthAdjustmentSettings.isHealthAvailable }
@@ -30,10 +35,10 @@ struct SettingsView: View {
 
                 if let profile {
                     goalSection(profile)
+                    calorieEstimateSection(profile)
                     profileSection(profile)
                 }
 
-                appleHealthSection
                 dataSection
                 aboutSection
             }
@@ -49,15 +54,46 @@ struct SettingsView: View {
                 Text("iCloud sync changes will take effect the next time you open the app.")
             }
         }
+        .onChange(of: scenePhase) { _, newPhase in
+            guard newPhase == .active, let profile else { return }
+
+            Task {
+                await refreshPendingHealthAuthorizationIfNeeded(for: profile)
+            }
+        }
+        .task(id: profile?.id) {
+            guard scenePhase == .active, let profile else { return }
+            await refreshPendingHealthAuthorizationIfNeeded(for: profile)
+        }
     }
 
-    private var appleHealthSection: some View {
-        Section {
-            Toggle(isOn: appleHealthToggleBinding) {
-                Label("Apple Health Adjustment", systemImage: "heart.text.square")
+    private func calorieEstimateSection(_ profile: UserProfile) -> some View {
+        let budget = settingsBudget(for: profile)
+
+        return Section {
+            if profile.manualOverride {
+                Toggle(isOn: .constant(false)) {
+                    calorieEstimateModeToggleLabel(for: profile)
+                }
+                .tint(CalorynTheme.sage)
+                .disabled(true)
+            } else {
+                Toggle(isOn: dynamicEnergyBinding(for: profile)) {
+                    calorieEstimateModeToggleLabel(for: profile)
+                }
+                .tint(CalorynTheme.sage)
+                .disabled(isRequestingHealthAuthorization || (profile.energyCalculationMode != .dynamicHealth && !isHealthAvailable))
             }
-            .tint(CalorynTheme.sage)
-            .disabled(!isHealthAvailable || isRequestingHealthAuthorization)
+
+            if !profile.manualOverride && profile.energyCalculationMode == .dynamicHealth {
+                LabeledContent("Valid Days", value: "\(budget.validActivityDays)/\(ActivityCalorieBudget.requiredDynamicActivityDays)")
+                LabeledContent("Baseline", value: dynamicBaselineText(for: budget))
+                LabeledContent("Today", value: Int(settingsEnergyTracker.activeEnergyKcal.rounded()).kcalFormatted)
+
+                if let lastRefresh = settingsEnergyTracker.lastRefresh {
+                    LabeledContent("Updated", value: lastRefresh.shortFormatted)
+                }
+            }
 
             if isRequestingHealthAuthorization {
                 HStack(spacing: 8) {
@@ -68,8 +104,33 @@ struct SettingsView: View {
                 }
             }
 
-            if appleHealthAdjustmentEnabled {
-                LabeledContent("Credit", value: AppleHealthAdjustmentSettings.activeEnergyCreditPolicyText)
+            if let emptyActivityNotice = settingsEnergyTracker.emptyActivityNotice {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(emptyActivityNotice)
+                        .font(CalorynTheme.caption)
+                        .foregroundStyle(CalorynTheme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Button {
+                        openHealthAccessSettings()
+                    } label: {
+                        HStack(spacing: 5) {
+                            Image(systemName: "gearshape")
+                                .font(.system(size: 14, weight: .medium))
+                                .accessibilityHidden(true)
+
+                            Text("Open App Settings")
+                        }
+                    }
+                    .font(CalorynTheme.caption)
+                    .buttonStyle(.borderless)
+                    .tint(CalorynTheme.sage)
+                    .accessibilityLabel("Open app settings")
+                }
+            } else if let dynamicStatus = budget.dynamicStatusText {
+                Text(dynamicStatus)
+                    .font(CalorynTheme.caption)
+                    .foregroundStyle(profile.energyCalculationMode == .dynamicHealth ? CalorynTheme.textSecondary : CalorynTheme.terracotta)
             }
 
             if let healthStatusMessage {
@@ -78,35 +139,78 @@ struct SettingsView: View {
                     .foregroundStyle(CalorynTheme.terracotta)
             }
         } header: {
-            Text("Apple Health")
+            Text("Calorie Estimate")
         } footer: {
-            Text(appleHealthFooterText)
+            Text(calorieEstimateFooterText(for: profile))
+        }
+        .task(id: "\(profile.energyCalculationModeRaw)-\(profile.manualOverride)") {
+            await settingsEnergyTracker.configure(
+                date: .now,
+                isEnabled: profile.effectiveEnergyCalculationMode == .dynamicHealth
+            )
+        }
+        .onChange(of: settingsEnergyTracker.message) { _, message in
+            guard message != nil, profile.energyCalculationMode == .dynamicHealth else { return }
+            profile.energyCalculationMode = .lifestyleEstimate
         }
     }
 
-    private var appleHealthToggleBinding: Binding<Bool> {
+    private func calorieEstimateModeToggleLabel(for profile: UserProfile) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            Image(systemName: calorieEstimateModeIcon(for: profile))
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(CalorynTheme.sage)
+                .frame(width: 24)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Auto-adjust calories")
+                    .foregroundStyle(CalorynTheme.textPrimary)
+
+                Text(calorieEstimateModeSubtitle(for: profile))
+                    .font(CalorynTheme.caption)
+                    .foregroundStyle(CalorynTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private func calorieEstimateModeIcon(for profile: UserProfile) -> String {
+        profile.effectiveEnergyCalculationMode == .dynamicHealth ? "heart.text.square.fill" : "figure.walk"
+    }
+
+    private func calorieEstimateModeSubtitle(for profile: UserProfile) -> String {
+        if profile.manualOverride {
+            return "Off - manual calorie target is set"
+        }
+
+        if profile.energyCalculationMode == .dynamicHealth {
+            return "On - using Health data when available"
+        }
+
+        return "Off - using your activity level"
+    }
+
+    private func dynamicEnergyBinding(for profile: UserProfile) -> Binding<Bool> {
         Binding(
             get: {
-                appleHealthAdjustmentEnabled
+                profile.energyCalculationMode == .dynamicHealth
             },
-            set: { isOn in
-                if isOn {
+            set: { isEnabled in
+                guard isEnabled != (profile.energyCalculationMode == .dynamicHealth) else { return }
+                if isEnabled {
                     Task {
-                        await enableAppleHealthAdjustment()
+                        await enableDynamicEnergy(for: profile)
                     }
                 } else {
-                    disableAppleHealthAdjustment()
+                    disableDynamicEnergy(for: profile)
                 }
             }
         )
     }
 
-    private var appleHealthFooterText: String {
-        AppleHealthAdjustmentSettings.footerText(isEnabled: appleHealthAdjustmentEnabled)
-    }
-
     @MainActor
-    private func enableAppleHealthAdjustment() async {
+    private func enableDynamicEnergy(for profile: UserProfile) async {
         guard !isRequestingHealthAuthorization else { return }
 
         isRequestingHealthAuthorization = true
@@ -116,14 +220,83 @@ struct SettingsView: View {
         }
 
         let update = await AppleHealthAdjustmentSettings.enable()
-        appleHealthAdjustmentEnabled = update.isEnabled
+        if update.isEnabled {
+            profile.energyCalculationMode = .dynamicHealth
+            await settingsEnergyTracker.configure(date: .now, isEnabled: true)
+        }
         healthStatusMessage = update.message
     }
 
-    private func disableAppleHealthAdjustment() {
+    private func disableDynamicEnergy(for profile: UserProfile) {
         let update = AppleHealthAdjustmentSettings.disable()
-        appleHealthAdjustmentEnabled = update.isEnabled
+        profile.energyCalculationMode = .lifestyleEstimate
         healthStatusMessage = update.message
+    }
+
+    @MainActor
+    private func refreshPendingHealthAuthorizationIfNeeded(for profile: UserProfile) async {
+        guard !profile.manualOverride else { return }
+        guard profile.energyCalculationMode != .dynamicHealth else {
+            settingsEnergyTracker.refreshWhenActive()
+            return
+        }
+        guard AppleHealthAdjustmentSettings.authorizationRequested else { return }
+        guard isHealthAvailable, !isRequestingHealthAuthorization else { return }
+
+        isRequestingHealthAuthorization = true
+        healthStatusMessage = nil
+        defer {
+            isRequestingHealthAuthorization = false
+        }
+
+        let update = await AppleHealthAdjustmentSettings.enable()
+        if update.isEnabled {
+            profile.energyCalculationMode = .dynamicHealth
+            await settingsEnergyTracker.configure(date: .now, isEnabled: true)
+        }
+        healthStatusMessage = update.message
+    }
+
+    private func settingsBudget(for profile: UserProfile) -> ActivityCalorieBudget {
+        profile.activityBudget(
+            consumed: 0,
+            activeEnergyKcal: settingsEnergyTracker.activeEnergyKcal,
+            recentActiveEnergySamples: settingsEnergyTracker.recentActiveEnergySamples,
+            isActivityLoading: settingsEnergyTracker.isLoading,
+            activityMessage: settingsEnergyTracker.message,
+            date: .now
+        )
+    }
+
+    private func dynamicBaselineText(for budget: ActivityCalorieBudget) -> String {
+        guard let baseline = budget.activityBaselineKcal else {
+            return "-"
+        }
+
+        return Int(baseline.rounded()).kcalFormatted
+    }
+
+    private func calorieEstimateFooterText(for profile: UserProfile) -> String {
+        if profile.manualOverride {
+            return "Manual calorie targets stay fixed until you turn the override off."
+        }
+
+        if !isHealthAvailable {
+            return AppleHealthAdjustmentSettings.unavailableMessage
+        }
+
+        if profile.energyCalculationMode == .dynamicHealth {
+            return "Auto-adjust uses Apple Health activity to keep your daily calorie target up to date. Turn it off to use your activity level instead."
+        }
+
+        return "Your activity level sets the estimate. Auto-adjust can use Apple Health activity instead."
+    }
+
+    private func openHealthAccessSettings() {
+        #if canImport(UIKit)
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        openURL(url)
+        #endif
     }
 
     private var appearanceSection: some View {
@@ -397,7 +570,7 @@ struct GoalEditView: View {
                             .foregroundStyle(CalorynTheme.textSecondary)
                     }
                 } else {
-                    LabeledContent("Calculated TDEE", value: "\(Int(profile.tdee)) kcal")
+                    LabeledContent("Estimated Daily Burn", value: "\(Int(profile.tdee)) kcal")
                     LabeledContent("Target", value: "\(calculatedTarget) kcal")
                 }
             }
@@ -485,6 +658,8 @@ struct GoalEditView: View {
                     profile.calorieDeficit = calorieDeficit
                     if manualOverride, let manualTarget {
                         profile.dailyCalorieTarget = manualTarget
+                        profile.energyCalculationMode = .lifestyleEstimate
+                        AppleHealthAdjustmentSettings.disable()
                     }
                     profile.recalculate(proteinRatio: proteinRatio, carbRatio: carbRatio, fatRatio: fatRatio)
                     saveAdditionalNutrientGoals()

@@ -22,6 +22,7 @@ final class ActiveEnergyDayTrackerTests: XCTestCase {
                 readDates.append(date)
                 return 240
             },
+            dailyActiveEnergyBurnedKcal: { _, _ in [] },
             observeActiveEnergyChanges: { _ in nil }
         ))
 
@@ -33,11 +34,89 @@ final class ActiveEnergyDayTrackerTests: XCTestCase {
         XCTAssertEqual(readDates, [selectedDate.startOfDay])
     }
 
+    func testZeroActiveEnergyKeepsAdjustmentEnabled() async {
+        AppleHealthAdjustmentSettings.persist(
+            isEnabled: true,
+            authorizationRequested: true,
+            message: nil
+        )
+        let tracker = ActiveEnergyDayTracker(dataSource: ActiveEnergyDataSource(
+            isHealthAvailable: { true },
+            activeEnergyBurnedKcal: { _ in 0 },
+            dailyActiveEnergyBurnedKcal: { _, _ in [] },
+            observeActiveEnergyChanges: { _ in nil }
+        ))
+
+        await tracker.configure(date: .now, isEnabled: true)
+
+        XCTAssertEqual(tracker.activeEnergyKcal, 0, accuracy: 0.001)
+        XCTAssertFalse(tracker.isLoading)
+        XCTAssertNil(tracker.message)
+        XCTAssertNil(tracker.emptyActivityNotice)
+        XCTAssertTrue(UserDefaults.standard.bool(forKey: AppleHealthAdjustmentSettings.adjustmentEnabledKey))
+        XCTAssertTrue(UserDefaults.standard.bool(forKey: AppleHealthAdjustmentSettings.authorizationRequestedKey))
+    }
+
+    func testRepeatedZeroActiveEnergyShowsAccessHintWithoutDisablingAdjustment() async {
+        AppleHealthAdjustmentSettings.persist(
+            isEnabled: true,
+            authorizationRequested: true,
+            message: nil
+        )
+
+        for _ in 0..<2 {
+            let tracker = ActiveEnergyDayTracker(dataSource: emptyActivityDataSource)
+            await tracker.configure(date: .now, isEnabled: true)
+            XCTAssertNil(tracker.emptyActivityNotice)
+        }
+
+        let tracker = ActiveEnergyDayTracker(dataSource: emptyActivityDataSource)
+        await tracker.configure(date: .now, isEnabled: true)
+
+        XCTAssertEqual(tracker.emptyActivityNotice, AppleHealthAdjustmentSettings.emptyActivityAccessMessage)
+        XCTAssertNil(tracker.message)
+        XCTAssertTrue(UserDefaults.standard.bool(forKey: AppleHealthAdjustmentSettings.adjustmentEnabledKey))
+        XCTAssertTrue(UserDefaults.standard.bool(forKey: AppleHealthAdjustmentSettings.authorizationRequestedKey))
+    }
+
+    func testEnabledConfigurationReadsRecentActivityHistoryBeforeTheSelectedDay() async {
+        var requestedRanges: [(start: Date, end: Date)] = []
+        let selectedDate = makeTestDate(year: 2026, month: 2, day: 14, hour: 8)
+        let historySampleDate = makeTestDate(year: 2026, month: 2, day: 13)
+        let samples = [
+            DailyActiveEnergySample(date: historySampleDate, activeEnergyKcal: 260)
+        ]
+        let tracker = ActiveEnergyDayTracker(dataSource: ActiveEnergyDataSource(
+            isHealthAvailable: { true },
+            activeEnergyBurnedKcal: { _ in 240 },
+            dailyActiveEnergyBurnedKcal: { start, end in
+                requestedRanges.append((start, end))
+                return samples
+            },
+            observeActiveEnergyChanges: { _ in nil }
+        ))
+
+        await tracker.configure(date: selectedDate, isEnabled: true)
+
+        XCTAssertEqual(tracker.recentActiveEnergySamples, samples)
+        XCTAssertEqual(requestedRanges.count, 1)
+        XCTAssertEqual(requestedRanges.first?.end, selectedDate.startOfDay)
+        XCTAssertEqual(
+            requestedRanges.first?.start,
+            Calendar.current.date(
+                byAdding: .day,
+                value: -ActivityCalorieBudget.historyLookbackDays,
+                to: selectedDate.startOfDay
+            )
+        )
+    }
+
     func testDisabledConfigurationClearsEnergyAndStopsObservation() async {
         var stopCount = 0
         let tracker = ActiveEnergyDayTracker(dataSource: ActiveEnergyDataSource(
             isHealthAvailable: { true },
             activeEnergyBurnedKcal: { _ in 120 },
+            dailyActiveEnergyBurnedKcal: { _, _ in [] },
             observeActiveEnergyChanges: { _ in
                 ActiveEnergyObservation {
                     stopCount += 1
@@ -65,6 +144,7 @@ final class ActiveEnergyDayTrackerTests: XCTestCase {
         let tracker = ActiveEnergyDayTracker(dataSource: ActiveEnergyDataSource(
             isHealthAvailable: { true },
             activeEnergyBurnedKcal: { _ in throw TrackerError.denied },
+            dailyActiveEnergyBurnedKcal: { _, _ in [] },
             observeActiveEnergyChanges: { _ in nil }
         ))
 
@@ -89,6 +169,10 @@ final class ActiveEnergyDayTrackerTests: XCTestCase {
             activeEnergyBurnedKcal: { _ in
                 XCTFail("Active energy should not be read when Health data is unavailable.")
                 return 0
+            },
+            dailyActiveEnergyBurnedKcal: { _, _ in
+                XCTFail("Active energy history should not be read when Health data is unavailable.")
+                return []
             },
             observeActiveEnergyChanges: { _ in
                 didStartObservation = true
@@ -116,6 +200,7 @@ final class ActiveEnergyDayTrackerTests: XCTestCase {
                 readCount += 1
                 return Double(readCount * 100)
             },
+            dailyActiveEnergyBurnedKcal: { _, _ in [] },
             observeActiveEnergyChanges: { _ in
                 ActiveEnergyObservation {}
             }
@@ -134,6 +219,7 @@ final class ActiveEnergyDayTrackerTests: XCTestCase {
         let tracker = ActiveEnergyDayTracker(dataSource: ActiveEnergyDataSource(
             isHealthAvailable: { true },
             activeEnergyBurnedKcal: { _ in nextActiveEnergy },
+            dailyActiveEnergyBurnedKcal: { _, _ in [] },
             observeActiveEnergyChanges: { onChange in
                 onActiveEnergyChange = onChange
                 return nil
@@ -146,6 +232,116 @@ final class ActiveEnergyDayTrackerTests: XCTestCase {
         nextActiveEnergy = 260
         onActiveEnergyChange?()
         await waitUntilActiveEnergy(on: tracker, equals: 260)
+    }
+
+    func testOlderRefreshResultCannotOverwriteNewerRefresh() async {
+        let firstReadStarted = expectation(description: "First active energy read started")
+        let firstDate = makeTestDate(year: 2026, month: 2, day: 14)
+        let secondDate = makeTestDate(year: 2026, month: 2, day: 15)
+        let staleSamples = [
+            DailyActiveEnergySample(date: makeTestDate(year: 2026, month: 2, day: 13), activeEnergyKcal: 100)
+        ]
+        let latestSamples = [
+            DailyActiveEnergySample(date: makeTestDate(year: 2026, month: 2, day: 14), activeEnergyKcal: 320)
+        ]
+        var activeReadCount = 0
+        var historyReadCount = 0
+        let tracker = ActiveEnergyDayTracker(dataSource: ActiveEnergyDataSource(
+            isHealthAvailable: { true },
+            activeEnergyBurnedKcal: { _ in
+                activeReadCount += 1
+                if activeReadCount == 1 {
+                    firstReadStarted.fulfill()
+                    try await Task.sleep(nanoseconds: 120_000_000)
+                    return 100
+                }
+
+                return 320
+            },
+            dailyActiveEnergyBurnedKcal: { _, _ in
+                historyReadCount += 1
+                if historyReadCount == 1 {
+                    try await Task.sleep(nanoseconds: 120_000_000)
+                    return staleSamples
+                }
+
+                return latestSamples
+            },
+            observeActiveEnergyChanges: { _ in nil }
+        ))
+
+        let staleRefresh = Task {
+            await tracker.configure(date: firstDate, isEnabled: true)
+        }
+        await fulfillment(of: [firstReadStarted], timeout: 1)
+        let latestRefresh = Task {
+            await tracker.configure(date: secondDate, isEnabled: true)
+        }
+
+        await latestRefresh.value
+        await staleRefresh.value
+
+        XCTAssertEqual(tracker.activeEnergyKcal, 320, accuracy: 0.001)
+        XCTAssertEqual(tracker.recentActiveEnergySamples, latestSamples)
+        XCTAssertFalse(tracker.isLoading)
+        XCTAssertNil(tracker.message)
+    }
+
+    func testOlderRefreshFailureCannotDisableNewerSuccessfulRefresh() async {
+        AppleHealthAdjustmentSettings.persist(
+            isEnabled: true,
+            authorizationRequested: true,
+            message: nil
+        )
+        let firstReadStarted = expectation(description: "First active energy read started")
+        let firstDate = makeTestDate(year: 2026, month: 2, day: 14)
+        let secondDate = makeTestDate(year: 2026, month: 2, day: 15)
+        let latestSamples = [
+            DailyActiveEnergySample(date: makeTestDate(year: 2026, month: 2, day: 14), activeEnergyKcal: 260)
+        ]
+        var activeReadCount = 0
+        var historyReadCount = 0
+        let tracker = ActiveEnergyDayTracker(dataSource: ActiveEnergyDataSource(
+            isHealthAvailable: { true },
+            activeEnergyBurnedKcal: { _ in
+                activeReadCount += 1
+                if activeReadCount == 1 {
+                    firstReadStarted.fulfill()
+                    try await Task.sleep(nanoseconds: 120_000_000)
+                    throw TrackerError.denied
+                }
+
+                return 260
+            },
+            dailyActiveEnergyBurnedKcal: { _, _ in
+                historyReadCount += 1
+                if historyReadCount == 1 {
+                    try await Task.sleep(nanoseconds: 120_000_000)
+                    return []
+                }
+
+                return latestSamples
+            },
+            observeActiveEnergyChanges: { _ in nil }
+        ))
+
+        let staleRefresh = Task {
+            await tracker.configure(date: firstDate, isEnabled: true)
+        }
+        await fulfillment(of: [firstReadStarted], timeout: 1)
+        let latestRefresh = Task {
+            await tracker.configure(date: secondDate, isEnabled: true)
+        }
+
+        await latestRefresh.value
+        await staleRefresh.value
+
+        XCTAssertEqual(tracker.activeEnergyKcal, 260, accuracy: 0.001)
+        XCTAssertEqual(tracker.recentActiveEnergySamples, latestSamples)
+        XCTAssertFalse(tracker.isLoading)
+        XCTAssertNil(tracker.message)
+        XCTAssertTrue(UserDefaults.standard.bool(forKey: AppleHealthAdjustmentSettings.adjustmentEnabledKey))
+        XCTAssertTrue(UserDefaults.standard.bool(forKey: AppleHealthAdjustmentSettings.authorizationRequestedKey))
     }
 
     private func waitUntilActiveEnergy(
@@ -173,6 +369,16 @@ final class ActiveEnergyDayTrackerTests: XCTestCase {
     private func clearAppleHealthDefaults() {
         UserDefaults.standard.removeObject(forKey: AppleHealthAdjustmentSettings.adjustmentEnabledKey)
         UserDefaults.standard.removeObject(forKey: AppleHealthAdjustmentSettings.authorizationRequestedKey)
+        AppleHealthAdjustmentSettings.clearEmptyActiveEnergyTracking()
+    }
+
+    private var emptyActivityDataSource: ActiveEnergyDataSource {
+        ActiveEnergyDataSource(
+            isHealthAvailable: { true },
+            activeEnergyBurnedKcal: { _ in 0 },
+            dailyActiveEnergyBurnedKcal: { _, _ in [] },
+            observeActiveEnergyChanges: { _ in nil }
+        )
     }
 }
 
