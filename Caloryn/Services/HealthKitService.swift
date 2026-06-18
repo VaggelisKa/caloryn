@@ -19,22 +19,105 @@ enum HealthKitServiceError: LocalizedError {
     }
 }
 
+private struct HealthKitQueryCancellation: @unchecked Sendable {
+    private let query: HKQuery
+
+    init(_ query: HKQuery) {
+        self.query = query
+    }
+
+    @MainActor
+    func cancel() {
+        HealthKitService.stop(query)
+    }
+}
+
 private final class HealthKitContinuationGate<Value>: @unchecked Sendable {
+    private enum CompletionState {
+        case pending
+        case finished
+        case timedOut
+    }
+
     private let lock = NSLock()
-    private var didResume = false
+    private var state = CompletionState.pending
+    private var timeoutTask: Task<Void, Never>?
+    private var cancelOperation: HealthKitQueryCancellation?
+
+    func setTimeoutTask(_ task: Task<Void, Never>) {
+        let shouldCancel: Bool
+
+        lock.lock()
+        if state == .pending {
+            timeoutTask = task
+            shouldCancel = false
+        } else {
+            shouldCancel = true
+        }
+        lock.unlock()
+
+        if shouldCancel {
+            task.cancel()
+        }
+    }
+
+    func setCancelOperation(_ cancelOperation: HealthKitQueryCancellation) -> HealthKitQueryCancellation? {
+        let operationToCancel: HealthKitQueryCancellation?
+
+        lock.lock()
+        switch state {
+        case .pending:
+            self.cancelOperation = cancelOperation
+            operationToCancel = nil
+        case .finished:
+            operationToCancel = nil
+        case .timedOut:
+            operationToCancel = cancelOperation
+        }
+        lock.unlock()
+
+        return operationToCancel
+    }
 
     @discardableResult
     func resume(
         _ result: Result<Value, Error>,
         continuation: CheckedContinuation<Value, Error>
     ) -> Bool {
-        lock.lock()
-        defer { lock.unlock() }
+        let taskToCancel: Task<Void, Never>?
 
-        guard !didResume else { return false }
-        didResume = true
+        lock.lock()
+        guard state == .pending else {
+            lock.unlock()
+            return false
+        }
+        state = .finished
+        taskToCancel = timeoutTask
+        timeoutTask = nil
+        cancelOperation = nil
+        lock.unlock()
+
         continuation.resume(with: result)
+        taskToCancel?.cancel()
         return true
+    }
+
+    func timeOut(continuation: CheckedContinuation<Value, Error>) -> HealthKitQueryCancellation? {
+        let operationToCancel: HealthKitQueryCancellation?
+
+        lock.lock()
+        guard state == .pending else {
+            lock.unlock()
+            return nil
+        }
+        state = .timedOut
+        operationToCancel = cancelOperation
+        timeoutTask = nil
+        cancelOperation = nil
+        lock.unlock()
+
+        continuation.resume(throwing: HealthKitServiceError.requestTimedOut)
+        return operationToCancel
     }
 }
 
@@ -108,6 +191,7 @@ enum HealthKitService {
             }
 
             store.execute(query)
+            return HealthKitQueryCancellation(query)
         }
     }
 
@@ -166,6 +250,7 @@ enum HealthKitService {
             }
 
             store.execute(query)
+            return HealthKitQueryCancellation(query)
         }
     }
 
@@ -201,19 +286,26 @@ enum HealthKitService {
     }
 
     private static func withHealthKitTimeout<Value>(
-        operation: (@escaping (Result<Value, Error>) -> Void) -> Void
+        operation: (@escaping (Result<Value, Error>) -> Void) -> HealthKitQueryCancellation
     ) async throws -> Value {
         try await withCheckedThrowingContinuation { continuation in
             let gate = HealthKitContinuationGate<Value>()
+            let timeoutTask = Task { @MainActor in
+                try? await Task.sleep(nanoseconds: healthKitTimeoutNanoseconds)
+                guard !Task.isCancelled else { return }
 
-            operation { result in
+                let cancelOperation = gate.timeOut(continuation: continuation)
+                cancelOperation?.cancel()
+            }
+
+            gate.setTimeoutTask(timeoutTask)
+
+            let cancelOperation = operation { result in
                 gate.resume(result, continuation: continuation)
             }
 
-            Task {
-                try? await Task.sleep(nanoseconds: healthKitTimeoutNanoseconds)
-                gate.resume(.failure(HealthKitServiceError.requestTimedOut), continuation: continuation)
-            }
+            let alreadyTimedOutCancellation = gate.setCancelOperation(cancelOperation)
+            alreadyTimedOutCancellation?.cancel()
         }
     }
 }

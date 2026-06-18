@@ -189,6 +189,116 @@ final class ActiveEnergyDayTrackerTests: XCTestCase {
         await waitUntilActiveEnergy(on: tracker, equals: 260)
     }
 
+    func testOlderRefreshResultCannotOverwriteNewerRefresh() async {
+        let firstReadStarted = expectation(description: "First active energy read started")
+        let firstDate = makeTestDate(year: 2026, month: 2, day: 14)
+        let secondDate = makeTestDate(year: 2026, month: 2, day: 15)
+        let staleSamples = [
+            DailyActiveEnergySample(date: makeTestDate(year: 2026, month: 2, day: 13), activeEnergyKcal: 100)
+        ]
+        let latestSamples = [
+            DailyActiveEnergySample(date: makeTestDate(year: 2026, month: 2, day: 14), activeEnergyKcal: 320)
+        ]
+        var activeReadCount = 0
+        var historyReadCount = 0
+        let tracker = ActiveEnergyDayTracker(dataSource: ActiveEnergyDataSource(
+            isHealthAvailable: { true },
+            activeEnergyBurnedKcal: { _ in
+                activeReadCount += 1
+                if activeReadCount == 1 {
+                    firstReadStarted.fulfill()
+                    try await Task.sleep(nanoseconds: 120_000_000)
+                    return 100
+                }
+
+                return 320
+            },
+            dailyActiveEnergyBurnedKcal: { _, _ in
+                historyReadCount += 1
+                if historyReadCount == 1 {
+                    try await Task.sleep(nanoseconds: 120_000_000)
+                    return staleSamples
+                }
+
+                return latestSamples
+            },
+            observeActiveEnergyChanges: { _ in nil }
+        ))
+
+        let staleRefresh = Task {
+            await tracker.configure(date: firstDate, isEnabled: true)
+        }
+        await fulfillment(of: [firstReadStarted], timeout: 1)
+        let latestRefresh = Task {
+            await tracker.configure(date: secondDate, isEnabled: true)
+        }
+
+        await latestRefresh.value
+        await staleRefresh.value
+
+        XCTAssertEqual(tracker.activeEnergyKcal, 320, accuracy: 0.001)
+        XCTAssertEqual(tracker.recentActiveEnergySamples, latestSamples)
+        XCTAssertFalse(tracker.isLoading)
+        XCTAssertNil(tracker.message)
+    }
+
+    func testOlderRefreshFailureCannotDisableNewerSuccessfulRefresh() async {
+        AppleHealthAdjustmentSettings.persist(
+            isEnabled: true,
+            authorizationRequested: true,
+            message: nil
+        )
+        let firstReadStarted = expectation(description: "First active energy read started")
+        let firstDate = makeTestDate(year: 2026, month: 2, day: 14)
+        let secondDate = makeTestDate(year: 2026, month: 2, day: 15)
+        let latestSamples = [
+            DailyActiveEnergySample(date: makeTestDate(year: 2026, month: 2, day: 14), activeEnergyKcal: 260)
+        ]
+        var activeReadCount = 0
+        var historyReadCount = 0
+        let tracker = ActiveEnergyDayTracker(dataSource: ActiveEnergyDataSource(
+            isHealthAvailable: { true },
+            activeEnergyBurnedKcal: { _ in
+                activeReadCount += 1
+                if activeReadCount == 1 {
+                    firstReadStarted.fulfill()
+                    try await Task.sleep(nanoseconds: 120_000_000)
+                    throw TrackerError.denied
+                }
+
+                return 260
+            },
+            dailyActiveEnergyBurnedKcal: { _, _ in
+                historyReadCount += 1
+                if historyReadCount == 1 {
+                    try await Task.sleep(nanoseconds: 120_000_000)
+                    return []
+                }
+
+                return latestSamples
+            },
+            observeActiveEnergyChanges: { _ in nil }
+        ))
+
+        let staleRefresh = Task {
+            await tracker.configure(date: firstDate, isEnabled: true)
+        }
+        await fulfillment(of: [firstReadStarted], timeout: 1)
+        let latestRefresh = Task {
+            await tracker.configure(date: secondDate, isEnabled: true)
+        }
+
+        await latestRefresh.value
+        await staleRefresh.value
+
+        XCTAssertEqual(tracker.activeEnergyKcal, 260, accuracy: 0.001)
+        XCTAssertEqual(tracker.recentActiveEnergySamples, latestSamples)
+        XCTAssertFalse(tracker.isLoading)
+        XCTAssertNil(tracker.message)
+        XCTAssertTrue(UserDefaults.standard.bool(forKey: AppleHealthAdjustmentSettings.adjustmentEnabledKey))
+        XCTAssertTrue(UserDefaults.standard.bool(forKey: AppleHealthAdjustmentSettings.authorizationRequestedKey))
+    }
+
     private func waitUntilActiveEnergy(
         on tracker: ActiveEnergyDayTracker,
         equals expectedValue: Double,
