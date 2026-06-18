@@ -105,20 +105,27 @@ struct SettingsView: View {
             }
 
             if let emptyActivityNotice = settingsEnergyTracker.emptyActivityNotice {
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 12) {
                     Text(emptyActivityNotice)
                         .font(CalorynTheme.caption)
-                        .foregroundStyle(CalorynTheme.terracotta)
+                        .foregroundStyle(CalorynTheme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
 
                     Button {
                         openHealthAccessSettings()
                     } label: {
-                        Label("Check Health Access", systemImage: "gearshape")
+                        HStack(spacing: 5) {
+                            Image(systemName: "gearshape")
+                                .font(.system(size: 14, weight: .medium))
+                                .accessibilityHidden(true)
+
+                            Text("Open App Settings")
+                        }
                     }
                     .font(CalorynTheme.caption)
                     .buttonStyle(.borderless)
                     .tint(CalorynTheme.sage)
+                    .accessibilityLabel("Open app settings")
                 }
             } else if let dynamicStatus = budget.dynamicStatusText {
                 Text(dynamicStatus)
