@@ -101,6 +101,7 @@ struct ActivityCalorieBudget: Equatable {
 
     var adjustedTarget: Int {
         guard dynamicStatus == .ready else { return baseTarget }
+        // `baseTarget` is already floored, but a negative activity adjustment can push today's target below the safe minimum.
         return max(Self.minimumTarget, baseTarget + dynamicAdjustment)
     }
 

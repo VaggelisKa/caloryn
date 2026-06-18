@@ -206,7 +206,7 @@ struct NutritionDetailsView: View {
 
                         Text(dynamicAdjustmentText)
                             .font(CalorynTheme.numericBody)
-                            .foregroundStyle(CalorynTheme.carbColor)
+                            .foregroundStyle(calorieBudget.dynamicAdjustment < 0 ? CalorynTheme.textSecondary : CalorynTheme.carbColor)
                             .contentTransition(.numericText())
                     }
                 }

@@ -115,8 +115,9 @@ enum AppleHealthAdjustmentSettings {
             return nil
         }
 
-        let firstSeen = UserDefaults.standard.object(forKey: emptyActiveEnergyFirstSeenKey) as? Date ?? now
-        if UserDefaults.standard.object(forKey: emptyActiveEnergyFirstSeenKey) == nil {
+        let storedFirstSeen = UserDefaults.standard.object(forKey: emptyActiveEnergyFirstSeenKey) as? Date
+        let firstSeen = storedFirstSeen ?? now
+        if storedFirstSeen == nil {
             UserDefaults.standard.set(firstSeen, forKey: emptyActiveEnergyFirstSeenKey)
         }
 

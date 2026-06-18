@@ -166,7 +166,7 @@ struct CalorieRingView: View {
                 Image(systemName: "arrow.down.circle.fill")
                     .font(.system(size: 9, weight: .bold))
 
-                Text("\(calorieBudget.dynamicAdjustment) dynamic")
+                Text("\(abs(calorieBudget.dynamicAdjustment)) dynamic")
                     .lineLimit(1)
                     .minimumScaleFactor(0.78)
             }
