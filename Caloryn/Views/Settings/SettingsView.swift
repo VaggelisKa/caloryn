@@ -178,7 +178,7 @@ struct SettingsView: View {
         }
 
         if profile.energyCalculationMode == .dynamicHealth {
-            return "On - Apple Health connected"
+            return "On - using Health data when available"
         }
 
         return "Off - using your activity level"

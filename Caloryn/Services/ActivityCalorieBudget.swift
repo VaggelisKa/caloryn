@@ -43,7 +43,7 @@ struct ActivityCalorieBudget: Equatable {
     }
 
     static var connectedWaitingText: String {
-        "Apple Health is connected. Waiting for Active Energy data."
+        "Auto-adjust is on. Waiting for Active Energy data."
     }
 
     var isDynamicModeRequested: Bool {
