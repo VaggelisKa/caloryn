@@ -9,6 +9,7 @@ struct CalorieRingView: View {
     @ScaledMetric private var numberSize: CGFloat = 44
     @State private var animatedRingProgress: Double = 0
     @State private var hasAppeared = false
+    @State private var fadeInTask: Task<Void, Never>?
     @State private var isDetailsPressing = false
 
     private var animatedBaseProgress: Double {
@@ -133,14 +134,20 @@ struct CalorieRingView: View {
                 animatedRingProgress = calorieBudget.displayedRingProgress
             }
 
-            Task { @MainActor in
+            fadeInTask?.cancel()
+            fadeInTask = Task { @MainActor in
                 await Task.yield()
+                guard !Task.isCancelled else { return }
+
                 withAnimation(.smooth(duration: 0.28)) {
                     hasAppeared = true
                 }
+                fadeInTask = nil
             }
         }
         .onDisappear {
+            fadeInTask?.cancel()
+            fadeInTask = nil
             hasAppeared = false
         }
         .onChange(of: calorieBudget.displayedRingProgress) { _, newProgress in
