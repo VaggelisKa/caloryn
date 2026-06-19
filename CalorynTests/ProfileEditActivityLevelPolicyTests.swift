@@ -7,10 +7,6 @@ final class ProfileEditActivityLevelPolicyTests: XCTestCase {
         let profile = makeProfile(energyCalculationMode: .dynamicHealth)
 
         XCTAssertTrue(ProfileEditActivityLevelPolicy.isLocked(for: profile))
-        XCTAssertEqual(
-            ProfileEditActivityLevelPolicy.lockedExplanation,
-            "Auto-adjust uses Apple Health activity instead."
-        )
     }
 
     func testActivityLevelRemainsEditableForLifestyleEstimate() {

@@ -828,14 +828,6 @@ private struct NutrientGoalEditRow: View {
 
 // MARK: - Profile Edit
 
-enum ProfileEditActivityLevelPolicy {
-    static let lockedExplanation = "Auto-adjust uses Apple Health activity instead."
-
-    static func isLocked(for profile: UserProfile) -> Bool {
-        profile.effectiveEnergyCalculationMode == .dynamicHealth
-    }
-}
-
 struct ProfileEditView: View {
     @Bindable var profile: UserProfile
     @Environment(\.dismiss) private var dismiss
