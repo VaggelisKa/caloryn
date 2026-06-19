@@ -933,6 +933,10 @@ struct ProfileEditView: View {
     @Bindable var profile: UserProfile
     @Environment(\.dismiss) private var dismiss
 
+    private var isActivityLevelLocked: Bool {
+        ProfileEditActivityLevelPolicy.isLocked(for: profile)
+    }
+
     var body: some View {
         Form {
             Section("Personal Info") {
@@ -957,11 +961,18 @@ struct ProfileEditView: View {
                 }
             }
 
-            Section("Activity Level") {
+            Section {
                 Picker("Activity", selection: $profile.activityLevel) {
                     ForEach(ActivityLevel.allCases) { level in
                         Text(level.displayName).tag(level)
                     }
+                }
+                .disabled(isActivityLevelLocked)
+            } header: {
+                Text("Activity Level")
+            } footer: {
+                if isActivityLevelLocked {
+                    Text(ProfileEditActivityLevelPolicy.lockedExplanation)
                 }
             }
         }
