@@ -828,9 +828,21 @@ private struct NutrientGoalEditRow: View {
 
 // MARK: - Profile Edit
 
+enum ProfileEditActivityLevelPolicy {
+    static let lockedExplanation = "Auto-adjust uses Apple Health activity instead."
+
+    static func isLocked(for profile: UserProfile) -> Bool {
+        profile.effectiveEnergyCalculationMode == .dynamicHealth
+    }
+}
+
 struct ProfileEditView: View {
     @Bindable var profile: UserProfile
     @Environment(\.dismiss) private var dismiss
+
+    private var isActivityLevelLocked: Bool {
+        ProfileEditActivityLevelPolicy.isLocked(for: profile)
+    }
 
     var body: some View {
         Form {
@@ -856,11 +868,18 @@ struct ProfileEditView: View {
                 }
             }
 
-            Section("Activity Level") {
+            Section {
                 Picker("Activity", selection: $profile.activityLevel) {
                     ForEach(ActivityLevel.allCases) { level in
                         Text(level.displayName).tag(level)
                     }
+                }
+                .disabled(isActivityLevelLocked)
+            } header: {
+                Text("Activity Level")
+            } footer: {
+                if isActivityLevelLocked {
+                    Text(ProfileEditActivityLevelPolicy.lockedExplanation)
                 }
             }
         }
