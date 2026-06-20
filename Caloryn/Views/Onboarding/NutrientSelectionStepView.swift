@@ -177,7 +177,7 @@ private struct NutrientSelectionTile: View {
                         .lineLimit(1)
                         .minimumScaleFactor(0.72)
                 }
-                .frame(maxWidth: .infinity, minHeight: 74)
+                .frame(maxWidth: .infinity)
 
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 18, weight: .semibold))
@@ -185,6 +185,10 @@ private struct NutrientSelectionTile: View {
                     .padding(10)
                     .accessibilityHidden(true)
             }
+            .frame(maxWidth: .infinity, minHeight: 74)
+            .contentShape(
+                RoundedRectangle(cornerRadius: CalorynTheme.smallCornerRadius, style: .continuous)
+            )
             .adaptiveSelectableGlass(
                 isSelected: isSelected,
                 cornerRadius: CalorynTheme.smallCornerRadius
