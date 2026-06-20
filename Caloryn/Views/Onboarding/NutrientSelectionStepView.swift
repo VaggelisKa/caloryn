@@ -42,7 +42,7 @@ struct NutrientSelectionStepView: View {
                         .font(CalorynTheme.caption)
                         .foregroundStyle(CalorynTheme.textSecondary)
 
-                    GlassEffectContainer(spacing: 10) {
+                    AdaptiveGlassContainer(spacing: 10) {
                         LazyVGrid(columns: optionalNutrientColumns, spacing: 10) {
                             ForEach(TrackedNutrient.editableGoalNutrients) { nutrient in
                                 NutrientSelectionTile(
@@ -74,7 +74,7 @@ struct NutrientSelectionStepView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
             }
-            .buttonStyle(.glassProminent)
+            .adaptiveGlassProminentButton()
             .tint(CalorynTheme.sage)
             .disabled(isCompleting)
             .padding(.horizontal, CalorynTheme.pagePadding)
@@ -105,7 +105,7 @@ struct NutrientSelectionStepView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
-                    .glassEffect(.regular, in: .rect(cornerRadius: CalorynTheme.smallCornerRadius))
+                    .adaptiveGlassCard(cornerRadius: CalorynTheme.smallCornerRadius)
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel("\(nutrient.displayName) selected")
                 }
@@ -134,12 +134,32 @@ private struct NutrientSelectionTile: View {
     let isSelected: Bool
     var onToggle: () -> Void
 
+    private var usesLiquidGlassSelectedStyle: Bool {
+        if #available(iOS 26.0, *) {
+            isSelected
+        } else {
+            false
+        }
+    }
+
     private var contentForeground: Color {
-        isSelected ? CalorynTheme.warmWhite : CalorynTheme.textPrimary
+        usesLiquidGlassSelectedStyle ? CalorynTheme.warmWhite : CalorynTheme.textPrimary
     }
 
     private var iconForeground: Color {
-        isSelected ? CalorynTheme.warmWhite : nutrient.color
+        if usesLiquidGlassSelectedStyle {
+            return CalorynTheme.warmWhite
+        }
+
+        return isSelected ? CalorynTheme.sage : nutrient.color
+    }
+
+    private var selectionIndicatorForeground: Color {
+        if usesLiquidGlassSelectedStyle {
+            return CalorynTheme.warmWhite
+        }
+
+        return isSelected ? CalorynTheme.sage : CalorynTheme.textSecondary
     }
 
     var body: some View {
@@ -157,17 +177,21 @@ private struct NutrientSelectionTile: View {
                         .lineLimit(1)
                         .minimumScaleFactor(0.72)
                 }
-                .frame(maxWidth: .infinity, minHeight: 74)
+                .frame(maxWidth: .infinity)
 
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(isSelected ? CalorynTheme.warmWhite : CalorynTheme.textSecondary)
+                    .foregroundStyle(selectionIndicatorForeground)
                     .padding(10)
                     .accessibilityHidden(true)
             }
-            .glassEffect(
-                isSelected ? .regular.tint(CalorynTheme.sage).interactive() : .regular.interactive(),
-                in: .rect(cornerRadius: CalorynTheme.smallCornerRadius)
+            .frame(maxWidth: .infinity, minHeight: 74)
+            .contentShape(
+                RoundedRectangle(cornerRadius: CalorynTheme.smallCornerRadius, style: .continuous)
+            )
+            .adaptiveSelectableGlass(
+                isSelected: isSelected,
+                cornerRadius: CalorynTheme.smallCornerRadius
             )
             .animation(.smooth(duration: 0.2), value: isSelected)
         }

@@ -17,7 +17,7 @@ struct ActivityLevelStepView: View {
                 }
                 .padding(.top, 8)
 
-                GlassEffectContainer(spacing: CalorynTheme.cardSpacing) {
+                AdaptiveGlassContainer(spacing: CalorynTheme.cardSpacing) {
                     VStack(spacing: CalorynTheme.cardSpacing) {
                         ForEach(ActivityLevel.allCases) { level in
                             ActivityLevelCard(
@@ -42,7 +42,7 @@ struct ActivityLevelStepView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
             }
-            .buttonStyle(.glassProminent)
+            .adaptiveGlassProminentButton()
             .tint(CalorynTheme.sage)
             .padding(.horizontal, CalorynTheme.pagePadding)
             .padding(.bottom, 16)
@@ -55,16 +55,24 @@ private struct ActivityLevelCard: View {
     let isSelected: Bool
     var onTap: () -> Void
 
+    private var usesLiquidGlassSelectedStyle: Bool {
+        if #available(iOS 26.0, *) {
+            isSelected
+        } else {
+            false
+        }
+    }
+
     private var contentForeground: Color {
-        isSelected ? CalorynTheme.warmWhite : CalorynTheme.textPrimary
+        usesLiquidGlassSelectedStyle ? CalorynTheme.warmWhite : CalorynTheme.textPrimary
     }
 
     private var secondaryForeground: Color {
-        isSelected ? CalorynTheme.warmWhite.opacity(0.9) : CalorynTheme.textSecondary
+        usesLiquidGlassSelectedStyle ? CalorynTheme.warmWhite.opacity(0.9) : CalorynTheme.textSecondary
     }
 
     private var accentForeground: Color {
-        isSelected ? CalorynTheme.warmWhite : CalorynTheme.sage
+        usesLiquidGlassSelectedStyle ? CalorynTheme.warmWhite : CalorynTheme.sage
     }
 
     var body: some View {
@@ -93,9 +101,9 @@ private struct ActivityLevelCard: View {
             }
             .padding(CalorynTheme.cardPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .glassEffect(
-                isSelected ? .regular.tint(CalorynTheme.sage).interactive() : .regular.interactive(),
-                in: .rect(cornerRadius: CalorynTheme.smallCornerRadius)
+            .adaptiveSelectableGlass(
+                isSelected: isSelected,
+                cornerRadius: CalorynTheme.smallCornerRadius
             )
             .animation(.smooth(duration: 0.25), value: isSelected)
         }

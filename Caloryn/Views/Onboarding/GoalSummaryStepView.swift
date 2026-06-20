@@ -63,7 +63,7 @@ struct GoalSummaryStepView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
             }
-            .buttonStyle(.glassProminent)
+            .adaptiveGlassProminentButton()
             .tint(CalorynTheme.sage)
             .padding(.horizontal, CalorynTheme.pagePadding)
             .padding(.bottom, 16)

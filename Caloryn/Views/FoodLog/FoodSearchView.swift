@@ -155,7 +155,7 @@ struct FoodSearchView: View {
                 }
             }
             .padding(12)
-            .glassEffect(.regular, in: .capsule)
+            .adaptiveCapsuleGlass()
             .overlay {
                 Capsule()
                     .stroke(
@@ -177,7 +177,7 @@ struct FoodSearchView: View {
                     .foregroundStyle(CalorynTheme.sage)
                     .frame(width: 44, height: 44)
             }
-            .glassEffect(.regular.interactive(), in: .circle)
+            .adaptiveCircleInteractiveGlass()
         }
         .padding(.horizontal, CalorynTheme.pagePadding)
         .padding(.vertical, 10)

@@ -2,19 +2,19 @@ import SwiftUI
 
 struct GlassCardModifier: ViewModifier {
     var cornerRadius: CGFloat = CalorynTheme.cornerRadius
-
+    
     func body(content: Content) -> some View {
         content
             .padding(CalorynTheme.cardPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .glassEffect(.regular, in: .rect(cornerRadius: cornerRadius))
+            .adaptiveGlassCard(cornerRadius: cornerRadius)
     }
 }
 
 struct GlassCircleModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
-            .glassEffect(.regular, in: .circle)
+            .adaptiveGlassCircle()
     }
 }
 
@@ -59,7 +59,7 @@ struct DestructiveGlassButton: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
         }
-        .buttonStyle(.glass)
+        .adaptiveGlassButtonStyle()
         .tint(CalorynTheme.terracotta)
     }
 }

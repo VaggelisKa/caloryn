@@ -276,7 +276,7 @@ struct EnergyCalculationModeStepView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
             }
-            .buttonStyle(.glassProminent)
+            .adaptiveGlassProminentButton()
             .tint(CalorynTheme.sage)
             .disabled(isRequestingAuthorization)
             .padding(.horizontal, CalorynTheme.pagePadding)
@@ -298,16 +298,24 @@ private struct EnergyCalculationModeCard: View {
     let isDisabled: Bool
     var onTap: () -> Void
 
+    private var usesLiquidGlassSelectedStyle: Bool {
+        if #available(iOS 26.0, *) {
+            isSelected
+        } else {
+            false
+        }
+    }
+
     private var contentForeground: Color {
-        isSelected ? CalorynTheme.warmWhite : CalorynTheme.textPrimary
+        usesLiquidGlassSelectedStyle ? CalorynTheme.warmWhite : CalorynTheme.textPrimary
     }
 
     private var secondaryForeground: Color {
-        isSelected ? CalorynTheme.warmWhite.opacity(0.9) : CalorynTheme.textSecondary
+        usesLiquidGlassSelectedStyle ? CalorynTheme.warmWhite.opacity(0.9) : CalorynTheme.textSecondary
     }
 
     private var accentForeground: Color {
-        isSelected ? CalorynTheme.warmWhite : CalorynTheme.sage
+        usesLiquidGlassSelectedStyle ? CalorynTheme.warmWhite : CalorynTheme.sage
     }
 
     var body: some View {
@@ -338,9 +346,9 @@ private struct EnergyCalculationModeCard: View {
             }
             .padding(CalorynTheme.cardPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .glassEffect(
-                isSelected ? .regular.tint(CalorynTheme.sage).interactive() : .regular.interactive(),
-                in: .rect(cornerRadius: CalorynTheme.smallCornerRadius)
+            .adaptiveSelectableGlass(
+                isSelected: isSelected,
+                cornerRadius: CalorynTheme.smallCornerRadius
             )
             .opacity(isDisabled ? 0.48 : 1)
         }

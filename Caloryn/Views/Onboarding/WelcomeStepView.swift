@@ -123,7 +123,7 @@ struct WelcomeStepView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
                 }
-                .buttonStyle(.glassProminent)
+                .adaptiveGlassProminentButton()
                 .tint(CalorynTheme.sage)
 
                 Text("No account needed. Your data stays on-device.")
