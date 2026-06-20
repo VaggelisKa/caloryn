@@ -134,12 +134,32 @@ private struct NutrientSelectionTile: View {
     let isSelected: Bool
     var onToggle: () -> Void
 
+    private var usesLiquidGlassSelectedStyle: Bool {
+        if #available(iOS 26.0, *) {
+            isSelected
+        } else {
+            false
+        }
+    }
+
     private var contentForeground: Color {
-        CalorynTheme.textPrimary
+        usesLiquidGlassSelectedStyle ? CalorynTheme.warmWhite : CalorynTheme.textPrimary
     }
 
     private var iconForeground: Color {
-        isSelected ? CalorynTheme.sage : nutrient.color
+        if usesLiquidGlassSelectedStyle {
+            return CalorynTheme.warmWhite
+        }
+
+        return isSelected ? CalorynTheme.sage : nutrient.color
+    }
+
+    private var selectionIndicatorForeground: Color {
+        if usesLiquidGlassSelectedStyle {
+            return CalorynTheme.warmWhite
+        }
+
+        return isSelected ? CalorynTheme.sage : CalorynTheme.textSecondary
     }
 
     var body: some View {
@@ -161,7 +181,7 @@ private struct NutrientSelectionTile: View {
 
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(isSelected ? CalorynTheme.sage : CalorynTheme.textSecondary)
+                    .foregroundStyle(selectionIndicatorForeground)
                     .padding(10)
                     .accessibilityHidden(true)
             }

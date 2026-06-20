@@ -55,16 +55,24 @@ private struct ActivityLevelCard: View {
     let isSelected: Bool
     var onTap: () -> Void
 
+    private var usesLiquidGlassSelectedStyle: Bool {
+        if #available(iOS 26.0, *) {
+            isSelected
+        } else {
+            false
+        }
+    }
+
     private var contentForeground: Color {
-        CalorynTheme.textPrimary
+        usesLiquidGlassSelectedStyle ? CalorynTheme.warmWhite : CalorynTheme.textPrimary
     }
 
     private var secondaryForeground: Color {
-        CalorynTheme.textSecondary
+        usesLiquidGlassSelectedStyle ? CalorynTheme.warmWhite.opacity(0.9) : CalorynTheme.textSecondary
     }
 
     private var accentForeground: Color {
-        CalorynTheme.sage
+        usesLiquidGlassSelectedStyle ? CalorynTheme.warmWhite : CalorynTheme.sage
     }
 
     var body: some View {
