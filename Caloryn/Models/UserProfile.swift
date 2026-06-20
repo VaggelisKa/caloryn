@@ -9,6 +9,7 @@ final class UserProfile {
     var heightCm: Double = 0
     var weightKg: Double = 0
     var activityLevel: ActivityLevel = ActivityLevel.sedentary
+    var energyCalculationModeRaw: String = EnergyCalculationMode.lifestyleEstimate.rawValue
 
     var bmr: Double = 0
     var tdee: Double = 0
@@ -59,6 +60,7 @@ final class UserProfile {
         dailyCalorieTarget: Int? = nil,
         manualOverride: Bool = false,
         calorieDeficit: Double = 500,
+        energyCalculationMode: EnergyCalculationMode = .lifestyleEstimate,
         proteinRatio: Double = 0.30,
         carbRatio: Double = 0.40,
         fatRatio: Double = 0.30,
@@ -70,6 +72,7 @@ final class UserProfile {
         self.heightCm = heightCm
         self.weightKg = weightKg
         self.activityLevel = activityLevel
+        self.energyCalculationModeRaw = energyCalculationMode.rawValue
         self.manualOverride = manualOverride
         self.calorieDeficit = calorieDeficit
         self.createdAt = Date()
@@ -86,6 +89,28 @@ final class UserProfile {
         self.carbTargetG = NutritionCalculator.macroGrams(calories: Double(target), ratio: carbRatio, caloriesPerGram: 4)
         self.fatTargetG = NutritionCalculator.macroGrams(calories: Double(target), ratio: fatRatio, caloriesPerGram: 9)
         self.fiberTargetG = fiberTargetG
+    }
+
+    var energyCalculationMode: EnergyCalculationMode {
+        get {
+            EnergyCalculationMode(rawValue: energyCalculationModeRaw) ?? .lifestyleEstimate
+        }
+        set {
+            energyCalculationModeRaw = newValue.rawValue
+        }
+    }
+
+    var effectiveEnergyCalculationMode: EnergyCalculationMode {
+        manualOverride ? .lifestyleEstimate : energyCalculationMode
+    }
+
+    var macroRatios: (protein: Double, carbs: Double, fat: Double) {
+        let calories = Double(max(dailyCalorieTarget, 1))
+        return (
+            protein: (proteinTargetG * 4.0) / calories,
+            carbs: (carbTargetG * 4.0) / calories,
+            fat: (fatTargetG * 9.0) / calories
+        )
     }
 
     func recalculate(proteinRatio: Double = 0.30, carbRatio: Double = 0.40, fatRatio: Double = 0.30) {
@@ -107,6 +132,54 @@ final class UserProfile {
 
     func calorieBaseTarget(usesActiveEnergy: Bool) -> Int {
         usesActiveEnergy ? activeEnergyBaseCalorieTarget : dailyCalorieTarget
+    }
+
+    func activityBudget(
+        consumed: Double,
+        activeEnergyKcal: Double,
+        recentActiveEnergySamples: [DailyActiveEnergySample],
+        isActivityLoading: Bool,
+        activityMessage: String?,
+        date: Date
+    ) -> ActivityCalorieBudget {
+        ActivityCalorieBudget(
+            consumed: consumed,
+            staticTarget: dailyCalorieTarget,
+            bmr: bmr,
+            calorieDeficit: calorieDeficit,
+            activeEnergyKcal: activeEnergyKcal,
+            recentActiveEnergySamples: recentActiveEnergySamples,
+            calculationMode: effectiveEnergyCalculationMode,
+            isManualOverride: manualOverride,
+            isActivityLoading: isActivityLoading,
+            activityMessage: activityMessage,
+            date: date
+        )
+    }
+
+    func nutrientTargets(forCalorieTarget calorieTarget: Int? = nil) -> [TrackedNutrient: Double] {
+        var targets = nutrientTargets
+
+        if let calorieTarget {
+            let ratios = macroRatios
+            targets[.protein] = NutritionCalculator.macroGrams(
+                calories: Double(calorieTarget),
+                ratio: ratios.protein,
+                caloriesPerGram: 4
+            )
+            targets[.carbs] = NutritionCalculator.macroGrams(
+                calories: Double(calorieTarget),
+                ratio: ratios.carbs,
+                caloriesPerGram: 4
+            )
+            targets[.fat] = NutritionCalculator.macroGrams(
+                calories: Double(calorieTarget),
+                ratio: ratios.fat,
+                caloriesPerGram: 9
+            )
+        }
+
+        return targets
     }
 
     var nutrientTargets: [TrackedNutrient: Double] {

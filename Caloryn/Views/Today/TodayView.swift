@@ -14,26 +14,38 @@ struct TodayView: View {
     @State private var selectedSnackIndex: Int = 1
 
     @AppStorage("showNutriscore") private var showNutriscore = true
-    @AppStorage(AppleHealthAdjustmentSettings.adjustmentEnabledKey) private var appleHealthAdjustmentEnabled = false
     @State private var activeEnergyTracker = ActiveEnergyDayTracker()
     @ScaledMetric private var ringSize: CGFloat = 180
 
     private var profile: UserProfile? { profiles.first }
-    private var baseCalorieTarget: Int {
-        profile?.calorieBaseTarget(usesActiveEnergy: appleHealthAdjustmentEnabled) ?? 2000
-    }
     private var calorieBudget: ActivityCalorieBudget {
-        ActivityCalorieBudget(
+        guard let profile else {
+            return ActivityCalorieBudget(
+                consumed: totalCalories,
+                staticTarget: 2_000,
+                bmr: 1_700,
+                calorieDeficit: 0,
+                activeEnergyKcal: 0,
+                recentActiveEnergySamples: [],
+                calculationMode: .lifestyleEstimate,
+                isManualOverride: false,
+                isActivityLoading: false,
+                activityMessage: nil,
+                date: selectedDate
+            )
+        }
+
+        return profile.activityBudget(
             consumed: totalCalories,
-            baseTarget: baseCalorieTarget,
             activeEnergyKcal: activeEnergyTracker.activeEnergyKcal,
-            isActivityAdjustmentEnabled: appleHealthAdjustmentEnabled,
+            recentActiveEnergySamples: activeEnergyTracker.recentActiveEnergySamples,
             isActivityLoading: activeEnergyTracker.isLoading,
-            activityMessage: activeEnergyTracker.message
+            activityMessage: activeEnergyTracker.message,
+            date: selectedDate
         )
     }
     private var healthRefreshKey: String {
-        "\(selectedDate.timeIntervalSinceReferenceDate)-\(appleHealthAdjustmentEnabled)"
+        "\(selectedDate.timeIntervalSinceReferenceDate)-\(profile?.effectiveEnergyCalculationMode.rawValue ?? EnergyCalculationMode.lifestyleEstimate.rawValue)"
     }
 
     private var todayEntries: [FoodLogEntry] {
@@ -158,7 +170,7 @@ struct TodayView: View {
                     date: selectedDate,
                     entries: todayEntries,
                     calorieBudget: calorieBudget,
-                    nutrientTargets: profile?.nutrientTargets ?? [:],
+                    nutrientTargets: profile?.nutrientTargets(forCalorieTarget: calorieBudget.adjustedTarget) ?? [:],
                     nutrientGoalKinds: profile?.nutrientGoalKinds ?? [:]
                 )
                 .presentationDetents([.medium, .large])
@@ -168,11 +180,15 @@ struct TodayView: View {
         .task(id: healthRefreshKey) {
             await activeEnergyTracker.configure(
                 date: selectedDate,
-                isEnabled: appleHealthAdjustmentEnabled
+                isEnabled: profile?.effectiveEnergyCalculationMode == .dynamicHealth
             )
         }
         .onDisappear {
             activeEnergyTracker.stopObserving()
+        }
+        .onChange(of: activeEnergyTracker.message) { _, message in
+            guard message != nil, profile?.energyCalculationMode == .dynamicHealth else { return }
+            profile?.energyCalculationMode = .lifestyleEstimate
         }
         .onChange(of: scenePhase) { _, newPhase in
             guard newPhase == .active else { return }

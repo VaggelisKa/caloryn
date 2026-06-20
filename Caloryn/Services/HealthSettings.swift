@@ -9,21 +9,38 @@ struct AppleHealthAdjustmentUpdate: Equatable {
 enum AppleHealthAdjustmentSettings {
     static let adjustmentEnabledKey = "appleHealthAdjustmentEnabled"
     static let authorizationRequestedKey = "appleHealthAuthorizationRequested"
+    static let emptyActiveEnergyRefreshCountKey = "appleHealthEmptyActiveEnergyRefreshCount"
+    static let emptyActiveEnergyFirstSeenKey = "appleHealthEmptyActiveEnergyFirstSeen"
+
+    private static let emptyActivityWarningRefreshThreshold = 3
+    private static let emptyActivityWarningDelay: TimeInterval = 86_400
 
     static var isHealthAvailable: Bool {
         HealthKitService.isHealthDataAvailable
     }
 
-    static var activeEnergyCreditPolicyText: String {
-        ActivityCalorieBudget.activeEnergyCreditPolicyText
+    static var authorizationRequested: Bool {
+        UserDefaults.standard.bool(forKey: authorizationRequestedKey)
     }
 
-    static var activeEnergyCreditShortText: String {
-        ActivityCalorieBudget.activeEnergyCreditShortText
+    static var dynamicEnergyPolicyText: String {
+        ActivityCalorieBudget.dynamicEnergyPolicyText
+    }
+
+    static var dynamicEnergyShortText: String {
+        ActivityCalorieBudget.dynamicEnergyShortText
     }
 
     static var unavailableMessage: String {
         "Apple Health is not available on this device."
+    }
+
+    static var connectedWaitingMessage: String {
+        ActivityCalorieBudget.connectedWaitingText
+    }
+
+    static var emptyActivityAccessMessage: String {
+        "No Active Energy found yet. This can happen if activity has not been recorded or Health access is off."
     }
 
     static func footerText(isEnabled: Bool) -> String {
@@ -32,23 +49,31 @@ enum AppleHealthAdjustmentSettings {
         }
 
         if isEnabled {
-            return "Uses Apple Health Active Energy for today's budget."
+            return "Uses Apple Health activity to adjust your daily calorie target."
         }
 
-        return "Adjust calories based on activity"
+        return "Use Apple Health activity to update your daily calorie target."
     }
 
     @MainActor
-    static func enable() async -> AppleHealthAdjustmentUpdate {
-        guard isHealthAvailable else {
+    static func enable(
+        isHealthAvailable: () -> Bool = {
+            HealthKitService.isHealthDataAvailable
+        },
+        requestAuthorization: () async throws -> Void = {
+            try await HealthKitService.requestActiveEnergyAuthorization()
+        }
+    ) async -> AppleHealthAdjustmentUpdate {
+        guard isHealthAvailable() else {
             return persist(isEnabled: false, authorizationRequested: false, message: unavailableMessage)
         }
 
         do {
-            try await HealthKitService.requestActiveEnergyAuthorization()
+            try await requestAuthorization()
+            clearEmptyActiveEnergyTracking()
             return persist(isEnabled: true, authorizationRequested: true, message: nil)
         } catch {
-            return persist(isEnabled: false, authorizationRequested: false, message: error.localizedDescription)
+            return persist(isEnabled: false, authorizationRequested: true, message: error.localizedDescription)
         }
     }
 
@@ -63,6 +88,10 @@ enum AppleHealthAdjustmentSettings {
         authorizationRequested: Bool,
         message: String?
     ) -> AppleHealthAdjustmentUpdate {
+        if !isEnabled {
+            clearEmptyActiveEnergyTracking()
+        }
+
         UserDefaults.standard.set(isEnabled, forKey: adjustmentEnabledKey)
         UserDefaults.standard.set(authorizationRequested, forKey: authorizationRequestedKey)
 
@@ -71,5 +100,47 @@ enum AppleHealthAdjustmentSettings {
             authorizationRequested: authorizationRequested,
             message: message
         )
+    }
+
+    static func recordActiveEnergyRefresh(
+        activeEnergyKcal: Double,
+        recentActiveEnergySamples: [DailyActiveEnergySample],
+        now: Date = .now
+    ) -> String? {
+        guard !hasAnyActiveEnergyData(
+            activeEnergyKcal: activeEnergyKcal,
+            recentActiveEnergySamples: recentActiveEnergySamples
+        ) else {
+            clearEmptyActiveEnergyTracking()
+            return nil
+        }
+
+        let storedFirstSeen = UserDefaults.standard.object(forKey: emptyActiveEnergyFirstSeenKey) as? Date
+        let firstSeen = storedFirstSeen ?? now
+        if storedFirstSeen == nil {
+            UserDefaults.standard.set(firstSeen, forKey: emptyActiveEnergyFirstSeenKey)
+        }
+
+        let refreshCount = UserDefaults.standard.integer(forKey: emptyActiveEnergyRefreshCountKey) + 1
+        UserDefaults.standard.set(refreshCount, forKey: emptyActiveEnergyRefreshCountKey)
+
+        guard refreshCount >= emptyActivityWarningRefreshThreshold
+                || now.timeIntervalSince(firstSeen) >= emptyActivityWarningDelay else {
+            return nil
+        }
+
+        return emptyActivityAccessMessage
+    }
+
+    static func clearEmptyActiveEnergyTracking() {
+        UserDefaults.standard.removeObject(forKey: emptyActiveEnergyRefreshCountKey)
+        UserDefaults.standard.removeObject(forKey: emptyActiveEnergyFirstSeenKey)
+    }
+
+    private static func hasAnyActiveEnergyData(
+        activeEnergyKcal: Double,
+        recentActiveEnergySamples: [DailyActiveEnergySample]
+    ) -> Bool {
+        activeEnergyKcal > 0 || recentActiveEnergySamples.contains { $0.activeEnergyKcal > 0 }
     }
 }

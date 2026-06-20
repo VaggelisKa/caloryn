@@ -1,6 +1,6 @@
 # Caloryn
 
-Caloryn is a native iOS nutrition tracker built with SwiftUI and SwiftData. It combines fast daily meal logging, profile-based calorie and nutrient goals, reusable custom foods and recipes, Open Food Facts search and barcode lookup, optional Apple Health activity adjustments, history, CSV export, and local-first storage with optional iCloud sync.
+Caloryn is a native iOS nutrition tracker built with SwiftUI and SwiftData. It combines fast daily meal logging, profile-based calorie and nutrient goals, reusable custom foods and recipes, Open Food Facts search and barcode lookup, optional Apple Health-powered calorie auto-adjustments, history, CSV export, and local-first storage with optional iCloud sync.
 
 ## Stack
 
@@ -13,13 +13,13 @@ Caloryn is a native iOS nutrition tracker built with SwiftUI and SwiftData. It c
 ## Features
 
 - Onboarding for profile setup, activity level, calorie goal, macro ratio selection, and tracked nutrient selection
-- Automatic BMR, TDEE, calorie target, macro target, and editable nutrient goal calculation
+- Automatic BMR, daily calorie burn, calorie target, macro target, and editable nutrient goal calculation
 - Day-based meal logging for breakfast, lunch, dinner, and multiple snack groups
 - Open Food Facts product search, barcode lookup, serving-size fallback logic, Nutri-Score grades, and fruit/vegetable category inference
 - Manual foods with calories, macros, optional nutrient fields, serving sizes, and fruit/vegetable variety tracking
 - Recipe foods assembled from reusable ingredients with calculated calories, macros, fiber, and serving weight
 - Daily calorie ring, macro progress, nutrient details, fruit/veg variety summary, optional Nutri-Score summary, and copy-yesterday flow
-- Optional Apple Health Active Energy adjustment, off by default, with an activity calorie credit calculated on device
+- Optional calorie auto-adjust mode, off by default, that learns from Apple Health Active Energy history on device
 - History views for 7-day, 14-day, and 30-day ranges, plus current-week average tracking
 - CSV export of logged food entries, theme preference, and optional iCloud sync toggle
 
@@ -72,5 +72,5 @@ Current project settings in the checked-in Xcode project:
 
 - The app uses network calls to Open Food Facts, so search and barcode lookup require connectivity.
 - SwiftData sync is configured to use CloudKit when the `iCloudSyncEnabled` preference is on.
-- Apple Health integration is opt-in, reads Active Energy only, credits active calories against a resting base target, and does not store Health samples in SwiftData.
+- Calorie auto-adjust is opt-in, reads Apple Health Active Energy only, recalculates the activity baseline on device, and does not store Health samples in SwiftData.
 - CSV export writes a temporary file and presents the native iOS share sheet.

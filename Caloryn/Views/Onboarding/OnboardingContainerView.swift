@@ -5,6 +5,7 @@ enum OnboardingStep: Hashable {
     case welcome
     case personalInfo
     case activityLevel
+    case energyCalculationMode
     case goalSummary
     case macroRatios(Int)
     case nutrientSelection
@@ -20,14 +21,15 @@ struct OnboardingContainerView: View {
     @State private var heightCm: Double = 175
     @State private var weightKg: Double = 75
     @State private var activityLevel: ActivityLevel = .moderatelyActive
+    @State private var energyCalculationMode: EnergyCalculationMode = .lifestyleEstimate
     @State private var calorieDeficit: Double = 500
     @State private var finalCalorieTarget: Int = 2000
     @State private var proteinRatio: Double = 0.30
     @State private var carbRatio: Double = 0.40
     @State private var fatRatio: Double = 0.30
     @AppStorage("todayTrackedNutrients") private var selectedNutrientIDs = TrackedNutrient.defaultSelectionRaw
-    @State private var wantsAppleHealthAdjustment = false
     @State private var isCompletingOnboarding = false
+    @State private var isRequestingHealthAuthorization = false
     @State private var appleHealthOnboardingMessage: String?
 
     var body: some View {
@@ -50,8 +52,18 @@ struct OnboardingContainerView: View {
                     }
                 case .activityLevel:
                     ActivityLevelStepView(activityLevel: $activityLevel) {
-                        path.append(.goalSummary)
+                        path.append(.energyCalculationMode)
                     }
+                case .energyCalculationMode:
+                    EnergyCalculationModeStepView(
+                        selectedMode: $energyCalculationMode,
+                        isRequestingAuthorization: isRequestingHealthAuthorization,
+                        message: appleHealthOnboardingMessage,
+                        onSelectionChanged: {
+                            appleHealthOnboardingMessage = nil
+                        },
+                        onContinue: continueFromEnergyCalculationMode
+                    )
                 case .goalSummary:
                     GoalSummaryStepView(
                         age: age,
@@ -78,45 +90,53 @@ struct OnboardingContainerView: View {
                 case .nutrientSelection:
                     NutrientSelectionStepView(
                         selectedNutrientIDs: $selectedNutrientIDs,
-                        wantsAppleHealthAdjustment: $wantsAppleHealthAdjustment,
                         isCompleting: isCompletingOnboarding,
-                        healthMessage: appleHealthOnboardingMessage,
                         onComplete: completeOnboarding
                     )
                 }
             }
-            .onChange(of: wantsAppleHealthAdjustment) {
-                appleHealthOnboardingMessage = nil
-            }
         }
+    }
+
+    private func continueFromEnergyCalculationMode() {
+        guard !isRequestingHealthAuthorization else { return }
+        appleHealthOnboardingMessage = nil
+
+        guard energyCalculationMode == .dynamicHealth else {
+            AppleHealthAdjustmentSettings.disable()
+            path.append(.goalSummary)
+            return
+        }
+
+        Task {
+            await requestAppleHealthAndContinue()
+        }
+    }
+
+    @MainActor
+    private func requestAppleHealthAndContinue() async {
+        isRequestingHealthAuthorization = true
+        defer {
+            isRequestingHealthAuthorization = false
+        }
+
+        let update = await AppleHealthAdjustmentSettings.enable()
+        guard update.isEnabled else {
+            energyCalculationMode = .lifestyleEstimate
+            appleHealthOnboardingMessage = update.message
+            return
+        }
+
+        path.append(.goalSummary)
     }
 
     private func completeOnboarding() {
         guard !isCompletingOnboarding else { return }
         appleHealthOnboardingMessage = nil
 
-        guard wantsAppleHealthAdjustment else {
-            AppleHealthAdjustmentSettings.disable()
-            saveProfile()
-            return
-        }
-
-        Task {
-            await requestAppleHealthAndSaveProfile()
-        }
-    }
-
-    @MainActor
-    private func requestAppleHealthAndSaveProfile() async {
         isCompletingOnboarding = true
         defer {
             isCompletingOnboarding = false
-        }
-
-        let update = await AppleHealthAdjustmentSettings.enable()
-        if let message = update.message {
-            appleHealthOnboardingMessage = message
-            return
         }
 
         saveProfile()
@@ -132,6 +152,7 @@ struct OnboardingContainerView: View {
             profile.heightCm = heightCm
             profile.weightKg = weightKg
             profile.activityLevel = activityLevel
+            profile.energyCalculationMode = energyCalculationMode
             profile.manualOverride = false
             profile.calorieDeficit = calorieDeficit
             profile.bmr = computedBmr
@@ -152,6 +173,7 @@ struct OnboardingContainerView: View {
             activityLevel: activityLevel,
             dailyCalorieTarget: finalCalorieTarget,
             calorieDeficit: calorieDeficit,
+            energyCalculationMode: energyCalculationMode,
             proteinRatio: proteinRatio,
             carbRatio: carbRatio,
             fatRatio: fatRatio
@@ -160,7 +182,227 @@ struct OnboardingContainerView: View {
     }
 }
 
+struct EnergyCalculationModeStepView: View {
+    @Binding var selectedMode: EnergyCalculationMode
+    let isRequestingAuthorization: Bool
+    let message: String?
+    let isHealthAvailable: Bool
+    var onSelectionChanged: () -> Void
+    var onContinue: () -> Void
+
+    init(
+        selectedMode: Binding<EnergyCalculationMode>,
+        isRequestingAuthorization: Bool,
+        message: String?,
+        isHealthAvailable: Bool = AppleHealthAdjustmentSettings.isHealthAvailable,
+        onSelectionChanged: @escaping () -> Void,
+        onContinue: @escaping () -> Void
+    ) {
+        self._selectedMode = selectedMode
+        self.isRequestingAuthorization = isRequestingAuthorization
+        self.message = message
+        self.isHealthAvailable = isHealthAvailable
+        self.onSelectionChanged = onSelectionChanged
+        self.onContinue = onContinue
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                VStack(spacing: 8) {
+                    Text("Calorie Estimate")
+                        .font(CalorynTheme.sectionTitle)
+                        .foregroundStyle(CalorynTheme.textPrimary)
+
+                    Text("Choose how Caloryn estimates your daily calories.")
+                        .font(CalorynTheme.bodyText)
+                        .foregroundStyle(CalorynTheme.textSecondary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.top, 8)
+
+                VStack(spacing: CalorynTheme.cardSpacing) {
+                    EnergyCalculationModeCard(
+                        title: EnergyCalculationMode.lifestyleEstimate.displayName,
+                        detail: "Uses the activity level you choose. Best when your routine stays similar.",
+                        iconName: "figure.walk",
+                        isSelected: selectedMode == .lifestyleEstimate,
+                        isDisabled: false
+                    ) {
+                        onSelectionChanged()
+                        withAnimation(.smooth(duration: 0.25)) {
+                            selectedMode = .lifestyleEstimate
+                        }
+                    }
+
+                    EnergyCalculationModeCard(
+                        title: EnergyCalculationMode.dynamicHealth.displayName,
+                        detail: isHealthAvailable
+                            ? "Uses Apple Health when activity data is available."
+                            : AppleHealthAdjustmentSettings.unavailableMessage,
+                        iconName: "heart.text.square.fill",
+                        isSelected: selectedMode == .dynamicHealth,
+                        isDisabled: !isHealthAvailable
+                    ) {
+                        onSelectionChanged()
+                        withAnimation(.smooth(duration: 0.25)) {
+                            selectedMode = .dynamicHealth
+                        }
+                    }
+                }
+
+                if let message {
+                    Text(message)
+                        .font(CalorynTheme.caption)
+                        .foregroundStyle(CalorynTheme.terracotta)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
+                }
+            }
+            .padding(.horizontal, CalorynTheme.pagePadding)
+            .padding(.bottom, 100)
+        }
+        .safeAreaInset(edge: .bottom) {
+            Button(action: onContinue) {
+                HStack(spacing: 8) {
+                    if isRequestingAuthorization {
+                        ProgressView()
+                            .tint(.white)
+                    }
+
+                    Text(selectedMode == .dynamicHealth ? "Allow & Continue" : "Continue")
+                        .font(.system(.headline, design: .rounded))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+            }
+            .buttonStyle(.glassProminent)
+            .tint(CalorynTheme.sage)
+            .disabled(isRequestingAuthorization)
+            .padding(.horizontal, CalorynTheme.pagePadding)
+            .padding(.bottom, 16)
+        }
+        .onChange(of: isHealthAvailable, initial: true) {
+            if !isHealthAvailable && selectedMode == .dynamicHealth {
+                selectedMode = .lifestyleEstimate
+            }
+        }
+    }
+}
+
+private struct EnergyCalculationModeCard: View {
+    let title: String
+    let detail: String
+    let iconName: String
+    let isSelected: Bool
+    let isDisabled: Bool
+    var onTap: () -> Void
+
+    private var contentForeground: Color {
+        isSelected ? CalorynTheme.warmWhite : CalorynTheme.textPrimary
+    }
+
+    private var secondaryForeground: Color {
+        isSelected ? CalorynTheme.warmWhite.opacity(0.9) : CalorynTheme.textSecondary
+    }
+
+    private var accentForeground: Color {
+        isSelected ? CalorynTheme.warmWhite : CalorynTheme.sage
+    }
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 14) {
+                Image(systemName: iconName)
+                    .font(.title2)
+                    .foregroundStyle(accentForeground)
+                    .frame(width: 36)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(CalorynTheme.itemTitle)
+                        .foregroundStyle(contentForeground)
+
+                    Text(detail)
+                        .font(CalorynTheme.caption)
+                        .foregroundStyle(secondaryForeground)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 8)
+
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .foregroundStyle(accentForeground)
+                    .font(.title3)
+                    .accessibilityHidden(true)
+            }
+            .padding(CalorynTheme.cardPadding)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .glassEffect(
+                isSelected ? .regular.tint(CalorynTheme.sage).interactive() : .regular.interactive(),
+                in: .rect(cornerRadius: CalorynTheme.smallCornerRadius)
+            )
+            .opacity(isDisabled ? 0.48 : 1)
+        }
+        .buttonStyle(.plain)
+        .disabled(isDisabled)
+        .accessibilityLabel("\(title), \(isSelected ? "selected" : "not selected")")
+    }
+}
+
 #Preview {
     OnboardingContainerView()
         .modelContainer(for: UserProfile.self, inMemory: true)
+}
+
+#Preview("Calorie Estimate - Lifestyle") {
+    @Previewable @State var selectedMode: EnergyCalculationMode = .lifestyleEstimate
+
+    EnergyCalculationModeStepView(
+        selectedMode: $selectedMode,
+        isRequestingAuthorization: false,
+        message: nil,
+        isHealthAvailable: true,
+        onSelectionChanged: {},
+        onContinue: {}
+    )
+}
+
+#Preview("Calorie Estimate - Dynamic") {
+    @Previewable @State var selectedMode: EnergyCalculationMode = .dynamicHealth
+
+    EnergyCalculationModeStepView(
+        selectedMode: $selectedMode,
+        isRequestingAuthorization: false,
+        message: nil,
+        isHealthAvailable: true,
+        onSelectionChanged: {},
+        onContinue: {}
+    )
+}
+
+#Preview("Calorie Estimate - Requesting Health") {
+    @Previewable @State var selectedMode: EnergyCalculationMode = .dynamicHealth
+
+    EnergyCalculationModeStepView(
+        selectedMode: $selectedMode,
+        isRequestingAuthorization: true,
+        message: nil,
+        isHealthAvailable: true,
+        onSelectionChanged: {},
+        onContinue: {}
+    )
+}
+
+#Preview("Calorie Estimate - Health Unavailable") {
+    @Previewable @State var selectedMode: EnergyCalculationMode = .lifestyleEstimate
+
+    EnergyCalculationModeStepView(
+        selectedMode: $selectedMode,
+        isRequestingAuthorization: false,
+        message: AppleHealthAdjustmentSettings.unavailableMessage,
+        isHealthAvailable: false,
+        onSelectionChanged: {},
+        onContinue: {}
+    )
 }

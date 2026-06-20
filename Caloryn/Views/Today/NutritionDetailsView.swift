@@ -33,10 +33,10 @@ struct NutritionDetailsView: View {
         calorieBudget.isOver ? CalorynTheme.terracotta : CalorynTheme.sage
     }
 
-    private var shouldShowActivityCredit: Bool {
-        calorieBudget.isActivityAdjustmentEnabled
+    private var shouldShowDynamicTDEE: Bool {
+        calorieBudget.isDynamicModeRequested
             || calorieBudget.activeEnergyKcal > 0
-            || calorieBudget.activityCredit > 0
+            || calorieBudget.dynamicAdjustment != 0
             || calorieBudget.activityMessage != nil
     }
 
@@ -92,7 +92,7 @@ struct NutritionDetailsView: View {
             ScrollView {
                 VStack(spacing: CalorynTheme.cardSpacing) {
                     calorieSummary
-                    activityCreditSummary
+                    dynamicTDEESummary
                     produceVarietyCard
                     allStatsGrid
                     detailSections
@@ -172,8 +172,8 @@ struct NutritionDetailsView: View {
     }
 
     @ViewBuilder
-    private var activityCreditSummary: some View {
-        if shouldShowActivityCredit {
+    private var dynamicTDEESummary: some View {
+        if shouldShowDynamicTDEE {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(alignment: .center, spacing: 12) {
                     ZStack {
@@ -188,11 +188,11 @@ struct NutritionDetailsView: View {
                     .accessibilityHidden(true)
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Activity credit")
+                        Text("Auto-adjusted calories")
                             .font(CalorynTheme.itemTitle)
                             .foregroundStyle(CalorynTheme.textPrimary)
 
-                        Text(ActivityCalorieBudget.activeEnergyCreditPolicyText)
+                        Text(ActivityCalorieBudget.dynamicEnergyPolicyText)
                             .font(CalorynTheme.caption)
                             .foregroundStyle(CalorynTheme.textSecondary)
                     }
@@ -204,11 +204,15 @@ struct NutritionDetailsView: View {
                             ProgressView()
                         }
 
-                        Text("+\(calorieBudget.activityCredit.kcalFormatted)")
+                        Text(dynamicAdjustmentText)
                             .font(CalorynTheme.numericBody)
-                            .foregroundStyle(CalorynTheme.carbColor)
+                            .foregroundStyle(calorieBudget.dynamicAdjustment < 0 ? CalorynTheme.textSecondary : CalorynTheme.carbColor)
                             .contentTransition(.numericText())
                     }
+                }
+
+                if let dynamicMessage = calorieBudget.dynamicStatusText {
+                    dynamicStatusNotice(dynamicMessage)
                 }
 
                 Divider()
@@ -216,14 +220,14 @@ struct NutritionDetailsView: View {
 
                 HStack(alignment: .top, spacing: 10) {
                     compactActivityStat(
-                        label: "Base",
-                        value: calorieBudget.baseTarget.kcalFormatted
+                        label: "Baseline",
+                        value: baselineText
                     )
 
                     verticalDivider
 
                     compactActivityStat(
-                        label: "Active",
+                        label: "Today",
                         value: Int(calorieBudget.activeEnergyKcal.rounded()).kcalFormatted,
                         color: CalorynTheme.carbColor
                     )
@@ -231,22 +235,63 @@ struct NutritionDetailsView: View {
                     verticalDivider
 
                     compactActivityStat(
-                        label: "Today",
-                        value: calorieBudget.adjustedTarget.kcalFormatted
+                        label: "Target",
+                        value: calorieBudget.baseTarget.kcalFormatted
                     )
-                }
-
-                if let activityMessage = calorieBudget.activityMessage {
-                    Text(activityMessage)
-                        .font(CalorynTheme.caption)
-                        .foregroundStyle(CalorynTheme.terracotta)
-                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
             .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
             .accessibilityElement(children: .combine)
-            .accessibilityLabel("Activity credit, \(calorieBudget.activeEnergyKcal.kcalFormatted) Active Energy, \(calorieBudget.activityCredit.kcalFormatted) credited, \(calorieBudget.adjustedTarget.kcalFormatted) target today")
+            .accessibilityLabel("Auto-adjusted calories, \(baselineText) baseline, \(calorieBudget.activeEnergyKcal.kcalFormatted) today, \(dynamicAdjustmentText) adjustment, \(calorieBudget.adjustedTarget.kcalFormatted) target")
         }
+    }
+
+    private var baselineText: String {
+        guard let baseline = calorieBudget.activityBaselineKcal else {
+            return "-"
+        }
+
+        return Int(baseline.rounded()).kcalFormatted
+    }
+
+    private var dynamicAdjustmentText: String {
+        let adjustment = calorieBudget.dynamicAdjustment
+        if adjustment > 0 {
+            return "+\(adjustment.kcalFormatted)"
+        }
+        if adjustment < 0 {
+            return "-\(abs(adjustment).kcalFormatted)"
+        }
+        return "0 kcal"
+    }
+
+    private var dynamicStatusNoticeColor: Color {
+        switch calorieBudget.dynamicStatus {
+        case .unavailable:
+            CalorynTheme.terracotta
+        case .learning:
+            CalorynTheme.carbColor
+        case .staticEstimate, .ready:
+            CalorynTheme.textSecondary
+        }
+    }
+
+    private func dynamicStatusNotice(_ message: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "info.circle.fill")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(dynamicStatusNoticeColor)
+                .padding(.top, 1)
+                .accessibilityHidden(true)
+
+            Text(message)
+                .font(CalorynTheme.caption)
+                .foregroundStyle(CalorynTheme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(dynamicStatusNoticeColor.opacity(0.10), in: .rect(cornerRadius: CalorynTheme.smallCornerRadius))
     }
 
     private func compactActivityStat(
@@ -572,7 +617,7 @@ private struct DetailNutrient: Identifiable {
     let unit: Unit
 }
 
-#Preview("Nutrition Details - Activity Credit") {
+#Preview("Nutrition Details - Auto-adjust") {
     let oatmeal = FoodItem(
         name: "Oatmeal",
         caloriesPer100g: 389,
@@ -608,11 +653,16 @@ private struct DetailNutrient: Identifiable {
         ],
         calorieBudget: ActivityCalorieBudget(
             consumed: 374,
-            baseTarget: 1900,
-            activeEnergyKcal: 143,
-            isActivityAdjustmentEnabled: true,
+            staticTarget: 1900,
+            bmr: 1_600,
+            calorieDeficit: 300,
+            activeEnergyKcal: 430,
+            recentActiveEnergySamples: previewNutritionActivitySamples,
+            calculationMode: .dynamicHealth,
+            isManualOverride: false,
             isActivityLoading: false,
-            activityMessage: nil
+            activityMessage: nil,
+            date: .now
         ),
         nutrientTargets: [
             .protein: 120,
@@ -627,4 +677,12 @@ private struct DetailNutrient: Identifiable {
             .fiber: .minimum
         ]
     )
+}
+
+private let previewNutritionActivitySamples: [DailyActiveEnergySample] = (1...10).compactMap { offset in
+    guard let date = Calendar.current.date(byAdding: .day, value: -offset, to: Date.now.startOfDay) else {
+        return nil
+    }
+
+    return DailyActiveEnergySample(date: date, activeEnergyKcal: 280)
 }
