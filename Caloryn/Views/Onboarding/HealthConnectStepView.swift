@@ -3,8 +3,8 @@ import SwiftUI
 struct HealthConnectStepView: View {
     var onComplete: () -> Void
 
-    @AppStorage(HealthSettingsKeys.adjustmentEnabled) private var healthAdjustmentEnabled = false
-    @AppStorage(HealthSettingsKeys.authorizationRequested) private var healthAuthorizationRequested = false
+    @AppStorage(AppleHealthAdjustmentSettings.adjustmentEnabledKey) private var healthAdjustmentEnabled = false
+    @AppStorage(AppleHealthAdjustmentSettings.authorizationRequestedKey) private var healthAuthorizationRequested = false
     @State private var isRequestingAuthorization = false
     @State private var statusMessage: String?
 
@@ -80,7 +80,7 @@ struct HealthConnectStepView: View {
                 .disabled(!isHealthAvailable || isRequestingAuthorization)
 
                 Button {
-                    healthAdjustmentEnabled = false
+                    AppleHealthAdjustmentSettings.disable()
                     onComplete()
                 } label: {
                     Text("Skip for Now")
@@ -127,19 +127,15 @@ struct HealthConnectStepView: View {
         }
 
         isRequestingAuthorization = true
+        defer { isRequestingAuthorization = false }
         statusMessage = nil
 
-        do {
-            try await HealthKitService.requestActiveEnergyAuthorization()
-            healthAuthorizationRequested = true
-            healthAdjustmentEnabled = true
-            onComplete()
-        } catch {
-            healthAdjustmentEnabled = false
-            statusMessage = error.localizedDescription
-        }
-
-        isRequestingAuthorization = false
+        let update = await AppleHealthAdjustmentSettings.enable()
+        healthAdjustmentEnabled = update.isEnabled
+        healthAuthorizationRequested = update.authorizationRequested
+        statusMessage = update.message
+        guard update.isEnabled else { return }
+        onComplete()
     }
 }
 

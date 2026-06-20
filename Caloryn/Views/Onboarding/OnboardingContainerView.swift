@@ -276,7 +276,7 @@ struct EnergyCalculationModeStepView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
             }
-            .buttonStyle(.glassProminent)
+            .adaptiveGlassProminentButton()
             .tint(CalorynTheme.sage)
             .disabled(isRequestingAuthorization)
             .padding(.horizontal, CalorynTheme.pagePadding)
@@ -338,9 +338,9 @@ private struct EnergyCalculationModeCard: View {
             }
             .padding(CalorynTheme.cardPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .glassEffect(
-                isSelected ? .regular.tint(CalorynTheme.sage).interactive() : .regular.interactive(),
-                in: .rect(cornerRadius: CalorynTheme.smallCornerRadius)
+            .adaptiveSelectableGlass(
+                isSelected: isSelected,
+                cornerRadius: CalorynTheme.smallCornerRadius
             )
             .opacity(isDisabled ? 0.48 : 1)
         }
