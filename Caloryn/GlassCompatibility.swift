@@ -1,10 +1,3 @@
-//
-//  GlassCompatibility.swift
-//  Caloryn
-//
-//  Created by Konstantinos Stergiannis on 13/6/26.
-//
-
 import SwiftUI
 
 // MARK: - Glass Container
@@ -81,7 +74,19 @@ extension View {
                 in: .rect(cornerRadius: cornerRadius)
             )
         } else {
-            self.background(selectableBackground(isSelected: isSelected))
+            self
+                .background(
+                    selectableBackground(isSelected: isSelected),
+                    in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .stroke(
+                            selectableBorder(isSelected: isSelected),
+                            lineWidth: isSelected ? 1.2 : 0.5
+                        )
+                        .allowsHitTesting(false)
+                }
         }
     }
 
@@ -98,8 +103,14 @@ extension View {
     
     private func selectableBackground(isSelected: Bool) -> AnyShapeStyle {
         isSelected
-            ? AnyShapeStyle(CalorynTheme.sage.opacity(0.15))
+            ? AnyShapeStyle(CalorynTheme.sage.opacity(0.20))
             : AnyShapeStyle(.regularMaterial)
+    }
+
+    private func selectableBorder(isSelected: Bool) -> Color {
+        isSelected
+            ? CalorynTheme.sage.opacity(0.72)
+            : CalorynTheme.textSecondary.opacity(0.12)
     }
     
     @ViewBuilder

@@ -156,6 +156,17 @@ struct FoodSearchView: View {
             }
             .padding(12)
             .adaptiveCapsuleGlass()
+            .overlay {
+                Capsule()
+                    .stroke(
+                        isSearchFocused
+                            ? CalorynTheme.sage.opacity(0.42)
+                            : CalorynTheme.textSecondary.opacity(0.10),
+                        lineWidth: isSearchFocused ? 1 : 0.5
+                    )
+                    .allowsHitTesting(false)
+            }
+            .animation(.smooth(duration: 0.18), value: isSearchFocused)
 
             Button {
                 isSearchFocused = false

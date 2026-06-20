@@ -135,11 +135,11 @@ private struct NutrientSelectionTile: View {
     var onToggle: () -> Void
 
     private var contentForeground: Color {
-        isSelected ? CalorynTheme.warmWhite : CalorynTheme.textPrimary
+        CalorynTheme.textPrimary
     }
 
     private var iconForeground: Color {
-        isSelected ? CalorynTheme.warmWhite : nutrient.color
+        isSelected ? CalorynTheme.sage : nutrient.color
     }
 
     var body: some View {
@@ -161,7 +161,7 @@ private struct NutrientSelectionTile: View {
 
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(isSelected ? CalorynTheme.warmWhite : CalorynTheme.textSecondary)
+                    .foregroundStyle(isSelected ? CalorynTheme.sage : CalorynTheme.textSecondary)
                     .padding(10)
                     .accessibilityHidden(true)
             }

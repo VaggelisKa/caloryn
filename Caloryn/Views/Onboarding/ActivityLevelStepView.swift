@@ -56,15 +56,15 @@ private struct ActivityLevelCard: View {
     var onTap: () -> Void
 
     private var contentForeground: Color {
-        isSelected ? CalorynTheme.warmWhite : CalorynTheme.textPrimary
+        CalorynTheme.textPrimary
     }
 
     private var secondaryForeground: Color {
-        isSelected ? CalorynTheme.warmWhite.opacity(0.9) : CalorynTheme.textSecondary
+        CalorynTheme.textSecondary
     }
 
     private var accentForeground: Color {
-        isSelected ? CalorynTheme.warmWhite : CalorynTheme.sage
+        CalorynTheme.sage
     }
 
     var body: some View {
