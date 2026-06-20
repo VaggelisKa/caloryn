@@ -166,7 +166,7 @@ struct FoodSearchView: View {
                     .foregroundStyle(CalorynTheme.sage)
                     .frame(width: 44, height: 44)
             }
-            .adaptiveCapsuleGlass()
+            .adaptiveCircleInteractiveGlass()
         }
         .padding(.horizontal, CalorynTheme.pagePadding)
         .padding(.vertical, 10)

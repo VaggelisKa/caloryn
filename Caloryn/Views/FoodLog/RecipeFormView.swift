@@ -266,8 +266,6 @@ struct RecipeFormView: View {
         DestructiveGlassButton("Delete Recipe") {
             showingDeleteConfirmation = true
         }
-        .adaptiveGlassButtonStyle()
-        .tint(CalorynTheme.terracotta)
     }
 
     @MainActor

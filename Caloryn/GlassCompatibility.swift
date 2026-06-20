@@ -57,6 +57,15 @@ extension View {
         }
     }
 
+    @ViewBuilder
+    func adaptiveCircleInteractiveGlass() -> some View {
+        if #available(iOS 26.0, *) {
+            self.glassEffect(.regular.interactive(), in: .circle)
+        } else {
+            self.background(.regularMaterial, in: Circle())
+        }
+    }
+
     // MARK: - Selected / interactive state glass
 
     @ViewBuilder
