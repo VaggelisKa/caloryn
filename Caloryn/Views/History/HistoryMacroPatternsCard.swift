@@ -74,9 +74,11 @@ private struct HistoryMacroPatternRow: View {
                         .font(CalorynTheme.numericBody)
                         .foregroundStyle(CalorynTheme.textPrimary)
 
-                    Text(deltaText)
-                        .font(CalorynTheme.numericCaption)
-                        .foregroundStyle(deltaColor)
+                    if let deltaText {
+                        Text(deltaText)
+                            .font(CalorynTheme.numericCaption)
+                            .foregroundStyle(deltaColor)
+                    }
                 }
             }
 
@@ -109,8 +111,8 @@ private struct HistoryMacroPatternRow: View {
         }
     }
 
-    private var deltaText: String {
-        guard pattern.previous.loggedDays > 0 else { return "No prev data" }
+    private var deltaText: String? {
+        guard pattern.previous.loggedDays > 0 else { return nil }
 
         let rounded = Int(pattern.averageValueDelta.rounded())
         if rounded > 0 { return "+\(rounded)g vs prev" }

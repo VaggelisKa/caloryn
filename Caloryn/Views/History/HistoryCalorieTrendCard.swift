@@ -12,9 +12,69 @@ struct HistoryCalorieTrendCard: View {
         var id: Date { day.id }
     }
 
+    private struct ChartPoint: Identifiable {
+        let id: String
+        let index: Double
+        let value: Double
+        let status: HistoryGoalStatus
+        let isLogged: Bool
+        let xAxisLabel: String
+        let accessibilityLabel: String
+        let accessibilityValue: String
+    }
+
     private var chartDays: [ChartDay] {
         summary.days.enumerated().map { offset, day in
             ChartDay(index: Double(offset), day: day)
+        }
+    }
+
+    private var chartPoints: [ChartPoint] {
+        if range == .quarter {
+            return weeklyChartPoints
+        }
+
+        return chartDays.map { chartDay in
+            ChartPoint(
+                id: chartDay.day.id.ISO8601Format(),
+                index: chartDay.index,
+                value: chartDay.day.calories,
+                status: chartDay.day.status,
+                isLogged: chartDay.day.isLogged,
+                xAxisLabel: weekdayInitial(for: chartDay.day.date),
+                accessibilityLabel: chartDay.day.date.shortFormatted,
+                accessibilityValue: chartDay.day.isLogged
+                    ? "\(Int(chartDay.day.calories.rounded())) calories, \(chartDay.day.status.label)"
+                    : "No calories logged"
+            )
+        }
+    }
+
+    private var weeklyChartPoints: [ChartPoint] {
+        let groupedDays = Dictionary(grouping: summary.days) { day in
+            day.date.startOfWeek
+        }
+
+        return groupedDays.keys.sorted().enumerated().map { offset, startDate in
+            let days = groupedDays[startDate, default: []].sorted { $0.date < $1.date }
+            let loggedDays = days.filter(\.isLogged)
+            let totalCalories = loggedDays.reduce(0) { $0 + $1.calories }
+            let averageCalories = loggedDays.isEmpty ? 0 : totalCalories / Double(loggedDays.count)
+            let status = weeklyStatus(for: averageCalories, loggedDayCount: loggedDays.count)
+            let label = "W\(offset + 1)"
+
+            return ChartPoint(
+                id: startDate.ISO8601Format(),
+                index: Double(offset),
+                value: averageCalories,
+                status: status,
+                isLogged: !loggedDays.isEmpty,
+                xAxisLabel: label,
+                accessibilityLabel: "\(label), week of \(startDate.dayMonthFormatted)",
+                accessibilityValue: loggedDays.isEmpty
+                    ? "No calories logged"
+                    : "\(Int(averageCalories.rounded())) average calories per logged day, \(status.label)"
+            )
         }
     }
 
@@ -35,8 +95,8 @@ struct HistoryCalorieTrendCard: View {
     }
 
     private var yAxisUpperBound: Double {
-        let largestDay = summary.days.map(\.calories).max() ?? 0
-        let largestReference = max(largestDay, Double(summary.dailyCalorieTarget), averageCalories, 1)
+        let largestChartValue = chartPoints.map(\.value).max() ?? 0
+        let largestReference = max(largestChartValue, Double(summary.dailyCalorieTarget), averageCalories, 1)
         return largestReference * 1.15
     }
 
@@ -45,8 +105,8 @@ struct HistoryCalorieTrendCard: View {
     }
 
     private var xAxisDomain: ClosedRange<Double> {
-        guard let firstIndex = chartDays.first?.index,
-              let lastIndex = chartDays.last?.index else {
+        guard let firstIndex = chartPoints.first?.index,
+              let lastIndex = chartPoints.last?.index else {
             return 0 ... 1
         }
         return (firstIndex - 0.5) ... (lastIndex + 0.5)
@@ -56,7 +116,6 @@ struct HistoryCalorieTrendCard: View {
         VStack(alignment: .leading, spacing: 14) {
             header
             chart
-            legend
         }
         .glassCard()
         .accessibilityElement(children: .contain)
@@ -123,26 +182,26 @@ struct HistoryCalorieTrendCard: View {
 
     private var chart: some View {
         Chart {
-            ForEach(chartDays) { chartDay in
-                if chartDay.day.isLogged {
+            ForEach(chartPoints) { chartPoint in
+                if chartPoint.isLogged {
                     BarMark(
-                        x: .value("Day", chartDay.index),
-                        y: .value("Calories", chartDay.day.calories),
+                        x: .value("Period", chartPoint.index),
+                        y: .value("Calories", chartPoint.value),
                         width: barWidth
                     )
-                    .foregroundStyle(chartDay.day.status.tint)
+                    .foregroundStyle(chartPoint.status.tint)
                     .cornerRadius(4)
-                    .accessibilityLabel(chartDay.day.date.shortFormatted)
-                    .accessibilityValue("\(Int(chartDay.day.calories.rounded())) calories, \(chartDay.day.status.label)")
+                    .accessibilityLabel(chartPoint.accessibilityLabel)
+                    .accessibilityValue(chartPoint.accessibilityValue)
                 } else {
                     PointMark(
-                        x: .value("Day", chartDay.index),
+                        x: .value("Period", chartPoint.index),
                         y: .value("Calories", 0)
                     )
                     .symbolSize(28)
                     .foregroundStyle(HistoryGoalStatus.notLogged.tint)
-                    .accessibilityLabel(chartDay.day.date.shortFormatted)
-                    .accessibilityValue("No calories logged")
+                    .accessibilityLabel(chartPoint.accessibilityLabel)
+                    .accessibilityValue(chartPoint.accessibilityValue)
                 }
             }
 
@@ -151,11 +210,11 @@ struct HistoryCalorieTrendCard: View {
                 .foregroundStyle(CalorynTheme.textPrimary.opacity(0.62))
         }
         .chartXAxis {
-            AxisMarks(values: chartDays.map(\.index)) { value in
+            AxisMarks(values: chartPoints.map(\.index)) { value in
                 AxisValueLabel(centered: false) {
                     if let index = value.as(Double.self),
-                       let chartDay = chartDay(for: index) {
-                        Text(weekdayInitial(for: chartDay.day.date))
+                       let chartPoint = chartPoint(for: index) {
+                        Text(chartPoint.xAxisLabel)
                             .font(.system(size: 10))
                             .foregroundStyle(.clear)
                             .accessibilityHidden(true)
@@ -168,9 +227,9 @@ struct HistoryCalorieTrendCard: View {
                 if let plotFrame = proxy.plotFrame {
                     let plotRect = geometry[plotFrame]
 
-                    ForEach(chartDays) { chartDay in
-                        if let xPosition = proxy.position(forX: chartDay.index) {
-                            Text(weekdayInitial(for: chartDay.day.date))
+                    ForEach(chartPoints) { chartPoint in
+                        if let xPosition = proxy.position(forX: chartPoint.index) {
+                            Text(chartPoint.xAxisLabel)
                                 .font(.system(size: 10))
                                 .foregroundStyle(CalorynTheme.textSecondary)
                                 .position(
@@ -197,39 +256,29 @@ struct HistoryCalorieTrendCard: View {
         .accessibilityLabel(accessibilityLabel)
     }
 
-    private var legend: some View {
-        HStack(spacing: 12) {
-            legendItem("Under", color: HistoryGoalStatus.under.tint)
-            legendItem("On track", color: HistoryGoalStatus.onTrack.tint)
-            legendItem("Over", color: HistoryGoalStatus.over.tint)
-            legendItem("Empty", color: HistoryGoalStatus.notLogged.tint)
-        }
-        .font(CalorynTheme.caption)
-        .foregroundStyle(CalorynTheme.textSecondary)
-        .accessibilityElement(children: .combine)
-    }
-
-    private func legendItem(_ label: String, color: Color) -> some View {
-        HStack(spacing: 4) {
-            Circle()
-                .fill(color)
-                .frame(width: 7, height: 7)
-
-            Text(label)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-        }
-    }
-
     private func weekdayInitial(for date: Date) -> String {
         let weekday = Calendar.current.component(.weekday, from: date)
         return ["S", "M", "T", "W", "T", "F", "S"][max(0, min(weekday - 1, 6))]
     }
 
-    private func chartDay(for index: Double) -> ChartDay? {
+    private func chartPoint(for index: Double) -> ChartPoint? {
         let roundedIndex = Int(index.rounded())
-        guard chartDays.indices.contains(roundedIndex) else { return nil }
-        return chartDays[roundedIndex]
+        guard chartPoints.indices.contains(roundedIndex) else { return nil }
+        return chartPoints[roundedIndex]
+    }
+
+    private func weeklyStatus(for averageCalories: Double, loggedDayCount: Int) -> HistoryGoalStatus {
+        guard loggedDayCount > 0 else { return .notLogged }
+        guard summary.dailyCalorieTarget > 0 else { return .onTrack }
+
+        let target = Double(summary.dailyCalorieTarget)
+        if averageCalories < target * (1 - HistoryAnalytics.onTrackTolerance) {
+            return .under
+        }
+        if averageCalories > target * (1 + HistoryAnalytics.onTrackTolerance) {
+            return .over
+        }
+        return .onTrack
     }
 
     private var averageDifferenceText: String {

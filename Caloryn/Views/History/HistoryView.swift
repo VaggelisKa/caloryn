@@ -29,25 +29,16 @@ struct HistoryView: View {
                 VStack(spacing: CalorynTheme.cardSpacing) {
                     rangePicker
 
-                    if selectedRange == .week {
-                        HistoryCalorieTrendCard(
-                            range: selectedRange,
-                            summary: history.current
-                        )
-                    }
+                    HistoryCalorieTrendCard(
+                        range: selectedRange,
+                        summary: history.current
+                    )
 
                     HistoryGoalSummaryCard(
                         range: selectedRange,
                         summary: history.current,
                         comparison: history.goalComparison
                     )
-
-                    if selectedRange == .twoWeeks {
-                        HistoryCalorieTrendCard(
-                            range: selectedRange,
-                            summary: history.current
-                        )
-                    }
 
                     if selectedRange.days >= HistoryRange.month.days {
                         HistoryWeeklyRollupCard(summary: history.current)
