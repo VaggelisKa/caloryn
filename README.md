@@ -20,7 +20,7 @@ Caloryn is a native iOS nutrition tracker built with SwiftUI and SwiftData. It c
 - Recipe foods assembled from reusable ingredients with calculated calories, macros, fiber, and serving weight
 - Daily calorie ring, macro progress, nutrient details, fruit/veg variety summary, optional Nutri-Score summary, and copy-yesterday flow
 - Optional calorie auto-adjust mode, off by default, that learns from Apple Health Active Energy history on device
-- History views for 7-day, 14-day, and 30-day ranges, plus current-week average tracking
+- History pattern discovery for 7-day, 14-day, 30-day, and 90-day ranges
 - CSV export of logged food entries, theme preference, and optional iCloud sync toggle
 
 ## Project Structure
