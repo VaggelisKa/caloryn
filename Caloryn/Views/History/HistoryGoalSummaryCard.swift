@@ -12,7 +12,7 @@ struct HistoryGoalSummaryCard: View {
             statusStrip
             metricRow
 
-            if summary.coverageLevel != .high {
+            if summary.loggedDayCount > 0, summary.coverageLevel != .high {
                 Text("Based on \(summary.loggedDayCount) of \(summary.totalDayCount) days logged.")
                     .font(CalorynTheme.caption)
                     .foregroundStyle(CalorynTheme.textSecondary)
@@ -41,13 +41,15 @@ struct HistoryGoalSummaryCard: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            Text(loggedDaySupportText)
-                .font(CalorynTheme.caption)
-                .foregroundStyle(CalorynTheme.textSecondary)
+            if summary.loggedDayCount > 0 {
+                Text(loggedDaySupportText)
+                    .font(CalorynTheme.caption)
+                    .foregroundStyle(CalorynTheme.textSecondary)
 
-            Text(comparisonText)
-                .font(CalorynTheme.numericCaption)
-                .foregroundStyle(comparisonColor)
+                Text(comparisonText)
+                    .font(CalorynTheme.numericCaption)
+                    .foregroundStyle(comparisonColor)
+            }
         }
     }
 
@@ -67,29 +69,31 @@ struct HistoryGoalSummaryCard: View {
                 label: "days logged"
             )
 
-            Divider()
-                .frame(height: 34)
+            if summary.loggedDayCount > 0 {
+                Divider()
+                    .frame(height: 34)
 
-            compactMetric(
-                value: summary.loggedDayCount > 0 ? "\(Int(summary.averageCaloriesPerLoggedDay.rounded()))" : "No data",
-                label: "kcal/day avg"
-            )
+                compactMetric(
+                    value: "\(Int(summary.averageCaloriesPerLoggedDay.rounded()))",
+                    label: "kcal/day avg"
+                )
+            }
 
-            Divider()
-                .frame(height: 34)
+            if summary.loggedDayCount > 0 {
+                Divider()
+                    .frame(height: 34)
 
-            compactMetric(
-                value: summary.coverageLevel.label.replacingOccurrences(of: " confidence", with: ""),
-                label: "coverage"
-            )
+                compactMetric(
+                    value: summary.coverageLevel.label.replacingOccurrences(of: " confidence", with: ""),
+                    label: "coverage"
+                )
+            }
         }
     }
 
     private var loggedDaySupportText: String {
-        guard summary.loggedDayCount > 0 else {
-            return "No logged days in this range"
-        }
-        return "of \(summary.loggedDayCount) logged days"
+        let dayLabel = summary.loggedDayCount == 1 ? "day" : "days"
+        return "of \(summary.loggedDayCount) logged \(dayLabel)"
     }
 
     private func compactMetric(value: String, label: String) -> some View {

@@ -44,7 +44,7 @@ struct HistoryView: View {
                         HistoryWeeklyRollupCard(summary: history.current)
                     }
 
-                    if !history.macroPatterns.isEmpty {
+                    if history.macroPatterns.contains(where: { $0.current.loggedDays > 0 }) {
                         HistoryMacroPatternsCard(patterns: history.macroPatterns)
                     }
                 }

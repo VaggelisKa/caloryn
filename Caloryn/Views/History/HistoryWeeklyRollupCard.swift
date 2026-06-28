@@ -44,7 +44,7 @@ struct HistoryWeeklyRollupCard: View {
                     .textCase(.uppercase)
 
                 if let bestWeek {
-                    Text("Best week had \(bestWeek.onTrackDays) of \(bestWeek.loggedDays) logged days on track.")
+                    Text("Best week had \(bestWeek.onTrackDays) of \(bestWeek.loggedDays) logged \(dayLabel(for: bestWeek.loggedDays)) on track.")
                         .font(.system(.subheadline))
                         .foregroundStyle(CalorynTheme.textSecondary)
                 }
@@ -131,6 +131,10 @@ struct HistoryWeeklyRollupCard: View {
 
     private func weekLabel(for chartWeek: ChartWeek) -> String {
         "W\(Int(chartWeek.index) + 1)"
+    }
+
+    private func dayLabel(for count: Int) -> String {
+        count == 1 ? "day" : "days"
     }
 
     private func chartWeek(for index: Double) -> ChartWeek? {

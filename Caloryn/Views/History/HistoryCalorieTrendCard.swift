@@ -130,22 +130,24 @@ struct HistoryCalorieTrendCard: View {
                     .textCase(.uppercase)
             }
 
-            HStack(alignment: .top, spacing: 0) {
-                statColumn(
-                    value: hasLoggedData ? Int(averageCalories.rounded()).formatted() : "No data",
-                    unit: "kcal/day avg",
-                    detail: averageDifferenceText,
-                    detailColor: averageDifferenceColor
-                )
+            if hasLoggedData {
+                HStack(alignment: .top, spacing: 0) {
+                    statColumn(
+                        value: Int(averageCalories.rounded()).formatted(),
+                        unit: "kcal/day avg",
+                        detail: averageDifferenceText,
+                        detailColor: averageDifferenceColor
+                    )
 
-                Spacer(minLength: 16)
+                    Spacer(minLength: 16)
 
-                statColumn(
-                    value: hasLoggedData ? Int(totalCalories.rounded()).formatted() : "No data",
-                    unit: "kcal logged",
-                    detail: totalDifferenceText,
-                    detailColor: totalDifferenceColor
-                )
+                    statColumn(
+                        value: Int(totalCalories.rounded()).formatted(),
+                        unit: "kcal logged",
+                        detail: totalDifferenceText,
+                        detailColor: totalDifferenceColor
+                    )
+                }
             }
         }
     }
@@ -328,7 +330,11 @@ struct HistoryCalorieTrendCard: View {
     }
 
     private var accessibilityLabel: String {
-        "Calorie trend for \(range.label). \(summary.loggedDayCount) of \(summary.totalDayCount) days logged. Average \(Int(averageCalories.rounded())) calories per logged day. Target \(summary.dailyCalorieTarget) calories."
+        guard hasLoggedData else {
+            return "Calorie trend for \(range.label). 0 of \(summary.totalDayCount) days logged. Target \(summary.dailyCalorieTarget) calories."
+        }
+
+        return "Calorie trend for \(range.label). \(summary.loggedDayCount) of \(summary.totalDayCount) days logged. Average \(Int(averageCalories.rounded())) calories per logged day. Target \(summary.dailyCalorieTarget) calories."
     }
 }
 
