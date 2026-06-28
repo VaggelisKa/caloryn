@@ -78,7 +78,6 @@ struct HistoryAnalytics {
     static let onTrackTolerance = 0.05
 
     let range: HistoryRange
-    let dailyCalorieTarget: Int
     let current: HistoryPeriodSummary
     let previous: HistoryPeriodSummary
     let goalComparison: HistoryGoalComparison
@@ -92,7 +91,7 @@ struct HistoryAnalytics {
         calendar: Calendar = .current
     ) {
         self.range = range
-        dailyCalorieTarget = profile?.dailyCalorieTarget ?? 2_000
+        let dailyCalorieTarget = profile?.dailyCalorieTarget ?? 2_000
 
         let groupedEntries = Dictionary(grouping: entries) { entry in
             calendar.startOfDay(for: entry.date)
@@ -143,7 +142,6 @@ struct HistoryAnalytics {
             let goalKind = profile.goalKind(for: nutrient)
             return HistoryMacroPattern(
                 nutrient: nutrient,
-                target: target,
                 goalKind: goalKind,
                 current: current.macroSummary(for: nutrient, target: target, goalKind: goalKind),
                 previous: previous.macroSummary(for: nutrient, target: target, goalKind: goalKind)
@@ -153,8 +151,6 @@ struct HistoryAnalytics {
 }
 
 struct HistoryPeriodSummary {
-    let startDate: Date
-    let endDate: Date
     let dailyCalorieTarget: Int
     let days: [HistoryDaySummary]
     let weeklyRollups: [HistoryWeekSummary]
@@ -189,20 +185,12 @@ struct HistoryPeriodSummary {
         count(for: .onTrack)
     }
 
-    var statusCounts: [HistoryGoalStatus: Int] {
-        HistoryGoalStatus.allCases.reduce(into: [HistoryGoalStatus: Int]()) { counts, status in
-            counts[status] = count(for: status)
-        }
-    }
-
     init(
         dates: [Date],
         entriesByDate: [Date: [FoodLogEntry]],
         dailyCalorieTarget: Int,
         calendar: Calendar
     ) {
-        self.startDate = dates.first ?? .now
-        self.endDate = dates.last ?? .now
         self.dailyCalorieTarget = dailyCalorieTarget
         self.days = dates.map { date in
             HistoryDaySummary(
@@ -267,7 +255,6 @@ struct HistoryPeriodSummary {
             let weekDays = groupedDays[startDate, default: []].sorted { $0.date < $1.date }
             return HistoryWeekSummary(
                 startDate: startDate,
-                endDate: weekDays.last?.date ?? startDate,
                 days: weekDays
             )
         }
@@ -276,13 +263,9 @@ struct HistoryPeriodSummary {
 
 struct HistoryGoalComparison {
     let onTrackDayDelta: Int
-    let averageCaloriesDelta: Double
-    let loggedDayDelta: Int
 
     init(current: HistoryPeriodSummary, previous: HistoryPeriodSummary) {
         onTrackDayDelta = current.onTrackLoggedDayCount - previous.onTrackLoggedDayCount
-        averageCaloriesDelta = current.averageCaloriesPerLoggedDay - previous.averageCaloriesPerLoggedDay
-        loggedDayDelta = current.loggedDayCount - previous.loggedDayCount
     }
 }
 
@@ -350,7 +333,6 @@ struct HistoryDaySummary: Identifiable {
 
 struct HistoryWeekSummary: Identifiable {
     let startDate: Date
-    let endDate: Date
     let totalDays: Int
     let loggedDays: Int
     let onTrackDays: Int
@@ -367,9 +349,8 @@ struct HistoryWeekSummary: Identifiable {
         return Double(loggedDays) / Double(totalDays)
     }
 
-    init(startDate: Date, endDate: Date, days: [HistoryDaySummary]) {
+    init(startDate: Date, days: [HistoryDaySummary]) {
         self.startDate = startDate
-        self.endDate = endDate
         totalDays = days.count
         loggedDays = days.filter(\.isLogged).count
         onTrackDays = days.filter { $0.status == .onTrack }.count
@@ -384,16 +365,11 @@ struct HistoryNutrientPeriodSummary {
 
 struct HistoryMacroPattern: Identifiable {
     let nutrient: TrackedNutrient
-    let target: Double
     let goalKind: NutrientGoalKind
     let current: HistoryNutrientPeriodSummary
     let previous: HistoryNutrientPeriodSummary
 
     var id: String { nutrient.id }
-
-    var hitDayDelta: Int {
-        current.hitDays - previous.hitDays
-    }
 
     var averageValueDelta: Double {
         current.averageValue - previous.averageValue

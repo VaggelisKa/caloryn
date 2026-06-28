@@ -51,7 +51,6 @@ final class HistoryAnalyticsTests: XCTestCase {
         XCTAssertEqual(analytics.current.count(for: .onTrack), 2)
         XCTAssertEqual(analytics.previous.count(for: .onTrack), 1)
         XCTAssertEqual(analytics.goalComparison.onTrackDayDelta, 1)
-        XCTAssertEqual(analytics.goalComparison.loggedDayDelta, 1)
     }
 
     func testMacroPatternsUseStrictGoalKinds() {
