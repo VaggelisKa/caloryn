@@ -47,10 +47,6 @@ struct HistoryView: View {
                     if !history.macroPatterns.isEmpty {
                         HistoryMacroPatternsCard(patterns: history.macroPatterns)
                     }
-
-                    if selectedRange.days <= HistoryRange.twoWeeks.days {
-                        dailyRows(summary: history.current)
-                    }
                 }
                 .padding(.horizontal, CalorynTheme.pagePadding)
                 .padding(.bottom, 20)
@@ -67,25 +63,6 @@ struct HistoryView: View {
         }
         .pickerStyle(.segmented)
         .padding(.top, 4)
-    }
-
-    private func dailyRows(summary: HistoryPeriodSummary) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Daily Detail")
-                .font(CalorynTheme.caption)
-                .foregroundStyle(CalorynTheme.textSecondary)
-                .textCase(.uppercase)
-                .padding(.horizontal, 2)
-
-            ForEach(summary.days.reversed()) { day in
-                DaySummaryRow(
-                    date: day.date,
-                    totalCalories: day.calories,
-                    target: summary.dailyCalorieTarget,
-                    entryCount: day.entryCount
-                )
-            }
-        }
     }
 }
 
