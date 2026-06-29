@@ -15,7 +15,6 @@ struct CalorynApp: App {
         ])
         let config = ModelConfiguration(
             schema: schema,
-            isStoredInMemoryOnly: false,
             cloudKitDatabase: iCloudEnabled ? .automatic : .none
         )
 
