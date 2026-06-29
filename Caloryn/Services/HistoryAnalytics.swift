@@ -336,6 +336,7 @@ struct HistoryWeekSummary: Identifiable {
     let totalDays: Int
     let loggedDays: Int
     let onTrackDays: Int
+    let averageCaloriesPerLoggedDay: Double
 
     var id: Date { startDate }
 
@@ -351,9 +352,13 @@ struct HistoryWeekSummary: Identifiable {
 
     init(startDate: Date, days: [HistoryDaySummary]) {
         self.startDate = startDate
+        let logged = days.filter(\.isLogged)
         totalDays = days.count
-        loggedDays = days.filter(\.isLogged).count
+        loggedDays = logged.count
         onTrackDays = days.filter { $0.status == .onTrack }.count
+        averageCaloriesPerLoggedDay = logged.isEmpty
+            ? 0
+            : logged.reduce(0) { $0 + $1.calories } / Double(logged.count)
     }
 }
 

@@ -1,5 +1,4 @@
 import SwiftUI
-import UIKit
 
 struct HistoryGoalSummaryCard: View {
     let range: HistoryRange
@@ -160,7 +159,7 @@ private struct WeeklyConsistencyStrip: View {
         HStack(spacing: 3) {
             ForEach(weeks) { week in
                 RoundedRectangle(cornerRadius: 3, style: .continuous)
-                    .fill(week.tint)
+                    .fill(week.consistencyTint)
                     .opacity(max(0.35, week.coverageRatio))
                     .frame(maxWidth: .infinity)
                     .accessibilityHidden(true)
@@ -177,36 +176,4 @@ private struct WeeklyConsistencyStrip: View {
         }
         return "Weekly goal consistency: \(weekDescriptions.joined(separator: "; "))."
     }
-}
-
-extension HistoryGoalStatus {
-    var tint: Color {
-        switch self {
-        case .under:
-            HistoryStatusPalette.under
-        case .onTrack:
-            CalorynTheme.sage
-        case .over:
-            CalorynTheme.terracotta
-        case .notLogged:
-            CalorynTheme.textSecondary.opacity(0.22)
-        }
-    }
-}
-
-private extension HistoryWeekSummary {
-    var tint: Color {
-        guard loggedDays > 0 else { return CalorynTheme.textSecondary.opacity(0.22) }
-        if onTrackRatio >= 0.66 { return CalorynTheme.sage }
-        if onTrackRatio >= 0.34 { return HistoryStatusPalette.under }
-        return CalorynTheme.terracotta
-    }
-}
-
-private enum HistoryStatusPalette {
-    static let under = Color(UIColor { traits in
-        traits.userInterfaceStyle == .dark
-            ? UIColor(red: 0.784, green: 0.635, blue: 0.314, alpha: 1)
-            : UIColor(red: 0.678, green: 0.506, blue: 0.180, alpha: 1)
-    })
 }

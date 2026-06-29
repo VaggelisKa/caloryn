@@ -113,6 +113,7 @@ final class HistoryAnalyticsTests: XCTestCase {
         XCTAssertEqual(middleWeek.onTrackDays, 2)
         XCTAssertEqual(middleWeek.onTrackRatio, 2.0 / 3.0, accuracy: 0.001)
         XCTAssertEqual(middleWeek.coverageRatio, 3.0 / 7.0, accuracy: 0.001)
+        XCTAssertEqual(middleWeek.averageCaloriesPerLoggedDay, 2_100, accuracy: 0.001)
     }
 
     private func makeProfile() -> UserProfile {

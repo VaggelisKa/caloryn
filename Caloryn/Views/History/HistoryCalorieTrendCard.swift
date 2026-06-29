@@ -51,27 +51,20 @@ struct HistoryCalorieTrendCard: View {
     }
 
     private var weeklyChartPoints: [ChartPoint] {
-        let groupedDays = Dictionary(grouping: summary.days) { day in
-            day.date.startOfWeek
-        }
-
-        return groupedDays.keys.sorted().enumerated().map { offset, startDate in
-            let days = groupedDays[startDate, default: []].sorted { $0.date < $1.date }
-            let loggedDays = days.filter(\.isLogged)
-            let totalCalories = loggedDays.reduce(0) { $0 + $1.calories }
-            let averageCalories = loggedDays.isEmpty ? 0 : totalCalories / Double(loggedDays.count)
-            let status = weeklyStatus(for: averageCalories, loggedDayCount: loggedDays.count)
+        summary.weeklyRollups.enumerated().map { offset, week in
+            let averageCalories = week.averageCaloriesPerLoggedDay
+            let status = weeklyStatus(for: averageCalories, loggedDayCount: week.loggedDays)
             let label = "W\(offset + 1)"
 
             return ChartPoint(
-                id: startDate.ISO8601Format(),
+                id: week.id.ISO8601Format(),
                 index: Double(offset),
                 value: averageCalories,
                 status: status,
-                isLogged: !loggedDays.isEmpty,
+                isLogged: week.loggedDays > 0,
                 xAxisLabel: label,
-                accessibilityLabel: "\(label), week of \(startDate.dayMonthFormatted)",
-                accessibilityValue: loggedDays.isEmpty
+                accessibilityLabel: "\(label), week of \(week.startDate.dayMonthFormatted)",
+                accessibilityValue: week.loggedDays == 0
                     ? "No calories logged"
                     : "\(Int(averageCalories.rounded())) average calories per logged day, \(status.label)"
             )

@@ -1,6 +1,5 @@
 import SwiftUI
 import Charts
-import UIKit
 
 struct HistoryWeeklyRollupCard: View {
     let summary: HistoryPeriodSummary
@@ -57,7 +56,7 @@ struct HistoryWeeklyRollupCard: View {
                         y: .value("On Track", chartWeek.week.onTrackRatio * 100),
                         width: barWidth
                     )
-                    .foregroundStyle(chartWeek.week.chartColor)
+                    .foregroundStyle(chartWeek.week.consistencyTint)
                     .cornerRadius(4)
                 }
             }
@@ -142,21 +141,4 @@ struct HistoryWeeklyRollupCard: View {
         guard chartWeeks.indices.contains(roundedIndex) else { return nil }
         return chartWeeks[roundedIndex]
     }
-}
-
-private extension HistoryWeekSummary {
-    var chartColor: Color {
-        guard loggedDays > 0 else { return CalorynTheme.textSecondary.opacity(0.22) }
-        if onTrackRatio >= 0.66 { return CalorynTheme.sage }
-        if onTrackRatio >= 0.34 { return HistoryWeeklyPalette.under }
-        return CalorynTheme.terracotta
-    }
-}
-
-private enum HistoryWeeklyPalette {
-    static let under = Color(UIColor { traits in
-        traits.userInterfaceStyle == .dark
-            ? UIColor(red: 0.784, green: 0.635, blue: 0.314, alpha: 1)
-            : UIColor(red: 0.678, green: 0.506, blue: 0.180, alpha: 1)
-    })
 }
