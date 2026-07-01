@@ -4,6 +4,17 @@ import Charts
 struct HistoryCalorieTrendCard: View {
     let range: HistoryRange
     let summary: HistoryPeriodSummary
+    let drillDownAction: (() -> Void)?
+
+    init(
+        range: HistoryRange,
+        summary: HistoryPeriodSummary,
+        drillDownAction: (() -> Void)? = nil
+    ) {
+        self.range = range
+        self.summary = summary
+        self.drillDownAction = drillDownAction
+    }
 
     private struct ChartDay: Identifiable {
         let index: Double
@@ -97,6 +108,10 @@ struct HistoryCalorieTrendCard: View {
         .fixed(range == .week ? 10 : 6)
     }
 
+    private var chartHeight: CGFloat {
+        range == .week ? 160 : 180
+    }
+
     private var xAxisDomain: ClosedRange<Double> {
         guard let firstIndex = chartPoints.first?.index,
               let lastIndex = chartPoints.last?.index else {
@@ -106,6 +121,19 @@ struct HistoryCalorieTrendCard: View {
     }
 
     var body: some View {
+        if let drillDownAction {
+            Button(action: drillDownAction) {
+                content
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("View calorie trend details")
+            .accessibilityValue(accessibilityLabel)
+        } else {
+            content
+        }
+    }
+
+    private var content: some View {
         VStack(alignment: .leading, spacing: 14) {
             header
             chart
@@ -116,11 +144,20 @@ struct HistoryCalorieTrendCard: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .center, spacing: 8) {
                 Text("Calorie Trend")
                     .font(CalorynTheme.caption)
                     .foregroundStyle(CalorynTheme.textSecondary)
                     .textCase(.uppercase)
+
+                Spacer()
+
+                if drillDownAction != nil {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(CalorynTheme.textSecondary)
+                        .accessibilityHidden(true)
+                }
             }
 
             if hasLoggedData {
@@ -247,7 +284,7 @@ struct HistoryCalorieTrendCard: View {
         }
         .chartYScale(domain: 0 ... yAxisUpperBound)
         .chartXScale(domain: xAxisDomain)
-        .frame(height: range == .week ? 160 : 180)
+        .frame(height: chartHeight)
         .accessibilityLabel(accessibilityLabel)
     }
 

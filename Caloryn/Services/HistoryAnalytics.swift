@@ -269,6 +269,20 @@ struct HistoryGoalComparison {
     }
 }
 
+enum HistoryCalorieTrendSelection: Identifiable {
+    case day(HistoryDayDetail)
+    case week(HistoryWeekSummary)
+
+    var id: String {
+        switch self {
+        case .day(let detail):
+            "day-\(detail.id.ISO8601Format())"
+        case .week(let week):
+            "week-\(week.id.ISO8601Format())"
+        }
+    }
+}
+
 struct HistoryDaySummary: Identifiable {
     let date: Date
     let entryCount: Int
@@ -277,6 +291,7 @@ struct HistoryDaySummary: Identifiable {
     let carbsG: Double
     let fatG: Double
     let status: HistoryGoalStatus
+    let detail: HistoryDayDetail
 
     var id: Date { date }
     var isLogged: Bool { entryCount > 0 }
@@ -292,24 +307,22 @@ struct HistoryDaySummary: Identifiable {
         proteinG = entries.reduce(0) { $0 + $1.proteinG }
         carbsG = entries.reduce(0) { $0 + $1.carbsG }
         fatG = entries.reduce(0) { $0 + $1.fatG }
-        status = Self.status(
+        let computedStatus = Self.status(
             calories: calories,
             entryCount: entryCount,
             dailyCalorieTarget: dailyCalorieTarget
         )
+        status = computedStatus
+        detail = HistoryDayDetail(
+            date: date,
+            entries: entries,
+            dailyCalorieTarget: dailyCalorieTarget,
+            status: computedStatus
+        )
     }
 
     func value(for nutrient: TrackedNutrient) -> Double {
-        switch nutrient {
-        case .protein:
-            proteinG
-        case .carbs:
-            carbsG
-        case .fat:
-            fatG
-        case .fiber, .sugars, .addedSugars, .saturatedFat, .sodium, .cholesterol, .alcohol:
-            0
-        }
+        detail.value(for: nutrient)
     }
 
     private static func status(
@@ -331,8 +344,222 @@ struct HistoryDaySummary: Identifiable {
     }
 }
 
+struct HistoryDayDetail: Identifiable {
+    let date: Date
+    let dailyCalorieTarget: Int
+    let entryCount: Int
+    let totalPortionGrams: Double
+    let calories: Double
+    let proteinG: Double
+    let carbsG: Double
+    let fatG: Double
+    let fiberG: Double
+    let sugarsG: Double
+    let addedSugarsG: Double
+    let saturatedFatG: Double
+    let sodiumG: Double
+    let cholesterolG: Double
+    let alcoholG: Double
+    let status: HistoryGoalStatus
+    let mealSummaries: [HistoryMealSummary]
+    let topFoods: [HistoryFoodSummary]
+    let produceSummary: ProduceVarietySummary
+    let nutriscoreDistribution: [HistoryNutriscoreSummary]
+
+    var id: Date { date }
+    var isLogged: Bool { entryCount > 0 }
+    var calorieDifference: Int {
+        Int(calories.rounded()) - dailyCalorieTarget
+    }
+
+    init(
+        date: Date,
+        entries: [FoodLogEntry],
+        dailyCalorieTarget: Int,
+        status: HistoryGoalStatus? = nil
+    ) {
+        self.date = date
+        self.dailyCalorieTarget = dailyCalorieTarget
+        entryCount = entries.count
+        totalPortionGrams = entries.reduce(0) { $0 + $1.portionGrams }
+        calories = entries.reduce(0) { $0 + $1.calories }
+        proteinG = entries.reduce(0) { $0 + $1.proteinG }
+        carbsG = entries.reduce(0) { $0 + $1.carbsG }
+        fatG = entries.reduce(0) { $0 + $1.fatG }
+        fiberG = entries.reduce(0) { $0 + $1.fiberG }
+        sugarsG = entries.reduce(0) { $0 + ($1.sugarsG ?? 0) }
+        addedSugarsG = entries.reduce(0) { $0 + ($1.addedSugarsG ?? 0) }
+        saturatedFatG = entries.reduce(0) { $0 + ($1.saturatedFatG ?? 0) }
+        sodiumG = entries.reduce(0) { $0 + ($1.sodiumG ?? 0) }
+        cholesterolG = entries.reduce(0) { $0 + ($1.cholesterolG ?? 0) }
+        alcoholG = entries.reduce(0) { $0 + ($1.alcoholG ?? 0) }
+        self.status = status ?? Self.status(
+            calories: calories,
+            entryCount: entryCount,
+            dailyCalorieTarget: dailyCalorieTarget
+        )
+        mealSummaries = Self.mealSummaries(from: entries)
+        topFoods = Self.topFoods(from: entries)
+        produceSummary = ProduceVarietySummary(entries: entries)
+        nutriscoreDistribution = Self.nutriscoreDistribution(from: entries)
+    }
+
+    func value(for nutrient: TrackedNutrient) -> Double {
+        switch nutrient {
+        case .protein:
+            proteinG
+        case .carbs:
+            carbsG
+        case .fat:
+            fatG
+        case .fiber:
+            fiberG
+        case .sugars:
+            sugarsG
+        case .addedSugars:
+            addedSugarsG
+        case .saturatedFat:
+            saturatedFatG
+        case .sodium:
+            sodiumG
+        case .cholesterol:
+            cholesterolG
+        case .alcohol:
+            alcoholG
+        }
+    }
+
+    private static func status(
+        calories: Double,
+        entryCount: Int,
+        dailyCalorieTarget: Int
+    ) -> HistoryGoalStatus {
+        guard entryCount > 0 else { return .notLogged }
+        guard dailyCalorieTarget > 0 else { return .onTrack }
+
+        let target = Double(dailyCalorieTarget)
+        if calories < target * (1 - HistoryAnalytics.onTrackTolerance) {
+            return .under
+        }
+        if calories > target * (1 + HistoryAnalytics.onTrackTolerance) {
+            return .over
+        }
+        return .onTrack
+    }
+
+    private static func mealSummaries(from entries: [FoodLogEntry]) -> [HistoryMealSummary] {
+        MealType.allCases.compactMap { mealType in
+            let mealEntries = entries.filter { $0.mealType == mealType }
+            guard !mealEntries.isEmpty else { return nil }
+
+            return HistoryMealSummary(
+                mealType: mealType,
+                entryCount: mealEntries.count,
+                calories: mealEntries.reduce(0) { $0 + $1.calories }
+            )
+        }
+    }
+
+    private static func topFoods(from entries: [FoodLogEntry]) -> [HistoryFoodSummary] {
+        var foods: [String: HistoryFoodAccumulator] = [:]
+
+        for entry in entries {
+            let name = foodName(for: entry)
+            let key = normalizedFoodKey(name)
+            guard !key.isEmpty else { continue }
+
+            var accumulator = foods[key] ?? HistoryFoodAccumulator(id: key, name: name)
+            accumulator.entryCount += 1
+            accumulator.portionGrams += entry.portionGrams
+            accumulator.calories += entry.calories
+            foods[key] = accumulator
+        }
+
+        return foods.values
+            .map(\.summary)
+            .sorted {
+                if $0.calories == $1.calories {
+                    return $0.name.localizedStandardCompare($1.name) == .orderedAscending
+                }
+                return $0.calories > $1.calories
+            }
+    }
+
+    private static func foodName(for entry: FoodLogEntry) -> String {
+        let storedName = entry.foodName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !storedName.isEmpty { return storedName }
+
+        let foodItemName = entry.foodItem?.name.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return foodItemName.isEmpty ? "Unnamed food" : foodItemName
+    }
+
+    private static func normalizedFoodKey(_ name: String) -> String {
+        name
+            .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
+            .lowercased()
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static func nutriscoreDistribution(from entries: [FoodLogEntry]) -> [HistoryNutriscoreSummary] {
+        let validGrades = ["a", "b", "c", "d", "e"]
+        let order = Dictionary(uniqueKeysWithValues: validGrades.enumerated().map { ($1, $0) })
+        let counts = entries.reduce(into: [String: Int]()) { result, entry in
+            guard let grade = entry.foodItem?.nutriscoreGrade?.lowercased(),
+                  order[grade] != nil else { return }
+            result[grade, default: 0] += 1
+        }
+
+        return counts.map { grade, count in
+            HistoryNutriscoreSummary(grade: grade, count: count)
+        }
+        .sorted { (order[$0.grade] ?? 0) < (order[$1.grade] ?? 0) }
+    }
+}
+
+struct HistoryMealSummary: Identifiable {
+    let mealType: MealType
+    let entryCount: Int
+    let calories: Double
+
+    var id: String { mealType.id }
+}
+
+struct HistoryFoodSummary: Identifiable {
+    let id: String
+    let name: String
+    let entryCount: Int
+    let portionGrams: Double
+    let calories: Double
+}
+
+struct HistoryNutriscoreSummary: Identifiable {
+    let grade: String
+    let count: Int
+
+    var id: String { grade }
+}
+
+private struct HistoryFoodAccumulator {
+    let id: String
+    let name: String
+    var entryCount = 0
+    var portionGrams: Double = 0
+    var calories: Double = 0
+
+    var summary: HistoryFoodSummary {
+        HistoryFoodSummary(
+            id: id,
+            name: name,
+            entryCount: entryCount,
+            portionGrams: portionGrams,
+            calories: calories
+        )
+    }
+}
+
 struct HistoryWeekSummary: Identifiable {
     let startDate: Date
+    let days: [HistoryDaySummary]
     let totalDays: Int
     let loggedDays: Int
     let onTrackDays: Int
@@ -352,6 +579,7 @@ struct HistoryWeekSummary: Identifiable {
 
     init(startDate: Date, days: [HistoryDaySummary]) {
         self.startDate = startDate
+        self.days = days
         let logged = days.filter(\.isLogged)
         totalDays = days.count
         loggedDays = logged.count

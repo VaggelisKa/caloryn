@@ -114,6 +114,78 @@ final class HistoryAnalyticsTests: XCTestCase {
         XCTAssertEqual(middleWeek.onTrackRatio, 2.0 / 3.0, accuracy: 0.001)
         XCTAssertEqual(middleWeek.coverageRatio, 3.0 / 7.0, accuracy: 0.001)
         XCTAssertEqual(middleWeek.averageCaloriesPerLoggedDay, 2_100, accuracy: 0.001)
+        XCTAssertEqual(middleWeek.days.count, 7)
+        XCTAssertEqual(middleWeek.days[0].detail.calories, 2_000, accuracy: 0.001)
+    }
+
+    func testDayDetailSummarizesMealsAndTopFoods() {
+        let profile = makeProfile()
+        let date = makeTestDate(year: 2026, month: 1, day: 30)
+        let entries = [
+            makeEntry(date: date, name: "Oats", mealType: .breakfast, calories: 300),
+            makeEntry(date: date, name: "Pasta", mealType: .lunch, calories: 700),
+            makeEntry(date: date, name: "Oats", mealType: .snack, calories: 150)
+        ]
+
+        let analytics = HistoryAnalytics(
+            entries: entries,
+            profile: profile,
+            range: .week,
+            endDate: date
+        )
+
+        let detail = analytics.current.days.last!.detail
+        XCTAssertEqual(detail.entryCount, 3)
+        XCTAssertEqual(detail.mealSummaries.map(\.mealType), [.breakfast, .lunch, .snack])
+        XCTAssertEqual(detail.mealSummaries.first { $0.mealType == .lunch }?.calories ?? 0, 700, accuracy: 0.001)
+        XCTAssertEqual(detail.topFoods.map(\.name), ["Pasta", "Oats"])
+        XCTAssertEqual(detail.topFoods.first { $0.name == "Oats" }?.entryCount, 2)
+        XCTAssertEqual(detail.topFoods.first { $0.name == "Oats" }?.calories ?? 0, 450, accuracy: 0.001)
+    }
+
+    func testDayDetailIncludesProduceAndNutriscoreSummariesWhenPresent() {
+        let profile = makeProfile()
+        let date = makeTestDate(year: 2026, month: 1, day: 30)
+        let entries = [
+            makeEntry(date: date, name: "Apple", calories: 80, nutriscoreGrade: "a", produceKind: .fruit),
+            makeEntry(date: date, name: "Broccoli", calories: 60, nutriscoreGrade: "b", produceKind: .vegetable),
+            makeEntry(date: date, name: "Cereal", calories: 220, nutriscoreGrade: "c")
+        ]
+
+        let analytics = HistoryAnalytics(
+            entries: entries,
+            profile: profile,
+            range: .week,
+            endDate: date
+        )
+
+        let detail = analytics.current.days.last!.detail
+        XCTAssertEqual(detail.produceSummary.totalCount, 2)
+        XCTAssertEqual(detail.produceSummary.fruitCount, 1)
+        XCTAssertEqual(detail.produceSummary.vegetableCount, 1)
+        XCTAssertEqual(detail.nutriscoreDistribution.map(\.grade), ["a", "b", "c"])
+        XCTAssertEqual(detail.nutriscoreDistribution.map(\.count), [1, 1, 1])
+    }
+
+    func testUnloggedDayDetailPreservesTargetAndEmptyCollections() {
+        let profile = makeProfile()
+        let endDate = makeTestDate(year: 2026, month: 1, day: 30)
+
+        let analytics = HistoryAnalytics(
+            entries: [],
+            profile: profile,
+            range: .week,
+            endDate: endDate
+        )
+
+        let detail = analytics.current.days.last!.detail
+        XCTAssertFalse(detail.isLogged)
+        XCTAssertEqual(detail.dailyCalorieTarget, 2_000)
+        XCTAssertEqual(detail.status, .notLogged)
+        XCTAssertTrue(detail.mealSummaries.isEmpty)
+        XCTAssertTrue(detail.topFoods.isEmpty)
+        XCTAssertEqual(detail.produceSummary.totalCount, 0)
+        XCTAssertTrue(detail.nutriscoreDistribution.isEmpty)
     }
 
     private func makeProfile() -> UserProfile {
@@ -129,18 +201,26 @@ final class HistoryAnalyticsTests: XCTestCase {
 
     private func makeEntry(
         date: Date,
+        name: String = "Test Food",
+        mealType: MealType = .breakfast,
         calories: Double = 2_000,
         protein: Double = 0,
         carbs: Double = 0,
-        fat: Double = 0
+        fat: Double = 0,
+        nutriscoreGrade: String? = nil,
+        produceKind: ProduceKind? = nil
     ) -> FoodLogEntry {
         makeTestEntry(
             date: date,
+            mealType: mealType,
             foodItem: makeTestFoodItem(
+                name: name,
                 caloriesPer100g: calories,
                 proteinPer100g: protein,
                 carbsPer100g: carbs,
-                fatPer100g: fat
+                fatPer100g: fat,
+                nutriscoreGrade: nutriscoreGrade,
+                produceKind: produceKind
             ),
             portionGrams: 100
         )
