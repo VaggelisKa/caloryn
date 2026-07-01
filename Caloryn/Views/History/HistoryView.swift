@@ -7,6 +7,8 @@ struct HistoryView: View {
 
     @State private var selectedRange: HistoryRange = .week
     @State private var analytics: HistoryAnalytics
+    @State private var navigationPath: [HistoryDrillDownRoute] = []
+    @State private var calorieTrendSnapshots: [UUID: HistoryCalorieTrendSnapshot] = [:]
 
     init(initialRange: HistoryRange = .week) {
         _selectedRange = State(initialValue: initialRange)
@@ -40,16 +42,20 @@ struct HistoryView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navigationPath) {
             ScrollView {
                 let history = analytics
+                let canOpenCalorieTrendDetail = canOpenCalorieTrendDetail(in: history.current)
 
                 VStack(spacing: CalorynTheme.cardSpacing) {
                     rangePicker
 
                     HistoryCalorieTrendCard(
                         range: selectedRange,
-                        summary: history.current
+                        summary: history.current,
+                        drillDownAction: canOpenCalorieTrendDetail
+                            ? { openCalorieTrendDetail(range: selectedRange, summary: history.current) }
+                            : nil
                     )
 
                     HistoryGoalSummaryCard(
@@ -70,6 +76,9 @@ struct HistoryView: View {
                 .padding(.bottom, 20)
             }
             .navigationTitle("History")
+            .navigationDestination(for: HistoryDrillDownRoute.self) { route in
+                destination(for: route)
+            }
         }
         .task(id: analyticsRefreshID) {
             refreshAnalytics()
@@ -84,6 +93,37 @@ struct HistoryView: View {
         )
     }
 
+    private func openCalorieTrendDetail(range: HistoryRange, summary: HistoryPeriodSummary) {
+        let snapshot = HistoryCalorieTrendSnapshot(
+            range: range,
+            summary: summary
+        )
+        calorieTrendSnapshots = [snapshot.id: snapshot]
+        navigationPath.append(.calorieTrend(snapshot.id))
+    }
+
+    private func canOpenCalorieTrendDetail(in summary: HistoryPeriodSummary) -> Bool {
+        switch selectedRange {
+        case .quarter:
+            summary.weeklyRollups.filter { $0.loggedDays > 0 }.count >= 2
+        case .week, .twoWeeks, .month:
+            summary.days.filter(\.isLogged).count >= 2
+        }
+    }
+
+    @ViewBuilder
+    private func destination(for route: HistoryDrillDownRoute) -> some View {
+        switch route {
+        case .calorieTrend(let id):
+            if let snapshot = calorieTrendSnapshots[id] {
+                HistoryCalorieTrendDetailView(
+                    range: snapshot.range,
+                    summary: snapshot.summary
+                )
+            }
+        }
+    }
+
     private var rangePicker: some View {
         Picker("Range", selection: $selectedRange) {
             ForEach(HistoryRange.allCases) { range in
@@ -93,6 +133,16 @@ struct HistoryView: View {
         .pickerStyle(.segmented)
         .padding(.top, 4)
     }
+}
+
+private enum HistoryDrillDownRoute: Hashable {
+    case calorieTrend(UUID)
+}
+
+private struct HistoryCalorieTrendSnapshot {
+    let id = UUID()
+    let range: HistoryRange
+    let summary: HistoryPeriodSummary
 }
 
 private struct HistoryAnalyticsRefreshID: Equatable {
@@ -128,10 +178,23 @@ private struct HistoryProfileSignature: Equatable {
 private struct HistoryEntrySignature: Equatable {
     let id: UUID
     let date: Date
+    let mealTypeRaw: String
+    let snackIndex: Int
+    let foodName: String
+    let portionGrams: Double
     let calories: Double
     let proteinG: Double
     let carbsG: Double
     let fatG: Double
+    let fiberG: Double
+    let sugarsG: Double?
+    let addedSugarsG: Double?
+    let saturatedFatG: Double?
+    let sodiumG: Double?
+    let cholesterolG: Double?
+    let alcoholG: Double?
+    let nutriscoreGrade: String?
+    let produceKindRaw: String?
 
     var sortKey: String {
         id.uuidString
@@ -140,10 +203,23 @@ private struct HistoryEntrySignature: Equatable {
     init(entry: FoodLogEntry) {
         id = entry.id
         date = entry.date
+        mealTypeRaw = entry.mealType.rawValue
+        snackIndex = entry.snackIndex
+        foodName = entry.foodName
+        portionGrams = entry.portionGrams
         calories = entry.calories
         proteinG = entry.proteinG
         carbsG = entry.carbsG
         fatG = entry.fatG
+        fiberG = entry.fiberG
+        sugarsG = entry.sugarsG
+        addedSugarsG = entry.addedSugarsG
+        saturatedFatG = entry.saturatedFatG
+        sodiumG = entry.sodiumG
+        cholesterolG = entry.cholesterolG
+        alcoholG = entry.alcoholG
+        nutriscoreGrade = entry.foodItem?.nutriscoreGrade
+        produceKindRaw = entry.foodItem?.produceKind.rawValue
     }
 }
 

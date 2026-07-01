@@ -83,6 +83,54 @@ enum HistoryPreviewFixtures {
     }
 
     @MainActor
+    static func drillDownDayDetail() -> HistoryDayDetail {
+        let profile = previewProfile()
+        let day = date(dayOffset: 0)
+
+        return HistoryDayDetail(
+            date: day,
+            entries: drillDownEntries(for: day),
+            dailyCalorieTarget: profile.dailyCalorieTarget
+        )
+    }
+
+    @MainActor
+    static func drillDownWeekSummary() -> HistoryWeekSummary {
+        let profile = previewProfile()
+        let calendar = Calendar.current
+        let weekStart = date(dayOffset: 0).startOfWeek
+        let days = (0..<7).compactMap { offset -> HistoryDaySummary? in
+            guard let day = calendar.date(byAdding: .day, value: offset, to: weekStart) else {
+                return nil
+            }
+
+            let entries: [FoodLogEntry]
+            switch offset {
+            case 0:
+                entries = drillDownEntries(for: day)
+            case 1:
+                entries = []
+            case 2:
+                entries = [entry(for: .under, date: day, mealType: .lunch)]
+            case 3:
+                entries = [entry(for: .onTrack, date: day, mealType: .dinner)]
+            case 4:
+                entries = [entry(for: .over, date: day, mealType: .dinner)]
+            default:
+                entries = [entry(for: .onTrack, date: day, mealType: .breakfast)]
+            }
+
+            return HistoryDaySummary(
+                date: day,
+                entries: entries,
+                dailyCalorieTarget: profile.dailyCalorieTarget
+            )
+        }
+
+        return HistoryWeekSummary(startDate: weekStart, days: days)
+    }
+
+    @MainActor
     static func container(for scenario: HistoryPreviewScenario) throws -> ModelContainer {
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
         let container = try ModelContainer(
@@ -238,6 +286,140 @@ private extension HistoryPreviewFixtures {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: .now)
         return calendar.date(byAdding: .day, value: -dayOffset, to: today) ?? today
+    }
+
+    @MainActor
+    static func drillDownEntries(for date: Date) -> [FoodLogEntry] {
+        [
+            entry(
+                name: "Greek yogurt",
+                caloriesPer100g: 85,
+                proteinPer100g: 9,
+                carbsPer100g: 7,
+                fatPer100g: 2,
+                fiberPer100g: 0,
+                nutriscoreGrade: "a",
+                mealType: .breakfast,
+                portionGrams: 180,
+                date: date
+            ),
+            entry(
+                name: "Blueberries",
+                caloriesPer100g: 57,
+                proteinPer100g: 0.7,
+                carbsPer100g: 14,
+                fatPer100g: 0.3,
+                fiberPer100g: 2.4,
+                nutriscoreGrade: "a",
+                produceKind: .fruit,
+                mealType: .breakfast,
+                portionGrams: 90,
+                date: date
+            ),
+            entry(
+                name: "Chicken rice bowl",
+                caloriesPer100g: 172,
+                proteinPer100g: 13,
+                carbsPer100g: 21,
+                fatPer100g: 4.5,
+                fiberPer100g: 2,
+                nutriscoreGrade: "b",
+                mealType: .lunch,
+                portionGrams: 420,
+                date: date
+            ),
+            entry(
+                name: "Apple",
+                caloriesPer100g: 52,
+                proteinPer100g: 0.3,
+                carbsPer100g: 14,
+                fatPer100g: 0.2,
+                fiberPer100g: 2.4,
+                nutriscoreGrade: "a",
+                produceKind: .fruit,
+                mealType: .snack,
+                portionGrams: 160,
+                date: date
+            ),
+            entry(
+                name: "Salmon",
+                caloriesPer100g: 208,
+                proteinPer100g: 20,
+                carbsPer100g: 0,
+                fatPer100g: 13,
+                fiberPer100g: 0,
+                nutriscoreGrade: "b",
+                mealType: .dinner,
+                portionGrams: 180,
+                date: date
+            ),
+            entry(
+                name: "Broccoli",
+                caloriesPer100g: 35,
+                proteinPer100g: 2.4,
+                carbsPer100g: 7,
+                fatPer100g: 0.4,
+                fiberPer100g: 3.3,
+                nutriscoreGrade: "a",
+                produceKind: .vegetable,
+                mealType: .dinner,
+                portionGrams: 140,
+                date: date
+            )
+        ]
+    }
+
+    @MainActor
+    static func entry(
+        for plan: HistoryPreviewDayPlan,
+        date: Date,
+        mealType: MealType
+    ) -> FoodLogEntry {
+        entry(
+            name: "Preview meal",
+            caloriesPer100g: plan.calories,
+            proteinPer100g: plan.proteinG,
+            carbsPer100g: plan.carbsG,
+            fatPer100g: plan.fatG,
+            fiberPer100g: plan.fiberG,
+            nutriscoreGrade: plan.nutriscoreGrade,
+            mealType: mealType,
+            portionGrams: 100,
+            date: date
+        )
+    }
+
+    @MainActor
+    static func entry(
+        name: String,
+        caloriesPer100g: Double,
+        proteinPer100g: Double,
+        carbsPer100g: Double,
+        fatPer100g: Double,
+        fiberPer100g: Double,
+        nutriscoreGrade: String?,
+        produceKind: ProduceKind? = nil,
+        mealType: MealType,
+        portionGrams: Double,
+        date: Date
+    ) -> FoodLogEntry {
+        let food = FoodItem(
+            name: name,
+            caloriesPer100g: caloriesPer100g,
+            proteinPer100g: proteinPer100g,
+            carbsPer100g: carbsPer100g,
+            fatPer100g: fatPer100g,
+            fiberPer100g: fiberPer100g,
+            nutriscoreGrade: nutriscoreGrade,
+            produceKind: produceKind
+        )
+
+        return FoodLogEntry(
+            date: date,
+            mealType: mealType,
+            foodItem: food,
+            portionGrams: portionGrams
+        )
     }
 }
 

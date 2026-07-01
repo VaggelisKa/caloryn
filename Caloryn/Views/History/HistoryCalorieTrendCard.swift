@@ -4,6 +4,17 @@ import Charts
 struct HistoryCalorieTrendCard: View {
     let range: HistoryRange
     let summary: HistoryPeriodSummary
+    let drillDownAction: (() -> Void)?
+
+    init(
+        range: HistoryRange,
+        summary: HistoryPeriodSummary,
+        drillDownAction: (() -> Void)? = nil
+    ) {
+        self.range = range
+        self.summary = summary
+        self.drillDownAction = drillDownAction
+    }
 
     private struct ChartDay: Identifiable {
         let index: Double
@@ -53,7 +64,11 @@ struct HistoryCalorieTrendCard: View {
     private var weeklyChartPoints: [ChartPoint] {
         summary.weeklyRollups.enumerated().map { offset, week in
             let averageCalories = week.averageCaloriesPerLoggedDay
-            let status = weeklyStatus(for: averageCalories, loggedDayCount: week.loggedDays)
+            let status = HistoryGoalStatus.calorieStatus(
+                calories: averageCalories,
+                loggedCount: week.loggedDays,
+                targetCalories: summary.dailyCalorieTarget
+            )
             let label = "W\(offset + 1)"
 
             return ChartPoint(
@@ -97,6 +112,10 @@ struct HistoryCalorieTrendCard: View {
         .fixed(range == .week ? 10 : 6)
     }
 
+    private var chartHeight: CGFloat {
+        range == .week ? 160 : 180
+    }
+
     private var xAxisDomain: ClosedRange<Double> {
         guard let firstIndex = chartPoints.first?.index,
               let lastIndex = chartPoints.last?.index else {
@@ -106,6 +125,19 @@ struct HistoryCalorieTrendCard: View {
     }
 
     var body: some View {
+        if let drillDownAction {
+            Button(action: drillDownAction) {
+                content
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("View calorie trend details")
+            .accessibilityValue(accessibilityLabel)
+        } else {
+            content
+        }
+    }
+
+    private var content: some View {
         VStack(alignment: .leading, spacing: 14) {
             header
             chart
@@ -116,11 +148,20 @@ struct HistoryCalorieTrendCard: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .center, spacing: 8) {
                 Text("Calorie Trend")
                     .font(CalorynTheme.caption)
                     .foregroundStyle(CalorynTheme.textSecondary)
                     .textCase(.uppercase)
+
+                Spacer()
+
+                if drillDownAction != nil {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(CalorynTheme.textSecondary)
+                        .accessibilityHidden(true)
+                }
             }
 
             if hasLoggedData {
@@ -247,7 +288,7 @@ struct HistoryCalorieTrendCard: View {
         }
         .chartYScale(domain: 0 ... yAxisUpperBound)
         .chartXScale(domain: xAxisDomain)
-        .frame(height: range == .week ? 160 : 180)
+        .frame(height: chartHeight)
         .accessibilityLabel(accessibilityLabel)
     }
 
@@ -260,20 +301,6 @@ struct HistoryCalorieTrendCard: View {
         let roundedIndex = Int(index.rounded())
         guard chartPoints.indices.contains(roundedIndex) else { return nil }
         return chartPoints[roundedIndex]
-    }
-
-    private func weeklyStatus(for averageCalories: Double, loggedDayCount: Int) -> HistoryGoalStatus {
-        guard loggedDayCount > 0 else { return .notLogged }
-        guard summary.dailyCalorieTarget > 0 else { return .onTrack }
-
-        let target = Double(summary.dailyCalorieTarget)
-        if averageCalories < target * (1 - HistoryAnalytics.onTrackTolerance) {
-            return .under
-        }
-        if averageCalories > target * (1 + HistoryAnalytics.onTrackTolerance) {
-            return .over
-        }
-        return .onTrack
     }
 
     private var averageDifferenceText: String {
@@ -313,13 +340,12 @@ struct HistoryCalorieTrendCard: View {
     private func color(forDifference difference: Double, target: Double) -> Color {
         guard target > 0 else { return CalorynTheme.textSecondary }
 
-        if difference < -(target * HistoryAnalytics.onTrackTolerance) {
-            return HistoryGoalStatus.under.tint
-        }
-        if difference > target * HistoryAnalytics.onTrackTolerance {
-            return HistoryGoalStatus.over.tint
-        }
-        return HistoryGoalStatus.onTrack.tint
+        return HistoryGoalStatus.calorieStatus(
+            calories: target + difference,
+            loggedCount: 1,
+            targetCalories: Int(target.rounded())
+        )
+        .tint
     }
 
     private var accessibilityLabel: String {
