@@ -115,7 +115,7 @@ final class HistoryAnalyticsTests: XCTestCase {
         XCTAssertEqual(middleWeek.coverageRatio, 3.0 / 7.0, accuracy: 0.001)
         XCTAssertEqual(middleWeek.averageCaloriesPerLoggedDay, 2_100, accuracy: 0.001)
         XCTAssertEqual(middleWeek.days.count, 7)
-        XCTAssertEqual(middleWeek.days[0].detail.calories, 2_000, accuracy: 0.001)
+        XCTAssertEqual(middleWeek.days[0].makeDetail().calories, 2_000, accuracy: 0.001)
     }
 
     func testDayDetailSummarizesMealsAndTopFoods() {
@@ -134,7 +134,7 @@ final class HistoryAnalyticsTests: XCTestCase {
             endDate: date
         )
 
-        let detail = analytics.current.days.last!.detail
+        let detail = analytics.current.days.last!.makeDetail()
         XCTAssertEqual(detail.entryCount, 3)
         XCTAssertEqual(detail.mealSummaries.map(\.mealType), [.breakfast, .lunch, .snack])
         XCTAssertEqual(detail.mealSummaries.first { $0.mealType == .lunch }?.calories ?? 0, 700, accuracy: 0.001)
@@ -159,7 +159,7 @@ final class HistoryAnalyticsTests: XCTestCase {
             endDate: date
         )
 
-        let detail = analytics.current.days.last!.detail
+        let detail = analytics.current.days.last!.makeDetail()
         XCTAssertEqual(detail.produceSummary.totalCount, 2)
         XCTAssertEqual(detail.produceSummary.fruitCount, 1)
         XCTAssertEqual(detail.produceSummary.vegetableCount, 1)
@@ -178,7 +178,7 @@ final class HistoryAnalyticsTests: XCTestCase {
             endDate: endDate
         )
 
-        let detail = analytics.current.days.last!.detail
+        let detail = analytics.current.days.last!.makeDetail()
         XCTAssertFalse(detail.isLogged)
         XCTAssertEqual(detail.dailyCalorieTarget, 2_000)
         XCTAssertEqual(detail.status, .notLogged)

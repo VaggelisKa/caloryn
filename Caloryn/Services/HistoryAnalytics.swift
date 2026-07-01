@@ -55,6 +55,24 @@ enum HistoryGoalStatus: String, CaseIterable, Identifiable {
             "Not Logged"
         }
     }
+
+    static func calorieStatus(
+        calories: Double,
+        loggedCount: Int,
+        targetCalories: Int
+    ) -> HistoryGoalStatus {
+        guard loggedCount > 0 else { return .notLogged }
+        guard targetCalories > 0 else { return .onTrack }
+
+        let target = Double(targetCalories)
+        if calories < target * (1 - HistoryAnalytics.onTrackTolerance) {
+            return .under
+        }
+        if calories > target * (1 + HistoryAnalytics.onTrackTolerance) {
+            return .over
+        }
+        return .onTrack
+    }
 }
 
 enum HistoryCoverageLevel: String {
@@ -270,13 +288,13 @@ struct HistoryGoalComparison {
 }
 
 enum HistoryCalorieTrendSelection: Identifiable {
-    case day(HistoryDayDetail)
+    case day(HistoryDaySummary)
     case week(HistoryWeekSummary)
 
     var id: String {
         switch self {
-        case .day(let detail):
-            "day-\(detail.id.ISO8601Format())"
+        case .day(let day):
+            "day-\(day.id.ISO8601Format())"
         case .week(let week):
             "week-\(week.id.ISO8601Format())"
         }
@@ -286,15 +304,26 @@ enum HistoryCalorieTrendSelection: Identifiable {
 struct HistoryDaySummary: Identifiable {
     let date: Date
     let entryCount: Int
+    let dailyCalorieTarget: Int
     let calories: Double
     let proteinG: Double
     let carbsG: Double
     let fatG: Double
+    let fiberG: Double
+    let sugarsG: Double
+    let addedSugarsG: Double
+    let saturatedFatG: Double
+    let sodiumG: Double
+    let cholesterolG: Double
+    let alcoholG: Double
     let status: HistoryGoalStatus
-    let detail: HistoryDayDetail
+    private let entries: [FoodLogEntry]
 
     var id: Date { date }
     var isLogged: Bool { entryCount > 0 }
+    var calorieDifference: Int {
+        Int(calories.rounded()) - dailyCalorieTarget
+    }
 
     init(
         date: Date,
@@ -302,45 +331,86 @@ struct HistoryDaySummary: Identifiable {
         dailyCalorieTarget: Int
     ) {
         self.date = date
+        self.entries = entries
+        self.dailyCalorieTarget = dailyCalorieTarget
         entryCount = entries.count
-        calories = entries.reduce(0) { $0 + $1.calories }
-        proteinG = entries.reduce(0) { $0 + $1.proteinG }
-        carbsG = entries.reduce(0) { $0 + $1.carbsG }
-        fatG = entries.reduce(0) { $0 + $1.fatG }
-        let computedStatus = Self.status(
+
+        var calorieTotal: Double = 0
+        var proteinTotal: Double = 0
+        var carbTotal: Double = 0
+        var fatTotal: Double = 0
+        var fiberTotal: Double = 0
+        var sugarTotal: Double = 0
+        var addedSugarTotal: Double = 0
+        var saturatedFatTotal: Double = 0
+        var sodiumTotal: Double = 0
+        var cholesterolTotal: Double = 0
+        var alcoholTotal: Double = 0
+
+        for entry in entries {
+            calorieTotal += entry.calories
+            proteinTotal += entry.proteinG
+            carbTotal += entry.carbsG
+            fatTotal += entry.fatG
+            fiberTotal += entry.fiberG
+            sugarTotal += entry.sugarsG ?? 0
+            addedSugarTotal += entry.addedSugarsG ?? 0
+            saturatedFatTotal += entry.saturatedFatG ?? 0
+            sodiumTotal += entry.sodiumG ?? 0
+            cholesterolTotal += entry.cholesterolG ?? 0
+            alcoholTotal += entry.alcoholG ?? 0
+        }
+
+        calories = calorieTotal
+        proteinG = proteinTotal
+        carbsG = carbTotal
+        fatG = fatTotal
+        fiberG = fiberTotal
+        sugarsG = sugarTotal
+        addedSugarsG = addedSugarTotal
+        saturatedFatG = saturatedFatTotal
+        sodiumG = sodiumTotal
+        cholesterolG = cholesterolTotal
+        alcoholG = alcoholTotal
+        status = HistoryGoalStatus.calorieStatus(
             calories: calories,
-            entryCount: entryCount,
-            dailyCalorieTarget: dailyCalorieTarget
+            loggedCount: entryCount,
+            targetCalories: dailyCalorieTarget
         )
-        status = computedStatus
-        detail = HistoryDayDetail(
+    }
+
+    func makeDetail() -> HistoryDayDetail {
+        HistoryDayDetail(
             date: date,
             entries: entries,
             dailyCalorieTarget: dailyCalorieTarget,
-            status: computedStatus
+            status: status
         )
     }
 
     func value(for nutrient: TrackedNutrient) -> Double {
-        detail.value(for: nutrient)
-    }
-
-    private static func status(
-        calories: Double,
-        entryCount: Int,
-        dailyCalorieTarget: Int
-    ) -> HistoryGoalStatus {
-        guard entryCount > 0 else { return .notLogged }
-        guard dailyCalorieTarget > 0 else { return .onTrack }
-
-        let target = Double(dailyCalorieTarget)
-        if calories < target * (1 - HistoryAnalytics.onTrackTolerance) {
-            return .under
+        switch nutrient {
+        case .protein:
+            proteinG
+        case .carbs:
+            carbsG
+        case .fat:
+            fatG
+        case .fiber:
+            fiberG
+        case .sugars:
+            sugarsG
+        case .addedSugars:
+            addedSugarsG
+        case .saturatedFat:
+            saturatedFatG
+        case .sodium:
+            sodiumG
+        case .cholesterol:
+            cholesterolG
+        case .alcohol:
+            alcoholG
         }
-        if calories > target * (1 + HistoryAnalytics.onTrackTolerance) {
-            return .over
-        }
-        return .onTrack
     }
 }
 
@@ -393,10 +463,10 @@ struct HistoryDayDetail: Identifiable {
         sodiumG = entries.reduce(0) { $0 + ($1.sodiumG ?? 0) }
         cholesterolG = entries.reduce(0) { $0 + ($1.cholesterolG ?? 0) }
         alcoholG = entries.reduce(0) { $0 + ($1.alcoholG ?? 0) }
-        self.status = status ?? Self.status(
+        self.status = status ?? HistoryGoalStatus.calorieStatus(
             calories: calories,
-            entryCount: entryCount,
-            dailyCalorieTarget: dailyCalorieTarget
+            loggedCount: entryCount,
+            targetCalories: dailyCalorieTarget
         )
         mealSummaries = Self.mealSummaries(from: entries)
         topFoods = Self.topFoods(from: entries)
@@ -427,24 +497,6 @@ struct HistoryDayDetail: Identifiable {
         case .alcohol:
             alcoholG
         }
-    }
-
-    private static func status(
-        calories: Double,
-        entryCount: Int,
-        dailyCalorieTarget: Int
-    ) -> HistoryGoalStatus {
-        guard entryCount > 0 else { return .notLogged }
-        guard dailyCalorieTarget > 0 else { return .onTrack }
-
-        let target = Double(dailyCalorieTarget)
-        if calories < target * (1 - HistoryAnalytics.onTrackTolerance) {
-            return .under
-        }
-        if calories > target * (1 + HistoryAnalytics.onTrackTolerance) {
-            return .over
-        }
-        return .onTrack
     }
 
     private static func mealSummaries(from entries: [FoodLogEntry]) -> [HistoryMealSummary] {

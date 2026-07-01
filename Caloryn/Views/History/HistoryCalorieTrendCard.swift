@@ -64,7 +64,11 @@ struct HistoryCalorieTrendCard: View {
     private var weeklyChartPoints: [ChartPoint] {
         summary.weeklyRollups.enumerated().map { offset, week in
             let averageCalories = week.averageCaloriesPerLoggedDay
-            let status = weeklyStatus(for: averageCalories, loggedDayCount: week.loggedDays)
+            let status = HistoryGoalStatus.calorieStatus(
+                calories: averageCalories,
+                loggedCount: week.loggedDays,
+                targetCalories: summary.dailyCalorieTarget
+            )
             let label = "W\(offset + 1)"
 
             return ChartPoint(
@@ -299,20 +303,6 @@ struct HistoryCalorieTrendCard: View {
         return chartPoints[roundedIndex]
     }
 
-    private func weeklyStatus(for averageCalories: Double, loggedDayCount: Int) -> HistoryGoalStatus {
-        guard loggedDayCount > 0 else { return .notLogged }
-        guard summary.dailyCalorieTarget > 0 else { return .onTrack }
-
-        let target = Double(summary.dailyCalorieTarget)
-        if averageCalories < target * (1 - HistoryAnalytics.onTrackTolerance) {
-            return .under
-        }
-        if averageCalories > target * (1 + HistoryAnalytics.onTrackTolerance) {
-            return .over
-        }
-        return .onTrack
-    }
-
     private var averageDifferenceText: String {
         guard hasLoggedData else { return "No logged days" }
         return differenceText(Int(averageCalories.rounded()) - summary.dailyCalorieTarget)
@@ -350,13 +340,12 @@ struct HistoryCalorieTrendCard: View {
     private func color(forDifference difference: Double, target: Double) -> Color {
         guard target > 0 else { return CalorynTheme.textSecondary }
 
-        if difference < -(target * HistoryAnalytics.onTrackTolerance) {
-            return HistoryGoalStatus.under.tint
-        }
-        if difference > target * HistoryAnalytics.onTrackTolerance {
-            return HistoryGoalStatus.over.tint
-        }
-        return HistoryGoalStatus.onTrack.tint
+        return HistoryGoalStatus.calorieStatus(
+            calories: target + difference,
+            loggedCount: 1,
+            targetCalories: Int(target.rounded())
+        )
+        .tint
     }
 
     private var accessibilityLabel: String {

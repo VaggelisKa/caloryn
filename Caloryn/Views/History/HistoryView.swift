@@ -8,6 +8,7 @@ struct HistoryView: View {
     @State private var selectedRange: HistoryRange = .week
     @State private var analytics: HistoryAnalytics
     @State private var navigationPath: [HistoryDrillDownRoute] = []
+    @State private var calorieTrendSnapshots: [UUID: HistoryCalorieTrendSnapshot] = [:]
 
     init(initialRange: HistoryRange = .week) {
         _selectedRange = State(initialValue: initialRange)
@@ -44,6 +45,7 @@ struct HistoryView: View {
         NavigationStack(path: $navigationPath) {
             ScrollView {
                 let history = analytics
+                let canOpenCalorieTrendDetail = canOpenCalorieTrendDetail(in: history.current)
 
                 VStack(spacing: CalorynTheme.cardSpacing) {
                     rangePicker
@@ -52,7 +54,7 @@ struct HistoryView: View {
                         range: selectedRange,
                         summary: history.current,
                         drillDownAction: canOpenCalorieTrendDetail
-                            ? { navigationPath.append(.calorieTrend) }
+                            ? { openCalorieTrendDetail(range: selectedRange, summary: history.current) }
                             : nil
                     )
 
@@ -91,23 +93,34 @@ struct HistoryView: View {
         )
     }
 
-    private var canOpenCalorieTrendDetail: Bool {
+    private func openCalorieTrendDetail(range: HistoryRange, summary: HistoryPeriodSummary) {
+        let snapshot = HistoryCalorieTrendSnapshot(
+            range: range,
+            summary: summary
+        )
+        calorieTrendSnapshots = [snapshot.id: snapshot]
+        navigationPath.append(.calorieTrend(snapshot.id))
+    }
+
+    private func canOpenCalorieTrendDetail(in summary: HistoryPeriodSummary) -> Bool {
         switch selectedRange {
         case .quarter:
-            analytics.current.weeklyRollups.filter { $0.loggedDays > 0 }.count >= 2
+            summary.weeklyRollups.filter { $0.loggedDays > 0 }.count >= 2
         case .week, .twoWeeks, .month:
-            analytics.current.days.filter(\.isLogged).count >= 2
+            summary.days.filter(\.isLogged).count >= 2
         }
     }
 
     @ViewBuilder
     private func destination(for route: HistoryDrillDownRoute) -> some View {
         switch route {
-        case .calorieTrend:
-            HistoryCalorieTrendDetailView(
-                range: selectedRange,
-                summary: analytics.current
-            )
+        case .calorieTrend(let id):
+            if let snapshot = calorieTrendSnapshots[id] {
+                HistoryCalorieTrendDetailView(
+                    range: snapshot.range,
+                    summary: snapshot.summary
+                )
+            }
         }
     }
 
@@ -123,7 +136,13 @@ struct HistoryView: View {
 }
 
 private enum HistoryDrillDownRoute: Hashable {
-    case calorieTrend
+    case calorieTrend(UUID)
+}
+
+private struct HistoryCalorieTrendSnapshot {
+    let id = UUID()
+    let range: HistoryRange
+    let summary: HistoryPeriodSummary
 }
 
 private struct HistoryAnalyticsRefreshID: Equatable {
