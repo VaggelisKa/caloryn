@@ -6,11 +6,11 @@ struct CalorieRingView: View {
     let ringSize: CGFloat
     var onDetailsRequested: (() -> Void)? = nil
 
-    @ScaledMetric private var numberSize: CGFloat = 44
     @State private var animatedRingProgress: Double = 0
     @State private var hasAppeared = false
     @State private var fadeInTask: Task<Void, Never>?
     @State private var isDetailsPressing = false
+    @ScaledMetric private var numberSize: CGFloat = 44
 
     private var animatedBaseProgress: Double {
         calorieBudget.hasDynamicIncrease ? min(animatedRingProgress, calorieBudget.baseProgressEnd) : animatedRingProgress
@@ -72,7 +72,7 @@ struct CalorieRingView: View {
             VStack(spacing: 2) {
                 if calorieBudget.isOver {
                     Text("\(calorieBudget.overAmount)")
-                        .font(.system(size: numberSize, weight: .bold, design: .rounded))
+                        .font(CalorynTheme.ringNumber(size: numberSize))
                         .foregroundStyle(CalorynTheme.terracotta)
                         .contentTransition(.numericText())
 
@@ -81,7 +81,7 @@ struct CalorieRingView: View {
                         .foregroundStyle(CalorynTheme.terracotta.opacity(0.85))
                 } else {
                     Text("\(calorieBudget.remaining)")
-                        .font(.system(size: numberSize, weight: .bold, design: .rounded))
+                        .font(CalorynTheme.ringNumber(size: numberSize))
                         .foregroundStyle(CalorynTheme.textPrimary)
                         .contentTransition(.numericText())
 
@@ -167,20 +167,20 @@ struct CalorieRingView: View {
                 Text("updating")
                     .lineLimit(1)
             }
-            .font(.system(.caption2, design: .rounded, weight: .medium))
+            .font(CalorynTheme.microCaption)
             .foregroundStyle(CalorynTheme.textSecondary)
             .frame(maxWidth: centerContentWidth)
             .padding(.top, 2)
         } else if calorieBudget.hasDynamicIncrease {
             HStack(spacing: 4) {
                 Image(systemName: "flame.fill")
-                    .font(.system(size: 9, weight: .bold))
+                    .font(CalorynTheme.compactIcon)
 
                 Text("+\(calorieBudget.dynamicIncrease) dynamic")
                     .lineLimit(1)
                     .minimumScaleFactor(0.78)
             }
-                .font(.system(.caption2, design: .rounded, weight: .semibold))
+                .font(CalorynTheme.numericMicroCaptionEmphasized)
                 .foregroundStyle(dynamicTargetColor)
                 .frame(maxWidth: centerContentWidth)
                 .padding(.top, 2)
@@ -188,13 +188,13 @@ struct CalorieRingView: View {
         } else if calorieBudget.hasDynamicReduction {
             HStack(spacing: 4) {
                 Image(systemName: "arrow.down.circle.fill")
-                    .font(.system(size: 9, weight: .bold))
+                    .font(CalorynTheme.compactIcon)
 
                 Text("\(abs(calorieBudget.dynamicAdjustment)) dynamic")
                     .lineLimit(1)
                     .minimumScaleFactor(0.78)
             }
-                .font(.system(.caption2, design: .rounded, weight: .semibold))
+                .font(CalorynTheme.numericMicroCaptionEmphasized)
                 .foregroundStyle(CalorynTheme.textSecondary)
                 .frame(maxWidth: centerContentWidth)
                 .padding(.top, 2)

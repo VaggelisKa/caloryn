@@ -162,7 +162,7 @@ struct PortionPickerView: View {
             VStack(spacing: 0) {
                 Button(action: logFood) {
                     Text(foodItem.isRecipe ? "Log Recipe" : "Log Food")
-                        .font(.system(.headline, design: .rounded))
+                        .font(CalorynTheme.buttonLabel)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
                 }
@@ -209,7 +209,7 @@ struct PortionPickerView: View {
     private var caloriePreview: some View {
         VStack(spacing: 4) {
             Text("\(Int(previewCalories))")
-                .font(.system(size: 48, weight: .bold, design: .rounded))
+                .font(CalorynTheme.displayNumber)
                 .foregroundStyle(CalorynTheme.sage)
                 .contentTransition(.numericText())
                 .animation(.smooth(duration: 0.3), value: Int(previewCalories))
@@ -231,7 +231,7 @@ struct PortionPickerView: View {
     private var portionPicker: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("PORTION SIZE")
-                .font(CalorynTheme.caption)
+                .font(CalorynTheme.sectionEyebrow)
                 .foregroundStyle(CalorynTheme.textSecondary)
 
             HStack(spacing: 0) {
@@ -329,7 +329,7 @@ struct PortionPickerView: View {
         return VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("NUTRITION")
-                    .font(CalorynTheme.caption)
+                    .font(CalorynTheme.sectionEyebrow)
                     .foregroundStyle(CalorynTheme.textSecondary)
 
                 Spacer()
@@ -386,7 +386,7 @@ struct PortionPickerView: View {
     private var mealSelector: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("MEAL")
-                .font(CalorynTheme.caption)
+                .font(CalorynTheme.sectionEyebrow)
                 .foregroundStyle(CalorynTheme.textSecondary)
 
             Picker("Meal", selection: $selectedMeal) {

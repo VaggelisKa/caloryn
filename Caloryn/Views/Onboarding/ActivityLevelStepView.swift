@@ -38,7 +38,7 @@ struct ActivityLevelStepView: View {
         .safeAreaInset(edge: .bottom) {
             Button(action: onContinue) {
                 Text("Continue")
-                    .font(.system(.headline, design: .rounded))
+                    .font(CalorynTheme.buttonLabel)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
             }
@@ -79,7 +79,7 @@ private struct ActivityLevelCard: View {
         Button(action: onTap) {
             HStack(spacing: 14) {
                 Image(systemName: level.iconName)
-                    .font(.title2)
+                    .font(CalorynTheme.inlineIcon)
                     .foregroundStyle(accentForeground)
                     .frame(width: 36)
 
@@ -96,7 +96,7 @@ private struct ActivityLevelCard: View {
 
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(accentForeground)
-                    .font(.title3)
+                    .font(CalorynTheme.inlineIcon)
                     .opacity(isSelected ? 1 : 0)
             }
             .padding(CalorynTheme.cardPadding)

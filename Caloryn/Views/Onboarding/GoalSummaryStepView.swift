@@ -59,7 +59,7 @@ struct GoalSummaryStepView: View {
         .safeAreaInset(edge: .bottom) {
             Button { onContinue(displayTarget) } label: {
                 Text("Continue")
-                    .font(.system(.headline, design: .rounded))
+                    .font(CalorynTheme.buttonLabel)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
             }
@@ -81,7 +81,7 @@ struct GoalSummaryStepView: View {
     private var targetDisplay: some View {
         VStack(spacing: 6) {
             Text("\(displayTarget)")
-                .font(.system(size: 56, weight: .bold, design: .rounded))
+                .font(CalorynTheme.displayNumber)
                 .foregroundStyle(CalorynTheme.sage)
             Text("daily calories")
                 .font(CalorynTheme.bodyText)
@@ -109,7 +109,7 @@ struct GoalSummaryStepView: View {
                 .font(CalorynTheme.numericBody)
                 .foregroundStyle(CalorynTheme.textPrimary)
             Text(unit)
-                .font(.system(.caption2, design: .rounded))
+                .font(CalorynTheme.numericMicroCaption)
                 .foregroundStyle(CalorynTheme.textSecondary)
         }
         .frame(maxWidth: .infinity)
@@ -120,18 +120,18 @@ struct GoalSummaryStepView: View {
     private var deficitSlider: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("CALORIE ADJUSTMENT")
-                .font(CalorynTheme.caption)
+                .font(CalorynTheme.sectionEyebrow)
                 .foregroundStyle(CalorynTheme.textSecondary)
 
             HStack {
                 Text("Surplus")
-                    .font(.caption2)
+                    .font(CalorynTheme.microCaption)
                     .foregroundStyle(CalorynTheme.textSecondary)
                 Slider(value: $calorieDeficit, in: -500...1000, step: 50)
                     .tint(CalorynTheme.sage)
                     .disabled(useManualOverride)
                 Text("Deficit")
-                    .font(.caption2)
+                    .font(CalorynTheme.microCaption)
                     .foregroundStyle(CalorynTheme.textSecondary)
             }
 

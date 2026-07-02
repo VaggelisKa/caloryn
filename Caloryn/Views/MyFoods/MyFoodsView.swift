@@ -69,7 +69,7 @@ struct MyFoodsView: View {
             }
         } label: {
             Image(systemName: "plus")
-                .font(.system(size: 16, weight: .medium))
+                .font(CalorynTheme.toolbarIcon)
                 .foregroundStyle(CalorynTheme.sage)
         }
         .accessibilityLabel("Create Food")
@@ -167,7 +167,7 @@ private struct EmptyFoodGroupRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: systemImage)
-                .font(.system(size: 18, weight: .semibold))
+                .font(CalorynTheme.inlineIcon)
                 .foregroundStyle(CalorynTheme.textSecondary)
                 .frame(width: 28, height: 28)
 
@@ -235,7 +235,7 @@ private struct RecipeLibraryRow: View {
                     .foregroundStyle(CalorynTheme.textPrimary)
 
                 Text("kcal total")
-                    .font(.system(.caption2, design: .rounded))
+                    .font(CalorynTheme.numericMicroCaption)
                     .foregroundStyle(CalorynTheme.textSecondary)
             }
         }

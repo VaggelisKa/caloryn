@@ -271,7 +271,7 @@ struct EnergyCalculationModeStepView: View {
                     }
 
                     Text(selectedMode == .dynamicHealth ? "Allow & Continue" : "Continue")
-                        .font(.system(.headline, design: .rounded))
+                        .font(CalorynTheme.buttonLabel)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
@@ -322,7 +322,7 @@ private struct EnergyCalculationModeCard: View {
         Button(action: onTap) {
             HStack(spacing: 14) {
                 Image(systemName: iconName)
-                    .font(.title2)
+                    .font(CalorynTheme.inlineIcon)
                     .foregroundStyle(accentForeground)
                     .frame(width: 36)
 
@@ -341,7 +341,7 @@ private struct EnergyCalculationModeCard: View {
 
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .foregroundStyle(accentForeground)
-                    .font(.title3)
+                    .font(CalorynTheme.inlineIcon)
                     .accessibilityHidden(true)
             }
             .padding(CalorynTheme.cardPadding)
