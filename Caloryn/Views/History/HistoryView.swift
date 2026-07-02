@@ -2,68 +2,106 @@ import SwiftUI
 import SwiftData
 
 struct HistoryView: View {
-    @Query private var allEntries: [FoodLogEntry]
+    // Keep newest-first ordering in sync with relevantEntries(startingAt:);
+    // that helper early-exits when it reaches entries older than its window.
+    @Query(sort: \FoodLogEntry.date, order: .reverse) private var allEntries: [FoodLogEntry]
     @Query(sort: \UserProfile.updatedAt, order: .reverse) private var profiles: [UserProfile]
 
-    @State private var selectedRange: HistoryRange = .week
-    @State private var analytics: HistoryAnalytics
+    @State private var historyState: HistoryViewState
     @State private var navigationPath: [HistoryDrillDownRoute] = []
 
     init(initialRange: HistoryRange = .week) {
-        _selectedRange = State(initialValue: initialRange)
-        _analytics = State(initialValue: HistoryAnalytics(entries: [], profile: nil, range: initialRange))
+        _historyState = State(
+            initialValue: HistoryViewState(
+                range: initialRange,
+                analytics: HistoryAnalytics(entries: [], profile: nil, range: initialRange)
+            )
+        )
     }
 
     private var profile: UserProfile? { profiles.first }
 
-    private var relevantEntries: [FoodLogEntry] {
-        allEntries.filter { $0.date >= analyticsStartDate }
+    private func relevantEntries(for range: HistoryRange) -> [FoodLogEntry] {
+        relevantEntries(startingAt: analyticsStartDate(for: range))
     }
 
-    private var analyticsStartDate: Date {
+    private func relevantEntries(startingAt startDate: Date) -> [FoodLogEntry] {
+        var entries: [FoodLogEntry] = []
+        #if DEBUG
+        var previousDate: Date?
+        #endif
+
+        for entry in allEntries {
+            #if DEBUG
+            if let previousDate {
+                precondition(
+                    previousDate >= entry.date,
+                    "History entries must stay sorted newest-first by date."
+                )
+            }
+            previousDate = entry.date
+            #endif
+
+            if entry.date >= startDate {
+                entries.append(entry)
+            } else {
+                break
+            }
+        }
+
+        return entries
+    }
+
+    private var widestAnalyticsStartDate: Date {
+        analyticsStartDate(for: .quarter)
+    }
+
+    private func analyticsStartDate(for range: HistoryRange) -> Date {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: .now)
         return calendar.date(
             byAdding: .day,
-            value: -(selectedRange.days * 2 - 1),
+            value: -(range.days * 2 - 1),
             to: today
         ) ?? today
     }
 
     private var analyticsRefreshID: HistoryAnalyticsRefreshID {
         HistoryAnalyticsRefreshID(
-            range: selectedRange,
             profile: profile.map { HistoryProfileSignature(profile: $0) },
-            entries: relevantEntries
+            entries: relevantEntries(startingAt: widestAnalyticsStartDate)
                 .map { HistoryEntrySignature(entry: $0) }
-                .sorted { $0.sortKey < $1.sortKey }
         )
     }
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
             ScrollView {
-                let history = analytics
-                let canOpenCalorieTrendDetail = canOpenCalorieTrendDetail(in: history.current)
+                let state = historyState
+                let history = state.analytics
+                let canOpenCalorieTrendDetail = canOpenCalorieTrendDetail(
+                    for: state.range,
+                    in: history.current
+                )
 
                 VStack(spacing: CalorynTheme.cardSpacing) {
                     rangePicker
 
                     HistoryCalorieTrendCard(
-                        range: selectedRange,
+                        range: state.range,
                         summary: history.current,
                         drillDownAction: canOpenCalorieTrendDetail
-                            ? { openCalorieTrendDetail(range: selectedRange, summary: history.current) }
+                            ? { openCalorieTrendDetail(range: state.range, summary: history.current) }
                             : nil
                     )
 
                     HistoryGoalSummaryCard(
-                        range: selectedRange,
+                        range: state.range,
                         summary: history.current,
                         comparison: history.goalComparison
                     )
 
-                    if selectedRange.days >= HistoryRange.month.days {
+                    if state.range.days >= HistoryRange.month.days {
                         HistoryWeeklyRollupCard(summary: history.current)
                     }
 
@@ -80,15 +118,32 @@ struct HistoryView: View {
             }
         }
         .task(id: analyticsRefreshID) {
-            refreshAnalytics()
+            // Range changes refresh synchronously through selectRange; data/profile
+            // changes should recalculate for the range current when this task runs.
+            refreshAnalytics(for: historyState.range)
         }
     }
 
-    private func refreshAnalytics() {
-        analytics = HistoryAnalytics(
-            entries: relevantEntries,
-            profile: profile,
-            range: selectedRange
+    private func refreshAnalytics(for range: HistoryRange) {
+        historyState = HistoryViewState(
+            range: range,
+            analytics: HistoryAnalytics(
+                entries: relevantEntries(for: range),
+                profile: profile,
+                range: range
+            )
+        )
+    }
+
+    private func selectRange(_ range: HistoryRange) {
+        guard range != historyState.range else { return }
+        refreshAnalytics(for: range)
+    }
+
+    private var rangeSelection: Binding<HistoryRange> {
+        Binding(
+            get: { historyState.range },
+            set: { selectRange($0) }
         )
     }
 
@@ -100,8 +155,11 @@ struct HistoryView: View {
         navigationPath.append(.calorieTrend(snapshot))
     }
 
-    private func canOpenCalorieTrendDetail(in summary: HistoryPeriodSummary) -> Bool {
-        switch selectedRange {
+    private func canOpenCalorieTrendDetail(
+        for range: HistoryRange,
+        in summary: HistoryPeriodSummary
+    ) -> Bool {
+        switch range {
         case .quarter:
             summary.weeklyRollups.filter { $0.loggedDays > 0 }.count >= 2
         case .week, .twoWeeks, .month:
@@ -121,7 +179,7 @@ struct HistoryView: View {
     }
 
     private var rangePicker: some View {
-        Picker("Range", selection: $selectedRange) {
+        Picker("Range", selection: rangeSelection) {
             ForEach(HistoryRange.allCases) { range in
                 Text(range.label).tag(range)
             }
@@ -129,6 +187,11 @@ struct HistoryView: View {
         .pickerStyle(.segmented)
         .padding(.top, 4)
     }
+}
+
+private struct HistoryViewState {
+    let range: HistoryRange
+    let analytics: HistoryAnalytics
 }
 
 private enum HistoryDrillDownRoute: Hashable {
@@ -150,7 +213,6 @@ private struct HistoryCalorieTrendSnapshot: Hashable {
 }
 
 private struct HistoryAnalyticsRefreshID: Equatable {
-    let range: HistoryRange
     let profile: HistoryProfileSignature?
     let entries: [HistoryEntrySignature]
 }
@@ -199,10 +261,6 @@ private struct HistoryEntrySignature: Equatable {
     let alcoholG: Double?
     let nutriscoreGrade: String?
     let produceKindRaw: String?
-
-    var sortKey: String {
-        id.uuidString
-    }
 
     init(entry: FoodLogEntry) {
         id = entry.id
