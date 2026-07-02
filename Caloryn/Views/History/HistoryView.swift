@@ -8,7 +8,6 @@ struct HistoryView: View {
     @State private var selectedRange: HistoryRange = .week
     @State private var analytics: HistoryAnalytics
     @State private var navigationPath: [HistoryDrillDownRoute] = []
-    @State private var calorieTrendSnapshots: [UUID: HistoryCalorieTrendSnapshot] = [:]
 
     init(initialRange: HistoryRange = .week) {
         _selectedRange = State(initialValue: initialRange)
@@ -98,8 +97,7 @@ struct HistoryView: View {
             range: range,
             summary: summary
         )
-        calorieTrendSnapshots = [snapshot.id: snapshot]
-        navigationPath.append(.calorieTrend(snapshot.id))
+        navigationPath.append(.calorieTrend(snapshot))
     }
 
     private func canOpenCalorieTrendDetail(in summary: HistoryPeriodSummary) -> Bool {
@@ -114,13 +112,11 @@ struct HistoryView: View {
     @ViewBuilder
     private func destination(for route: HistoryDrillDownRoute) -> some View {
         switch route {
-        case .calorieTrend(let id):
-            if let snapshot = calorieTrendSnapshots[id] {
-                HistoryCalorieTrendDetailView(
-                    range: snapshot.range,
-                    summary: snapshot.summary
-                )
-            }
+        case .calorieTrend(let snapshot):
+            HistoryCalorieTrendDetailView(
+                range: snapshot.range,
+                summary: snapshot.summary
+            )
         }
     }
 
@@ -136,13 +132,21 @@ struct HistoryView: View {
 }
 
 private enum HistoryDrillDownRoute: Hashable {
-    case calorieTrend(UUID)
+    case calorieTrend(HistoryCalorieTrendSnapshot)
 }
 
-private struct HistoryCalorieTrendSnapshot {
+private struct HistoryCalorieTrendSnapshot: Hashable {
     let id = UUID()
     let range: HistoryRange
     let summary: HistoryPeriodSummary
+
+    static func == (lhs: HistoryCalorieTrendSnapshot, rhs: HistoryCalorieTrendSnapshot) -> Bool {
+        lhs.id == rhs.id
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
 }
 
 private struct HistoryAnalyticsRefreshID: Equatable {
