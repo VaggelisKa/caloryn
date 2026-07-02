@@ -86,9 +86,13 @@ enum CalorynTheme {
 
     // MARK: - Typography
 
+    static let brandTitle: Font = .system(.largeTitle, design: .rounded, weight: .bold)
     static let displayNumber: Font = .system(.largeTitle, design: .rounded, weight: .bold).monospacedDigit()
     static let compactNumber: Font = .system(.title2, design: .rounded, weight: .bold).monospacedDigit()
     static let largeNumber: Font = displayNumber
+    static func ringNumber(size: CGFloat) -> Font {
+        .system(size: size, weight: .bold, design: .rounded).monospacedDigit()
+    }
     static let sectionTitle: Font = .system(.title2, weight: .semibold)
     static let sectionEyebrow: Font = .system(.caption, weight: .medium)
     static let cardSubtitle: Font = .system(.subheadline)
@@ -104,6 +108,11 @@ enum CalorynTheme {
     static let numericMicroCaption: Font = .system(.caption2, design: .rounded, weight: .medium).monospacedDigit()
     static let numericMicroCaptionEmphasized: Font = .system(.caption2, design: .rounded, weight: .semibold).monospacedDigit()
     static let chartAxisLabel: Font = .system(.caption2, design: .rounded, weight: .medium)
+    static let chartXAxisLabel: Font = .system(size: 10, weight: .medium, design: .rounded)
+    static let denseChartXAxisLabel: Font = .system(size: 8, weight: .medium, design: .rounded)
+    static func weeklyChartXAxisLabel(isDense: Bool) -> Font {
+        isDense ? denseChartXAxisLabel : chartXAxisLabel
+    }
     static let badgeText: Font = .system(.caption2, design: .rounded, weight: .semibold)
     static let toolbarIcon: Font = .system(.body, weight: .medium)
     static let inlineIcon: Font = .system(.headline, weight: .semibold)

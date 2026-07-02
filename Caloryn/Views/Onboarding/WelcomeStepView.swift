@@ -103,7 +103,7 @@ struct WelcomeStepView: View {
 
                 VStack(spacing: 12) {
                     Text("Caloryn")
-                        .font(CalorynTheme.displayNumber)
+                        .font(CalorynTheme.brandTitle)
                         .foregroundStyle(CalorynTheme.textPrimary)
 
                     Text("Track your calories.\nSimple, private, fast.")

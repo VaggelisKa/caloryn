@@ -73,7 +73,7 @@ struct HistoryWeeklyRollupCard: View {
                         if let index = value.as(Double.self),
                            let chartWeek = chartWeek(for: index) {
                             Text(weekLabel(for: chartWeek))
-                                .font(CalorynTheme.chartAxisLabel)
+                                .font(CalorynTheme.weeklyChartXAxisLabel(isDense: chartWeeks.count > 10))
                                 .foregroundStyle(.clear)
                                 .accessibilityHidden(true)
                         }
@@ -88,7 +88,7 @@ struct HistoryWeeklyRollupCard: View {
                         ForEach(chartWeeks) { chartWeek in
                             if let xPosition = proxy.position(forX: chartWeek.index) {
                                 Text(weekLabel(for: chartWeek))
-                                    .font(CalorynTheme.chartAxisLabel)
+                                    .font(CalorynTheme.weeklyChartXAxisLabel(isDense: chartWeeks.count > 10))
                                     .foregroundStyle(CalorynTheme.textSecondary)
                                     .position(
                                         x: plotRect.minX + xPosition,

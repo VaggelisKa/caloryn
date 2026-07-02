@@ -10,6 +10,7 @@ struct CalorieRingView: View {
     @State private var hasAppeared = false
     @State private var fadeInTask: Task<Void, Never>?
     @State private var isDetailsPressing = false
+    @ScaledMetric private var numberSize: CGFloat = 44
 
     private var animatedBaseProgress: Double {
         calorieBudget.hasDynamicIncrease ? min(animatedRingProgress, calorieBudget.baseProgressEnd) : animatedRingProgress
@@ -71,7 +72,7 @@ struct CalorieRingView: View {
             VStack(spacing: 2) {
                 if calorieBudget.isOver {
                     Text("\(calorieBudget.overAmount)")
-                        .font(CalorynTheme.displayNumber)
+                        .font(CalorynTheme.ringNumber(size: numberSize))
                         .foregroundStyle(CalorynTheme.terracotta)
                         .contentTransition(.numericText())
 
@@ -80,7 +81,7 @@ struct CalorieRingView: View {
                         .foregroundStyle(CalorynTheme.terracotta.opacity(0.85))
                 } else {
                     Text("\(calorieBudget.remaining)")
-                        .font(CalorynTheme.displayNumber)
+                        .font(CalorynTheme.ringNumber(size: numberSize))
                         .foregroundStyle(CalorynTheme.textPrimary)
                         .contentTransition(.numericText())
 
