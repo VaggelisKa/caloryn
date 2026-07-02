@@ -59,7 +59,7 @@ struct LogCardMock: View {
     var body: some View {
         HStack(spacing: 16) {
             Image(systemName: icon)
-                .font(.system(size: 20, weight: .semibold))
+                .font(CalorynTheme.inlineIcon)
                 .foregroundStyle(.white)
                 .frame(width: 44, height: 44)
                 .background(color)
@@ -67,17 +67,17 @@ struct LogCardMock: View {
                 
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.system(.headline, design: .rounded))
+                    .font(CalorynTheme.itemTitle)
                     .foregroundStyle(CalorynTheme.textPrimary)
                 Text("\(cals) kcal")
-                    .font(.system(.subheadline, design: .rounded, weight: .medium))
+                    .font(CalorynTheme.numericCaption)
                     .foregroundStyle(CalorynTheme.textSecondary)
             }
             
             Spacer()
             
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 24))
+                .font(CalorynTheme.inlineIcon)
                 .foregroundStyle(CalorynTheme.sage)
         }
         .padding(16)
@@ -103,7 +103,7 @@ struct WelcomeStepView: View {
 
                 VStack(spacing: 12) {
                     Text("Caloryn")
-                        .font(.system(.largeTitle, design: .rounded, weight: .bold))
+                        .font(CalorynTheme.displayNumber)
                         .foregroundStyle(CalorynTheme.textPrimary)
 
                     Text("Track your calories.\nSimple, private, fast.")
@@ -119,7 +119,7 @@ struct WelcomeStepView: View {
             VStack(spacing: 16) {
                 Button(action: onContinue) {
                     Text("Get Started")
-                        .font(.system(.headline, design: .rounded))
+                        .font(CalorynTheme.buttonLabel)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
                 }

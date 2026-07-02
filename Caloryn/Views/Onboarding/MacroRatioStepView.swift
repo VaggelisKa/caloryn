@@ -73,7 +73,7 @@ struct MacroRatioStepView: View {
         .safeAreaInset(edge: .bottom) {
             Button(action: onComplete) {
                 Text(primaryButtonTitle)
-                    .font(.system(.headline, design: .rounded))
+                    .font(CalorynTheme.buttonLabel)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
             }

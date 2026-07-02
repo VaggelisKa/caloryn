@@ -24,7 +24,7 @@ struct HistoryGoalSummaryCard: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Goal Consistency")
-                .font(CalorynTheme.caption)
+                .font(CalorynTheme.sectionEyebrow)
                 .foregroundStyle(CalorynTheme.textSecondary)
                 .textCase(.uppercase)
 

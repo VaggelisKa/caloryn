@@ -70,7 +70,7 @@ struct PersonalInfoStepView: View {
         .safeAreaInset(edge: .bottom) {
             Button(action: onContinue) {
                 Text("Continue")
-                    .font(.system(.headline, design: .rounded))
+                    .font(CalorynTheme.buttonLabel)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
             }
@@ -85,7 +85,7 @@ struct PersonalInfoStepView: View {
     private func fieldCard<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title)
-                .font(CalorynTheme.caption)
+                .font(CalorynTheme.sectionEyebrow)
                 .foregroundStyle(CalorynTheme.textSecondary)
                 .textCase(.uppercase)
             content()

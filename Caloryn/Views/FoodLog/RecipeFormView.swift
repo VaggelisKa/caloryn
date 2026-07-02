@@ -80,7 +80,7 @@ struct RecipeFormView: View {
                         dismiss()
                     } label: {
                         Image(systemName: "xmark")
-                            .font(.system(size: 16, weight: .medium))
+                            .font(CalorynTheme.toolbarIcon)
                     }
                     .accessibilityLabel("Close")
                 }
@@ -89,7 +89,7 @@ struct RecipeFormView: View {
                     Button("Save") {
                         saveRecipe()
                     }
-                    .fontWeight(.semibold)
+                    .font(CalorynTheme.toolbarAction)
                     .disabled(!canSave)
                 }
             }
@@ -126,7 +126,7 @@ struct RecipeFormView: View {
     private var nameSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("RECIPE DETAILS")
-                .font(CalorynTheme.caption)
+                .font(CalorynTheme.sectionEyebrow)
                 .foregroundStyle(CalorynTheme.textSecondary)
 
             TextField("Recipe name (e.g. Greek Salad)", text: $name)
@@ -142,7 +142,7 @@ struct RecipeFormView: View {
         VStack(spacing: 14) {
             VStack(spacing: 4) {
                 Text("\(Int(totalCalories))")
-                    .font(.system(size: 48, weight: .bold, design: .rounded))
+                    .font(CalorynTheme.displayNumber)
                     .foregroundStyle(CalorynTheme.sage)
                     .contentTransition(.numericText())
                     .animation(.smooth(duration: 0.3), value: Int(totalCalories))
@@ -180,7 +180,7 @@ struct RecipeFormView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("INGREDIENTS")
-                    .font(CalorynTheme.caption)
+                    .font(CalorynTheme.sectionEyebrow)
                     .foregroundStyle(CalorynTheme.textSecondary)
 
                 Spacer()
@@ -189,7 +189,7 @@ struct RecipeFormView: View {
                     showingIngredientSearch = true
                 } label: {
                     Label("Add Ingredient", systemImage: "plus.circle")
-                        .font(.system(.subheadline, design: .rounded, weight: .medium))
+                        .font(CalorynTheme.buttonLabel)
                 }
                 .tint(CalorynTheme.sage)
             }
@@ -253,7 +253,7 @@ struct RecipeFormView: View {
                 deleteIngredient(ingredient)
             } label: {
                 Image(systemName: "minus.circle")
-                    .font(.body)
+                    .font(CalorynTheme.compactIcon)
                     .foregroundStyle(CalorynTheme.terracotta.opacity(0.7))
             }
             .buttonStyle(.plain)

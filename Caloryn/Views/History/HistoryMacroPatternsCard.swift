@@ -7,13 +7,13 @@ struct HistoryMacroPatternsCard: View {
         VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Macro Patterns")
-                    .font(CalorynTheme.caption)
+                    .font(CalorynTheme.sectionEyebrow)
                     .foregroundStyle(CalorynTheme.textSecondary)
                     .textCase(.uppercase)
 
                 if let summaryText {
                     Text(summaryText)
-                        .font(.system(.subheadline))
+                        .font(CalorynTheme.cardSubtitle)
                         .foregroundStyle(CalorynTheme.textSecondary)
                 }
             }
@@ -53,7 +53,7 @@ private struct HistoryMacroPatternRow: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .center, spacing: 10) {
                 Image(systemName: pattern.nutrient.systemImage)
-                    .font(.system(.subheadline, weight: .semibold))
+                    .font(CalorynTheme.compactIcon)
                     .foregroundStyle(pattern.nutrient.color)
                     .frame(width: 22)
 

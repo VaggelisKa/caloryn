@@ -86,11 +86,27 @@ enum CalorynTheme {
 
     // MARK: - Typography
 
-    static let largeNumber: Font = .system(.largeTitle, design: .rounded, weight: .bold)
+    static let displayNumber: Font = .system(.largeTitle, design: .rounded, weight: .bold).monospacedDigit()
+    static let compactNumber: Font = .system(.title2, design: .rounded, weight: .bold).monospacedDigit()
+    static let largeNumber: Font = displayNumber
     static let sectionTitle: Font = .system(.title2, weight: .semibold)
+    static let sectionEyebrow: Font = .system(.caption, weight: .medium)
+    static let cardSubtitle: Font = .system(.subheadline)
     static let itemTitle: Font = .system(.headline)
     static let bodyText: Font = .system(.body)
     static let caption: Font = .system(.caption, weight: .medium)
-    static let numericBody: Font = .system(.body, design: .rounded, weight: .medium)
-    static let numericCaption: Font = .system(.caption, design: .rounded, weight: .semibold)
+    static let buttonLabel: Font = .system(.headline, design: .rounded)
+    static let toolbarAction: Font = .system(.body, weight: .semibold)
+    static let numericBody: Font = .system(.body, design: .rounded, weight: .medium).monospacedDigit()
+    static let numericCaption: Font = .system(.caption, design: .rounded, weight: .semibold).monospacedDigit()
+    static let microCaption: Font = .system(.caption2, design: .rounded, weight: .medium)
+    static let microCaptionEmphasized: Font = .system(.caption2, design: .rounded, weight: .semibold)
+    static let numericMicroCaption: Font = .system(.caption2, design: .rounded, weight: .medium).monospacedDigit()
+    static let numericMicroCaptionEmphasized: Font = .system(.caption2, design: .rounded, weight: .semibold).monospacedDigit()
+    static let chartAxisLabel: Font = .system(.caption2, design: .rounded, weight: .medium)
+    static let badgeText: Font = .system(.caption2, design: .rounded, weight: .semibold)
+    static let toolbarIcon: Font = .system(.body, weight: .medium)
+    static let inlineIcon: Font = .system(.headline, weight: .semibold)
+    static let emptyStateIcon: Font = .system(.largeTitle, weight: .medium)
+    static let compactIcon: Font = .system(.caption, weight: .semibold)
 }

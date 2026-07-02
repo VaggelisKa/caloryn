@@ -149,7 +149,7 @@ struct SettingsView: View {
                     } label: {
                         HStack(spacing: 5) {
                             Image(systemName: "gearshape")
-                                .font(.system(size: 14, weight: .medium))
+                                .font(CalorynTheme.compactIcon)
                                 .accessibilityHidden(true)
 
                             Text("Open App Settings")
@@ -191,7 +191,7 @@ struct SettingsView: View {
     private func calorieEstimateModeToggleLabel(for profile: UserProfile) -> some View {
         HStack(alignment: .center, spacing: 12) {
             Image(systemName: calorieEstimateModeIcon(for: profile))
-                .font(.system(size: 17, weight: .semibold))
+                .font(CalorynTheme.inlineIcon)
                 .foregroundStyle(CalorynTheme.sage)
                 .frame(width: 24)
                 .accessibilityHidden(true)
@@ -571,6 +571,7 @@ private struct CalorieEstimateMetricRow: View {
             Spacer(minLength: 12)
 
             Text(value)
+                .font(CalorynTheme.numericBody)
                 .foregroundStyle(CalorynTheme.textSecondary)
                 .multilineTextAlignment(.trailing)
         }
@@ -681,12 +682,12 @@ struct GoalEditView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         HStack {
                             Text("Surplus")
-                                .font(.caption2)
+                                .font(CalorynTheme.microCaption)
                                 .foregroundStyle(CalorynTheme.textSecondary)
                             Slider(value: $calorieDeficit, in: -500...1000, step: 50)
                                 .tint(CalorynTheme.sage)
                             Text("Deficit")
-                                .font(.caption2)
+                                .font(CalorynTheme.microCaption)
                                 .foregroundStyle(CalorynTheme.textSecondary)
                         }
 
@@ -705,16 +706,19 @@ struct GoalEditView: View {
             Section("Macro Goals") {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Protein: \(Int(proteinRatio * 100))% · \(previewProteinTarget.macroFormatted)")
+                        .font(CalorynTheme.numericBody)
                     Slider(value: $proteinRatio, in: 0.10...0.50, step: 0.05)
                         .tint(CalorynTheme.proteinColor)
                 }
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Carbs: \(Int(carbRatio * 100))% · \(previewCarbTarget.macroFormatted)")
+                        .font(CalorynTheme.numericBody)
                     Slider(value: $carbRatio, in: 0.10...0.60, step: 0.05)
                         .tint(CalorynTheme.carbColor)
                 }
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Fat: \(Int(fatRatio * 100))% · \(previewFatTarget.macroFormatted)")
+                        .font(CalorynTheme.numericBody)
                     Slider(value: $fatRatio, in: 0.10...0.50, step: 0.05)
                         .tint(CalorynTheme.fatColor)
                 }
@@ -766,7 +770,7 @@ struct GoalEditView: View {
                     saveAdditionalNutrientGoals()
                     dismiss()
                 }
-                .fontWeight(.semibold)
+                .font(CalorynTheme.toolbarAction)
                 .disabled(!isMacroValid || !isManualTargetValid || !areNutrientGoalsValid)
             }
         }
@@ -988,7 +992,7 @@ struct ProfileEditView: View {
                     profile.recalculate(proteinRatio: proteinRatio, carbRatio: carbRatio, fatRatio: fatRatio)
                     dismiss()
                 }
-                .fontWeight(.semibold)
+                .font(CalorynTheme.toolbarAction)
             }
         }
     }

@@ -23,7 +23,7 @@ struct MacroProgressView: View {
                     showingCustomizer = true
                 } label: {
                     Image(systemName: "slider.horizontal.3")
-                        .font(.system(.subheadline, weight: .semibold))
+                        .font(CalorynTheme.compactIcon)
                         .frame(width: 32, height: 32)
                         .contentShape(Circle())
                 }
@@ -129,7 +129,7 @@ private struct NutrientMetricTile: View {
                     .minimumScaleFactor(0.75)
 
                 Text("today")
-                    .font(.system(.caption2, design: .rounded))
+                    .font(CalorynTheme.microCaption)
                     .foregroundStyle(CalorynTheme.textSecondary)
             }
         }
@@ -233,7 +233,7 @@ private struct NutrientCustomizationView: View {
                     Button("Done") {
                         dismiss()
                     }
-                    .fontWeight(.semibold)
+                    .font(CalorynTheme.toolbarAction)
                 }
             }
             .environment(\.editMode, $editMode)

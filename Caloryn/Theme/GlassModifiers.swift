@@ -55,7 +55,7 @@ struct DestructiveGlassButton: View {
     var body: some View {
         Button(role: .destructive, action: action) {
             Label(title, systemImage: systemImage)
-                .font(.system(.body, weight: .medium))
+                .font(CalorynTheme.buttonLabel)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
         }

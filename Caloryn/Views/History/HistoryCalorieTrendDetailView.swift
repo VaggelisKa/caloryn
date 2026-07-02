@@ -131,7 +131,7 @@ private struct HistoryCalorieTrendRangeSummaryCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Range Summary")
-                .font(CalorynTheme.caption)
+                .font(CalorynTheme.sectionEyebrow)
                 .foregroundStyle(CalorynTheme.textSecondary)
                 .textCase(.uppercase)
 
@@ -273,7 +273,7 @@ private struct HistoryCalorieTrendInteractiveChart: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Calories")
-                .font(CalorynTheme.caption)
+                .font(CalorynTheme.sectionEyebrow)
                 .foregroundStyle(CalorynTheme.textSecondary)
                 .textCase(.uppercase)
 
@@ -325,7 +325,7 @@ private struct HistoryCalorieTrendInteractiveChart: View {
                         if let index = value.as(Double.self),
                            let point = chartPoint(for: index) {
                             Text(point.xAxisLabel)
-                                .font(.system(size: 10))
+                                .font(CalorynTheme.chartAxisLabel)
                                 .foregroundStyle(.clear)
                                 .accessibilityHidden(true)
                         }
@@ -356,7 +356,7 @@ private struct HistoryCalorieTrendInteractiveChart: View {
                             ForEach(points) { point in
                                 if let xPosition = proxy.position(forX: point.index) {
                                     Text(point.xAxisLabel)
-                                        .font(.system(size: 10))
+                                        .font(CalorynTheme.chartAxisLabel)
                                         .foregroundStyle(CalorynTheme.textSecondary)
                                         .position(
                                             x: plotRect.minX + xPosition,
@@ -393,7 +393,7 @@ private struct HistoryCalorieTrendInteractiveChart: View {
                 AxisMarks(position: .leading) { _ in
                     AxisGridLine()
                     AxisValueLabel()
-                        .font(.system(size: 10))
+                        .font(CalorynTheme.chartAxisLabel)
                 }
             }
             .chartYScale(domain: 0 ... yAxisUpperBound)
@@ -548,7 +548,7 @@ private struct HistoryCalorieTrendSelectedDayCard: View {
     private var mealSplit: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Meal Split")
-                .font(CalorynTheme.caption)
+                .font(CalorynTheme.sectionEyebrow)
                 .foregroundStyle(CalorynTheme.textSecondary)
                 .textCase(.uppercase)
 
@@ -556,7 +556,7 @@ private struct HistoryCalorieTrendSelectedDayCard: View {
                 ForEach(mealRows) { row in
                     HStack(alignment: .center, spacing: 10) {
                         Image(systemName: row.iconName)
-                            .font(.system(.caption, weight: .semibold))
+                            .font(CalorynTheme.compactIcon)
                             .foregroundStyle(row.calories > 0 ? CalorynTheme.sage : CalorynTheme.textSecondary)
                             .frame(width: 20)
                             .accessibilityHidden(true)
@@ -580,7 +580,7 @@ private struct HistoryCalorieTrendSelectedDayCard: View {
     private var foodDrivers: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(detail.calorieDifference > 0 ? "Top Contributors" : "Foods Logged")
-                .font(CalorynTheme.caption)
+                .font(CalorynTheme.sectionEyebrow)
                 .foregroundStyle(CalorynTheme.textSecondary)
                 .textCase(.uppercase)
 
@@ -602,7 +602,7 @@ private struct HistoryCalorieTrendSelectedDayCard: View {
     private var unloggedState: some View {
         HStack(alignment: .center, spacing: 12) {
             Image(systemName: "calendar")
-                .font(.system(size: 18, weight: .semibold))
+                .font(CalorynTheme.inlineIcon)
                 .foregroundStyle(CalorynTheme.textSecondary)
                 .frame(width: 28)
                 .accessibilityHidden(true)
@@ -615,7 +615,7 @@ private struct HistoryCalorieTrendSelectedDayCard: View {
 
     private func statusBadge(_ status: HistoryGoalStatus) -> some View {
         Text(status.label)
-            .font(.system(.caption2, design: .rounded, weight: .semibold))
+            .font(CalorynTheme.microCaptionEmphasized)
             .foregroundStyle(status.tint)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
@@ -633,7 +633,7 @@ private struct HistoryCalorieTrendSelectedDayCard: View {
                     .minimumScaleFactor(0.8)
 
                 Text("\(food.entryCount) \(food.entryCount == 1 ? "entry" : "entries")")
-                    .font(.system(.caption2))
+                    .font(CalorynTheme.microCaption)
                     .foregroundStyle(CalorynTheme.textSecondary)
             }
 
@@ -723,7 +723,7 @@ private struct HistoryCalorieTrendSelectedWeekCard: View {
 
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Top Foods")
-                            .font(CalorynTheme.caption)
+                            .font(CalorynTheme.sectionEyebrow)
                             .foregroundStyle(CalorynTheme.textSecondary)
                             .textCase(.uppercase)
 
