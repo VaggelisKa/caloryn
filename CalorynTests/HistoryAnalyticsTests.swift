@@ -188,6 +188,142 @@ final class HistoryAnalyticsTests: XCTestCase {
         XCTAssertTrue(detail.nutriscoreDistribution.isEmpty)
     }
 
+    func testPatternDiscoveryProjectsDailyCalorieTrendPoints() throws {
+        let profile = makeProfile()
+        let endDate = makeTestDate(year: 2026, month: 1, day: 30)
+        let entries = [
+            makeEntry(date: endDate.yesterday, calories: 2_000),
+            makeEntry(date: endDate, calories: 2_200)
+        ]
+
+        let analytics = HistoryAnalytics(
+            entries: entries,
+            profile: profile,
+            range: .week,
+            endDate: endDate
+        )
+
+        let projection = HistoryPatternDiscovery(analytics: analytics).calorieTrend
+
+        XCTAssertEqual(projection.points.count, 7)
+        XCTAssertEqual(projection.loggedPointCount, 2)
+        XCTAssertTrue(projection.canDrillDown)
+
+        let firstPoint = try XCTUnwrap(projection.points.first)
+        XCTAssertFalse(firstPoint.isLogged)
+        XCTAssertEqual(firstPoint.value, 0, accuracy: 0.001)
+        XCTAssertEqual(firstPoint.status, .notLogged)
+
+        let lastPoint = try XCTUnwrap(projection.points.last)
+        XCTAssertTrue(lastPoint.isLogged)
+        XCTAssertEqual(lastPoint.value, 2_200, accuracy: 0.001)
+        XCTAssertEqual(lastPoint.targetDelta, 200)
+        XCTAssertEqual(lastPoint.status, .over)
+        XCTAssertEqual(lastPoint.xAxisLabel, "F")
+        XCTAssertEqual(lastPoint.accessibilityValue, "2200 calories, Over")
+    }
+
+    func testPatternDiscoverySurfacesBiggestDailyCalorieSwing() {
+        let profile = makeProfile()
+        let endDate = makeTestDate(year: 2026, month: 1, day: 30)
+        let entries = [
+            makeEntry(date: endDate.yesterday.yesterday, calories: 2_000),
+            makeEntry(date: endDate.yesterday, calories: 2_100),
+            makeEntry(date: endDate, calories: 2_600)
+        ]
+
+        let analytics = HistoryAnalytics(
+            entries: entries,
+            profile: profile,
+            range: .week,
+            endDate: endDate
+        )
+
+        let projection = HistoryPatternDiscovery(analytics: analytics).calorieTrend
+
+        XCTAssertEqual(
+            projection.biggestInconsistencyText,
+            "Biggest swing: \(endDate.shortFormatted), 600 kcal over"
+        )
+    }
+
+    func testPatternDiscoveryAggregatesWeeklyFoodDrivers() throws {
+        let profile = makeProfile()
+        let endDate = makeTestDate(year: 2026, month: 1, day: 30)
+        let weekStart = makeTestDate(year: 2026, month: 1, day: 26)
+        let entries = [
+            makeEntry(date: weekStart, name: "Oats", calories: 300),
+            makeEntry(date: weekStart, name: "Pasta", calories: 600),
+            makeEntry(date: weekStart.tomorrow, name: "Pasta", calories: 400)
+        ]
+
+        let analytics = HistoryAnalytics(
+            entries: entries,
+            profile: profile,
+            range: .quarter,
+            endDate: endDate
+        )
+
+        let projection = HistoryPatternDiscovery(analytics: analytics).calorieTrend
+        let selectedWeek = try XCTUnwrap(projection.points.last)
+        let foods = projection.topFoods(for: selectedWeek.selection)
+
+        XCTAssertEqual(foods.map(\.name), ["Pasta", "Oats"])
+        XCTAssertEqual(foods.first?.entryCount, 2)
+        XCTAssertEqual(foods.first?.calories ?? 0, 1_000, accuracy: 0.001)
+    }
+
+    func testPatternDiscoverySurfacesLeastConsistentMacro() {
+        let profile = makeProfile()
+        let endDate = makeTestDate(year: 2026, month: 1, day: 30)
+        let entries = [
+            makeEntry(date: endDate.yesterday.yesterday, protein: 150, carbs: 200, fat: 66.7),
+            makeEntry(date: endDate.yesterday, protein: 100, carbs: 200, fat: 66.7),
+            makeEntry(date: endDate, protein: 100, carbs: 200, fat: 66.7)
+        ]
+
+        let analytics = HistoryAnalytics(
+            entries: entries,
+            profile: profile,
+            range: .week,
+            endDate: endDate
+        )
+
+        let projection = HistoryPatternDiscovery(analytics: analytics).macroPatterns
+
+        XCTAssertEqual(
+            projection.summaryText,
+            "Protein was the least consistent macro at 1 of 3 logged days."
+        )
+    }
+
+    func testPatternDiscoverySurfacesBestWeeklyConsistency() {
+        let profile = makeProfile()
+        let endDate = makeTestDate(year: 2026, month: 1, day: 30)
+        let previousWeek = makeTestDate(year: 2026, month: 1, day: 19)
+        let bestWeek = makeTestDate(year: 2026, month: 1, day: 26)
+        let entries = [
+            makeEntry(date: previousWeek, calories: 2_000),
+            makeEntry(date: previousWeek.tomorrow, calories: 2_300),
+            makeEntry(date: bestWeek, calories: 2_000),
+            makeEntry(date: bestWeek.tomorrow, calories: 2_000)
+        ]
+
+        let analytics = HistoryAnalytics(
+            entries: entries,
+            profile: profile,
+            range: .month,
+            endDate: endDate
+        )
+
+        let projection = HistoryPatternDiscovery(analytics: analytics).weeklyConsistency
+
+        XCTAssertEqual(
+            projection.headlineText,
+            "Best week had 2 of 2 logged days on track."
+        )
+    }
+
     private func makeProfile() -> UserProfile {
         UserProfile(
             age: 30,

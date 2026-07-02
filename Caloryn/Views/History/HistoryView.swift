@@ -44,15 +44,14 @@ struct HistoryView: View {
         NavigationStack(path: $navigationPath) {
             ScrollView {
                 let history = analytics
-                let canOpenCalorieTrendDetail = canOpenCalorieTrendDetail(in: history.current)
+                let patternDiscovery = HistoryPatternDiscovery(analytics: history)
 
                 VStack(spacing: CalorynTheme.cardSpacing) {
                     rangePicker
 
                     HistoryCalorieTrendCard(
-                        range: selectedRange,
-                        summary: history.current,
-                        drillDownAction: canOpenCalorieTrendDetail
+                        projection: patternDiscovery.calorieTrend,
+                        drillDownAction: patternDiscovery.calorieTrend.canDrillDown
                             ? { openCalorieTrendDetail(range: selectedRange, summary: history.current) }
                             : nil
                     )
@@ -64,11 +63,11 @@ struct HistoryView: View {
                     )
 
                     if selectedRange.days >= HistoryRange.month.days {
-                        HistoryWeeklyRollupCard(summary: history.current)
+                        HistoryWeeklyRollupCard(projection: patternDiscovery.weeklyConsistency)
                     }
 
                     if history.macroPatterns.contains(where: { $0.current.loggedDays > 0 }) {
-                        HistoryMacroPatternsCard(patterns: history.macroPatterns)
+                        HistoryMacroPatternsCard(projection: patternDiscovery.macroPatterns)
                     }
                 }
                 .padding(.horizontal, CalorynTheme.pagePadding)
@@ -98,15 +97,6 @@ struct HistoryView: View {
             summary: summary
         )
         navigationPath.append(.calorieTrend(snapshot))
-    }
-
-    private func canOpenCalorieTrendDetail(in summary: HistoryPeriodSummary) -> Bool {
-        switch selectedRange {
-        case .quarter:
-            summary.weeklyRollups.filter { $0.loggedDays > 0 }.count >= 2
-        case .week, .twoWeeks, .month:
-            summary.days.filter(\.isLogged).count >= 2
-        }
     }
 
     @ViewBuilder

@@ -245,36 +245,7 @@ enum TrackedNutrient: String, CaseIterable, Identifiable, Hashable {
     }
 
     func value(in entries: [FoodLogEntry]) -> Double {
-        switch self {
-        case .protein:
-            total(entries, \.proteinG)
-        case .carbs:
-            total(entries, \.carbsG)
-        case .fat:
-            total(entries, \.fatG)
-        case .fiber:
-            total(entries, \.fiberG)
-        case .sugars:
-            optionalTotal(entries, \.sugarsG)
-        case .addedSugars:
-            optionalTotal(entries, \.addedSugarsG)
-        case .saturatedFat:
-            optionalTotal(entries, \.saturatedFatG)
-        case .sodium:
-            optionalTotal(entries, \.sodiumG)
-        case .cholesterol:
-            optionalTotal(entries, \.cholesterolG)
-        case .alcohol:
-            optionalTotal(entries, \.alcoholG)
-        }
-    }
-
-    private func total(_ entries: [FoodLogEntry], _ keyPath: KeyPath<FoodLogEntry, Double>) -> Double {
-        entries.reduce(0) { $0 + $1[keyPath: keyPath] }
-    }
-
-    private func optionalTotal(_ entries: [FoodLogEntry], _ keyPath: KeyPath<FoodLogEntry, Double?>) -> Double {
-        entries.reduce(0) { $0 + ($1[keyPath: keyPath] ?? 0) }
+        entries.reduce(0) { $0 + $1.nutrition.value(for: self) }
     }
 }
 

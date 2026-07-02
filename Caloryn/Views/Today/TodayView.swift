@@ -274,17 +274,11 @@ struct TodayView: View {
     }
 
     private func copyEntries(from entries: [FoodLogEntry]) {
-        for entry in entries {
-            guard let food = entry.foodItem else { continue }
-            let newEntry = FoodLogEntry(
-                date: selectedDate,
-                mealType: entry.mealType,
-                foodItem: food,
-                portionGrams: entry.portionGrams,
-                snackIndex: entry.snackIndex
-            )
-            modelContext.insert(newEntry)
-        }
+        DailyFoodLogCommands.copyLoggedEntries(
+            entries,
+            to: selectedDate,
+            modelContext: modelContext
+        )
     }
 }
 

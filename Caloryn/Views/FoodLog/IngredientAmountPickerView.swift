@@ -195,40 +195,36 @@ struct RecipeIngredientDraft: Identifiable, Hashable {
         )
     }
 
-    var calories: Double { caloriesPer100g * portionGrams / 100 }
-    var proteinG: Double { proteinPer100g * portionGrams / 100 }
-    var carbsG: Double { carbsPer100g * portionGrams / 100 }
-    var fatG: Double { fatPer100g * portionGrams / 100 }
-    var fiberG: Double { fiberPer100g * portionGrams / 100 }
-    var sugarsG: Double? { scaled(sugarsPer100g) }
-    var addedSugarsG: Double? { scaled(addedSugarsPer100g) }
-    var sucroseG: Double? { scaled(sucrosePer100g) }
-    var glucoseG: Double? { scaled(glucosePer100g) }
-    var fructoseG: Double? { scaled(fructosePer100g) }
-    var lactoseG: Double? { scaled(lactosePer100g) }
-    var maltoseG: Double? { scaled(maltosePer100g) }
-    var maltodextrinsG: Double? { scaled(maltodextrinsPer100g) }
-    var starchG: Double? { scaled(starchPer100g) }
-    var polyolsG: Double? { scaled(polyolsPer100g) }
-    var saturatedFatG: Double? { scaled(saturatedFatPer100g) }
-    var transFatG: Double? { scaled(transFatPer100g) }
-    var monounsaturatedFatG: Double? { scaled(monounsaturatedFatPer100g) }
-    var polyunsaturatedFatG: Double? { scaled(polyunsaturatedFatPer100g) }
-    var omega3FatG: Double? { scaled(omega3FatPer100g) }
-    var omega6FatG: Double? { scaled(omega6FatPer100g) }
-    var omega9FatG: Double? { scaled(omega9FatPer100g) }
-    var saltG: Double? { scaled(saltPer100g) }
-    var sodiumG: Double? { scaled(sodiumPer100g) }
-    var cholesterolG: Double? { scaled(cholesterolPer100g) }
-    var solubleFiberG: Double? { scaled(solubleFiberPer100g) }
-    var insolubleFiberG: Double? { scaled(insolubleFiberPer100g) }
-    var caseinG: Double? { scaled(caseinPer100g) }
-    var serumProteinsG: Double? { scaled(serumProteinsPer100g) }
-    var alcoholG: Double? { scaled(alcoholPer100g) }
-
-    private func scaled(_ value: Double?) -> Double? {
-        value.map { $0 * portionGrams / 100 }
-    }
+    var calories: Double { nutrition.calories }
+    var proteinG: Double { nutrition.proteinG }
+    var carbsG: Double { nutrition.carbsG }
+    var fatG: Double { nutrition.fatG }
+    var fiberG: Double { nutrition.fiberG }
+    var sugarsG: Double? { nutrition.sugarsG }
+    var addedSugarsG: Double? { nutrition.addedSugarsG }
+    var sucroseG: Double? { nutrition.sucroseG }
+    var glucoseG: Double? { nutrition.glucoseG }
+    var fructoseG: Double? { nutrition.fructoseG }
+    var lactoseG: Double? { nutrition.lactoseG }
+    var maltoseG: Double? { nutrition.maltoseG }
+    var maltodextrinsG: Double? { nutrition.maltodextrinsG }
+    var starchG: Double? { nutrition.starchG }
+    var polyolsG: Double? { nutrition.polyolsG }
+    var saturatedFatG: Double? { nutrition.saturatedFatG }
+    var transFatG: Double? { nutrition.transFatG }
+    var monounsaturatedFatG: Double? { nutrition.monounsaturatedFatG }
+    var polyunsaturatedFatG: Double? { nutrition.polyunsaturatedFatG }
+    var omega3FatG: Double? { nutrition.omega3FatG }
+    var omega6FatG: Double? { nutrition.omega6FatG }
+    var omega9FatG: Double? { nutrition.omega9FatG }
+    var saltG: Double? { nutrition.saltG }
+    var sodiumG: Double? { nutrition.sodiumG }
+    var cholesterolG: Double? { nutrition.cholesterolG }
+    var solubleFiberG: Double? { nutrition.solubleFiberG }
+    var insolubleFiberG: Double? { nutrition.insolubleFiberG }
+    var caseinG: Double? { nutrition.caseinG }
+    var serumProteinsG: Double? { nutrition.serumProteinsG }
+    var alcoholG: Double? { nutrition.alcoholG }
 }
 
 struct IngredientAmountPickerView: View {
@@ -247,20 +243,24 @@ struct IngredientAmountPickerView: View {
         grams > 0
     }
 
+    private var previewNutrition: NutritionValues {
+        ingredient.nutritionPer100g.scaled(by: grams / 100)
+    }
+
     private var previewCalories: Double {
-        ingredient.caloriesPer100g * grams / 100
+        previewNutrition.calories
     }
 
     private var previewProtein: Double {
-        ingredient.proteinPer100g * grams / 100
+        previewNutrition.proteinG
     }
 
     private var previewCarbs: Double {
-        ingredient.carbsPer100g * grams / 100
+        previewNutrition.carbsG
     }
 
     private var previewFat: Double {
-        ingredient.fatPer100g * grams / 100
+        previewNutrition.fatG
     }
 
     init(ingredient: RecipeIngredientDraft, onSave: @escaping (RecipeIngredientDraft) -> Void) {
