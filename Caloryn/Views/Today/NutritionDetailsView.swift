@@ -113,7 +113,7 @@ struct NutritionDetailsView: View {
                         dismiss()
                     } label: {
                         Image(systemName: "xmark")
-                            .font(.system(size: 16, weight: .medium))
+                            .font(CalorynTheme.toolbarIcon)
                     }
                     .accessibilityLabel("Close")
                 }
@@ -129,7 +129,7 @@ struct NutritionDetailsView: View {
 
             HStack(alignment: .firstTextBaseline) {
                 Text("\(roundedCalories)")
-                    .font(.system(size: 44, weight: .bold, design: .rounded))
+                    .font(CalorynTheme.displayNumber)
                     .foregroundStyle(calorieAccentColor)
                     .contentTransition(.numericText())
 
@@ -185,7 +185,7 @@ struct NutritionDetailsView: View {
                             .fill(CalorynTheme.carbColor.opacity(0.16))
 
                         Image(systemName: "flame.fill")
-                            .font(.system(size: 18, weight: .semibold))
+                            .font(CalorynTheme.inlineIcon)
                             .foregroundStyle(CalorynTheme.carbColor)
                     }
                     .frame(width: 42, height: 42)
@@ -283,7 +283,7 @@ struct NutritionDetailsView: View {
     private func dynamicStatusNotice(_ message: String) -> some View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: "info.circle.fill")
-                .font(.system(size: 13, weight: .semibold))
+                .font(CalorynTheme.compactIcon)
                 .foregroundStyle(dynamicStatusNoticeColor)
                 .padding(.top, 1)
                 .accessibilityHidden(true)
@@ -305,7 +305,7 @@ struct NutritionDetailsView: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(label)
-                .font(.system(.caption2, design: .rounded, weight: .medium))
+                .font(CalorynTheme.microCaption)
                 .foregroundStyle(CalorynTheme.textSecondary)
                 .lineLimit(1)
 
@@ -330,7 +330,7 @@ struct NutritionDetailsView: View {
                     .fill(CalorynTheme.fiberColor.opacity(0.16))
 
                 Image(systemName: "carrot.fill")
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(CalorynTheme.inlineIcon)
                     .foregroundStyle(CalorynTheme.fiberColor)
             }
             .frame(width: 42, height: 42)
@@ -349,7 +349,7 @@ struct NutritionDetailsView: View {
 
                 if let preview = summary.previewText {
                     Text(preview)
-                        .font(.system(.caption2, design: .rounded))
+                        .font(CalorynTheme.microCaption)
                         .foregroundStyle(CalorynTheme.textSecondary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.82)
@@ -360,12 +360,12 @@ struct NutritionDetailsView: View {
 
             VStack(alignment: .trailing, spacing: 2) {
                 Text("\(summary.totalCount)")
-                    .font(.system(.title2, design: .rounded, weight: .bold))
+                    .font(CalorynTheme.compactNumber)
                     .foregroundStyle(countColor)
                     .contentTransition(.numericText())
 
                 Text("unique")
-                    .font(.system(.caption2, design: .rounded, weight: .medium))
+                    .font(CalorynTheme.microCaption)
                     .foregroundStyle(CalorynTheme.textSecondary)
             }
             .accessibilityHidden(true)
@@ -391,7 +391,7 @@ struct NutritionDetailsView: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(label)
-                .font(.system(.caption2, design: .rounded, weight: .medium))
+                .font(CalorynTheme.microCaption)
                 .foregroundStyle(CalorynTheme.textSecondary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.72)
@@ -404,7 +404,7 @@ struct NutritionDetailsView: View {
                 .minimumScaleFactor(0.72)
 
             Text(detail)
-                .font(.system(.caption2, design: .rounded))
+                .font(CalorynTheme.microCaption)
                 .foregroundStyle(CalorynTheme.textSecondary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.72)
@@ -460,7 +460,7 @@ struct NutritionDetailsView: View {
     private var dataQualityNote: some View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: "info.circle")
-                .font(.caption)
+                .font(CalorynTheme.compactIcon)
                 .foregroundStyle(CalorynTheme.textSecondary)
 
             Text("Detailed nutrients come from product data and may be missing or inaccurate for some foods.")
@@ -476,7 +476,7 @@ struct NutritionDetailsView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
                 Image(systemName: systemImage)
-                    .font(.caption)
+                    .font(CalorynTheme.compactIcon)
                     .foregroundStyle(color)
 
                 Text(title)
@@ -520,7 +520,7 @@ struct NutritionDetailsView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
                 Image(systemName: metric.nutrient.systemImage)
-                    .font(.caption)
+                    .font(CalorynTheme.compactIcon)
                     .foregroundStyle(metric.accentColor)
 
                 Text(metric.nutrient.compactName)
@@ -539,13 +539,13 @@ struct NutritionDetailsView: View {
                 progressBar(current: metric.value, target: target, color: metric.accentColor)
 
                 Text(metric.targetSummary ?? "of \(metric.nutrient.unit.formatted(target))")
-                    .font(.system(.caption2, design: .rounded))
+                    .font(CalorynTheme.microCaption)
                     .foregroundStyle(CalorynTheme.textSecondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             } else {
                 Text("today")
-                    .font(.system(.caption2, design: .rounded))
+                    .font(CalorynTheme.microCaption)
                     .foregroundStyle(CalorynTheme.textSecondary)
             }
         }

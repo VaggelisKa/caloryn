@@ -78,7 +78,7 @@ struct FoodSearchView: View {
                         dismiss()
                     } label: {
                         Image(systemName: "xmark")
-                            .font(.system(size: 16, weight: .medium))
+                            .font(CalorynTheme.toolbarIcon)
                     }
                     .accessibilityLabel("Close")
                 }
@@ -88,7 +88,7 @@ struct FoodSearchView: View {
                             showingCustomFoodForm = true
                         } label: {
                             Image(systemName: "plus")
-                                .font(.system(size: 16, weight: .medium))
+                                .font(CalorynTheme.toolbarIcon)
                                 .foregroundStyle(CalorynTheme.sage)
                         }
                         .accessibilityLabel("Create Manual Entry")
@@ -173,7 +173,7 @@ struct FoodSearchView: View {
                 showingScanner = true
             } label: {
                 Image(systemName: "barcode.viewfinder")
-                    .font(.system(size: 20, weight: .medium))
+                    .font(CalorynTheme.inlineIcon)
                     .foregroundStyle(CalorynTheme.sage)
                     .frame(width: 44, height: 44)
             }
@@ -363,7 +363,7 @@ struct FoodSearchView: View {
                 showingScanner = false
             } label: {
                 Image(systemName: "xmark")
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(CalorynTheme.toolbarIcon)
                     .foregroundStyle(.white)
                     .frame(width: 36, height: 36)
                     .background(.ultraThinMaterial, in: Circle())
@@ -378,7 +378,7 @@ struct FoodSearchView: View {
             Spacer()
             if let error = barcodeLookupError {
                 Image(systemName: "barcode.viewfinder")
-                    .font(.system(size: 48))
+                    .font(CalorynTheme.emptyStateIcon)
                     .foregroundStyle(CalorynTheme.textSecondary)
                 Text(error)
                     .font(CalorynTheme.bodyText)

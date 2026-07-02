@@ -289,7 +289,7 @@ struct IngredientAmountPickerView: View {
                         dismiss()
                     } label: {
                         Image(systemName: "xmark")
-                            .font(.system(size: 16, weight: .medium))
+                            .font(CalorynTheme.toolbarIcon)
                     }
                     .accessibilityLabel("Close")
                 }
@@ -298,7 +298,7 @@ struct IngredientAmountPickerView: View {
                     Button("Save") {
                         save()
                     }
-                    .fontWeight(.semibold)
+                    .font(CalorynTheme.toolbarAction)
                     .disabled(!canSave)
                 }
             }
@@ -328,7 +328,7 @@ struct IngredientAmountPickerView: View {
     private var caloriePreview: some View {
         VStack(spacing: 4) {
             Text("\(Int(previewCalories))")
-                .font(.system(size: 48, weight: .bold, design: .rounded))
+                .font(CalorynTheme.displayNumber)
                 .foregroundStyle(CalorynTheme.sage)
                 .contentTransition(.numericText())
                 .animation(.smooth(duration: 0.3), value: Int(previewCalories))
@@ -345,7 +345,7 @@ struct IngredientAmountPickerView: View {
     private var amountSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("AMOUNT")
-                .font(CalorynTheme.caption)
+                .font(CalorynTheme.sectionEyebrow)
                 .foregroundStyle(CalorynTheme.textSecondary)
 
             HStack {

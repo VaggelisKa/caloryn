@@ -204,7 +204,7 @@ struct TodayView: View {
                 }
             } label: {
                 Image(systemName: "chevron.left")
-                    .font(.title3)
+                    .font(CalorynTheme.inlineIcon)
                     .foregroundStyle(CalorynTheme.sage)
             }
             .accessibilityLabel("Previous day")
@@ -225,7 +225,7 @@ struct TodayView: View {
                 }
             } label: {
                 Image(systemName: "chevron.right")
-                    .font(.title3)
+                    .font(CalorynTheme.inlineIcon)
                     .foregroundStyle(selectedDate.isAtFutureLogLimit ? CalorynTheme.textSecondary.opacity(0.3) : CalorynTheme.sage)
             }
             .disabled(selectedDate.isAtFutureLogLimit)
@@ -242,7 +242,7 @@ struct TodayView: View {
             showingFoodSearch = true
         } label: {
             Label("Add Snack", systemImage: "plus.circle")
-                .font(.system(.subheadline, design: .rounded, weight: .medium))
+                .font(CalorynTheme.buttonLabel)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
         }
@@ -263,7 +263,7 @@ struct TodayView: View {
                     }
                 } label: {
                     Label("Copy Yesterday's Meals", systemImage: "doc.on.doc")
-                        .font(.system(.subheadline, design: .rounded, weight: .medium))
+                        .font(CalorynTheme.buttonLabel)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
                 }

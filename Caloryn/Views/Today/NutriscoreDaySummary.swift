@@ -19,7 +19,7 @@ struct NutriscoreDaySummary: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
                 Image(systemName: "heart.fill")
-                    .font(.subheadline)
+                    .font(CalorynTheme.compactIcon)
                     .foregroundStyle(CalorynTheme.sage)
                 Text("Today's health")
                     .font(CalorynTheme.caption)
@@ -33,7 +33,7 @@ struct NutriscoreDaySummary: View {
                     HStack(spacing: 4) {
                         NutriscoreBadge(grade: item.grade)
                         Text("×\(item.count)")
-                            .font(.system(.caption2, design: .rounded))
+                            .font(CalorynTheme.numericMicroCaption)
                             .foregroundStyle(CalorynTheme.textSecondary)
                             .contentTransition(.numericText())
                     }

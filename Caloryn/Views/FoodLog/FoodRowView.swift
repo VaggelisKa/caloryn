@@ -37,7 +37,7 @@ struct FoodRowView: View {
 
                     if showsTypeBadge && (isCustom || isRecipe) {
                         Text(isRecipe ? "RECIPE" : "CUSTOM")
-                            .font(.system(size: 9, weight: .bold, design: .rounded))
+                            .font(CalorynTheme.badgeText)
                             .foregroundStyle(CalorynTheme.sage)
                             .padding(.horizontal, 5)
                             .padding(.vertical, 2)
@@ -65,7 +65,7 @@ struct FoodRowView: View {
                         .font(CalorynTheme.numericBody)
                         .foregroundStyle(CalorynTheme.textPrimary)
                     Text(isRecipe ? "kcal total" : "kcal/srv")
-                        .font(.system(.caption2, design: .rounded))
+                        .font(CalorynTheme.numericMicroCaption)
                         .foregroundStyle(CalorynTheme.textSecondary)
                 }
             } else {
@@ -74,7 +74,7 @@ struct FoodRowView: View {
                         .font(CalorynTheme.numericBody)
                         .foregroundStyle(CalorynTheme.textPrimary)
                     Text("kcal/100g")
-                        .font(.system(.caption2, design: .rounded))
+                        .font(CalorynTheme.numericMicroCaption)
                         .foregroundStyle(CalorynTheme.textSecondary)
                 }
             }

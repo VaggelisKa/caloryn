@@ -124,7 +124,7 @@ struct CustomFoodFormView: View {
                         dismiss()
                     } label: {
                         Image(systemName: "xmark")
-                            .font(.system(size: 16, weight: .medium))
+                            .font(CalorynTheme.toolbarIcon)
                     }
                     .accessibilityLabel("Close")
                 }
@@ -132,7 +132,7 @@ struct CustomFoodFormView: View {
                     Button("Save") {
                         saveFood()
                     }
-                    .fontWeight(.semibold)
+                    .font(CalorynTheme.toolbarAction)
                     .disabled(!canSave)
                 }
             }
@@ -149,7 +149,7 @@ struct CustomFoodFormView: View {
     private var nameSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("FOOD DETAILS")
-                .font(CalorynTheme.caption)
+                .font(CalorynTheme.sectionEyebrow)
                 .foregroundStyle(CalorynTheme.textSecondary)
 
             TextField("Food name (e.g. Nick's Pizza)", text: $name)
@@ -170,7 +170,7 @@ struct CustomFoodFormView: View {
     private var produceTrackingSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("FRUIT & VEG VARIETY")
-                .font(CalorynTheme.caption)
+                .font(CalorynTheme.sectionEyebrow)
                 .foregroundStyle(CalorynTheme.textSecondary)
 
             HStack {
@@ -195,7 +195,7 @@ struct CustomFoodFormView: View {
     private var caloriePreviewCard: some View {
         VStack(spacing: 4) {
             Text("\(Int(previewCalories))")
-                .font(.system(size: 48, weight: .bold, design: .rounded))
+                .font(CalorynTheme.displayNumber)
                 .foregroundStyle(CalorynTheme.sage)
                 .contentTransition(.numericText())
                 .animation(.smooth(duration: 0.3), value: Int(previewCalories))
@@ -212,7 +212,7 @@ struct CustomFoodFormView: View {
     private var nutritionSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("NUTRITION PER SERVING")
-                .font(CalorynTheme.caption)
+                .font(CalorynTheme.sectionEyebrow)
                 .foregroundStyle(CalorynTheme.textSecondary)
 
             nutritionField(
@@ -250,7 +250,7 @@ struct CustomFoodFormView: View {
     private var optionalNutritionSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("OPTIONAL STATS PER SERVING")
-                .font(CalorynTheme.caption)
+                .font(CalorynTheme.sectionEyebrow)
                 .foregroundStyle(CalorynTheme.textSecondary)
 
             Text("Leave unknown values blank.")
@@ -353,7 +353,7 @@ struct CustomFoodFormView: View {
     private var servingSizeSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("SERVING SIZE")
-                .font(CalorynTheme.caption)
+                .font(CalorynTheme.sectionEyebrow)
                 .foregroundStyle(CalorynTheme.textSecondary)
 
             HStack {

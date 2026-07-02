@@ -13,7 +13,7 @@ struct AppleHealthOptInCard: View {
             Toggle(isOn: $isEnabled) {
                 HStack(alignment: .top, spacing: 12) {
                     Image(systemName: "heart.text.square.fill")
-                        .font(.system(size: 18, weight: .semibold))
+                        .font(CalorynTheme.inlineIcon)
                         .foregroundStyle(CalorynTheme.sage)
                         .frame(width: 28, height: 28)
                         .accessibilityHidden(true)

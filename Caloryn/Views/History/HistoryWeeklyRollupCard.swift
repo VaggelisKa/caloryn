@@ -30,21 +30,17 @@ struct HistoryWeeklyRollupCard: View {
         .fixed(chartWeeks.count > 10 ? 12 : 16)
     }
 
-    private var xAxisLabelFontSize: CGFloat {
-        chartWeeks.count > 10 ? 8 : 10
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Weekly Consistency")
-                    .font(CalorynTheme.caption)
+                    .font(CalorynTheme.sectionEyebrow)
                     .foregroundStyle(CalorynTheme.textSecondary)
                     .textCase(.uppercase)
 
                 if let headlineText = projection.headlineText {
                     Text(headlineText)
-                        .font(.system(.subheadline))
+                        .font(CalorynTheme.cardSubtitle)
                         .foregroundStyle(CalorynTheme.textSecondary)
                 }
             }
@@ -68,7 +64,7 @@ struct HistoryWeeklyRollupCard: View {
                             Text("\(percentage)%")
                         }
                     }
-                    .font(.system(size: 10))
+                    .font(CalorynTheme.chartAxisLabel)
                 }
             }
             .chartXAxis {
@@ -77,7 +73,7 @@ struct HistoryWeeklyRollupCard: View {
                         if let index = value.as(Double.self),
                            let chartWeek = chartWeek(for: index) {
                             Text(weekLabel(for: chartWeek))
-                                .font(.system(size: xAxisLabelFontSize))
+                                .font(CalorynTheme.weeklyChartXAxisLabel(isDense: chartWeeks.count > 10))
                                 .foregroundStyle(.clear)
                                 .accessibilityHidden(true)
                         }
@@ -92,7 +88,7 @@ struct HistoryWeeklyRollupCard: View {
                         ForEach(chartWeeks) { chartWeek in
                             if let xPosition = proxy.position(forX: chartWeek.index) {
                                 Text(weekLabel(for: chartWeek))
-                                    .font(.system(size: xAxisLabelFontSize))
+                                    .font(CalorynTheme.weeklyChartXAxisLabel(isDense: chartWeeks.count > 10))
                                     .foregroundStyle(CalorynTheme.textSecondary)
                                     .position(
                                         x: plotRect.minX + xPosition,

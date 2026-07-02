@@ -39,7 +39,7 @@ struct NutrientSelectionStepView: View {
 
                 VStack(alignment: .leading, spacing: 12) {
                     Text("ADDITIONAL NUTRIENTS")
-                        .font(CalorynTheme.caption)
+                        .font(CalorynTheme.sectionEyebrow)
                         .foregroundStyle(CalorynTheme.textSecondary)
 
                     AdaptiveGlassContainer(spacing: 10) {
@@ -69,7 +69,7 @@ struct NutrientSelectionStepView: View {
                     }
 
                     Text("Start Tracking")
-                        .font(.system(.headline, design: .rounded))
+                        .font(CalorynTheme.buttonLabel)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
@@ -86,14 +86,14 @@ struct NutrientSelectionStepView: View {
     private var coreMacroSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("CORE MACROS")
-                .font(CalorynTheme.caption)
+                .font(CalorynTheme.sectionEyebrow)
                 .foregroundStyle(CalorynTheme.textSecondary)
 
             HStack(spacing: 10) {
                 ForEach(TrackedNutrient.defaultSelection) { nutrient in
                     VStack(spacing: 8) {
                         Image(systemName: nutrient.systemImage)
-                            .font(.system(size: 18, weight: .semibold))
+                            .font(CalorynTheme.inlineIcon)
                             .foregroundStyle(nutrient.color)
                             .frame(width: 28, height: 28)
 
@@ -167,7 +167,7 @@ private struct NutrientSelectionTile: View {
             ZStack(alignment: .topTrailing) {
                 VStack(spacing: 8) {
                     Image(systemName: nutrient.systemImage)
-                        .font(.system(size: 18, weight: .semibold))
+                        .font(CalorynTheme.inlineIcon)
                         .foregroundStyle(iconForeground)
                         .frame(width: 28, height: 28)
 
@@ -180,7 +180,7 @@ private struct NutrientSelectionTile: View {
                 .frame(maxWidth: .infinity)
 
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(CalorynTheme.inlineIcon)
                     .foregroundStyle(selectionIndicatorForeground)
                     .padding(10)
                     .accessibilityHidden(true)

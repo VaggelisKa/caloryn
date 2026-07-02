@@ -44,7 +44,7 @@ struct MealSectionView: View {
                 HStack {
                     Image(systemName: mealType.iconName)
                         .foregroundStyle(CalorynTheme.sage)
-                        .font(.title2)
+                        .font(CalorynTheme.inlineIcon)
 
                     Text(sectionTitle)
                         .font(CalorynTheme.itemTitle)
@@ -81,7 +81,7 @@ struct MealSectionView: View {
                     }
 
                     Image(systemName: "plus.circle.fill")
-                        .font(.title2)
+                        .font(CalorynTheme.inlineIcon)
                         .foregroundStyle(CalorynTheme.sage)
                 }
                 .padding(.vertical, 4)
@@ -175,7 +175,7 @@ private struct MealEntryRow: View {
 
                 Button(action: onDelete) {
                     Image(systemName: "minus.circle")
-                        .font(.body)
+                        .font(CalorynTheme.compactIcon)
                         .foregroundStyle(CalorynTheme.terracotta.opacity(0.7))
                 }
                 .buttonStyle(.plain)

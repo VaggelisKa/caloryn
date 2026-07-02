@@ -71,7 +71,7 @@ struct HistoryCalorieTrendCard: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .center, spacing: 8) {
                 Text("Calorie Trend")
-                    .font(CalorynTheme.caption)
+                    .font(CalorynTheme.sectionEyebrow)
                     .foregroundStyle(CalorynTheme.textSecondary)
                     .textCase(.uppercase)
 
@@ -79,7 +79,7 @@ struct HistoryCalorieTrendCard: View {
 
                 if drillDownAction != nil {
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(CalorynTheme.compactIcon)
                         .foregroundStyle(CalorynTheme.textSecondary)
                         .accessibilityHidden(true)
                 }
@@ -116,7 +116,7 @@ struct HistoryCalorieTrendCard: View {
         VStack(alignment: .leading, spacing: 2) {
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text(value)
-                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                    .font(CalorynTheme.compactNumber)
                     .foregroundStyle(hasLoggedData ? CalorynTheme.textPrimary : CalorynTheme.textSecondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
@@ -172,7 +172,7 @@ struct HistoryCalorieTrendCard: View {
                     if let index = value.as(Double.self),
                        let chartPoint = chartPoint(for: index) {
                         Text(chartPoint.xAxisLabel)
-                            .font(.system(size: 10))
+                            .font(CalorynTheme.chartAxisLabel)
                             .foregroundStyle(.clear)
                             .accessibilityHidden(true)
                     }
@@ -187,7 +187,7 @@ struct HistoryCalorieTrendCard: View {
                     ForEach(projection.points) { chartPoint in
                         if let xPosition = proxy.position(forX: chartPoint.index) {
                             Text(chartPoint.xAxisLabel)
-                                .font(.system(size: 10))
+                                .font(CalorynTheme.chartAxisLabel)
                                 .foregroundStyle(CalorynTheme.textSecondary)
                                 .position(
                                     x: plotRect.minX + xPosition,
@@ -204,7 +204,7 @@ struct HistoryCalorieTrendCard: View {
             AxisMarks(position: .leading) { _ in
                 AxisGridLine()
                 AxisValueLabel()
-                    .font(.system(size: 10))
+                    .font(CalorynTheme.chartAxisLabel)
             }
         }
         .chartYScale(domain: 0 ... yAxisUpperBound)

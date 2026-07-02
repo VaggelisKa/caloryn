@@ -180,13 +180,20 @@ final class ScannerViewController: UIViewController, AVCaptureMetadataOutputObje
         label.textColor = .white
         label.font = .preferredFont(forTextStyle: .headline)
 
-        let button = UIButton(type: .system)
-        button.setTitle("Open Settings", for: .normal)
-        button.titleLabel?.font = .preferredFont(forTextStyle: .headline)
-        button.backgroundColor = .white
-        button.setTitleColor(.black, for: .normal)
-        button.layer.cornerRadius = 12
-        button.contentEdgeInsets = UIEdgeInsets(top: 12, left: 24, bottom: 12, right: 24)
+        var buttonConfiguration = UIButton.Configuration.filled()
+        buttonConfiguration.title = "Open Settings"
+        buttonConfiguration.baseBackgroundColor = .white
+        buttonConfiguration.baseForegroundColor = .black
+        buttonConfiguration.contentInsets = NSDirectionalEdgeInsets(top: 12, leading: 24, bottom: 12, trailing: 24)
+        buttonConfiguration.cornerStyle = .fixed
+        buttonConfiguration.background.cornerRadius = 12
+        buttonConfiguration.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
+            var attributes = attributes
+            attributes.font = .preferredFont(forTextStyle: .headline)
+            return attributes
+        }
+
+        let button = UIButton(configuration: buttonConfiguration)
         button.addTarget(self, action: #selector(openSettings), for: .touchUpInside)
 
         container.addArrangedSubview(label)
