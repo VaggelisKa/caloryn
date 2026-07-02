@@ -2,6 +2,8 @@ import SwiftUI
 import SwiftData
 
 struct HistoryView: View {
+    // Keep newest-first ordering in sync with relevantEntries(startingAt:);
+    // that helper early-exits when it reaches entries older than its window.
     @Query(sort: \FoodLogEntry.date, order: .reverse) private var allEntries: [FoodLogEntry]
     @Query(sort: \UserProfile.updatedAt, order: .reverse) private var profiles: [UserProfile]
 
@@ -25,8 +27,21 @@ struct HistoryView: View {
 
     private func relevantEntries(startingAt startDate: Date) -> [FoodLogEntry] {
         var entries: [FoodLogEntry] = []
+        #if DEBUG
+        var previousDate: Date?
+        #endif
 
         for entry in allEntries {
+            #if DEBUG
+            if let previousDate {
+                precondition(
+                    previousDate >= entry.date,
+                    "History entries must stay sorted newest-first by date."
+                )
+            }
+            previousDate = entry.date
+            #endif
+
             if entry.date >= startDate {
                 entries.append(entry)
             } else {
@@ -103,6 +118,8 @@ struct HistoryView: View {
             }
         }
         .task(id: analyticsRefreshID) {
+            // Range changes refresh synchronously through selectRange; data/profile
+            // changes should recalculate for the range current when this task runs.
             refreshAnalytics(for: historyState.range)
         }
     }
