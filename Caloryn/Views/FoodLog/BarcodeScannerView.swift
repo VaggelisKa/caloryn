@@ -185,6 +185,7 @@ final class ScannerViewController: UIViewController, AVCaptureMetadataOutputObje
         buttonConfiguration.baseBackgroundColor = .white
         buttonConfiguration.baseForegroundColor = .black
         buttonConfiguration.contentInsets = NSDirectionalEdgeInsets(top: 12, leading: 24, bottom: 12, trailing: 24)
+        buttonConfiguration.cornerStyle = .fixed
         buttonConfiguration.background.cornerRadius = 12
         buttonConfiguration.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
             var attributes = attributes
