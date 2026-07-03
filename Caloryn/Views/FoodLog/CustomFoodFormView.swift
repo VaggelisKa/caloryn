@@ -499,7 +499,7 @@ struct CustomFoodFormView: View {
 
     private func deleteFood() {
         if let food = existingFood {
-            modelContext.delete(food)
+            food.deletePreservingLogEntrySnapshots(from: modelContext)
         }
         dismiss()
     }

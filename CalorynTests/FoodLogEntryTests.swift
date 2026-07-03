@@ -51,7 +51,7 @@ final class FoodLogEntryTests: XCTestCase {
         XCTAssertEqual(entry.mealType.displayName(snackIndex: entry.snackIndex), "Snack 3")
     }
 
-    func testDeletingReusableFoodPreservesLoggedEntrySnapshot() throws {
+    func testDeletingReusableFoodThroughAppPathPreservesLoggedEntrySnapshot() throws {
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
         let container = try ModelContainer(
             for: UserProfile.self,
@@ -78,7 +78,7 @@ final class FoodLogEntryTests: XCTestCase {
         context.insert(entry)
         try context.save()
 
-        context.delete(food)
+        food.deletePreservingLogEntrySnapshots(from: context)
         try context.save()
 
         let entries = try context.fetch(FetchDescriptor<FoodLogEntry>())

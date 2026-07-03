@@ -183,7 +183,7 @@ final class FoodItem {
 
     var lastUsed: Date = Date()
 
-    @Relationship(deleteRule: .nullify, inverse: \FoodLogEntry.foodItem)
+    @Relationship(deleteRule: .cascade, inverse: \FoodLogEntry.foodItem)
     var logEntries: [FoodLogEntry]?
 
     @Relationship(deleteRule: .cascade, inverse: \RecipeIngredient.recipe)
@@ -291,6 +291,15 @@ final class FoodItem {
         set {
             produceKindRaw = newValue.rawValue
         }
+    }
+
+    func deletePreservingLogEntrySnapshots(from modelContext: ModelContext) {
+        let loggedEntries = logEntries ?? []
+        for entry in loggedEntries {
+            entry.foodItem = nil
+        }
+        logEntries = nil
+        modelContext.delete(self)
     }
 
     func calories(forGrams grams: Double) -> Double {
