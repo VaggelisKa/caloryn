@@ -110,6 +110,7 @@ struct TodayView: View {
                                 showingNutritionDetails = true
                             }
                         }
+                        .id(selectedDate)
 
                         if showNutriscore, hasNutriscoreData {
                             NutriscoreDaySummary(distribution: nutriscoreDistribution)

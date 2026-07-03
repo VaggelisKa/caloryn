@@ -132,7 +132,8 @@ struct ActivityCalorieBudget: Equatable {
     var dynamicAdjustment: Int {
         guard dynamicStatus == .ready, let activityBaselineKcal else { return 0 }
         let rawDelta: Double
-        if date.startOfDay.isToday {
+        // For today and future dates the day isn't complete, so only add calories — never reduce.
+        if date.startOfDay >= Date.now.startOfDay {
             rawDelta = max(0, activeEnergyKcal - activityBaselineKcal)
         } else {
             rawDelta = activeEnergyKcal - activityBaselineKcal
