@@ -32,9 +32,7 @@ struct NutritionValues: Equatable {
     var serumProteinsG: Double?
     var alcoholG: Double?
 
-    nonisolated static var zero: NutritionValues {
-        NutritionValues()
-    }
+    nonisolated static let zero = NutritionValues()
 
     nonisolated init(
         calories: Double = 0,

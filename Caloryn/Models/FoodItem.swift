@@ -294,50 +294,58 @@ final class FoodItem {
     }
 
     func calories(forGrams grams: Double) -> Double {
-        nutrition(forGrams: grams).calories
+        scaled(caloriesPer100g, forGrams: grams)
     }
 
     func protein(forGrams grams: Double) -> Double {
-        nutrition(forGrams: grams).proteinG
+        scaled(proteinPer100g, forGrams: grams)
     }
 
     func carbs(forGrams grams: Double) -> Double {
-        nutrition(forGrams: grams).carbsG
+        scaled(carbsPer100g, forGrams: grams)
     }
 
     func fat(forGrams grams: Double) -> Double {
-        nutrition(forGrams: grams).fatG
+        scaled(fatPer100g, forGrams: grams)
     }
 
     func fiber(forGrams grams: Double) -> Double {
-        nutrition(forGrams: grams).fiberG
+        scaled(fiberPer100g, forGrams: grams)
     }
 
-    func sugars(forGrams grams: Double) -> Double? { nutrition(forGrams: grams).sugarsG }
-    func addedSugars(forGrams grams: Double) -> Double? { nutrition(forGrams: grams).addedSugarsG }
-    func sucrose(forGrams grams: Double) -> Double? { nutrition(forGrams: grams).sucroseG }
-    func glucose(forGrams grams: Double) -> Double? { nutrition(forGrams: grams).glucoseG }
-    func fructose(forGrams grams: Double) -> Double? { nutrition(forGrams: grams).fructoseG }
-    func lactose(forGrams grams: Double) -> Double? { nutrition(forGrams: grams).lactoseG }
-    func maltose(forGrams grams: Double) -> Double? { nutrition(forGrams: grams).maltoseG }
-    func maltodextrins(forGrams grams: Double) -> Double? { nutrition(forGrams: grams).maltodextrinsG }
-    func starch(forGrams grams: Double) -> Double? { nutrition(forGrams: grams).starchG }
-    func polyols(forGrams grams: Double) -> Double? { nutrition(forGrams: grams).polyolsG }
-    func saturatedFat(forGrams grams: Double) -> Double? { nutrition(forGrams: grams).saturatedFatG }
-    func transFat(forGrams grams: Double) -> Double? { nutrition(forGrams: grams).transFatG }
-    func monounsaturatedFat(forGrams grams: Double) -> Double? { nutrition(forGrams: grams).monounsaturatedFatG }
-    func polyunsaturatedFat(forGrams grams: Double) -> Double? { nutrition(forGrams: grams).polyunsaturatedFatG }
-    func omega3Fat(forGrams grams: Double) -> Double? { nutrition(forGrams: grams).omega3FatG }
-    func omega6Fat(forGrams grams: Double) -> Double? { nutrition(forGrams: grams).omega6FatG }
-    func omega9Fat(forGrams grams: Double) -> Double? { nutrition(forGrams: grams).omega9FatG }
-    func salt(forGrams grams: Double) -> Double? { nutrition(forGrams: grams).saltG }
-    func sodium(forGrams grams: Double) -> Double? { nutrition(forGrams: grams).sodiumG }
-    func cholesterol(forGrams grams: Double) -> Double? { nutrition(forGrams: grams).cholesterolG }
-    func solubleFiber(forGrams grams: Double) -> Double? { nutrition(forGrams: grams).solubleFiberG }
-    func insolubleFiber(forGrams grams: Double) -> Double? { nutrition(forGrams: grams).insolubleFiberG }
-    func casein(forGrams grams: Double) -> Double? { nutrition(forGrams: grams).caseinG }
-    func serumProteins(forGrams grams: Double) -> Double? { nutrition(forGrams: grams).serumProteinsG }
-    func alcohol(forGrams grams: Double) -> Double? { nutrition(forGrams: grams).alcoholG }
+    func sugars(forGrams grams: Double) -> Double? { scaled(sugarsPer100g, forGrams: grams) }
+    func addedSugars(forGrams grams: Double) -> Double? { scaled(addedSugarsPer100g, forGrams: grams) }
+    func sucrose(forGrams grams: Double) -> Double? { scaled(sucrosePer100g, forGrams: grams) }
+    func glucose(forGrams grams: Double) -> Double? { scaled(glucosePer100g, forGrams: grams) }
+    func fructose(forGrams grams: Double) -> Double? { scaled(fructosePer100g, forGrams: grams) }
+    func lactose(forGrams grams: Double) -> Double? { scaled(lactosePer100g, forGrams: grams) }
+    func maltose(forGrams grams: Double) -> Double? { scaled(maltosePer100g, forGrams: grams) }
+    func maltodextrins(forGrams grams: Double) -> Double? { scaled(maltodextrinsPer100g, forGrams: grams) }
+    func starch(forGrams grams: Double) -> Double? { scaled(starchPer100g, forGrams: grams) }
+    func polyols(forGrams grams: Double) -> Double? { scaled(polyolsPer100g, forGrams: grams) }
+    func saturatedFat(forGrams grams: Double) -> Double? { scaled(saturatedFatPer100g, forGrams: grams) }
+    func transFat(forGrams grams: Double) -> Double? { scaled(transFatPer100g, forGrams: grams) }
+    func monounsaturatedFat(forGrams grams: Double) -> Double? { scaled(monounsaturatedFatPer100g, forGrams: grams) }
+    func polyunsaturatedFat(forGrams grams: Double) -> Double? { scaled(polyunsaturatedFatPer100g, forGrams: grams) }
+    func omega3Fat(forGrams grams: Double) -> Double? { scaled(omega3FatPer100g, forGrams: grams) }
+    func omega6Fat(forGrams grams: Double) -> Double? { scaled(omega6FatPer100g, forGrams: grams) }
+    func omega9Fat(forGrams grams: Double) -> Double? { scaled(omega9FatPer100g, forGrams: grams) }
+    func salt(forGrams grams: Double) -> Double? { scaled(saltPer100g, forGrams: grams) }
+    func sodium(forGrams grams: Double) -> Double? { scaled(sodiumPer100g, forGrams: grams) }
+    func cholesterol(forGrams grams: Double) -> Double? { scaled(cholesterolPer100g, forGrams: grams) }
+    func solubleFiber(forGrams grams: Double) -> Double? { scaled(solubleFiberPer100g, forGrams: grams) }
+    func insolubleFiber(forGrams grams: Double) -> Double? { scaled(insolubleFiberPer100g, forGrams: grams) }
+    func casein(forGrams grams: Double) -> Double? { scaled(caseinPer100g, forGrams: grams) }
+    func serumProteins(forGrams grams: Double) -> Double? { scaled(serumProteinsPer100g, forGrams: grams) }
+    func alcohol(forGrams grams: Double) -> Double? { scaled(alcoholPer100g, forGrams: grams) }
+
+    private func scaled(_ value: Double, forGrams grams: Double) -> Double {
+        value * grams / 100
+    }
+
+    private func scaled(_ value: Double?, forGrams grams: Double) -> Double? {
+        value.map { scaled($0, forGrams: grams) }
+    }
 
     func updateRecipeNutritionFromIngredients() {
         let ingredients = recipeIngredients ?? []

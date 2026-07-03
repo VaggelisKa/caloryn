@@ -310,10 +310,11 @@ private struct HistoryCalorieTrendSelectedAnalysis: View {
     var body: some View {
         switch point.selection {
         case .day(let day):
+            let detail = day.makeDetail()
             HistoryCalorieTrendSelectedDayCard(
                 projection: projection,
-                detail: day.makeDetail(),
-                topFoods: projection.topFoods(for: point.selection)
+                detail: detail,
+                topFoods: detail.topFoods
             )
         case .week(let week):
             HistoryCalorieTrendSelectedWeekCard(
