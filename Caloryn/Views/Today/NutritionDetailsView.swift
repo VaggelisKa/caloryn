@@ -9,8 +9,12 @@ struct NutritionDetailsView: View {
 
     @Environment(\.dismiss) private var dismiss
 
+    private var totalNutrition: NutritionValues {
+        entries.reduce(.zero) { $0 + $1.nutrition }
+    }
+
     private var totalCalories: Double {
-        entries.reduce(0) { $0 + $1.calories }
+        totalNutrition.calories
     }
 
     private var totalPortionGrams: Double {
@@ -582,17 +586,11 @@ struct NutritionDetailsView: View {
     private func detail(
         _ id: String,
         _ label: String,
-        _ keyPath: KeyPath<FoodLogEntry, Double?>,
+        _ keyPath: KeyPath<NutritionValues, Double?>,
         unit: DetailNutrient.Unit = .grams
     ) -> DetailNutrient? {
-        guard let value = total(keyPath) else { return nil }
+        guard let value = totalNutrition[keyPath: keyPath] else { return nil }
         return DetailNutrient(id: id, label: label, value: value, unit: unit)
-    }
-
-    private func total(_ keyPath: KeyPath<FoodLogEntry, Double?>) -> Double? {
-        let values = entries.map { $0[keyPath: keyPath] }
-        guard values.contains(where: { $0 != nil }) else { return nil }
-        return values.reduce(0) { $0 + ($1 ?? 0) }
     }
 
     private func formattedDetailValue(_ item: DetailNutrient) -> String {

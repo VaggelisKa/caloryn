@@ -2,7 +2,7 @@ import SwiftUI
 import Charts
 
 struct HistoryWeeklyRollupCard: View {
-    let summary: HistoryPeriodSummary
+    let projection: HistoryWeeklyConsistencyProjection
 
     private struct ChartWeek: Identifiable {
         let index: Double
@@ -12,7 +12,7 @@ struct HistoryWeeklyRollupCard: View {
     }
 
     private var chartWeeks: [ChartWeek] {
-        summary.weeklyRollups.enumerated().map { offset, week in
+        projection.weeks.enumerated().map { offset, week in
             ChartWeek(index: Double(offset), week: week)
         }
     }
@@ -38,8 +38,8 @@ struct HistoryWeeklyRollupCard: View {
                     .foregroundStyle(CalorynTheme.textSecondary)
                     .textCase(.uppercase)
 
-                if let bestWeek {
-                    Text("Best week had \(bestWeek.onTrackDays) of \(bestWeek.loggedDays) logged \(dayLabel(for: bestWeek.loggedDays)) on track.")
+                if let headlineText = projection.headlineText {
+                    Text(headlineText)
                         .font(CalorynTheme.cardSubtitle)
                         .foregroundStyle(CalorynTheme.textSecondary)
                 }
@@ -109,27 +109,12 @@ struct HistoryWeeklyRollupCard: View {
         .glassCard()
     }
 
-    private var bestWeek: HistoryWeekSummary? {
-        summary.weeklyRollups
-            .filter { $0.loggedDays > 0 }
-            .max {
-                if $0.onTrackRatio == $1.onTrackRatio {
-                    return $0.loggedDays < $1.loggedDays
-                }
-                return $0.onTrackRatio < $1.onTrackRatio
-            }
-    }
-
     private var accessibilityLabel: String {
-        "Weekly consistency of on-track days. \(summary.loggedDayCount) of \(summary.totalDayCount) days logged."
+        "Weekly consistency of on-track days. \(projection.loggedDayCount) of \(projection.totalDayCount) days logged."
     }
 
     private func weekLabel(for chartWeek: ChartWeek) -> String {
         "W\(Int(chartWeek.index) + 1)"
-    }
-
-    private func dayLabel(for count: Int) -> String {
-        count == 1 ? "day" : "days"
     }
 
     private func chartWeek(for index: Double) -> ChartWeek? {

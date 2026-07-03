@@ -293,24 +293,33 @@ final class FoodItem {
         }
     }
 
+    func deletePreservingLogEntrySnapshots(from modelContext: ModelContext) {
+        let loggedEntries = logEntries ?? []
+        for entry in loggedEntries {
+            entry.foodItem = nil
+        }
+        logEntries = nil
+        modelContext.delete(self)
+    }
+
     func calories(forGrams grams: Double) -> Double {
-        caloriesPer100g * grams / 100
+        scaled(caloriesPer100g, forGrams: grams)
     }
 
     func protein(forGrams grams: Double) -> Double {
-        proteinPer100g * grams / 100
+        scaled(proteinPer100g, forGrams: grams)
     }
 
     func carbs(forGrams grams: Double) -> Double {
-        carbsPer100g * grams / 100
+        scaled(carbsPer100g, forGrams: grams)
     }
 
     func fat(forGrams grams: Double) -> Double {
-        fatPer100g * grams / 100
+        scaled(fatPer100g, forGrams: grams)
     }
 
     func fiber(forGrams grams: Double) -> Double {
-        fiberPer100g * grams / 100
+        scaled(fiberPer100g, forGrams: grams)
     }
 
     func sugars(forGrams grams: Double) -> Double? { scaled(sugarsPer100g, forGrams: grams) }
@@ -339,41 +348,20 @@ final class FoodItem {
     func serumProteins(forGrams grams: Double) -> Double? { scaled(serumProteinsPer100g, forGrams: grams) }
     func alcohol(forGrams grams: Double) -> Double? { scaled(alcoholPer100g, forGrams: grams) }
 
+    private func scaled(_ value: Double, forGrams grams: Double) -> Double {
+        value * grams / 100
+    }
+
+    private func scaled(_ value: Double?, forGrams grams: Double) -> Double? {
+        value.map { scaled($0, forGrams: grams) }
+    }
+
     func updateRecipeNutritionFromIngredients() {
         let ingredients = recipeIngredients ?? []
         let totalGrams = ingredients.reduce(0) { $0 + $1.portionGrams }
 
         guard totalGrams > 0 else {
-            caloriesPer100g = 0
-            proteinPer100g = 0
-            carbsPer100g = 0
-            fatPer100g = 0
-            fiberPer100g = 0
-            sugarsPer100g = nil
-            addedSugarsPer100g = nil
-            sucrosePer100g = nil
-            glucosePer100g = nil
-            fructosePer100g = nil
-            lactosePer100g = nil
-            maltosePer100g = nil
-            maltodextrinsPer100g = nil
-            starchPer100g = nil
-            polyolsPer100g = nil
-            saturatedFatPer100g = nil
-            transFatPer100g = nil
-            monounsaturatedFatPer100g = nil
-            polyunsaturatedFatPer100g = nil
-            omega3FatPer100g = nil
-            omega6FatPer100g = nil
-            omega9FatPer100g = nil
-            saltPer100g = nil
-            sodiumPer100g = nil
-            cholesterolPer100g = nil
-            solubleFiberPer100g = nil
-            insolubleFiberPer100g = nil
-            caseinPer100g = nil
-            serumProteinsPer100g = nil
-            alcoholPer100g = nil
+            nutritionPer100g = .zero
             defaultServingG = nil
             servingDescription = nil
             categoryTagsRaw = nil
@@ -381,36 +369,10 @@ final class FoodItem {
             return
         }
 
-        caloriesPer100g = ingredients.reduce(0) { $0 + $1.calories } / totalGrams * 100
-        proteinPer100g = ingredients.reduce(0) { $0 + $1.proteinG } / totalGrams * 100
-        carbsPer100g = ingredients.reduce(0) { $0 + $1.carbsG } / totalGrams * 100
-        fatPer100g = ingredients.reduce(0) { $0 + $1.fatG } / totalGrams * 100
-        fiberPer100g = ingredients.reduce(0) { $0 + $1.fiberG } / totalGrams * 100
-        sugarsPer100g = aggregatePer100g(ingredients.map(\.sugarsG), totalGrams: totalGrams)
-        addedSugarsPer100g = aggregatePer100g(ingredients.map(\.addedSugarsG), totalGrams: totalGrams)
-        sucrosePer100g = aggregatePer100g(ingredients.map(\.sucroseG), totalGrams: totalGrams)
-        glucosePer100g = aggregatePer100g(ingredients.map(\.glucoseG), totalGrams: totalGrams)
-        fructosePer100g = aggregatePer100g(ingredients.map(\.fructoseG), totalGrams: totalGrams)
-        lactosePer100g = aggregatePer100g(ingredients.map(\.lactoseG), totalGrams: totalGrams)
-        maltosePer100g = aggregatePer100g(ingredients.map(\.maltoseG), totalGrams: totalGrams)
-        maltodextrinsPer100g = aggregatePer100g(ingredients.map(\.maltodextrinsG), totalGrams: totalGrams)
-        starchPer100g = aggregatePer100g(ingredients.map(\.starchG), totalGrams: totalGrams)
-        polyolsPer100g = aggregatePer100g(ingredients.map(\.polyolsG), totalGrams: totalGrams)
-        saturatedFatPer100g = aggregatePer100g(ingredients.map(\.saturatedFatG), totalGrams: totalGrams)
-        transFatPer100g = aggregatePer100g(ingredients.map(\.transFatG), totalGrams: totalGrams)
-        monounsaturatedFatPer100g = aggregatePer100g(ingredients.map(\.monounsaturatedFatG), totalGrams: totalGrams)
-        polyunsaturatedFatPer100g = aggregatePer100g(ingredients.map(\.polyunsaturatedFatG), totalGrams: totalGrams)
-        omega3FatPer100g = aggregatePer100g(ingredients.map(\.omega3FatG), totalGrams: totalGrams)
-        omega6FatPer100g = aggregatePer100g(ingredients.map(\.omega6FatG), totalGrams: totalGrams)
-        omega9FatPer100g = aggregatePer100g(ingredients.map(\.omega9FatG), totalGrams: totalGrams)
-        saltPer100g = aggregatePer100g(ingredients.map(\.saltG), totalGrams: totalGrams)
-        sodiumPer100g = aggregatePer100g(ingredients.map(\.sodiumG), totalGrams: totalGrams)
-        cholesterolPer100g = aggregatePer100g(ingredients.map(\.cholesterolG), totalGrams: totalGrams)
-        solubleFiberPer100g = aggregatePer100g(ingredients.map(\.solubleFiberG), totalGrams: totalGrams)
-        insolubleFiberPer100g = aggregatePer100g(ingredients.map(\.insolubleFiberG), totalGrams: totalGrams)
-        caseinPer100g = aggregatePer100g(ingredients.map(\.caseinG), totalGrams: totalGrams)
-        serumProteinsPer100g = aggregatePer100g(ingredients.map(\.serumProteinsG), totalGrams: totalGrams)
-        alcoholPer100g = aggregatePer100g(ingredients.map(\.alcoholG), totalGrams: totalGrams)
+        nutritionPer100g = NutritionValues.per100g(
+            fromPortions: ingredients.map(\.nutrition),
+            totalGrams: totalGrams
+        )
         defaultServingG = totalGrams
         servingDescription = nil
         isRecipe = true
@@ -418,15 +380,6 @@ final class FoodItem {
         nutriscoreGrade = nil
         categoryTagsRaw = nil
         produceKind = .unclassified
-    }
-
-    private func scaled(_ value: Double?, forGrams grams: Double) -> Double? {
-        value.map { $0 * grams / 100 }
-    }
-
-    private func aggregatePer100g(_ values: [Double?], totalGrams: Double) -> Double? {
-        guard values.contains(where: { $0 != nil }) else { return nil }
-        return values.reduce(0) { $0 + ($1 ?? 0) } / totalGrams * 100
     }
 
     private static func categoryTags(fromRaw rawValue: String?) -> [String] {

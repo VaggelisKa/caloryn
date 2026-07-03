@@ -335,43 +335,18 @@ struct HistoryDaySummary: Identifiable {
         self.dailyCalorieTarget = dailyCalorieTarget
         entryCount = entries.count
 
-        var calorieTotal: Double = 0
-        var proteinTotal: Double = 0
-        var carbTotal: Double = 0
-        var fatTotal: Double = 0
-        var fiberTotal: Double = 0
-        var sugarTotal: Double = 0
-        var addedSugarTotal: Double = 0
-        var saturatedFatTotal: Double = 0
-        var sodiumTotal: Double = 0
-        var cholesterolTotal: Double = 0
-        var alcoholTotal: Double = 0
-
-        for entry in entries {
-            calorieTotal += entry.calories
-            proteinTotal += entry.proteinG
-            carbTotal += entry.carbsG
-            fatTotal += entry.fatG
-            fiberTotal += entry.fiberG
-            sugarTotal += entry.sugarsG ?? 0
-            addedSugarTotal += entry.addedSugarsG ?? 0
-            saturatedFatTotal += entry.saturatedFatG ?? 0
-            sodiumTotal += entry.sodiumG ?? 0
-            cholesterolTotal += entry.cholesterolG ?? 0
-            alcoholTotal += entry.alcoholG ?? 0
-        }
-
-        calories = calorieTotal
-        proteinG = proteinTotal
-        carbsG = carbTotal
-        fatG = fatTotal
-        fiberG = fiberTotal
-        sugarsG = sugarTotal
-        addedSugarsG = addedSugarTotal
-        saturatedFatG = saturatedFatTotal
-        sodiumG = sodiumTotal
-        cholesterolG = cholesterolTotal
-        alcoholG = alcoholTotal
+        let nutrition = entries.reduce(.zero) { $0 + $1.nutrition }
+        calories = nutrition.calories
+        proteinG = nutrition.proteinG
+        carbsG = nutrition.carbsG
+        fatG = nutrition.fatG
+        fiberG = nutrition.fiberG
+        sugarsG = nutrition.sugarsG ?? 0
+        addedSugarsG = nutrition.addedSugarsG ?? 0
+        saturatedFatG = nutrition.saturatedFatG ?? 0
+        sodiumG = nutrition.sodiumG ?? 0
+        cholesterolG = nutrition.cholesterolG ?? 0
+        alcoholG = nutrition.alcoholG ?? 0
         status = HistoryGoalStatus.calorieStatus(
             calories: calories,
             loggedCount: entryCount,
@@ -452,17 +427,18 @@ struct HistoryDayDetail: Identifiable {
         self.dailyCalorieTarget = dailyCalorieTarget
         entryCount = entries.count
         totalPortionGrams = entries.reduce(0) { $0 + $1.portionGrams }
-        calories = entries.reduce(0) { $0 + $1.calories }
-        proteinG = entries.reduce(0) { $0 + $1.proteinG }
-        carbsG = entries.reduce(0) { $0 + $1.carbsG }
-        fatG = entries.reduce(0) { $0 + $1.fatG }
-        fiberG = entries.reduce(0) { $0 + $1.fiberG }
-        sugarsG = entries.reduce(0) { $0 + ($1.sugarsG ?? 0) }
-        addedSugarsG = entries.reduce(0) { $0 + ($1.addedSugarsG ?? 0) }
-        saturatedFatG = entries.reduce(0) { $0 + ($1.saturatedFatG ?? 0) }
-        sodiumG = entries.reduce(0) { $0 + ($1.sodiumG ?? 0) }
-        cholesterolG = entries.reduce(0) { $0 + ($1.cholesterolG ?? 0) }
-        alcoholG = entries.reduce(0) { $0 + ($1.alcoholG ?? 0) }
+        let nutrition = entries.reduce(.zero) { $0 + $1.nutrition }
+        calories = nutrition.calories
+        proteinG = nutrition.proteinG
+        carbsG = nutrition.carbsG
+        fatG = nutrition.fatG
+        fiberG = nutrition.fiberG
+        sugarsG = nutrition.sugarsG ?? 0
+        addedSugarsG = nutrition.addedSugarsG ?? 0
+        saturatedFatG = nutrition.saturatedFatG ?? 0
+        sodiumG = nutrition.sodiumG ?? 0
+        cholesterolG = nutrition.cholesterolG ?? 0
+        alcoholG = nutrition.alcoholG ?? 0
         self.status = status ?? HistoryGoalStatus.calorieStatus(
             calories: calories,
             loggedCount: entryCount,

@@ -418,33 +418,28 @@ struct CustomFoodFormView: View {
         let carb = parseDecimal(carbsPerServing) ?? 0
         let f = parseDecimal(fatPerServing) ?? 0
         let fiber = parseDecimal(fiberPerServing) ?? 0
-        let sugarsPer100 = optionalPer100g(sugarsPerServing, serving: serving)
-        let addedSugarsPer100 = optionalPer100g(addedSugarsPerServing, serving: serving)
-        let saturatedFatPer100 = optionalPer100g(saturatedFatPerServing, serving: serving)
-        let sodiumPer100 = optionalPer100g(sodiumPerServing, serving: serving, unit: .milligramsFromGrams)
-        let cholesterolPer100 = optionalPer100g(cholesterolPerServing, serving: serving, unit: .milligramsFromGrams)
-        let alcoholPer100 = optionalPer100g(alcoholPerServing, serving: serving)
-
-        let calPer100 = cal / serving * 100
-        let proPer100 = pro / serving * 100
-        let carbPer100 = carb / serving * 100
-        let fPer100 = f / serving * 100
-        let fiberPer100 = fiber / serving * 100
+        let nutritionPerServing = NutritionValues(
+            calories: cal,
+            proteinG: pro,
+            carbsG: carb,
+            fatG: f,
+            fiberG: fiber,
+            sugarsG: optionalServingValue(sugarsPerServing),
+            addedSugarsG: optionalServingValue(addedSugarsPerServing),
+            saturatedFatG: optionalServingValue(saturatedFatPerServing),
+            sodiumG: optionalServingValue(sodiumPerServing, unit: .milligramsFromGrams),
+            cholesterolG: optionalServingValue(cholesterolPerServing, unit: .milligramsFromGrams),
+            alcoholG: optionalServingValue(alcoholPerServing)
+        )
+        let nutritionPer100g = NutritionValues.per100g(
+            fromServing: nutritionPerServing,
+            servingGrams: serving
+        )
 
         if let food = existingFood {
             food.name = name.trimmingCharacters(in: .whitespaces)
             food.brand = brand.isEmpty ? nil : brand.trimmingCharacters(in: .whitespaces)
-            food.caloriesPer100g = calPer100
-            food.proteinPer100g = proPer100
-            food.carbsPer100g = carbPer100
-            food.fatPer100g = fPer100
-            food.fiberPer100g = fiberPer100
-            food.sugarsPer100g = sugarsPer100
-            food.addedSugarsPer100g = addedSugarsPer100
-            food.saturatedFatPer100g = saturatedFatPer100
-            food.sodiumPer100g = sodiumPer100
-            food.cholesterolPer100g = cholesterolPer100
-            food.alcoholPer100g = alcoholPer100
+            food.nutritionPer100g = nutritionPer100g
             food.defaultServingG = serving
             food.servingDescription = nil
             food.categoryTags = []
@@ -455,17 +450,17 @@ struct CustomFoodFormView: View {
             let food = FoodItem(
                 name: name.trimmingCharacters(in: .whitespaces),
                 brand: brand.isEmpty ? nil : brand.trimmingCharacters(in: .whitespaces),
-                caloriesPer100g: calPer100,
-                proteinPer100g: proPer100,
-                carbsPer100g: carbPer100,
-                fatPer100g: fPer100,
-                fiberPer100g: fiberPer100,
-                sugarsPer100g: sugarsPer100,
-                addedSugarsPer100g: addedSugarsPer100,
-                saturatedFatPer100g: saturatedFatPer100,
-                sodiumPer100g: sodiumPer100,
-                cholesterolPer100g: cholesterolPer100,
-                alcoholPer100g: alcoholPer100,
+                caloriesPer100g: nutritionPer100g.calories,
+                proteinPer100g: nutritionPer100g.proteinG,
+                carbsPer100g: nutritionPer100g.carbsG,
+                fatPer100g: nutritionPer100g.fatG,
+                fiberPer100g: nutritionPer100g.fiberG,
+                sugarsPer100g: nutritionPer100g.sugarsG,
+                addedSugarsPer100g: nutritionPer100g.addedSugarsG,
+                saturatedFatPer100g: nutritionPer100g.saturatedFatG,
+                sodiumPer100g: nutritionPer100g.sodiumG,
+                cholesterolPer100g: nutritionPer100g.cholesterolG,
+                alcoholPer100g: nutritionPer100g.alcoholG,
                 defaultServingG: serving,
                 produceKind: produceKind,
                 isCustom: true
@@ -477,15 +472,13 @@ struct CustomFoodFormView: View {
         dismiss()
     }
 
-    private func optionalPer100g(
+    private func optionalServingValue(
         _ text: String,
-        serving: Double,
         unit: TrackedNutrientUnit = .grams
     ) -> Double? {
         let trimmed = text.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty, let inputValue = parseDecimal(trimmed) else { return nil }
-        let storedValue = unit.storedValue(fromInput: inputValue)
-        return storedValue / serving * 100
+        return unit.storedValue(fromInput: inputValue)
     }
 
     private func optionalPerServingText(
@@ -506,7 +499,7 @@ struct CustomFoodFormView: View {
 
     private func deleteFood() {
         if let food = existingFood {
-            modelContext.delete(food)
+            food.deletePreservingLogEntrySnapshots(from: modelContext)
         }
         dismiss()
     }

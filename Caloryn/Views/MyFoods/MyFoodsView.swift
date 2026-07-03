@@ -154,7 +154,7 @@ struct MyFoodsView: View {
     }
 
     private func delete(_ food: FoodItem) {
-        modelContext.delete(food)
+        food.deletePreservingLogEntrySnapshots(from: modelContext)
         try? modelContext.save()
     }
 }

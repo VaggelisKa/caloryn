@@ -2,123 +2,44 @@ import SwiftUI
 import Charts
 
 struct HistoryCalorieTrendCard: View {
-    let range: HistoryRange
-    let summary: HistoryPeriodSummary
+    let projection: HistoryCalorieTrendProjection
     let drillDownAction: (() -> Void)?
 
     init(
-        range: HistoryRange,
-        summary: HistoryPeriodSummary,
+        projection: HistoryCalorieTrendProjection,
         drillDownAction: (() -> Void)? = nil
     ) {
-        self.range = range
-        self.summary = summary
+        self.projection = projection
         self.drillDownAction = drillDownAction
     }
 
-    private struct ChartDay: Identifiable {
-        let index: Double
-        let day: HistoryDaySummary
-
-        var id: Date { day.id }
-    }
-
-    private struct ChartPoint: Identifiable {
-        let id: String
-        let index: Double
-        let value: Double
-        let status: HistoryGoalStatus
-        let isLogged: Bool
-        let xAxisLabel: String
-        let accessibilityLabel: String
-        let accessibilityValue: String
-    }
-
-    private var chartDays: [ChartDay] {
-        summary.days.enumerated().map { offset, day in
-            ChartDay(index: Double(offset), day: day)
-        }
-    }
-
-    private var chartPoints: [ChartPoint] {
-        if range == .quarter {
-            return weeklyChartPoints
-        }
-
-        return chartDays.map { chartDay in
-            ChartPoint(
-                id: chartDay.day.id.ISO8601Format(),
-                index: chartDay.index,
-                value: chartDay.day.calories,
-                status: chartDay.day.status,
-                isLogged: chartDay.day.isLogged,
-                xAxisLabel: weekdayInitial(for: chartDay.day.date),
-                accessibilityLabel: chartDay.day.date.shortFormatted,
-                accessibilityValue: chartDay.day.isLogged
-                    ? "\(Int(chartDay.day.calories.rounded())) calories, \(chartDay.day.status.label)"
-                    : "No calories logged"
-            )
-        }
-    }
-
-    private var weeklyChartPoints: [ChartPoint] {
-        summary.weeklyRollups.enumerated().map { offset, week in
-            let averageCalories = week.averageCaloriesPerLoggedDay
-            let status = HistoryGoalStatus.calorieStatus(
-                calories: averageCalories,
-                loggedCount: week.loggedDays,
-                targetCalories: summary.dailyCalorieTarget
-            )
-            let label = "W\(offset + 1)"
-
-            return ChartPoint(
-                id: week.id.ISO8601Format(),
-                index: Double(offset),
-                value: averageCalories,
-                status: status,
-                isLogged: week.loggedDays > 0,
-                xAxisLabel: label,
-                accessibilityLabel: "\(label), week of \(week.startDate.dayMonthFormatted)",
-                accessibilityValue: week.loggedDays == 0
-                    ? "No calories logged"
-                    : "\(Int(averageCalories.rounded())) average calories per logged day, \(status.label)"
-            )
-        }
-    }
-
-    private var loggedDays: [HistoryDaySummary] {
-        summary.days.filter(\.isLogged)
-    }
-
     private var hasLoggedData: Bool {
-        !loggedDays.isEmpty
+        projection.hasLoggedData
     }
 
     private var totalCalories: Double {
-        loggedDays.reduce(0) { $0 + $1.calories }
+        projection.totalCalories
     }
 
     private var averageCalories: Double {
-        summary.averageCaloriesPerLoggedDay
+        projection.averageCaloriesPerLoggedDay
     }
 
     private var yAxisUpperBound: Double {
-        let largestChartValue = chartPoints.map(\.value).max() ?? 0
-        let largestReference = max(largestChartValue, Double(summary.dailyCalorieTarget), averageCalories, 1)
-        return largestReference * 1.15
+        projection.yAxisUpperBound
     }
 
     private var barWidth: MarkDimension {
-        .fixed(range == .week ? 10 : 6)
+        .fixed(projection.range == .week ? 10 : 6)
     }
 
     private var chartHeight: CGFloat {
-        range == .week ? 160 : 180
+        projection.range == .week ? 160 : 180
     }
 
     private var xAxisDomain: ClosedRange<Double> {
-        guard let firstIndex = chartPoints.first?.index,
-              let lastIndex = chartPoints.last?.index else {
+        guard let firstIndex = projection.points.first?.index,
+              let lastIndex = projection.points.last?.index else {
             return 0 ... 1
         }
         return (firstIndex - 0.5) ... (lastIndex + 0.5)
@@ -218,7 +139,7 @@ struct HistoryCalorieTrendCard: View {
 
     private var chart: some View {
         Chart {
-            ForEach(chartPoints) { chartPoint in
+            ForEach(projection.points) { chartPoint in
                 if chartPoint.isLogged {
                     BarMark(
                         x: .value("Period", chartPoint.index),
@@ -241,12 +162,12 @@ struct HistoryCalorieTrendCard: View {
                 }
             }
 
-            RuleMark(y: .value("Target", summary.dailyCalorieTarget))
+            RuleMark(y: .value("Target", projection.dailyCalorieTarget))
                 .lineStyle(StrokeStyle(lineWidth: 1.8, lineCap: .round))
                 .foregroundStyle(CalorynTheme.textPrimary.opacity(0.62))
         }
         .chartXAxis {
-            AxisMarks(values: chartPoints.map(\.index)) { value in
+            AxisMarks(values: projection.points.map(\.index)) { value in
                 AxisValueLabel(centered: false) {
                     if let index = value.as(Double.self),
                        let chartPoint = chartPoint(for: index) {
@@ -263,7 +184,7 @@ struct HistoryCalorieTrendCard: View {
                 if let plotFrame = proxy.plotFrame {
                     let plotRect = geometry[plotFrame]
 
-                    ForEach(chartPoints) { chartPoint in
+                    ForEach(projection.points) { chartPoint in
                         if let xPosition = proxy.position(forX: chartPoint.index) {
                             Text(chartPoint.xAxisLabel)
                                 .font(CalorynTheme.chartAxisLabel)
@@ -292,49 +213,33 @@ struct HistoryCalorieTrendCard: View {
         .accessibilityLabel(accessibilityLabel)
     }
 
-    private func weekdayInitial(for date: Date) -> String {
-        let weekday = Calendar.current.component(.weekday, from: date)
-        return ["S", "M", "T", "W", "T", "F", "S"][max(0, min(weekday - 1, 6))]
-    }
-
-    private func chartPoint(for index: Double) -> ChartPoint? {
-        let roundedIndex = Int(index.rounded())
-        guard chartPoints.indices.contains(roundedIndex) else { return nil }
-        return chartPoints[roundedIndex]
+    private func chartPoint(for index: Double) -> HistoryCalorieTrendPoint? {
+        projection.point(for: index)
     }
 
     private var averageDifferenceText: String {
-        guard hasLoggedData else { return "No logged days" }
-        return differenceText(Int(averageCalories.rounded()) - summary.dailyCalorieTarget)
+        projection.averageDifferenceText
     }
 
     private var averageDifferenceColor: Color {
         guard hasLoggedData else { return CalorynTheme.textSecondary }
         return color(
-            forDifference: Double(Int(averageCalories.rounded()) - summary.dailyCalorieTarget),
-            target: Double(summary.dailyCalorieTarget)
+            forDifference: Double(Int(averageCalories.rounded()) - projection.dailyCalorieTarget),
+            target: Double(projection.dailyCalorieTarget)
         )
     }
 
     private var totalDifferenceText: String {
-        guard hasLoggedData else { return "No logged days" }
-        let targetTotal = summary.dailyCalorieTarget * loggedDays.count
-        return differenceText(Int(totalCalories.rounded()) - targetTotal)
+        projection.totalDifferenceText
     }
 
     private var totalDifferenceColor: Color {
         guard hasLoggedData else { return CalorynTheme.textSecondary }
-        let targetTotal = summary.dailyCalorieTarget * loggedDays.count
+        let targetTotal = projection.dailyCalorieTarget * projection.loggedDayCount
         return color(
             forDifference: Double(Int(totalCalories.rounded()) - targetTotal),
             target: Double(targetTotal)
         )
-    }
-
-    private func differenceText(_ difference: Int) -> String {
-        if difference > 0 { return "+\(difference.formatted()) over target" }
-        if difference < 0 { return "\(abs(difference).formatted()) under target" }
-        return "On target"
     }
 
     private func color(forDifference difference: Double, target: Double) -> Color {
@@ -350,10 +255,10 @@ struct HistoryCalorieTrendCard: View {
 
     private var accessibilityLabel: String {
         guard hasLoggedData else {
-            return "Calorie trend for \(range.label). 0 of \(summary.totalDayCount) days logged. Target \(summary.dailyCalorieTarget) calories."
+            return "Calorie trend for \(projection.range.label). 0 of \(projection.totalDayCount) days logged. Target \(projection.dailyCalorieTarget) calories."
         }
 
-        return "Calorie trend for \(range.label). \(summary.loggedDayCount) of \(summary.totalDayCount) days logged. Average \(Int(averageCalories.rounded())) calories per logged day. Target \(summary.dailyCalorieTarget) calories."
+        return "Calorie trend for \(projection.range.label). \(projection.loggedDayCount) of \(projection.totalDayCount) days logged. Average \(Int(averageCalories.rounded())) calories per logged day. Target \(projection.dailyCalorieTarget) calories."
     }
 }
 
@@ -362,8 +267,7 @@ struct HistoryCalorieTrendCard: View {
     let history = HistoryPreviewFixtures.analytics(for: .mostlyOnTrack)
 
     return HistoryCalorieTrendCard(
-        range: history.range,
-        summary: history.current
+        projection: HistoryPatternDiscovery(analytics: history).calorieTrend
     )
     .padding()
 }
@@ -372,8 +276,7 @@ struct HistoryCalorieTrendCard: View {
     let history = HistoryPreviewFixtures.analytics(for: .empty)
 
     return HistoryCalorieTrendCard(
-        range: history.range,
-        summary: history.current
+        projection: HistoryPatternDiscovery(analytics: history).calorieTrend
     )
     .padding()
 }
