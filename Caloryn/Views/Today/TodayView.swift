@@ -7,11 +7,16 @@ struct TodayView: View {
     @Query(sort: \UserProfile.updatedAt, order: .reverse) private var profiles: [UserProfile]
     @Query private var allEntries: [FoodLogEntry]
 
+    private struct FoodSearchPresentation: Identifiable {
+        let id = UUID()
+        let mealType: MealType
+        let logDate: Date
+        let snackIndex: Int
+    }
+
     @State private var selectedDate: Date = Date().startOfDay
-    @State private var showingFoodSearch = false
     @State private var showingNutritionDetails = false
-    @State private var selectedMealType: MealType = .breakfast
-    @State private var selectedSnackIndex: Int = 1
+    @State private var foodSearchPresentation: FoodSearchPresentation?
     @State private var entryToEdit: FoodLogEntry?
 
     @AppStorage("showNutriscore") private var showNutriscore = true
@@ -73,15 +78,6 @@ struct TodayView: View {
         [.breakfast, .lunch, .dinner]
     }
 
-    private var snackIndices: [Int] {
-        Set(
-            todayEntries
-                .filter { $0.mealType == .snack }
-                .map { $0.snackIndex }
-        )
-        .sorted()
-    }
-
     private var yesterdayEntries: [FoodLogEntry] {
         allEntries.filter {
             Calendar.current.isDate($0.date, inSameDayAs: selectedDate.yesterday)
@@ -95,12 +91,6 @@ struct TodayView: View {
     private func entries(for meal: MealType) -> [FoodLogEntry] {
         todayEntries
             .filter { $0.mealType == meal }
-            .sorted { $0.createdAt < $1.createdAt }
-    }
-
-    private func snackEntries(for index: Int) -> [FoodLogEntry] {
-        todayEntries
-            .filter { $0.mealType == .snack && $0.snackIndex == index }
             .sorted { $0.createdAt < $1.createdAt }
     }
 
@@ -127,9 +117,7 @@ struct TodayView: View {
                             mealType: meal,
                             entries: entries(for: meal),
                             onAdd: {
-                                selectedMealType = meal
-                                selectedSnackIndex = 0
-                                showingFoodSearch = true
+                                presentFoodSearch(mealType: meal, snackIndex: 0)
                             },
                             onEdit: { entry in
                                 entryToEdit = entry
@@ -138,24 +126,23 @@ struct TodayView: View {
                         )
                     }
 
-                    ForEach(snackIndices, id: \.self) { index in
-                        MealSectionView(
-                            mealType: .snack,
-                            entries: snackEntries(for: index),
-                            snackIndex: index,
-                            onAdd: {
-                                selectedMealType = .snack
-                                selectedSnackIndex = index
-                                showingFoodSearch = true
-                            },
-                            onEdit: { entry in
-                                entryToEdit = entry
-                            },
-                            onDelete: deleteEntry
-                        )
-                    }
+                    MealSectionView(
+                        mealType: .snack,
+                        entries: entries(for: .snack),
+                        snackIndex: 1,
+                        titleOverride: "Snacks",
+                        onAdd: {
+                            presentFoodSearch(mealType: .snack, snackIndex: 1)
+                        },
+                        onEdit: { entry in
+                            entryToEdit = entry
+                        },
+                        onDelete: deleteEntry
+                    )
 
-                    actionsSection
+                    if canCopyYesterday {
+                        actionsSection
+                    }
                 }
                 .listStyle(.insetGrouped)
                 .listSectionSpacing(.custom(16))
@@ -163,8 +150,12 @@ struct TodayView: View {
                 .animation(.smooth(duration: 0.35), value: hasNutriscoreData)
             }
             .background(CalorynTheme.pageBackground)
-            .sheet(isPresented: $showingFoodSearch) {
-                FoodSearchView(mealType: selectedMealType, logDate: selectedDate, snackIndex: selectedSnackIndex)
+            .sheet(item: $foodSearchPresentation) { presentation in
+                FoodSearchView(
+                    mealType: presentation.mealType,
+                    logDate: presentation.logDate,
+                    snackIndex: presentation.snackIndex
+                )
                     .presentationDragIndicator(.visible)
             }
             .sheet(item: $entryToEdit) { entry in
@@ -176,7 +167,11 @@ struct TodayView: View {
                             logDate: entry.date,
                             isNewFood: false,
                             snackIndex: entry.snackIndex,
-                            existingEntry: entry
+                            existingEntry: entry,
+                            onDeleted: { deletedEntry in
+                                deleteEntry(deletedEntry)
+                                entryToEdit = nil
+                            }
                         )
                     }
                     .presentationDragIndicator(.visible)
@@ -277,26 +272,6 @@ struct TodayView: View {
             .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .center)))
     }
 
-    private var addSnackButton: some View {
-        Button {
-            let nextIndex = (snackIndices.last ?? 0) + 1
-            selectedMealType = .snack
-            selectedSnackIndex = nextIndex
-            showingFoodSearch = true
-        } label: {
-            HStack(spacing: 7) {
-                Image(systemName: "plus.circle")
-                    .font(.system(.title3, weight: .semibold))
-
-                Text("Add Snack")
-                    .font(CalorynTheme.buttonLabel)
-            }
-            .foregroundStyle(CalorynTheme.sage)
-        }
-        .buttonStyle(.plain)
-        .padding(.vertical, 4)
-    }
-
     private var copyYesterdayButton: some View {
         Button {
             withAnimation {
@@ -313,22 +288,26 @@ struct TodayView: View {
 
     private var actionsSection: some View {
         Section {
-            addSnackButton
-
-            if canCopyYesterday {
-                copyYesterdayButton
-            }
+            copyYesterdayButton
         } header: {
             Color.clear
                 .frame(height: 10)
         }
     }
 
+    private func presentFoodSearch(mealType: MealType, snackIndex: Int) {
+        foodSearchPresentation = FoodSearchPresentation(
+            mealType: mealType,
+            logDate: selectedDate,
+            snackIndex: snackIndex
+        )
+    }
+
     private func deleteEntry(_ entry: FoodLogEntry) {
-        withAnimation {
+        withAnimation(.smooth(duration: 0.3)) {
             modelContext.delete(entry)
+            try? modelContext.save()
         }
-        try? modelContext.save()
     }
 
     private func copyEntries(from entries: [FoodLogEntry]) {
@@ -339,7 +318,7 @@ struct TodayView: View {
                 mealType: entry.mealType,
                 foodItem: food,
                 portionGrams: entry.portionGrams,
-                snackIndex: entry.snackIndex
+                snackIndex: entry.mealType == .snack ? 1 : entry.snackIndex
             )
             modelContext.insert(newEntry)
         }

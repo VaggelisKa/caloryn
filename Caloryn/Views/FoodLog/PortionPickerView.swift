@@ -9,6 +9,7 @@ struct PortionPickerView: View {
     let snackIndex: Int
     let existingEntry: FoodLogEntry?
     var onLogged: (() -> Void)?
+    var onDeleted: ((FoodLogEntry) -> Void)?
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -72,7 +73,8 @@ struct PortionPickerView: View {
         isNewFood: Bool,
         snackIndex: Int = 0,
         existingEntry: FoodLogEntry? = nil,
-        onLogged: (() -> Void)? = nil
+        onLogged: (() -> Void)? = nil,
+        onDeleted: ((FoodLogEntry) -> Void)? = nil
     ) {
         self.foodItem = foodItem
         self.mealType = mealType
@@ -81,6 +83,7 @@ struct PortionPickerView: View {
         self.snackIndex = snackIndex
         self.existingEntry = existingEntry
         self.onLogged = onLogged
+        self.onDeleted = onDeleted
         self._selectedMeal = State(initialValue: existingEntry?.mealType ?? mealType)
 
         let initialPortion = existingEntry?.portionGrams ?? foodItem.defaultServingG ?? 100
@@ -123,8 +126,7 @@ struct PortionPickerView: View {
         return foodItem.isRecipe ? "Log Recipe" : "Log Food"
     }
     private var resolvedSnackIndex: Int {
-        guard selectedMeal == .snack else { return 0 }
-        return max(snackIndex, existingEntry?.snackIndex ?? 0, 1)
+        selectedMeal == .snack ? 1 : 0
     }
 
     private var nutritionDetails: [PortionNutrient] {
@@ -502,8 +504,12 @@ struct PortionPickerView: View {
 
     private func deleteEntry() {
         guard let existingEntry else { return }
-        modelContext.delete(existingEntry)
-        try? modelContext.save()
+        if let onDeleted {
+            onDeleted(existingEntry)
+        } else {
+            modelContext.delete(existingEntry)
+            try? modelContext.save()
+        }
         dismiss()
     }
 

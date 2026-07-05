@@ -5,6 +5,7 @@ struct MealSectionView: View {
     let mealType: MealType
     let entries: [FoodLogEntry]
     var snackIndex: Int
+    var titleOverride: String?
     var onAdd: () -> Void
     var onEdit: (FoodLogEntry) -> Void
     var onDelete: (FoodLogEntry) -> Void
@@ -13,6 +14,7 @@ struct MealSectionView: View {
         mealType: MealType,
         entries: [FoodLogEntry],
         snackIndex: Int = 0,
+        titleOverride: String? = nil,
         onAdd: @escaping () -> Void,
         onEdit: @escaping (FoodLogEntry) -> Void,
         onDelete: @escaping (FoodLogEntry) -> Void
@@ -20,13 +22,15 @@ struct MealSectionView: View {
         self.mealType = mealType
         self.entries = entries
         self.snackIndex = snackIndex
+        self.titleOverride = titleOverride
         self.onAdd = onAdd
         self.onEdit = onEdit
         self.onDelete = onDelete
     }
 
     private var sectionTitle: String {
-        mealType == .snack ? mealType.displayName(snackIndex: snackIndex) : mealType.displayName
+        if let titleOverride { return titleOverride }
+        return mealType == .snack ? mealType.displayName(snackIndex: snackIndex) : mealType.displayName
     }
 
     private var totalCalories: Double {
