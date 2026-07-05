@@ -51,32 +51,19 @@ struct MealSectionView: View {
 
     var body: some View {
         Section {
-            if entries.isEmpty {
-                EmptyMealRow()
+            if entries.count <= 1 {
+                SingleMealTransitionRow(
+                    entry: entries.first,
+                    onEdit: onEdit,
+                    onDelete: onDelete
+                )
             } else {
                 ForEach(entries) { entry in
-                    Button {
-                        onEdit(entry)
-                    } label: {
-                        MealEntryRow(entry: entry)
-                    }
-                    .buttonStyle(.plain)
-                    .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                        Button {
-                            onEdit(entry)
-                        } label: {
-                            Label("Edit", systemImage: "pencil")
-                        }
-                        .tint(CalorynTheme.sage)
-                    }
-                    .swipeActions(edge: .trailing) {
-                        Button(role: .destructive) {
-                            onDelete(entry)
-                        } label: {
-                            Label("Delete", systemImage: "trash")
-                        }
-                    }
-                    .accessibilityHint("Double tap to edit")
+                    MealEntryActionRow(
+                        entry: entry,
+                        onEdit: onEdit,
+                        onDelete: onDelete
+                    )
                 }
             }
         } header: {
@@ -134,6 +121,128 @@ struct MealSectionView: View {
                 .foregroundStyle(CalorynTheme.sage)
         }
         .contentShape(Rectangle())
+    }
+}
+
+private struct SingleMealTransitionRow: View {
+    let entry: FoodLogEntry?
+    let onEdit: (FoodLogEntry) -> Void
+    let onDelete: (FoodLogEntry) -> Void
+
+    @State private var pendingDeletionID: UUID?
+    @State private var showsPendingEmptyState = false
+
+    private var editableEntry: FoodLogEntry? {
+        guard let entry, pendingDeletionID != entry.id else { return nil }
+        return entry
+    }
+
+    private var isDeletingEntry: Bool {
+        guard let entry else { return false }
+        return pendingDeletionID == entry.id
+    }
+
+    private var showsEmptyState: Bool {
+        entry == nil || showsPendingEmptyState
+    }
+
+    var body: some View {
+        ZStack {
+            if let entry {
+                MealEntryButtonRow(entry: entry, onEdit: onEdit)
+                    .opacity(isDeletingEntry ? 0 : 1)
+                    .allowsHitTesting(!isDeletingEntry)
+                    .accessibilityHidden(isDeletingEntry)
+            }
+
+            EmptyMealRow()
+                .opacity(showsEmptyState ? 1 : 0)
+                .accessibilityHidden(!showsEmptyState)
+        }
+        .animation(.easeIn(duration: 0.16), value: entry?.id)
+        .animation(.easeOut(duration: 0.14), value: isDeletingEntry)
+        .animation(.easeIn(duration: 0.16), value: showsEmptyState)
+        .onChange(of: entry?.id) { _, newID in
+            if pendingDeletionID != newID {
+                pendingDeletionID = nil
+                showsPendingEmptyState = false
+            }
+        }
+        .swipeActions(edge: .leading, allowsFullSwipe: false) {
+            if let entry = editableEntry {
+                Button {
+                    onEdit(entry)
+                } label: {
+                    Label("Edit", systemImage: "pencil")
+                }
+                .tint(CalorynTheme.sage)
+            }
+        }
+        .swipeActions(edge: .trailing) {
+            if let entry = editableEntry {
+                Button(role: .destructive) {
+                    deleteWithFade(entry)
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+            }
+        }
+    }
+
+    private func deleteWithFade(_ entry: FoodLogEntry) {
+        guard pendingDeletionID != entry.id else { return }
+
+        pendingDeletionID = entry.id
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.14) {
+            guard pendingDeletionID == entry.id else { return }
+            showsPendingEmptyState = true
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            guard pendingDeletionID == entry.id else { return }
+            onDelete(entry)
+        }
+    }
+}
+
+private struct MealEntryActionRow: View {
+    let entry: FoodLogEntry
+    let onEdit: (FoodLogEntry) -> Void
+    let onDelete: (FoodLogEntry) -> Void
+
+    var body: some View {
+        MealEntryButtonRow(entry: entry, onEdit: onEdit)
+            .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                Button {
+                    onEdit(entry)
+                } label: {
+                    Label("Edit", systemImage: "pencil")
+                }
+                .tint(CalorynTheme.sage)
+            }
+            .swipeActions(edge: .trailing) {
+                Button(role: .destructive) {
+                    onDelete(entry)
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+            }
+    }
+}
+
+private struct MealEntryButtonRow: View {
+    let entry: FoodLogEntry
+    let onEdit: (FoodLogEntry) -> Void
+
+    var body: some View {
+        Button {
+            onEdit(entry)
+        } label: {
+            MealEntryRow(entry: entry)
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("Double tap to edit")
     }
 }
 
