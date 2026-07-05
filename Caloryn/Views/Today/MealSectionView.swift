@@ -7,19 +7,22 @@ struct MealSectionView: View {
     var snackIndex: Int
     var onAdd: () -> Void
     var onEdit: (FoodLogEntry) -> Void
+    var onDelete: (FoodLogEntry) -> Void
 
     init(
         mealType: MealType,
         entries: [FoodLogEntry],
         snackIndex: Int = 0,
         onAdd: @escaping () -> Void,
-        onEdit: @escaping (FoodLogEntry) -> Void
+        onEdit: @escaping (FoodLogEntry) -> Void,
+        onDelete: @escaping (FoodLogEntry) -> Void
     ) {
         self.mealType = mealType
         self.entries = entries
         self.snackIndex = snackIndex
         self.onAdd = onAdd
         self.onEdit = onEdit
+        self.onDelete = onDelete
     }
 
     private var sectionTitle: String {
@@ -43,67 +46,61 @@ struct MealSectionView: View {
     }
 
     var body: some View {
-        CalorynCard {
-            VStack(alignment: .leading, spacing: 12) {
-                Button(action: onAdd) {
-                    sectionHeader
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Add food to \(sectionTitle)")
-                .accessibilityHint("Double tap to add food")
-
-                if entries.isEmpty {
-                    Button(action: onAdd) {
-                        VStack(spacing: 4) {
-                            Text("No food logged yet")
-                                .font(CalorynTheme.caption)
-                                .foregroundStyle(CalorynTheme.textSecondary)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .contentShape(Rectangle())
+        Section {
+            if entries.isEmpty {
+                EmptyMealRow()
+            } else {
+                ForEach(entries) { entry in
+                    Button {
+                        onEdit(entry)
+                    } label: {
+                        MealEntryRow(entry: entry)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("Add food to \(sectionTitle)")
-                } else {
-                    ForEach(entries) { entry in
+                    .swipeActions(edge: .leading, allowsFullSwipe: false) {
                         Button {
                             onEdit(entry)
                         } label: {
-                            VStack(spacing: 0) {
-                                MealEntryRow(entry: entry)
-
-                                if entry.id != entries.last?.id {
-                                    Divider()
-                                        .foregroundStyle(CalorynTheme.cardSeparator)
-                                        .padding(.top, 8)
-                                }
-                            }
+                            Label("Edit", systemImage: "pencil")
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityHint("Double tap to edit")
+                        .tint(CalorynTheme.sage)
                     }
+                    .swipeActions(edge: .trailing) {
+                        Button(role: .destructive) {
+                            onDelete(entry)
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                    }
+                    .accessibilityHint("Double tap to edit")
                 }
             }
+        } header: {
+            Button(action: onAdd) {
+                sectionHeader
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Add food to \(sectionTitle)")
+            .accessibilityHint("Double tap to add food")
         }
     }
 
     private var sectionHeader: some View {
-        HStack {
+        HStack(spacing: 8) {
             Image(systemName: mealType.iconName)
                 .foregroundStyle(CalorynTheme.sage)
-                .font(CalorynTheme.inlineIcon)
+                .font(CalorynTheme.compactIcon)
 
             Text(sectionTitle)
-                .font(CalorynTheme.itemTitle)
-                .foregroundStyle(CalorynTheme.textPrimary)
+                .font(CalorynTheme.caption)
+                .foregroundStyle(CalorynTheme.textSecondary)
 
             Spacer()
 
             VStack(alignment: .trailing, spacing: 2) {
                 if !totalCalories.isZero {
                     Text(totalCalories.kcalFormatted)
-                        .font(CalorynTheme.numericCaption)
+                        .font(CalorynTheme.numericMicroCaption)
                         .foregroundStyle(CalorynTheme.textSecondary)
                 }
 
@@ -111,17 +108,17 @@ struct MealSectionView: View {
                     HStack(spacing: 6) {
                         if !totalProtein.isZero {
                             Text("\(totalProtein.macroFormatted) P")
-                                .font(CalorynTheme.numericCaption)
+                                .font(CalorynTheme.numericMicroCaption)
                                 .foregroundStyle(CalorynTheme.proteinColor)
                         }
                         if !totalCarbs.isZero {
                             Text("\(totalCarbs.macroFormatted) C")
-                                .font(CalorynTheme.numericCaption)
+                                .font(CalorynTheme.numericMicroCaption)
                                 .foregroundStyle(CalorynTheme.carbColor)
                         }
                         if !totalFat.isZero {
                             Text("\(totalFat.macroFormatted) F")
-                                .font(CalorynTheme.numericCaption)
+                                .font(CalorynTheme.numericMicroCaption)
                                 .foregroundStyle(CalorynTheme.fatColor)
                         }
                     }
@@ -129,11 +126,21 @@ struct MealSectionView: View {
             }
 
             Image(systemName: "plus.circle.fill")
-                .font(CalorynTheme.inlineIcon)
+                .font(.system(.title3, weight: .semibold))
                 .foregroundStyle(CalorynTheme.sage)
         }
-        .padding(.vertical, 4)
         .contentShape(Rectangle())
+    }
+}
+
+private struct EmptyMealRow: View {
+    var body: some View {
+        Text("No foods logged yet")
+            .font(CalorynTheme.caption)
+            .foregroundStyle(CalorynTheme.textSecondary)
+            .frame(maxWidth: .infinity, alignment: .center)
+            .padding(.vertical, 8)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -144,10 +151,10 @@ private struct MealEntryRow: View {
 
     var body: some View {
         HStack {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
                     Text(entry.foodName)
-                        .font(CalorynTheme.bodyText)
+                        .font(CalorynTheme.itemTitle)
                         .foregroundStyle(CalorynTheme.textPrimary)
                         .lineLimit(1)
 
@@ -165,14 +172,14 @@ private struct MealEntryRow: View {
 
             Spacer()
 
-            HStack(spacing: 12) {
-                Text(entry.calories.kcalFormatted)
-                    .font(CalorynTheme.numericCaption)
+            VStack(alignment: .trailing, spacing: 2) {
+                Text("\(Int(entry.calories.rounded()))")
+                    .font(CalorynTheme.numericBody)
                     .foregroundStyle(CalorynTheme.textPrimary)
 
-                Image(systemName: "chevron.right")
-                    .font(CalorynTheme.compactIcon)
-                    .foregroundStyle(CalorynTheme.textSecondary.opacity(0.6))
+                Text("kcal")
+                    .font(CalorynTheme.numericMicroCaption)
+                    .foregroundStyle(CalorynTheme.textSecondary)
             }
         }
         .padding(.vertical, 4)
@@ -202,7 +209,8 @@ private struct MealEntryRow: View {
             mealType: .breakfast,
             entries: entries,
             onAdd: {},
-            onEdit: { _ in }
+            onEdit: { _ in },
+            onDelete: { _ in }
         )
     }
     .listStyle(.insetGrouped)
@@ -214,7 +222,8 @@ private struct MealEntryRow: View {
             mealType: .lunch,
             entries: [],
             onAdd: {},
-            onEdit: { _ in }
+            onEdit: { _ in },
+            onDelete: { _ in }
         )
     }
     .listStyle(.insetGrouped)
@@ -238,7 +247,8 @@ private struct MealEntryRow: View {
             entries: [entry],
             snackIndex: 1,
             onAdd: {},
-            onEdit: { _ in }
+            onEdit: { _ in },
+            onDelete: { _ in }
         )
     }
     .listStyle(.insetGrouped)
@@ -269,7 +279,8 @@ private struct MealEntryRow: View {
             entries: [entry],
             snackIndex: 1,
             onAdd: {},
-            onEdit: { _ in }
+            onEdit: { _ in },
+            onDelete: { _ in }
         )
     }
     .listStyle(.insetGrouped)

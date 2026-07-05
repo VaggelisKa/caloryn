@@ -208,10 +208,11 @@ struct PortionPickerView: View {
                     Button(role: .destructive) {
                         showingDeleteConfirmation = true
                     } label: {
-                        Label("Delete", systemImage: "trash")
+                        Label("Delete", systemImage: "trash.fill")
                             .font(CalorynTheme.toolbarIcon)
+                            .foregroundStyle(.red)
                     }
-                    .tint(CalorynTheme.terracotta)
+                    .tint(.red)
                     .accessibilityLabel("Delete Log Entry")
                 }
             }

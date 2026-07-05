@@ -74,13 +74,22 @@ struct TodayView: View {
     }
 
     private var snackIndices: [Int] {
-        let existing = Set(
+        Set(
             todayEntries
                 .filter { $0.mealType == .snack }
                 .map { $0.snackIndex }
         )
-        let all = existing.union([1])
-        return all.sorted()
+        .sorted()
+    }
+
+    private var yesterdayEntries: [FoodLogEntry] {
+        allEntries.filter {
+            Calendar.current.isDate($0.date, inSameDayAs: selectedDate.yesterday)
+        }
+    }
+
+    private var canCopyYesterday: Bool {
+        todayEntries.isEmpty && !yesterdayEntries.isEmpty
     }
 
     private func entries(for meal: MealType) -> [FoodLogEntry] {
@@ -101,58 +110,57 @@ struct TodayView: View {
                 dateNavigator
                     .padding(.horizontal, CalorynTheme.pagePadding)
 
-                ScrollView {
-                    VStack(spacing: CalorynTheme.cardSpacing) {
-                        dashboardSection
+                List {
+                    dashboardSection
+                        .listRowInsets(EdgeInsets(top: 14, leading: 0, bottom: 12, trailing: 0))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
 
-                        if showNutriscore, hasNutriscoreData {
+                    if showNutriscore, hasNutriscoreData {
+                        Section {
                             nutriscoreSection
                         }
-
-                        ForEach(coreMeals) { meal in
-                            MealSectionView(
-                                mealType: meal,
-                                entries: entries(for: meal),
-                                onAdd: {
-                                    selectedMealType = meal
-                                    selectedSnackIndex = 0
-                                    showingFoodSearch = true
-                                },
-                                onEdit: { entry in
-                                    entryToEdit = entry
-                                }
-                            )
-                        }
-
-                        ForEach(snackIndices, id: \.self) { index in
-                            MealSectionView(
-                                mealType: .snack,
-                                entries: snackEntries(for: index),
-                                snackIndex: index,
-                                onAdd: {
-                                    selectedMealType = .snack
-                                    selectedSnackIndex = index
-                                    showingFoodSearch = true
-                                },
-                                onEdit: { entry in
-                                    entryToEdit = entry
-                                }
-                            )
-                        }
-
-                        CalorynCard {
-                            VStack(alignment: .leading, spacing: 12) {
-                                addSnackButton
-                                copyYesterdayButton
-                            }
-                        }
                     }
-                    .padding(.horizontal, CalorynTheme.pagePadding)
-                    .padding(.top, CalorynTheme.cardSpacing)
-                    .padding(.bottom, 20)
-                    .animation(.smooth(duration: 0.35), value: hasNutriscoreData)
+
+                    ForEach(coreMeals) { meal in
+                        MealSectionView(
+                            mealType: meal,
+                            entries: entries(for: meal),
+                            onAdd: {
+                                selectedMealType = meal
+                                selectedSnackIndex = 0
+                                showingFoodSearch = true
+                            },
+                            onEdit: { entry in
+                                entryToEdit = entry
+                            },
+                            onDelete: deleteEntry
+                        )
+                    }
+
+                    ForEach(snackIndices, id: \.self) { index in
+                        MealSectionView(
+                            mealType: .snack,
+                            entries: snackEntries(for: index),
+                            snackIndex: index,
+                            onAdd: {
+                                selectedMealType = .snack
+                                selectedSnackIndex = index
+                                showingFoodSearch = true
+                            },
+                            onEdit: { entry in
+                                entryToEdit = entry
+                            },
+                            onDelete: deleteEntry
+                        )
+                    }
+
+                    actionsSection
                 }
-                .background(CalorynTheme.pageBackground)
+                .listStyle(.insetGrouped)
+                .listSectionSpacing(.custom(16))
+                .contentMargins(.top, 0, for: .scrollContent)
+                .animation(.smooth(duration: 0.35), value: hasNutriscoreData)
             }
             .background(CalorynTheme.pageBackground)
             .sheet(isPresented: $showingFoodSearch) {
@@ -265,7 +273,7 @@ struct TodayView: View {
     }
 
     private var nutriscoreSection: some View {
-        NutriscoreDaySummary(distribution: nutriscoreDistribution)
+        NutriscoreDaySummary(distribution: nutriscoreDistribution, usesCard: false)
             .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .center)))
     }
 
@@ -276,29 +284,43 @@ struct TodayView: View {
             selectedSnackIndex = nextIndex
             showingFoodSearch = true
         } label: {
-            Label("Add Snack", systemImage: "plus.circle")
-                .font(CalorynTheme.buttonLabel)
-                .foregroundStyle(CalorynTheme.sage)
+            HStack(spacing: 7) {
+                Image(systemName: "plus.circle")
+                    .font(.system(.title3, weight: .semibold))
+
+                Text("Add Snack")
+                    .font(CalorynTheme.buttonLabel)
+            }
+            .foregroundStyle(CalorynTheme.sage)
         }
+        .buttonStyle(.plain)
+        .padding(.vertical, 4)
     }
 
     private var copyYesterdayButton: some View {
-        let yesterdayEntries = allEntries.filter {
-            Calendar.current.isDate($0.date, inSameDayAs: selectedDate.yesterday)
-        }
-
-        return Group {
-            if todayEntries.isEmpty && !yesterdayEntries.isEmpty {
-                Button {
-                    withAnimation {
-                        copyEntries(from: yesterdayEntries)
-                    }
-                } label: {
-                    Label("Copy Yesterday's Meals", systemImage: "doc.on.doc")
-                        .font(CalorynTheme.buttonLabel)
-                        .foregroundStyle(CalorynTheme.sage)
-                }
+        Button {
+            withAnimation {
+                copyEntries(from: yesterdayEntries)
             }
+        } label: {
+            Label("Copy Yesterday's Meals", systemImage: "doc.on.doc")
+                .font(CalorynTheme.buttonLabel)
+                .foregroundStyle(CalorynTheme.sage)
+        }
+        .buttonStyle(.plain)
+        .padding(.vertical, 4)
+    }
+
+    private var actionsSection: some View {
+        Section {
+            addSnackButton
+
+            if canCopyYesterday {
+                copyYesterdayButton
+            }
+        } header: {
+            Color.clear
+                .frame(height: 10)
         }
     }
 
@@ -357,10 +379,11 @@ private struct MissingFoodEntryView: View {
                     Button(role: .destructive) {
                         showingDeleteConfirmation = true
                     } label: {
-                        Label("Delete", systemImage: "trash")
+                        Label("Delete", systemImage: "trash.fill")
                             .font(CalorynTheme.toolbarIcon)
+                            .foregroundStyle(.red)
                     }
-                    .tint(CalorynTheme.terracotta)
+                    .tint(.red)
                     .accessibilityLabel("Delete Log Entry")
                 }
             }

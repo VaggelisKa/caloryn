@@ -2,6 +2,7 @@ import SwiftUI
 
 struct NutriscoreDaySummary: View {
     let distribution: [(grade: String, count: Int)]
+    var usesCard = true
 
     private let gradeOrder = ["a", "b", "c", "d", "e"]
 
@@ -16,35 +17,45 @@ struct NutriscoreDaySummary: View {
     }
 
     var body: some View {
-        CalorynCard {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(spacing: 8) {
-                    Image(systemName: "heart.fill")
-                        .font(CalorynTheme.compactIcon)
-                        .foregroundStyle(CalorynTheme.sage)
-                    Text("Today's health")
-                        .font(CalorynTheme.caption)
-                        .foregroundStyle(CalorynTheme.textSecondary)
+        Group {
+            if usesCard {
+                CalorynCard {
+                    summaryContent
                 }
-
-                NutriscoreAllocationBar(segments: orderedSegments, total: totalCount)
-
-                HStack(spacing: 12) {
-                    ForEach(orderedSegments, id: \.grade) { item in
-                        HStack(spacing: 4) {
-                            NutriscoreBadge(grade: item.grade)
-                            Text("×\(item.count)")
-                                .font(CalorynTheme.numericMicroCaption)
-                                .foregroundStyle(CalorynTheme.textSecondary)
-                                .contentTransition(.numericText())
-                        }
-                    }
-                    .animation(.smooth(duration: 0.35), value: orderedSegments.map { "\($0.grade)-\($0.count)" })
-                }
+            } else {
+                summaryContent
             }
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilitySummary)
+    }
+
+    private var summaryContent: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Image(systemName: "heart.fill")
+                    .font(CalorynTheme.compactIcon)
+                    .foregroundStyle(CalorynTheme.sage)
+                Text("Today's health")
+                    .font(CalorynTheme.caption)
+                    .foregroundStyle(CalorynTheme.textSecondary)
+            }
+
+            NutriscoreAllocationBar(segments: orderedSegments, total: totalCount)
+
+            HStack(spacing: 12) {
+                ForEach(orderedSegments, id: \.grade) { item in
+                    HStack(spacing: 4) {
+                        NutriscoreBadge(grade: item.grade)
+                        Text("×\(item.count)")
+                            .font(CalorynTheme.numericMicroCaption)
+                            .foregroundStyle(CalorynTheme.textSecondary)
+                            .contentTransition(.numericText())
+                    }
+                }
+                .animation(.smooth(duration: 0.35), value: orderedSegments.map { "\($0.grade)-\($0.count)" })
+            }
+        }
     }
 
     private var accessibilitySummary: String {
