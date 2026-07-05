@@ -16,33 +16,33 @@ struct NutriscoreDaySummary: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
-                Image(systemName: "heart.fill")
-                    .font(CalorynTheme.compactIcon)
-                    .foregroundStyle(CalorynTheme.sage)
-                Text("Today's health")
-                    .font(CalorynTheme.caption)
-                    .foregroundStyle(CalorynTheme.textSecondary)
-            }
-
-            NutriscoreAllocationBar(segments: orderedSegments, total: totalCount)
-
-            HStack(spacing: 12) {
-                ForEach(orderedSegments, id: \.grade) { item in
-                    HStack(spacing: 4) {
-                        NutriscoreBadge(grade: item.grade)
-                        Text("×\(item.count)")
-                            .font(CalorynTheme.numericMicroCaption)
-                            .foregroundStyle(CalorynTheme.textSecondary)
-                            .contentTransition(.numericText())
-                    }
+        CalorynCard {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 8) {
+                    Image(systemName: "heart.fill")
+                        .font(CalorynTheme.compactIcon)
+                        .foregroundStyle(CalorynTheme.sage)
+                    Text("Today's health")
+                        .font(CalorynTheme.caption)
+                        .foregroundStyle(CalorynTheme.textSecondary)
                 }
-                .animation(.smooth(duration: 0.35), value: orderedSegments.map { "\($0.grade)-\($0.count)" })
+
+                NutriscoreAllocationBar(segments: orderedSegments, total: totalCount)
+
+                HStack(spacing: 12) {
+                    ForEach(orderedSegments, id: \.grade) { item in
+                        HStack(spacing: 4) {
+                            NutriscoreBadge(grade: item.grade)
+                            Text("×\(item.count)")
+                                .font(CalorynTheme.numericMicroCaption)
+                                .foregroundStyle(CalorynTheme.textSecondary)
+                                .contentTransition(.numericText())
+                        }
+                    }
+                    .animation(.smooth(duration: 0.35), value: orderedSegments.map { "\($0.grade)-\($0.count)" })
+                }
             }
         }
-        .padding(CalorynTheme.cardPadding)
-        .adaptiveGlassCard(cornerRadius: CalorynTheme.smallCornerRadius)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilitySummary)
     }

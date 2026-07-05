@@ -49,4 +49,52 @@ final class FoodLogEntryTests: XCTestCase {
         XCTAssertEqual(entry.snackIndex, 3)
         XCTAssertEqual(entry.mealType.displayName(snackIndex: entry.snackIndex), "Snack 3")
     }
+
+    func testUpdatingEntryRefreshesMealPortionAndNutritionSnapshot() {
+        let originalFood = makeTestFoodItem(
+            name: "Toast",
+            caloriesPer100g: 250,
+            proteinPer100g: 8,
+            carbsPer100g: 45,
+            fatPer100g: 3
+        )
+        let updatedFood = makeTestFoodItem(
+            name: "Skyr",
+            caloriesPer100g: 60,
+            proteinPer100g: 11,
+            carbsPer100g: 4,
+            fatPer100g: 0,
+            fiberPer100g: 1
+        )
+        let originalDate = makeTestDate(year: 2026, month: 3, day: 10, hour: 8)
+        let updatedDate = makeTestDate(year: 2026, month: 3, day: 11, hour: 20)
+        let entry = FoodLogEntry(
+            date: originalDate,
+            mealType: .breakfast,
+            foodItem: originalFood,
+            portionGrams: 100
+        )
+        let originalID = entry.id
+        let originalCreatedAt = entry.createdAt
+
+        entry.update(
+            date: updatedDate,
+            mealType: .snack,
+            foodItem: updatedFood,
+            portionGrams: 200,
+            snackIndex: 2
+        )
+
+        XCTAssertEqual(entry.id, originalID)
+        XCTAssertEqual(entry.createdAt, originalCreatedAt)
+        XCTAssertEqual(entry.date, updatedDate.startOfDay)
+        XCTAssertEqual(entry.mealType, .snack)
+        XCTAssertEqual(entry.snackIndex, 2)
+        XCTAssertEqual(entry.foodName, "Skyr")
+        XCTAssertEqual(entry.calories, 120, accuracy: 0.001)
+        XCTAssertEqual(entry.proteinG, 22, accuracy: 0.001)
+        XCTAssertEqual(entry.carbsG, 8, accuracy: 0.001)
+        XCTAssertEqual(entry.fatG, 0, accuracy: 0.001)
+        XCTAssertEqual(entry.fiberG, 2, accuracy: 0.001)
+    }
 }

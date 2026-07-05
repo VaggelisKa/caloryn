@@ -101,6 +101,8 @@ struct CalorieRingView: View {
         .frame(width: ringSize, height: ringSize)
         .padding(20)
         .glassCircle()
+        .compositingGroup()
+        .clipShape(Circle())
         .contentShape(Circle())
         .opacity(hasAppeared ? 1 : 0)
         .scaleEffect(isDetailsPressing ? 0.94 : 1)

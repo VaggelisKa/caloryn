@@ -12,6 +12,7 @@ struct TodayView: View {
     @State private var showingNutritionDetails = false
     @State private var selectedMealType: MealType = .breakfast
     @State private var selectedSnackIndex: Int = 1
+    @State private var entryToEdit: FoodLogEntry?
 
     @AppStorage("showNutriscore") private var showNutriscore = true
     @State private var activeEnergyTracker = ActiveEnergyDayTracker()
@@ -102,18 +103,10 @@ struct TodayView: View {
 
                 ScrollView {
                     VStack(spacing: CalorynTheme.cardSpacing) {
-                        CalorieRingView(
-                            calorieBudget: calorieBudget,
-                            ringSize: ringSize
-                        ) {
-                            withAnimation(.smooth(duration: 0.2)) {
-                                showingNutritionDetails = true
-                            }
-                        }
+                        dashboardSection
 
                         if showNutriscore, hasNutriscoreData {
-                            NutriscoreDaySummary(distribution: nutriscoreDistribution)
-                                .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .center)))
+                            nutriscoreSection
                         }
 
                         ForEach(coreMeals) { meal in
@@ -125,10 +118,8 @@ struct TodayView: View {
                                     selectedSnackIndex = 0
                                     showingFoodSearch = true
                                 },
-                                onDelete: { entry in
-                                    withAnimation {
-                                        modelContext.delete(entry)
-                                    }
+                                onEdit: { entry in
+                                    entryToEdit = entry
                                 }
                             )
                         }
@@ -143,27 +134,51 @@ struct TodayView: View {
                                     selectedSnackIndex = index
                                     showingFoodSearch = true
                                 },
-                                onDelete: { entry in
-                                    withAnimation {
-                                        modelContext.delete(entry)
-                                    }
+                                onEdit: { entry in
+                                    entryToEdit = entry
                                 }
                             )
                         }
 
-                        addSnackButton
-
-                        copyYesterdayButton
+                        CalorynCard {
+                            VStack(alignment: .leading, spacing: 12) {
+                                addSnackButton
+                                copyYesterdayButton
+                            }
+                        }
                     }
                     .padding(.horizontal, CalorynTheme.pagePadding)
                     .padding(.top, CalorynTheme.cardSpacing)
                     .padding(.bottom, 20)
                     .animation(.smooth(duration: 0.35), value: hasNutriscoreData)
                 }
+                .background(CalorynTheme.pageBackground)
             }
+            .background(CalorynTheme.pageBackground)
             .sheet(isPresented: $showingFoodSearch) {
                 FoodSearchView(mealType: selectedMealType, logDate: selectedDate, snackIndex: selectedSnackIndex)
                     .presentationDragIndicator(.visible)
+            }
+            .sheet(item: $entryToEdit) { entry in
+                if let food = entry.foodItem {
+                    NavigationStack {
+                        PortionPickerView(
+                            foodItem: food,
+                            mealType: entry.mealType,
+                            logDate: entry.date,
+                            isNewFood: false,
+                            snackIndex: entry.snackIndex,
+                            existingEntry: entry
+                        )
+                    }
+                    .presentationDragIndicator(.visible)
+                } else {
+                    MissingFoodEntryView(entry: entry) {
+                        deleteEntry(entry)
+                        entryToEdit = nil
+                    }
+                    .presentationDragIndicator(.visible)
+                }
             }
             .sheet(isPresented: $showingNutritionDetails) {
                 NutritionDetailsView(
@@ -234,6 +249,26 @@ struct TodayView: View {
         .padding(.vertical, 8)
     }
 
+    private var dashboardSection: some View {
+        HStack {
+            Spacer()
+            CalorieRingView(
+                calorieBudget: calorieBudget,
+                ringSize: ringSize
+            ) {
+                withAnimation(.smooth(duration: 0.2)) {
+                    showingNutritionDetails = true
+                }
+            }
+            Spacer()
+        }
+    }
+
+    private var nutriscoreSection: some View {
+        NutriscoreDaySummary(distribution: nutriscoreDistribution)
+            .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .center)))
+    }
+
     private var addSnackButton: some View {
         Button {
             let nextIndex = (snackIndices.last ?? 0) + 1
@@ -243,11 +278,8 @@ struct TodayView: View {
         } label: {
             Label("Add Snack", systemImage: "plus.circle")
                 .font(CalorynTheme.buttonLabel)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
+                .foregroundStyle(CalorynTheme.sage)
         }
-        .adaptiveGlassButtonStyle()
-        .tint(CalorynTheme.sage)
     }
 
     private var copyYesterdayButton: some View {
@@ -264,13 +296,17 @@ struct TodayView: View {
                 } label: {
                     Label("Copy Yesterday's Meals", systemImage: "doc.on.doc")
                         .font(CalorynTheme.buttonLabel)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
+                        .foregroundStyle(CalorynTheme.sage)
                 }
-                .adaptiveGlassButtonStyle()
-                .tint(CalorynTheme.sage)
             }
         }
+    }
+
+    private func deleteEntry(_ entry: FoodLogEntry) {
+        withAnimation {
+            modelContext.delete(entry)
+        }
+        try? modelContext.save()
     }
 
     private func copyEntries(from entries: [FoodLogEntry]) {
@@ -284,6 +320,58 @@ struct TodayView: View {
                 snackIndex: entry.snackIndex
             )
             modelContext.insert(newEntry)
+        }
+        try? modelContext.save()
+    }
+}
+
+private struct MissingFoodEntryView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    let entry: FoodLogEntry
+    let onDelete: () -> Void
+
+    @State private var showingDeleteConfirmation = false
+
+    var body: some View {
+        NavigationStack {
+            ContentUnavailableView(
+                "Food Missing",
+                systemImage: "exclamationmark.triangle",
+                description: Text("\(entry.foodName) no longer has a food attached.")
+            )
+            .navigationTitle("Edit Portion")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(CalorynTheme.toolbarIcon)
+                    }
+                    .accessibilityLabel("Close")
+                }
+
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(role: .destructive) {
+                        showingDeleteConfirmation = true
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                            .font(CalorynTheme.toolbarIcon)
+                    }
+                    .tint(CalorynTheme.terracotta)
+                    .accessibilityLabel("Delete Log Entry")
+                }
+            }
+            .confirmationDialog("Delete Log Entry", isPresented: $showingDeleteConfirmation) {
+                Button("Delete", role: .destructive) {
+                    onDelete()
+                    dismiss()
+                }
+            } message: {
+                Text("Remove \(entry.foodName) from your log?")
+            }
         }
     }
 }
