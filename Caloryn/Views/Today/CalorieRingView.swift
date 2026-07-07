@@ -31,11 +31,15 @@ struct CalorieRingView: View {
         max(96, ringSize * 0.62)
     }
 
+    private var ringSurfaceSize: CGFloat {
+        ringSize + 40
+    }
+
     var body: some View {
         ZStack {
             Circle()
                 .stroke(
-                    CalorynTheme.sage.opacity(0.15),
+                    CalorynTheme.sage.opacity(0.18),
                     style: StrokeStyle(lineWidth: 14, lineCap: .round)
                 )
 
@@ -100,7 +104,15 @@ struct CalorieRingView: View {
         }
         .frame(width: ringSize, height: ringSize)
         .padding(20)
-        .glassCircle()
+        .background {
+            Circle()
+                .fill(CalorynTheme.cardBackground.opacity(0.82))
+                .frame(width: ringSurfaceSize, height: ringSurfaceSize)
+                .overlay {
+                    Circle()
+                        .stroke(CalorynTheme.cardSeparator.opacity(0.7), lineWidth: 0.8)
+                }
+        }
         .compositingGroup()
         .clipShape(Circle())
         .contentShape(Circle())
