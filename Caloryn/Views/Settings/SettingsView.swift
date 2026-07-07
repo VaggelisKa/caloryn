@@ -59,6 +59,8 @@ struct SettingsView: View {
                 dataSection
                 aboutSection
             }
+            .scrollContentBackground(.hidden)
+            .background(CalorynTheme.pageBackground)
             .navigationTitle("Settings")
             .sheet(isPresented: $showExportSheet) {
                 if let url = exportURL {

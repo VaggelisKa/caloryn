@@ -2,6 +2,7 @@ import SwiftUI
 
 struct NutriscoreDaySummary: View {
     let distribution: [(grade: String, count: Int)]
+    var usesCard = true
 
     private let gradeOrder = ["a", "b", "c", "d", "e"]
 
@@ -16,6 +17,20 @@ struct NutriscoreDaySummary: View {
     }
 
     var body: some View {
+        Group {
+            if usesCard {
+                CalorynCard {
+                    summaryContent
+                }
+            } else {
+                summaryContent
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilitySummary)
+    }
+
+    private var summaryContent: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
                 Image(systemName: "heart.fill")
@@ -41,10 +56,6 @@ struct NutriscoreDaySummary: View {
                 .animation(.smooth(duration: 0.35), value: orderedSegments.map { "\($0.grade)-\($0.count)" })
             }
         }
-        .padding(CalorynTheme.cardPadding)
-        .adaptiveGlassCard(cornerRadius: CalorynTheme.smallCornerRadius)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(accessibilitySummary)
     }
 
     private var accessibilitySummary: String {

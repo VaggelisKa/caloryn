@@ -108,6 +108,7 @@ struct HistoryView: View {
                 .padding(.horizontal, CalorynTheme.pagePadding)
                 .padding(.bottom, 20)
             }
+            .background(CalorynTheme.pageBackground)
             .navigationTitle("History")
             .navigationDestination(for: HistoryDrillDownRoute.self) { route in
                 destination(for: route)

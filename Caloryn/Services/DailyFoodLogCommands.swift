@@ -9,7 +9,6 @@ enum DailyFoodLogCommands {
         portionGrams: Double,
         mealType: MealType,
         logDate: Date,
-        requestedSnackIndex: Int = 0,
         isNewFood: Bool,
         modelContext: ModelContext,
         now: Date = Date()
@@ -25,10 +24,7 @@ enum DailyFoodLogCommands {
             mealType: mealType,
             foodItem: foodItem,
             portionGrams: portionGrams,
-            snackIndex: normalizedSnackIndex(
-                for: mealType,
-                requestedSnackIndex: requestedSnackIndex
-            )
+            snackIndex: normalizedSnackIndex(for: mealType)
         )
         modelContext.insert(entry)
         return entry
@@ -48,17 +44,42 @@ enum DailyFoodLogCommands {
                 mealType: entry.mealType,
                 foodItem: food,
                 portionGrams: entry.portionGrams,
-                snackIndex: entry.snackIndex
+                snackIndex: normalizedSnackIndex(for: entry.mealType)
             )
             modelContext.insert(copiedEntry)
             return copiedEntry
         }
     }
 
-    static func normalizedSnackIndex(
-        for mealType: MealType,
-        requestedSnackIndex: Int
-    ) -> Int {
-        mealType == .snack ? max(1, requestedSnackIndex) : 0
+    /// Updates an existing log entry in memory. Callers remain responsible for saving the model context.
+    @discardableResult
+    static func updateLoggedEntry(
+        _ entry: FoodLogEntry,
+        date: Date,
+        mealType: MealType,
+        foodItem: FoodItem,
+        portionGrams: Double,
+        now: Date = Date()
+    ) -> FoodLogEntry {
+        foodItem.lastUsed = now
+        entry.update(
+            date: date,
+            mealType: mealType,
+            foodItem: foodItem,
+            portionGrams: portionGrams,
+            snackIndex: normalizedSnackIndex(for: mealType)
+        )
+        return entry
+    }
+
+    static func deleteLoggedEntry(
+        _ entry: FoodLogEntry,
+        modelContext: ModelContext
+    ) {
+        modelContext.delete(entry)
+    }
+
+    static func normalizedSnackIndex(for mealType: MealType) -> Int {
+        mealType == .snack ? 1 : 0
     }
 }

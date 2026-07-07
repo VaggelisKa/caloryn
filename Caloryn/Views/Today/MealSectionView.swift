@@ -5,21 +5,32 @@ struct MealSectionView: View {
     let mealType: MealType
     let entries: [FoodLogEntry]
     var snackIndex: Int
+    var titleOverride: String?
     var onAdd: () -> Void
+    var onEdit: (FoodLogEntry) -> Void
     var onDelete: (FoodLogEntry) -> Void
 
-    @State private var entryToDelete: FoodLogEntry?
-
-    init(mealType: MealType, entries: [FoodLogEntry], snackIndex: Int = 0, onAdd: @escaping () -> Void, onDelete: @escaping (FoodLogEntry) -> Void) {
+    init(
+        mealType: MealType,
+        entries: [FoodLogEntry],
+        snackIndex: Int = 0,
+        titleOverride: String? = nil,
+        onAdd: @escaping () -> Void,
+        onEdit: @escaping (FoodLogEntry) -> Void,
+        onDelete: @escaping (FoodLogEntry) -> Void
+    ) {
         self.mealType = mealType
         self.entries = entries
         self.snackIndex = snackIndex
+        self.titleOverride = titleOverride
         self.onAdd = onAdd
+        self.onEdit = onEdit
         self.onDelete = onDelete
     }
 
     private var sectionTitle: String {
-        mealType == .snack ? mealType.displayName(snackIndex: snackIndex) : mealType.displayName
+        if let titleOverride { return titleOverride }
+        return mealType == .snack ? mealType.displayName(snackIndex: snackIndex) : mealType.displayName
     }
 
     private var totalCalories: Double {
@@ -39,118 +50,223 @@ struct MealSectionView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Button(action: onAdd) {
-                HStack {
-                    Image(systemName: mealType.iconName)
-                        .foregroundStyle(CalorynTheme.sage)
-                        .font(CalorynTheme.inlineIcon)
-
-                    Text(sectionTitle)
-                        .font(CalorynTheme.itemTitle)
-                        .foregroundStyle(CalorynTheme.textPrimary)
-
-                    Spacer()
-
-                    VStack(alignment: .trailing, spacing: 2) {
-                        if !totalCalories.isZero {
-                            Text(totalCalories.kcalFormatted)
-                                .font(CalorynTheme.numericCaption)
-                                .foregroundStyle(CalorynTheme.textSecondary)
-                        }
-
-                        if !entries.isEmpty {
-                            HStack(spacing: 6) {
-                                if !totalProtein.isZero {
-                                    Text("\(totalProtein.macroFormatted) P")
-                                        .font(CalorynTheme.numericCaption)
-                                        .foregroundStyle(CalorynTheme.proteinColor)
-                                }
-                                if !totalCarbs.isZero {
-                                    Text("\(totalCarbs.macroFormatted) C")
-                                        .font(CalorynTheme.numericCaption)
-                                        .foregroundStyle(CalorynTheme.carbColor)
-                                }
-                                if !totalFat.isZero {
-                                    Text("\(totalFat.macroFormatted) F")
-                                        .font(CalorynTheme.numericCaption)
-                                        .foregroundStyle(CalorynTheme.fatColor)
-                                }
-                            }
-                        }
-                    }
-
-                    Image(systemName: "plus.circle.fill")
-                        .font(CalorynTheme.inlineIcon)
-                        .foregroundStyle(CalorynTheme.sage)
+        Section {
+            if entries.count <= 1 {
+                SingleMealTransitionRow(
+                    entry: entries.first,
+                    onEdit: onEdit,
+                    onDelete: onDelete
+                )
+            } else {
+                ForEach(entries) { entry in
+                    MealEntryActionRow(
+                        entry: entry,
+                        onEdit: onEdit,
+                        onDelete: onDelete
+                    )
                 }
-                .padding(.vertical, 4)
-                .contentShape(Rectangle())
+            }
+        } header: {
+            Button(action: onAdd) {
+                sectionHeader
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Add food to \(sectionTitle)")
             .accessibilityHint("Double tap to add food")
+        }
+    }
 
-            if entries.isEmpty {
-                Button(action: onAdd) {
-                    VStack(spacing: 4) {
-                        Text("No food logged yet")
-                            .font(CalorynTheme.caption)
-                            .foregroundStyle(CalorynTheme.textSecondary)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .contentShape(Rectangle())
+    private var sectionHeader: some View {
+        HStack(spacing: 8) {
+            Image(systemName: mealType.iconName)
+                .foregroundStyle(CalorynTheme.sage)
+                .font(CalorynTheme.compactIcon)
+
+            Text(sectionTitle)
+                .font(CalorynTheme.caption)
+                .foregroundStyle(CalorynTheme.textSecondary)
+
+            Spacer()
+
+            VStack(alignment: .trailing, spacing: 2) {
+                if !totalCalories.isZero {
+                    Text(totalCalories.kcalFormatted)
+                        .font(CalorynTheme.numericMicroCaption)
+                        .foregroundStyle(CalorynTheme.textSecondary)
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Add food to \(sectionTitle)")
-            } else {
-                ForEach(entries) { entry in
-                    MealEntryRow(entry: entry) {
-                        entryToDelete = entry
+
+                if !entries.isEmpty {
+                    HStack(spacing: 6) {
+                        if !totalProtein.isZero {
+                            Text("\(totalProtein.macroFormatted) P")
+                                .font(CalorynTheme.numericMicroCaption)
+                                .foregroundStyle(CalorynTheme.proteinColor)
+                        }
+                        if !totalCarbs.isZero {
+                            Text("\(totalCarbs.macroFormatted) C")
+                                .font(CalorynTheme.numericMicroCaption)
+                                .foregroundStyle(CalorynTheme.carbColor)
+                        }
+                        if !totalFat.isZero {
+                            Text("\(totalFat.macroFormatted) F")
+                                .font(CalorynTheme.numericMicroCaption)
+                                .foregroundStyle(CalorynTheme.fatColor)
+                        }
                     }
-                    if entry.id != entries.last?.id {
-                        Divider()
-                            .foregroundStyle(CalorynTheme.stone.opacity(0.3))
-                    }
+                }
+            }
+
+            Image(systemName: "plus.circle.fill")
+                .font(.system(.title3, weight: .semibold))
+                .foregroundStyle(CalorynTheme.sage)
+        }
+        .contentShape(Rectangle())
+    }
+}
+
+private struct SingleMealTransitionRow: View {
+    let entry: FoodLogEntry?
+    let onEdit: (FoodLogEntry) -> Void
+    let onDelete: (FoodLogEntry) -> Void
+
+    @State private var pendingDeletionID: UUID?
+    @State private var showsPendingEmptyState = false
+
+    private var editableEntry: FoodLogEntry? {
+        guard let entry, pendingDeletionID != entry.id else { return nil }
+        return entry
+    }
+
+    private var isDeletingEntry: Bool {
+        guard let entry else { return false }
+        return pendingDeletionID == entry.id
+    }
+
+    private var showsEmptyState: Bool {
+        entry == nil || showsPendingEmptyState
+    }
+
+    var body: some View {
+        ZStack {
+            if let entry {
+                MealEntryButtonRow(entry: entry, onEdit: onEdit)
+                    .opacity(isDeletingEntry ? 0 : 1)
+                    .allowsHitTesting(!isDeletingEntry)
+                    .accessibilityHidden(isDeletingEntry)
+            }
+
+            EmptyMealRow()
+                .opacity(showsEmptyState ? 1 : 0)
+                .accessibilityHidden(!showsEmptyState)
+        }
+        .animation(.easeIn(duration: 0.16), value: entry?.id)
+        .onChange(of: entry?.id) { _, newID in
+            if pendingDeletionID != newID {
+                pendingDeletionID = nil
+                showsPendingEmptyState = false
+            }
+        }
+        .swipeActions(edge: .leading, allowsFullSwipe: false) {
+            if let entry = editableEntry {
+                Button {
+                    onEdit(entry)
+                } label: {
+                    Label("Edit", systemImage: "pencil")
+                }
+                .tint(CalorynTheme.sage)
+            }
+        }
+        .swipeActions(edge: .trailing) {
+            if let entry = editableEntry {
+                Button(role: .destructive) {
+                    deleteWithFade(entry)
+                } label: {
+                    Label("Delete", systemImage: "trash")
                 }
             }
         }
-        .glassCard()
-        .confirmationDialog(
-            "Delete Entry",
-            isPresented: Binding(
-                get: { entryToDelete != nil },
-                set: { if !$0 { entryToDelete = nil } }
-            ),
-            titleVisibility: .visible
-        ) {
-            Button("Delete", role: .destructive) {
-                if let entry = entryToDelete {
-                    onDelete(entry)
-                    entryToDelete = nil
-                }
-            }
-        } message: {
-            if let entry = entryToDelete {
-                Text("Remove \(entry.foodName) from \(sectionTitle)?")
+    }
+
+    private func deleteWithFade(_ entry: FoodLogEntry) {
+        guard pendingDeletionID != entry.id else { return }
+
+        withAnimation(.easeOut(duration: 0.14)) {
+            pendingDeletionID = entry.id
+        } completion: {
+            guard pendingDeletionID == entry.id else { return }
+
+            withAnimation(.easeIn(duration: 0.16)) {
+                showsPendingEmptyState = true
+            } completion: {
+                guard pendingDeletionID == entry.id else { return }
+                onDelete(entry)
             }
         }
     }
 }
 
+private struct MealEntryActionRow: View {
+    let entry: FoodLogEntry
+    let onEdit: (FoodLogEntry) -> Void
+    let onDelete: (FoodLogEntry) -> Void
+
+    var body: some View {
+        MealEntryButtonRow(entry: entry, onEdit: onEdit)
+            .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                Button {
+                    onEdit(entry)
+                } label: {
+                    Label("Edit", systemImage: "pencil")
+                }
+                .tint(CalorynTheme.sage)
+            }
+            .swipeActions(edge: .trailing) {
+                Button(role: .destructive) {
+                    onDelete(entry)
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+            }
+    }
+}
+
+private struct MealEntryButtonRow: View {
+    let entry: FoodLogEntry
+    let onEdit: (FoodLogEntry) -> Void
+
+    var body: some View {
+        Button {
+            onEdit(entry)
+        } label: {
+            MealEntryRow(entry: entry)
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("Double tap to edit")
+    }
+}
+
+private struct EmptyMealRow: View {
+    var body: some View {
+        Text("No foods logged yet")
+            .font(CalorynTheme.caption)
+            .foregroundStyle(CalorynTheme.textSecondary)
+            .frame(maxWidth: .infinity, alignment: .center)
+            .padding(.vertical, 8)
+        .accessibilityElement(children: .combine)
+    }
+}
+
 private struct MealEntryRow: View {
     let entry: FoodLogEntry
-    var onDelete: () -> Void
 
     @AppStorage("showNutriscore") private var showNutriscore = true
 
     var body: some View {
         HStack {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
                     Text(entry.foodName)
-                        .font(CalorynTheme.bodyText)
+                        .font(CalorynTheme.itemTitle)
                         .foregroundStyle(CalorynTheme.textPrimary)
                         .lineLimit(1)
 
@@ -168,21 +284,19 @@ private struct MealEntryRow: View {
 
             Spacer()
 
-            HStack(spacing: 12) {
-                Text(entry.calories.kcalFormatted)
-                    .font(CalorynTheme.numericCaption)
+            VStack(alignment: .trailing, spacing: 2) {
+                Text("\(Int(entry.calories.rounded()))")
+                    .font(CalorynTheme.numericBody)
                     .foregroundStyle(CalorynTheme.textPrimary)
 
-                Button(action: onDelete) {
-                    Image(systemName: "minus.circle")
-                        .font(CalorynTheme.compactIcon)
-                        .foregroundStyle(CalorynTheme.terracotta.opacity(0.7))
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Delete \(entry.foodName)")
+                Text("kcal")
+                    .font(CalorynTheme.numericMicroCaption)
+                    .foregroundStyle(CalorynTheme.textSecondary)
             }
         }
         .padding(.vertical, 4)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -202,23 +316,29 @@ private struct MealEntryRow: View {
     entries.forEach { context.insert($0) }
     try? context.save()
 
-    return MealSectionView(
-        mealType: .breakfast,
-        entries: entries,
-        onAdd: {},
-        onDelete: { _ in }
-    )
-    .padding()
+    return List {
+        MealSectionView(
+            mealType: .breakfast,
+            entries: entries,
+            onAdd: {},
+            onEdit: { _ in },
+            onDelete: { _ in }
+        )
+    }
+    .listStyle(.insetGrouped)
 }
 
 #Preview("Empty") {
-    MealSectionView(
-        mealType: .lunch,
-        entries: [],
-        onAdd: {},
-        onDelete: { _ in }
-    )
-    .padding()
+    List {
+        MealSectionView(
+            mealType: .lunch,
+            entries: [],
+            onAdd: {},
+            onEdit: { _ in },
+            onDelete: { _ in }
+        )
+    }
+    .listStyle(.insetGrouped)
 }
 
 #Preview("Snack") {
@@ -233,14 +353,17 @@ private struct MealEntryRow: View {
     context.insert(entry)
     try? context.save()
 
-    return MealSectionView(
-        mealType: .snack,
-        entries: [entry],
-        snackIndex: 1,
-        onAdd: {},
-        onDelete: { _ in }
-    )
-    .padding()
+    return List {
+        MealSectionView(
+            mealType: .snack,
+            entries: [entry],
+            snackIndex: 1,
+            onAdd: {},
+            onEdit: { _ in },
+            onDelete: { _ in }
+        )
+    }
+    .listStyle(.insetGrouped)
 }
 
 #Preview("Snack with Nutriscore") {
@@ -262,12 +385,15 @@ private struct MealEntryRow: View {
     context.insert(entry)
     try? context.save()
 
-    return MealSectionView(
-        mealType: .snack,
-        entries: [entry],
-        snackIndex: 1,
-        onAdd: {},
-        onDelete: { _ in }
-    )
-    .padding()
+    return List {
+        MealSectionView(
+            mealType: .snack,
+            entries: [entry],
+            snackIndex: 1,
+            onAdd: {},
+            onEdit: { _ in },
+            onDelete: { _ in }
+        )
+    }
+    .listStyle(.insetGrouped)
 }

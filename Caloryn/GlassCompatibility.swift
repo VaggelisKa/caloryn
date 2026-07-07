@@ -30,12 +30,26 @@ extension View {
 
     @ViewBuilder
     func adaptiveGlassCard(cornerRadius: CGFloat) -> some View {
+        adaptiveGlassCard(in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+    }
+
+    @ViewBuilder
+    func adaptiveGlassCard<S: Shape>(in shape: S) -> some View {
         if #available(iOS 26.0, *) {
-            self.glassEffect(.regular, in: .rect(cornerRadius: cornerRadius))
+            self
+                .glassEffect(.regular, in: shape)
         } else {
             self
-                .background(.regularMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                .background {
+                    shape
+                        .fill(CalorynTheme.cardBackground)
+                        .shadow(color: .black.opacity(0.05), radius: 14, x: 0, y: 6)
+                }
+                .overlay {
+                    shape
+                        .stroke(CalorynTheme.cardSeparator.opacity(0.75), lineWidth: 0.8)
+                        .allowsHitTesting(false)
+                }
         }
     }
 

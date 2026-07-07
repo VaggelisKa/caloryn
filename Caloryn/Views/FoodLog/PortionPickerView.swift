@@ -7,7 +7,9 @@ struct PortionPickerView: View {
     let logDate: Date
     let isNewFood: Bool
     let snackIndex: Int
+    let existingEntry: FoodLogEntry?
     var onLogged: (() -> Void)?
+    var onDeleted: ((FoodLogEntry) -> Void)?
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -18,6 +20,7 @@ struct PortionPickerView: View {
     @State private var selectedGramStep: Int = 100
     @State private var selectedServingCount: Int = 1
     @State private var selectedRecipeServingID = RecipeServingOption.one.id
+    @State private var showingDeleteConfirmation = false
 
     private enum PortionMode: Hashable {
         case grams
@@ -63,27 +66,52 @@ struct PortionPickerView: View {
         RecipeServingOption(id: "4", label: "4", multiplier: 4)
     ]
 
-    init(foodItem: FoodItem, mealType: MealType, logDate: Date, isNewFood: Bool, snackIndex: Int = 0, onLogged: (() -> Void)? = nil) {
+    init(
+        foodItem: FoodItem,
+        mealType: MealType,
+        logDate: Date,
+        isNewFood: Bool,
+        snackIndex: Int = 0,
+        existingEntry: FoodLogEntry? = nil,
+        onLogged: (() -> Void)? = nil,
+        onDeleted: ((FoodLogEntry) -> Void)? = nil
+    ) {
         self.foodItem = foodItem
         self.mealType = mealType
         self.logDate = logDate
         self.isNewFood = isNewFood
         self.snackIndex = snackIndex
+        self.existingEntry = existingEntry
         self.onLogged = onLogged
-        self._selectedMeal = State(initialValue: mealType)
+        self.onDeleted = onDeleted
+        self._selectedMeal = State(initialValue: existingEntry?.mealType ?? mealType)
 
-        let defaultPortion = foodItem.defaultServingG ?? 100
-        self._portionGrams = State(initialValue: defaultPortion)
+        let initialPortion = existingEntry?.portionGrams ?? foodItem.defaultServingG ?? 100
+        self._portionGrams = State(initialValue: initialPortion)
 
-        let nearestStep = Self.normalizedGramStep(defaultPortion, limit: Self.gramOptionLimit(for: foodItem))
+        let nearestStep = Self.normalizedGramStep(initialPortion, limit: Self.gramOptionLimit(for: foodItem))
         self._selectedGramStep = State(initialValue: nearestStep)
 
         if foodItem.isRecipe {
-            self._portionMode = State(initialValue: .recipeServing)
-            self._selectedRecipeServingID = State(initialValue: RecipeServingOption.one.id)
-        } else if foodItem.servingInfo != nil {
-            self._portionMode = State(initialValue: .serving)
-            self._selectedServingCount = State(initialValue: 1)
+            let recipeTotalGrams = foodItem.defaultServingG ?? 100
+            let servingID = Self.nearestRecipeServingOptionID(
+                for: initialPortion,
+                recipeTotalGrams: recipeTotalGrams
+            )
+            self._selectedRecipeServingID = State(initialValue: servingID)
+            let matchesRecipeServing = Self.recipeServingOption(id: servingID)
+                .map { Self.isApproximatelyEqual(recipeTotalGrams * $0.multiplier, initialPortion) } == true
+            let usesRecipeServingMode = existingEntry == nil || matchesRecipeServing
+            self._portionMode = State(
+                initialValue: usesRecipeServingMode ? .recipeServing : .grams
+            )
+        } else if let info = foodItem.servingInfo {
+            let count = Self.normalizedServingCount(for: initialPortion, foodItem: foodItem)
+            self._selectedServingCount = State(initialValue: count)
+            let usesServingMode = existingEntry == nil || Self.isApproximatelyEqual(Double(count) * info.gramsPerUnit, initialPortion)
+            self._portionMode = State(
+                initialValue: usesServingMode ? .serving : .grams
+            )
         }
     }
 
@@ -96,6 +124,11 @@ struct PortionPickerView: View {
     private var previewCarbs: Double { previewNutrition.carbsG }
     private var previewFat: Double { previewNutrition.fatG }
     private var previewFiber: Double { previewNutrition.fiberG }
+    private var isEditing: Bool { existingEntry != nil }
+    private var saveButtonTitle: String {
+        if isEditing { return "Save Changes" }
+        return foodItem.isRecipe ? "Log Recipe" : "Log Food"
+    }
 
     private var nutritionDetails: [PortionNutrient] {
         [
@@ -160,12 +193,37 @@ struct PortionPickerView: View {
             .padding(.horizontal, CalorynTheme.pagePadding)
             .padding(.bottom, 100)
         }
-        .navigationTitle("Portion")
+        .navigationTitle(isEditing ? "Edit Portion" : "Portion")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if isEditing {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(CalorynTheme.toolbarIcon)
+                    }
+                    .accessibilityLabel("Close")
+                }
+
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(role: .destructive) {
+                        showingDeleteConfirmation = true
+                    } label: {
+                        Label("Delete", systemImage: "trash.fill")
+                            .font(CalorynTheme.toolbarIcon)
+                            .foregroundStyle(.red)
+                    }
+                    .tint(.red)
+                    .accessibilityLabel("Delete Log Entry")
+                }
+            }
+        }
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 0) {
-                Button(action: logFood) {
-                    Text(foodItem.isRecipe ? "Log Recipe" : "Log Food")
+                Button(action: savePortion) {
+                    Text(saveButtonTitle)
                         .font(CalorynTheme.buttonLabel)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
@@ -177,6 +235,11 @@ struct PortionPickerView: View {
                 .padding(.bottom, 16)
             }
             .background(.regularMaterial)
+        }
+        .confirmationDialog("Delete Log Entry", isPresented: $showingDeleteConfirmation) {
+            Button("Delete", role: .destructive, action: deleteEntry)
+        } message: {
+            Text("Remove \(foodItem.name) from your log?")
         }
     }
 
@@ -228,8 +291,7 @@ struct PortionPickerView: View {
     }
 
     private var maxServingCount: Int {
-        guard let info = foodItem.servingInfo else { return 1 }
-        return max(2, min(10, Int(500 / info.gramsPerUnit)))
+        Self.maxServingCount(for: foodItem)
     }
 
     private var portionPicker: some View {
@@ -404,21 +466,46 @@ struct PortionPickerView: View {
         .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
     }
 
-    private func logFood() {
-        DailyFoodLogCommands.logFood(
-            foodItem: foodItem,
-            portionGrams: portionGrams,
-            mealType: selectedMeal,
-            logDate: logDate,
-            requestedSnackIndex: snackIndex,
-            isNewFood: isNewFood,
-            modelContext: modelContext
-        )
+    private func savePortion() {
+        if let existingEntry {
+            DailyFoodLogCommands.updateLoggedEntry(
+                existingEntry,
+                date: logDate,
+                mealType: selectedMeal,
+                foodItem: foodItem,
+                portionGrams: portionGrams
+            )
+            try? modelContext.save()
+        } else {
+            DailyFoodLogCommands.logFood(
+                foodItem: foodItem,
+                portionGrams: portionGrams,
+                mealType: selectedMeal,
+                logDate: logDate,
+                isNewFood: isNewFood,
+                modelContext: modelContext
+            )
+            try? modelContext.save()
+        }
         if let onLogged {
             onLogged()
         } else {
             dismiss()
         }
+    }
+
+    private func deleteEntry() {
+        guard let existingEntry else { return }
+        if let onDeleted {
+            onDeleted(existingEntry)
+        } else {
+            DailyFoodLogCommands.deleteLoggedEntry(
+                existingEntry,
+                modelContext: modelContext
+            )
+            try? modelContext.save()
+        }
+        dismiss()
     }
 
     private var selectedRecipeServingOption: RecipeServingOption? {
@@ -437,6 +524,21 @@ struct PortionPickerView: View {
         }?.id ?? RecipeServingOption.one.id
     }
 
+    private static func recipeServingOption(id: String) -> RecipeServingOption? {
+        recipeServingOptions.first { $0.id == id }
+    }
+
+    private static func maxServingCount(for foodItem: FoodItem) -> Int {
+        guard let info = foodItem.servingInfo else { return 1 }
+        return max(2, min(10, Int(500 / info.gramsPerUnit)))
+    }
+
+    private static func normalizedServingCount(for grams: Double, foodItem: FoodItem) -> Int {
+        guard let info = foodItem.servingInfo else { return 1 }
+        let count = Int(round(grams / info.gramsPerUnit))
+        return max(1, min(maxServingCount(for: foodItem), count))
+    }
+
     private static func gramOptionLimit(for foodItem: FoodItem) -> Int {
         let defaultServing = foodItem.defaultServingG ?? 100
         let recipeLimit = Int(ceil(defaultServing / 5) * 5)
@@ -450,6 +552,10 @@ struct PortionPickerView: View {
 
     private static func normalizedGramStep(_ grams: Double, limit: Int) -> Int {
         max(5, min(limit, Int(round(grams / 5)) * 5))
+    }
+
+    private static func isApproximatelyEqual(_ lhs: Double, _ rhs: Double) -> Bool {
+        abs(lhs - rhs) < 0.001
     }
 }
 

@@ -53,6 +53,23 @@ final class FoodLogEntry {
         snackIndex: Int = 1
     ) {
         self.id = UUID()
+        self.createdAt = Date()
+        update(
+            date: date,
+            mealType: mealType,
+            foodItem: foodItem,
+            portionGrams: portionGrams,
+            snackIndex: snackIndex
+        )
+    }
+
+    func update(
+        date: Date,
+        mealType: MealType,
+        foodItem: FoodItem,
+        portionGrams: Double,
+        snackIndex: Int = 1
+    ) {
         self.date = Calendar.current.startOfDay(for: date)
         self.mealType = mealType
         self.snackIndex = mealType == .snack ? snackIndex : 0
@@ -90,6 +107,5 @@ final class FoodLogEntry {
         self.serumProteinsG = nutrition.serumProteinsG
         self.alcoholG = nutrition.alcoholG
         self.foodName = foodItem.name
-        self.createdAt = Date()
     }
 }

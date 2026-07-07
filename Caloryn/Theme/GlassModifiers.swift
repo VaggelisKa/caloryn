@@ -1,13 +1,29 @@
 import SwiftUI
 
-struct GlassCardModifier: ViewModifier {
+struct CalorynCard<Content: View>: View {
     var cornerRadius: CGFloat = CalorynTheme.cornerRadius
-    
-    func body(content: Content) -> some View {
+    let content: Content
+
+    init(cornerRadius: CGFloat = CalorynTheme.cornerRadius, @ViewBuilder content: () -> Content) {
+        self.cornerRadius = cornerRadius
+        self.content = content()
+    }
+
+    var body: some View {
         content
             .padding(CalorynTheme.cardPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
             .adaptiveGlassCard(cornerRadius: cornerRadius)
+    }
+}
+
+struct GlassCardModifier: ViewModifier {
+    var cornerRadius: CGFloat = CalorynTheme.cornerRadius
+    
+    func body(content: Content) -> some View {
+        CalorynCard(cornerRadius: cornerRadius) {
+            content
+        }
     }
 }
 
