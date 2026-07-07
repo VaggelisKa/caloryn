@@ -471,13 +471,14 @@ struct PortionPickerView: View {
 
     private func savePortion() {
         if let existingEntry {
-            foodItem.lastUsed = Date()
-            existingEntry.update(
+            DailyFoodLogCommands.updateLoggedEntry(
+                existingEntry,
                 date: logDate,
                 mealType: selectedMeal,
                 foodItem: foodItem,
                 portionGrams: portionGrams,
-                snackIndex: resolvedSnackIndex
+                requestedSnackIndex: resolvedSnackIndex,
+                modelContext: modelContext
             )
             try? modelContext.save()
         } else {
@@ -504,7 +505,10 @@ struct PortionPickerView: View {
         if let onDeleted {
             onDeleted(existingEntry)
         } else {
-            modelContext.delete(existingEntry)
+            DailyFoodLogCommands.deleteLoggedEntry(
+                existingEntry,
+                modelContext: modelContext
+            )
             try? modelContext.save()
         }
         dismiss()

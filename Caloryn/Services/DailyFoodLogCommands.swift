@@ -48,17 +48,52 @@ enum DailyFoodLogCommands {
                 mealType: entry.mealType,
                 foodItem: food,
                 portionGrams: entry.portionGrams,
-                snackIndex: entry.snackIndex
+                snackIndex: normalizedSnackIndex(
+                    for: entry.mealType,
+                    requestedSnackIndex: entry.snackIndex
+                )
             )
             modelContext.insert(copiedEntry)
             return copiedEntry
         }
     }
 
+    @discardableResult
+    static func updateLoggedEntry(
+        _ entry: FoodLogEntry,
+        date: Date,
+        mealType: MealType,
+        foodItem: FoodItem,
+        portionGrams: Double,
+        requestedSnackIndex: Int = 0,
+        modelContext: ModelContext,
+        now: Date = Date()
+    ) -> FoodLogEntry {
+        foodItem.lastUsed = now
+        entry.update(
+            date: date,
+            mealType: mealType,
+            foodItem: foodItem,
+            portionGrams: portionGrams,
+            snackIndex: normalizedSnackIndex(
+                for: mealType,
+                requestedSnackIndex: requestedSnackIndex
+            )
+        )
+        return entry
+    }
+
+    static func deleteLoggedEntry(
+        _ entry: FoodLogEntry,
+        modelContext: ModelContext
+    ) {
+        modelContext.delete(entry)
+    }
+
     static func normalizedSnackIndex(
         for mealType: MealType,
         requestedSnackIndex: Int
     ) -> Int {
-        mealType == .snack ? max(1, requestedSnackIndex) : 0
+        mealType == .snack ? 1 : 0
     }
 }

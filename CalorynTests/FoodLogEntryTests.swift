@@ -99,6 +99,38 @@ final class FoodLogEntryTests: XCTestCase {
         XCTAssertEqual(entry.fiberG, 2, accuracy: 0.001)
     }
 
+    func testUpdatingEntryClearsOptionalNutritionMissingFromUpdatedFood() {
+        let originalFood = makeTestFoodItem(
+            name: "Sweet Yogurt",
+            caloriesPer100g: 120,
+            sugarsPer100g: 8,
+            sodiumPer100g: 0.05,
+            cholesterolPer100g: 0.01
+        )
+        let updatedFood = makeTestFoodItem(
+            name: "Plain Rice",
+            caloriesPer100g: 130
+        )
+        let entry = FoodLogEntry(
+            date: makeTestDate(year: 2026, month: 3, day: 10),
+            mealType: .breakfast,
+            foodItem: originalFood,
+            portionGrams: 100
+        )
+
+        entry.update(
+            date: makeTestDate(year: 2026, month: 3, day: 11),
+            mealType: .lunch,
+            foodItem: updatedFood,
+            portionGrams: 100
+        )
+
+        XCTAssertEqual(entry.foodName, "Plain Rice")
+        XCTAssertNil(entry.sugarsG)
+        XCTAssertNil(entry.sodiumG)
+        XCTAssertNil(entry.cholesterolG)
+    }
+
     func testDeletingReusableFoodThroughAppPathPreservesLoggedEntrySnapshot() throws {
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
         let container = try ModelContainer(
