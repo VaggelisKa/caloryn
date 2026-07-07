@@ -184,15 +184,9 @@ struct TodayView: View {
                 }
             }
             .sheet(isPresented: $showingNutritionDetails) {
-                NutritionDetailsView(
-                    date: selectedDate,
-                    entries: todayEntries,
-                    calorieBudget: calorieBudget,
-                    nutrientTargets: profile?.nutrientTargets(forCalorieTarget: calorieBudget.adjustedTarget) ?? [:],
-                    nutrientGoalKinds: profile?.nutrientGoalKinds ?? [:]
-                )
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
+                nutritionDetailsSheet
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
             }
         }
         .task(id: healthRefreshKey) {
@@ -264,6 +258,25 @@ struct TodayView: View {
                 }
             }
             Spacer()
+        }
+    }
+
+    @ViewBuilder
+    private var nutritionDetailsSheet: some View {
+        let content = NutritionDetailsView(
+            date: selectedDate,
+            entries: todayEntries,
+            calorieBudget: calorieBudget,
+            nutrientTargets: profile?.nutrientTargets(forCalorieTarget: calorieBudget.adjustedTarget) ?? [:],
+            nutrientGoalKinds: profile?.nutrientGoalKinds ?? [:]
+        )
+
+        if #available(iOS 26.0, *) {
+            content
+                .presentationBackground(.regularMaterial)
+        } else {
+            content
+                .presentationBackground(CalorynTheme.pageBackground)
         }
     }
 

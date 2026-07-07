@@ -37,18 +37,8 @@ extension View {
     func adaptiveGlassCard<S: Shape>(in shape: S) -> some View {
         if #available(iOS 26.0, *) {
             self
-                .background {
-                    shape
-                        .fill(CalorynTheme.cardBackground.opacity(0.72))
-                        .shadow(color: .black.opacity(0.035), radius: 12, x: 0, y: 5)
-                }
                 .background(CalorynTheme.cardBackground, in: shape)
                 .glassEffect(.regular, in: shape)
-                .overlay {
-                    shape
-                        .stroke(CalorynTheme.cardSeparator.opacity(0.28), lineWidth: 0.6)
-                        .allowsHitTesting(false)
-                }
         } else {
             self
                 .background {

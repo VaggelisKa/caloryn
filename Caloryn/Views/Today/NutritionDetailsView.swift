@@ -101,7 +101,13 @@ struct NutritionDetailsView: View {
                 .padding(.horizontal, CalorynTheme.pagePadding)
                 .padding(.vertical, CalorynTheme.cardSpacing)
             }
-            .background(CalorynTheme.pageBackground.ignoresSafeArea())
+            .background {
+                if #available(iOS 26.0, *) {
+                    Color.clear
+                } else {
+                    CalorynTheme.pageBackground.ignoresSafeArea()
+                }
+            }
             .navigationTitle("Nutrition Details")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
