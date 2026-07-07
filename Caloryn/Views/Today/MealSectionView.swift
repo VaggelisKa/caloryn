@@ -160,8 +160,6 @@ private struct SingleMealTransitionRow: View {
                 .accessibilityHidden(!showsEmptyState)
         }
         .animation(.easeIn(duration: 0.16), value: entry?.id)
-        .animation(.easeOut(duration: 0.14), value: isDeletingEntry)
-        .animation(.easeIn(duration: 0.16), value: showsEmptyState)
         .onChange(of: entry?.id) { _, newID in
             if pendingDeletionID != newID {
                 pendingDeletionID = nil
@@ -192,16 +190,17 @@ private struct SingleMealTransitionRow: View {
     private func deleteWithFade(_ entry: FoodLogEntry) {
         guard pendingDeletionID != entry.id else { return }
 
-        pendingDeletionID = entry.id
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.14) {
+        withAnimation(.easeOut(duration: 0.14)) {
+            pendingDeletionID = entry.id
+        } completion: {
             guard pendingDeletionID == entry.id else { return }
-            showsPendingEmptyState = true
-        }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            guard pendingDeletionID == entry.id else { return }
-            onDelete(entry)
+            withAnimation(.easeIn(duration: 0.16)) {
+                showsPendingEmptyState = true
+            } completion: {
+                guard pendingDeletionID == entry.id else { return }
+                onDelete(entry)
+            }
         }
     }
 }

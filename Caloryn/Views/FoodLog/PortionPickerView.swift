@@ -129,9 +129,6 @@ struct PortionPickerView: View {
         if isEditing { return "Save Changes" }
         return foodItem.isRecipe ? "Log Recipe" : "Log Food"
     }
-    private var resolvedSnackIndex: Int {
-        selectedMeal == .snack ? 1 : 0
-    }
 
     private var nutritionDetails: [PortionNutrient] {
         [
@@ -476,9 +473,7 @@ struct PortionPickerView: View {
                 date: logDate,
                 mealType: selectedMeal,
                 foodItem: foodItem,
-                portionGrams: portionGrams,
-                requestedSnackIndex: resolvedSnackIndex,
-                modelContext: modelContext
+                portionGrams: portionGrams
             )
             try? modelContext.save()
         } else {
@@ -487,7 +482,6 @@ struct PortionPickerView: View {
                 portionGrams: portionGrams,
                 mealType: selectedMeal,
                 logDate: logDate,
-                requestedSnackIndex: resolvedSnackIndex,
                 isNewFood: isNewFood,
                 modelContext: modelContext
             )

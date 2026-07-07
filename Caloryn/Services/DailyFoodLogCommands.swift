@@ -9,7 +9,6 @@ enum DailyFoodLogCommands {
         portionGrams: Double,
         mealType: MealType,
         logDate: Date,
-        requestedSnackIndex: Int = 0,
         isNewFood: Bool,
         modelContext: ModelContext,
         now: Date = Date()
@@ -25,10 +24,7 @@ enum DailyFoodLogCommands {
             mealType: mealType,
             foodItem: foodItem,
             portionGrams: portionGrams,
-            snackIndex: normalizedSnackIndex(
-                for: mealType,
-                requestedSnackIndex: requestedSnackIndex
-            )
+            snackIndex: normalizedSnackIndex(for: mealType)
         )
         modelContext.insert(entry)
         return entry
@@ -48,16 +44,14 @@ enum DailyFoodLogCommands {
                 mealType: entry.mealType,
                 foodItem: food,
                 portionGrams: entry.portionGrams,
-                snackIndex: normalizedSnackIndex(
-                    for: entry.mealType,
-                    requestedSnackIndex: entry.snackIndex
-                )
+                snackIndex: normalizedSnackIndex(for: entry.mealType)
             )
             modelContext.insert(copiedEntry)
             return copiedEntry
         }
     }
 
+    /// Updates an existing log entry in memory. Callers remain responsible for saving the model context.
     @discardableResult
     static func updateLoggedEntry(
         _ entry: FoodLogEntry,
@@ -65,8 +59,6 @@ enum DailyFoodLogCommands {
         mealType: MealType,
         foodItem: FoodItem,
         portionGrams: Double,
-        requestedSnackIndex: Int = 0,
-        modelContext: ModelContext,
         now: Date = Date()
     ) -> FoodLogEntry {
         foodItem.lastUsed = now
@@ -75,10 +67,7 @@ enum DailyFoodLogCommands {
             mealType: mealType,
             foodItem: foodItem,
             portionGrams: portionGrams,
-            snackIndex: normalizedSnackIndex(
-                for: mealType,
-                requestedSnackIndex: requestedSnackIndex
-            )
+            snackIndex: normalizedSnackIndex(for: mealType)
         )
         return entry
     }
@@ -90,10 +79,7 @@ enum DailyFoodLogCommands {
         modelContext.delete(entry)
     }
 
-    static func normalizedSnackIndex(
-        for mealType: MealType,
-        requestedSnackIndex: Int
-    ) -> Int {
+    static func normalizedSnackIndex(for mealType: MealType) -> Int {
         mealType == .snack ? 1 : 0
     }
 }

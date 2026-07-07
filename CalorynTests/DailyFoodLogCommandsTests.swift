@@ -15,7 +15,6 @@ final class DailyFoodLogCommandsTests: XCTestCase {
             portionGrams: 150,
             mealType: .snack,
             logDate: makeTestDate(year: 2026, month: 3, day: 4),
-            requestedSnackIndex: 0,
             isNewFood: false,
             modelContext: context,
             now: now
@@ -26,7 +25,7 @@ final class DailyFoodLogCommandsTests: XCTestCase {
         XCTAssertEqual(food.lastUsed, now)
     }
 
-    func testLogFoodCollapsesRequestedSnackIndexToSingleSnacksSection() throws {
+    func testLogFoodCollapsesSnacksToSingleSection() throws {
         let context = try makeContext()
         let food = makeTestFoodItem(name: "Protein Bar")
         context.insert(food)
@@ -36,7 +35,6 @@ final class DailyFoodLogCommandsTests: XCTestCase {
             portionGrams: 60,
             mealType: .snack,
             logDate: makeTestDate(year: 2026, month: 3, day: 4),
-            requestedSnackIndex: 7,
             isNewFood: false,
             modelContext: context
         )
@@ -158,8 +156,6 @@ final class DailyFoodLogCommandsTests: XCTestCase {
             mealType: .snack,
             foodItem: updatedFood,
             portionGrams: 200,
-            requestedSnackIndex: 9,
-            modelContext: context,
             now: now
         )
         try context.save()
@@ -195,8 +191,7 @@ final class DailyFoodLogCommandsTests: XCTestCase {
             mealType: .dinner,
             foodItem: food,
             portionGrams: 240,
-            requestedSnackIndex: 1,
-            modelContext: context
+            now: makeTestDate(year: 2026, month: 3, day: 7)
         )
 
         XCTAssertEqual(entry.mealType, .dinner)
