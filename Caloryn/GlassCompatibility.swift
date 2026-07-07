@@ -37,7 +37,6 @@ extension View {
     func adaptiveGlassCard<S: Shape>(in shape: S) -> some View {
         if #available(iOS 26.0, *) {
             self
-                .background(CalorynTheme.cardBackground, in: shape)
                 .glassEffect(.regular, in: shape)
         } else {
             self
