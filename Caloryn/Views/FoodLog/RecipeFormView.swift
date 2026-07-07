@@ -383,7 +383,7 @@ struct RecipeFormView: View {
 
     private func deleteRecipe() {
         if let existingRecipe {
-            modelContext.delete(existingRecipe)
+            existingRecipe.deletePreservingLogEntrySnapshots(from: modelContext)
             try? modelContext.save()
         }
         dismiss()

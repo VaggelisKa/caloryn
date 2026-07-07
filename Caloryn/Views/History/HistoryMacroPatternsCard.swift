@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct HistoryMacroPatternsCard: View {
-    let patterns: [HistoryMacroPattern]
+    let projection: HistoryMacroPatternsProjection
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -11,7 +11,7 @@ struct HistoryMacroPatternsCard: View {
                     .foregroundStyle(CalorynTheme.textSecondary)
                     .textCase(.uppercase)
 
-                if let summaryText {
+                if let summaryText = projection.summaryText {
                     Text(summaryText)
                         .font(CalorynTheme.cardSubtitle)
                         .foregroundStyle(CalorynTheme.textSecondary)
@@ -19,25 +19,16 @@ struct HistoryMacroPatternsCard: View {
             }
 
             VStack(spacing: 14) {
-                ForEach(patterns) { pattern in
+                ForEach(projection.patterns) { pattern in
                     HistoryMacroPatternRow(pattern: pattern)
 
-                    if pattern.id != patterns.last?.id {
+                    if pattern.id != projection.patterns.last?.id {
                         Divider()
                     }
                 }
             }
         }
         .glassCard()
-    }
-
-    private var summaryText: String? {
-        let loggedPatterns = patterns.filter { $0.current.loggedDays > 0 }
-        guard let weakest = loggedPatterns.min(by: { $0.current.hitDays < $1.current.hitDays }) else {
-            return nil
-        }
-
-        return "\(weakest.nutrient.compactName) was the least consistent macro at \(weakest.current.hitDays) of \(weakest.current.loggedDays) logged days."
     }
 }
 

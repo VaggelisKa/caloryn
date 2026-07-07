@@ -147,6 +147,7 @@ struct TodayView: View {
                 .listStyle(.insetGrouped)
                 .listSectionSpacing(.custom(16))
                 .contentMargins(.top, 0, for: .scrollContent)
+                .id(selectedDate)
                 .animation(.smooth(duration: 0.35), value: hasNutriscoreData)
             }
             .background(CalorynTheme.pageBackground)
@@ -324,17 +325,11 @@ struct TodayView: View {
     }
 
     private func copyEntries(from entries: [FoodLogEntry]) {
-        for entry in entries {
-            guard let food = entry.foodItem else { continue }
-            let newEntry = FoodLogEntry(
-                date: selectedDate,
-                mealType: entry.mealType,
-                foodItem: food,
-                portionGrams: entry.portionGrams,
-                snackIndex: entry.mealType == .snack ? 1 : entry.snackIndex
-            )
-            modelContext.insert(newEntry)
-        }
+        DailyFoodLogCommands.copyLoggedEntries(
+            entries,
+            to: selectedDate,
+            modelContext: modelContext
+        )
         try? modelContext.save()
     }
 }

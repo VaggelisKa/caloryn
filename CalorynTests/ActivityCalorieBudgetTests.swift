@@ -105,6 +105,34 @@ final class ActivityCalorieBudgetTests: XCTestCase {
         XCTAssertEqual(budget.adjustedTarget, budget.baseTarget - 200)
     }
 
+    func testFutureDateDoesNotReduceDynamicTargetWhenActiveEnergyIsZero() {
+        let futureDate = Calendar.current.date(byAdding: .day, value: 3, to: Date.now.startOfDay)!
+        let budget = makeBudget(
+            activeEnergyKcal: 0,
+            samples: baselineSamples(kcal: 300),
+            mode: .dynamicHealth,
+            date: futureDate
+        )
+
+        XCTAssertEqual(budget.dynamicAdjustment, 0)
+        XCTAssertFalse(budget.hasDynamicReduction)
+        XCTAssertEqual(budget.adjustedTarget, budget.baseTarget)
+    }
+
+    func testFutureDateCanStillAddCaloriesWhenAboveBaseline() {
+        let futureDate = Calendar.current.date(byAdding: .day, value: 2, to: Date.now.startOfDay)!
+        let budget = makeBudget(
+            activeEnergyKcal: 500,
+            samples: baselineSamples(kcal: 300),
+            mode: .dynamicHealth,
+            date: futureDate
+        )
+
+        XCTAssertEqual(budget.dynamicAdjustment, 200)
+        XCTAssertTrue(budget.hasDynamicIncrease)
+        XCTAssertEqual(budget.adjustedTarget, budget.baseTarget + 200)
+    }
+
     func testDynamicAdjustmentIsClamped() {
         let highBudget = makeBudget(
             activeEnergyKcal: 1_200,

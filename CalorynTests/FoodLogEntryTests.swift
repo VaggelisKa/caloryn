@@ -1,3 +1,4 @@
+import SwiftData
 import XCTest
 @testable import Caloryn
 
@@ -96,5 +97,44 @@ final class FoodLogEntryTests: XCTestCase {
         XCTAssertEqual(entry.carbsG, 8, accuracy: 0.001)
         XCTAssertEqual(entry.fatG, 0, accuracy: 0.001)
         XCTAssertEqual(entry.fiberG, 2, accuracy: 0.001)
+    }
+
+    func testDeletingReusableFoodThroughAppPathPreservesLoggedEntrySnapshot() throws {
+        let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try ModelContainer(
+            for: UserProfile.self,
+            FoodItem.self,
+            FoodLogEntry.self,
+            RecipeIngredient.self,
+            configurations: configuration
+        )
+        let context = ModelContext(container)
+        let food = makeTestFoodItem(
+            name: "Greek Yogurt",
+            caloriesPer100g: 120,
+            proteinPer100g: 9,
+            carbsPer100g: 4,
+            fatPer100g: 5,
+            isCustom: true
+        )
+        let entry = makeTestEntry(
+            mealType: .lunch,
+            foodItem: food,
+            portionGrams: 200
+        )
+        context.insert(food)
+        context.insert(entry)
+        try context.save()
+
+        food.deletePreservingLogEntrySnapshots(from: context)
+        try context.save()
+
+        let entries = try context.fetch(FetchDescriptor<FoodLogEntry>())
+        let preservedEntry = try XCTUnwrap(entries.first)
+        XCTAssertEqual(entries.count, 1)
+        XCTAssertNil(preservedEntry.foodItem)
+        XCTAssertEqual(preservedEntry.foodName, "Greek Yogurt")
+        XCTAssertEqual(preservedEntry.calories, 240, accuracy: 0.001)
+        XCTAssertEqual(preservedEntry.proteinG, 18, accuracy: 0.001)
     }
 }

@@ -115,11 +115,15 @@ struct PortionPickerView: View {
         }
     }
 
-    private var previewCalories: Double { foodItem.calories(forGrams: portionGrams) }
-    private var previewProtein: Double { foodItem.protein(forGrams: portionGrams) }
-    private var previewCarbs: Double { foodItem.carbs(forGrams: portionGrams) }
-    private var previewFat: Double { foodItem.fat(forGrams: portionGrams) }
-    private var previewFiber: Double { foodItem.fiber(forGrams: portionGrams) }
+    private var previewNutrition: NutritionValues {
+        foodItem.nutrition(forGrams: portionGrams)
+    }
+
+    private var previewCalories: Double { previewNutrition.calories }
+    private var previewProtein: Double { previewNutrition.proteinG }
+    private var previewCarbs: Double { previewNutrition.carbsG }
+    private var previewFat: Double { previewNutrition.fatG }
+    private var previewFiber: Double { previewNutrition.fiberG }
     private var isEditing: Bool { existingEntry != nil }
     private var saveButtonTitle: String {
         if isEditing { return "Save Changes" }
@@ -140,31 +144,31 @@ struct PortionPickerView: View {
 
     private var optionalNutritionDetails: [PortionNutrient] {
         [
-            nutrient("sugars", "Sugars", foodItem.sugars(forGrams: portionGrams)),
-            nutrient("added-sugars", "Added sugars", foodItem.addedSugars(forGrams: portionGrams)),
-            nutrient("sucrose", "Sucrose", foodItem.sucrose(forGrams: portionGrams)),
-            nutrient("glucose", "Glucose", foodItem.glucose(forGrams: portionGrams)),
-            nutrient("fructose", "Fructose", foodItem.fructose(forGrams: portionGrams)),
-            nutrient("lactose", "Lactose", foodItem.lactose(forGrams: portionGrams)),
-            nutrient("maltose", "Maltose", foodItem.maltose(forGrams: portionGrams)),
-            nutrient("maltodextrins", "Maltodextrins", foodItem.maltodextrins(forGrams: portionGrams)),
-            nutrient("starch", "Starch", foodItem.starch(forGrams: portionGrams)),
-            nutrient("polyols", "Polyols", foodItem.polyols(forGrams: portionGrams)),
-            nutrient("saturated-fat", "Saturated fat", foodItem.saturatedFat(forGrams: portionGrams)),
-            nutrient("trans-fat", "Trans fat", foodItem.transFat(forGrams: portionGrams)),
-            nutrient("monounsaturated-fat", "Monounsaturated", foodItem.monounsaturatedFat(forGrams: portionGrams)),
-            nutrient("polyunsaturated-fat", "Polyunsaturated", foodItem.polyunsaturatedFat(forGrams: portionGrams)),
-            nutrient("omega-3-fat", "Omega-3 fat", foodItem.omega3Fat(forGrams: portionGrams)),
-            nutrient("omega-6-fat", "Omega-6 fat", foodItem.omega6Fat(forGrams: portionGrams)),
-            nutrient("omega-9-fat", "Omega-9 fat", foodItem.omega9Fat(forGrams: portionGrams)),
-            nutrient("salt", "Salt", foodItem.salt(forGrams: portionGrams)),
-            nutrient("sodium", "Sodium", foodItem.sodium(forGrams: portionGrams), unit: .milligramsFromGrams),
-            nutrient("cholesterol", "Cholesterol", foodItem.cholesterol(forGrams: portionGrams), unit: .milligramsFromGrams),
-            nutrient("soluble-fiber", "Soluble fiber", foodItem.solubleFiber(forGrams: portionGrams)),
-            nutrient("insoluble-fiber", "Insoluble fiber", foodItem.insolubleFiber(forGrams: portionGrams)),
-            nutrient("casein", "Casein", foodItem.casein(forGrams: portionGrams)),
-            nutrient("serum-proteins", "Serum proteins", foodItem.serumProteins(forGrams: portionGrams)),
-            nutrient("alcohol", "Alcohol", foodItem.alcohol(forGrams: portionGrams))
+            nutrient("sugars", "Sugars", previewNutrition.sugarsG),
+            nutrient("added-sugars", "Added sugars", previewNutrition.addedSugarsG),
+            nutrient("sucrose", "Sucrose", previewNutrition.sucroseG),
+            nutrient("glucose", "Glucose", previewNutrition.glucoseG),
+            nutrient("fructose", "Fructose", previewNutrition.fructoseG),
+            nutrient("lactose", "Lactose", previewNutrition.lactoseG),
+            nutrient("maltose", "Maltose", previewNutrition.maltoseG),
+            nutrient("maltodextrins", "Maltodextrins", previewNutrition.maltodextrinsG),
+            nutrient("starch", "Starch", previewNutrition.starchG),
+            nutrient("polyols", "Polyols", previewNutrition.polyolsG),
+            nutrient("saturated-fat", "Saturated fat", previewNutrition.saturatedFatG),
+            nutrient("trans-fat", "Trans fat", previewNutrition.transFatG),
+            nutrient("monounsaturated-fat", "Monounsaturated", previewNutrition.monounsaturatedFatG),
+            nutrient("polyunsaturated-fat", "Polyunsaturated", previewNutrition.polyunsaturatedFatG),
+            nutrient("omega-3-fat", "Omega-3 fat", previewNutrition.omega3FatG),
+            nutrient("omega-6-fat", "Omega-6 fat", previewNutrition.omega6FatG),
+            nutrient("omega-9-fat", "Omega-9 fat", previewNutrition.omega9FatG),
+            nutrient("salt", "Salt", previewNutrition.saltG),
+            nutrient("sodium", "Sodium", previewNutrition.sodiumG, unit: .milligramsFromGrams),
+            nutrient("cholesterol", "Cholesterol", previewNutrition.cholesterolG, unit: .milligramsFromGrams),
+            nutrient("soluble-fiber", "Soluble fiber", previewNutrition.solubleFiberG),
+            nutrient("insoluble-fiber", "Insoluble fiber", previewNutrition.insolubleFiberG),
+            nutrient("casein", "Casein", previewNutrition.caseinG),
+            nutrient("serum-proteins", "Serum proteins", previewNutrition.serumProteinsG),
+            nutrient("alcohol", "Alcohol", previewNutrition.alcoholG)
         ].compactMap { $0 }
     }
 
@@ -466,35 +470,28 @@ struct PortionPickerView: View {
     }
 
     private func savePortion() {
-        let food: FoodItem
-        if isNewFood {
-            food = foodItem
-            modelContext.insert(food)
-        } else {
-            food = foodItem
-        }
-        food.lastUsed = Date()
-
         if let existingEntry {
+            foodItem.lastUsed = Date()
             existingEntry.update(
                 date: logDate,
                 mealType: selectedMeal,
-                foodItem: food,
+                foodItem: foodItem,
                 portionGrams: portionGrams,
                 snackIndex: resolvedSnackIndex
             )
+            try? modelContext.save()
         } else {
-            let entry = FoodLogEntry(
-                date: logDate,
-                mealType: selectedMeal,
-                foodItem: food,
+            DailyFoodLogCommands.logFood(
+                foodItem: foodItem,
                 portionGrams: portionGrams,
-                snackIndex: resolvedSnackIndex
+                mealType: selectedMeal,
+                logDate: logDate,
+                requestedSnackIndex: resolvedSnackIndex,
+                isNewFood: isNewFood,
+                modelContext: modelContext
             )
-            modelContext.insert(entry)
+            try? modelContext.save()
         }
-
-        try? modelContext.save()
         if let onLogged {
             onLogged()
         } else {

@@ -8,31 +8,27 @@ struct HistoryCalorieTrendDetailView: View {
     @State private var selectedPointID: String?
 
     var body: some View {
-        let chartPoints = HistoryCalorieTrendDetailPoint.points(
+        let projection = HistoryCalorieTrendProjection(
             range: range,
             summary: summary
         )
-        let selectedPoint = chartPoints.first { $0.id == selectedPointID }
+        let selectedPoint = projection.points.first { $0.id == selectedPointID }
 
         ScrollView {
             VStack(spacing: CalorynTheme.cardSpacing) {
                 HistoryCalorieTrendRangeSummaryCard(
-                    range: range,
-                    summary: summary
+                    projection: projection
                 )
 
                 HistoryCalorieTrendInteractiveChart(
-                    range: range,
-                    summary: summary,
-                    points: chartPoints,
+                    projection: projection,
                     selectedPointID: $selectedPointID
                 )
 
                 if let selectedPoint {
                     HistoryCalorieTrendSelectedAnalysis(
-                        range: range,
-                        summary: summary,
-                        selection: selectedPoint.selection
+                        projection: projection,
+                        point: selectedPoint
                     )
                 }
             }
@@ -44,89 +40,8 @@ struct HistoryCalorieTrendDetailView: View {
     }
 }
 
-private struct HistoryCalorieTrendDetailPoint: Identifiable {
-    let id: String
-    let index: Double
-    let value: Double
-    let targetDelta: Int
-    let status: HistoryGoalStatus
-    let isLogged: Bool
-    let xAxisLabel: String
-    let accessibilityLabel: String
-    let accessibilityValue: String
-    let selection: HistoryCalorieTrendSelection
-
-    static func points(
-        range: HistoryRange,
-        summary: HistoryPeriodSummary
-    ) -> [HistoryCalorieTrendDetailPoint] {
-        if range == .quarter {
-            return summary.weeklyRollups.enumerated().map { offset, week in
-                let averageCalories = week.averageCaloriesPerLoggedDay
-                let status = HistoryGoalStatus.calorieStatus(
-                    calories: averageCalories,
-                    loggedCount: week.loggedDays,
-                    targetCalories: summary.dailyCalorieTarget
-                )
-                let label = "W\(offset + 1)"
-
-                return HistoryCalorieTrendDetailPoint(
-                    id: "week-\(week.id.ISO8601Format())",
-                    index: Double(offset),
-                    value: averageCalories,
-                    targetDelta: Int(averageCalories.rounded()) - summary.dailyCalorieTarget,
-                    status: status,
-                    isLogged: week.loggedDays > 0,
-                    xAxisLabel: label,
-                    accessibilityLabel: "\(label), week of \(week.startDate.dayMonthFormatted)",
-                    accessibilityValue: week.loggedDays == 0
-                        ? "No calories logged"
-                        : "\(Int(averageCalories.rounded())) average calories per logged day, \(status.label)",
-                    selection: .week(week)
-                )
-            }
-        }
-
-        return summary.days.enumerated().map { offset, day in
-            HistoryCalorieTrendDetailPoint(
-                id: "day-\(day.id.ISO8601Format())",
-                index: Double(offset),
-                value: day.calories,
-                targetDelta: day.calorieDifference,
-                status: day.status,
-                isLogged: day.isLogged,
-                xAxisLabel: weekdayInitial(for: day.date),
-                accessibilityLabel: day.date.shortFormatted,
-                accessibilityValue: day.isLogged
-                    ? "\(Int(day.calories.rounded())) calories, \(day.status.label)"
-                    : "No calories logged",
-                selection: .day(day)
-            )
-        }
-    }
-
-    private static func weekdayInitial(for date: Date) -> String {
-        let weekday = Calendar.current.component(.weekday, from: date)
-        return ["S", "M", "T", "W", "T", "F", "S"][max(0, min(weekday - 1, 6))]
-    }
-
-}
-
 private struct HistoryCalorieTrendRangeSummaryCard: View {
-    let range: HistoryRange
-    let summary: HistoryPeriodSummary
-
-    private var loggedDays: [HistoryDaySummary] {
-        summary.days.filter(\.isLogged)
-    }
-
-    private var totalCalories: Double {
-        loggedDays.reduce(0) { $0 + $1.calories }
-    }
-
-    private var totalTargetDelta: Int {
-        Int(totalCalories.rounded()) - summary.dailyCalorieTarget * loggedDays.count
-    }
+    let projection: HistoryCalorieTrendProjection
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -137,7 +52,7 @@ private struct HistoryCalorieTrendRangeSummaryCard: View {
 
             HStack(alignment: .top, spacing: 12) {
                 metric(
-                    value: "\(summary.onTrackLoggedDayCount)/\(summary.loggedDayCount)",
+                    value: "\(projection.onTrackLoggedDayCount)/\(projection.loggedDayCount)",
                     label: "logged days on track"
                 )
 
@@ -146,7 +61,7 @@ private struct HistoryCalorieTrendRangeSummaryCard: View {
                     .frame(height: 42)
 
                 metric(
-                    value: Int(summary.averageCaloriesPerLoggedDay.rounded()).formatted(),
+                    value: Int(projection.averageCaloriesPerLoggedDay.rounded()).formatted(),
                     label: "kcal/day avg"
                 )
             }
@@ -155,51 +70,15 @@ private struct HistoryCalorieTrendRangeSummaryCard: View {
                 .foregroundStyle(CalorynTheme.stone.opacity(0.3))
 
             VStack(alignment: .leading, spacing: 8) {
-                summaryLine(totalDeltaText)
+                summaryLine(projection.totalTargetDeltaText)
 
-                if let biggestInconsistencyText {
+                if let biggestInconsistencyText = projection.biggestInconsistencyText {
                     summaryLine(biggestInconsistencyText)
                 }
             }
         }
         .glassCard()
         .accessibilityElement(children: .combine)
-    }
-
-    private var totalDeltaText: String {
-        if totalTargetDelta == 0 { return "On target total" }
-        return "\(HistoryCalorieTrendText.delta(totalTargetDelta, unit: "kcal")) target total"
-    }
-
-    private var biggestInconsistencyText: String? {
-        switch range {
-        case .quarter:
-            let loggedWeeks = summary.weeklyRollups.filter { $0.loggedDays > 0 }
-            guard let week = loggedWeeks.max(by: { lhs, rhs in
-                abs(weeklyDelta(lhs)) < abs(weeklyDelta(rhs))
-            }) else {
-                return nil
-            }
-
-            if loggedWeeks.allSatisfy({ status(for: $0) == .onTrack }) {
-                return "Most stable: logged weeks stayed near target"
-            }
-
-            return "Biggest swing: week of \(week.startDate.dayMonthFormatted), \(HistoryCalorieTrendText.delta(weeklyDelta(week), unit: "kcal/day"))"
-
-        case .week, .twoWeeks, .month:
-            guard let day = loggedDays.max(by: { lhs, rhs in
-                abs(lhs.calorieDifference) < abs(rhs.calorieDifference)
-            }) else {
-                return nil
-            }
-
-            if loggedDays.allSatisfy({ $0.status == .onTrack }) {
-                return "Most stable: logged days stayed near target"
-            }
-
-            return "Biggest swing: \(day.date.shortFormatted), \(HistoryCalorieTrendText.delta(day.calorieDifference, unit: "kcal"))"
-        }
     }
 
     private func metric(value: String, label: String) -> some View {
@@ -232,39 +111,24 @@ private struct HistoryCalorieTrendRangeSummaryCard: View {
         }
     }
 
-    private func weeklyDelta(_ week: HistoryWeekSummary) -> Int {
-        Int(week.averageCaloriesPerLoggedDay.rounded()) - summary.dailyCalorieTarget
-    }
-
-    private func status(for week: HistoryWeekSummary) -> HistoryGoalStatus {
-        HistoryGoalStatus.calorieStatus(
-            calories: week.averageCaloriesPerLoggedDay,
-            loggedCount: week.loggedDays,
-            targetCalories: summary.dailyCalorieTarget
-        )
-    }
 }
 
 private struct HistoryCalorieTrendInteractiveChart: View {
-    let range: HistoryRange
-    let summary: HistoryPeriodSummary
-    let points: [HistoryCalorieTrendDetailPoint]
+    let projection: HistoryCalorieTrendProjection
 
     @Binding var selectedPointID: String?
 
     private var yAxisUpperBound: Double {
-        let largestChartValue = points.map(\.value).max() ?? 0
-        let largestReference = max(largestChartValue, Double(summary.dailyCalorieTarget), summary.averageCaloriesPerLoggedDay, 1)
-        return largestReference * 1.15
+        projection.yAxisUpperBound
     }
 
     private var barWidth: MarkDimension {
-        .fixed(range == .week ? 14 : 10)
+        .fixed(projection.range == .week ? 14 : 10)
     }
 
     private var xAxisDomain: ClosedRange<Double> {
-        guard let firstIndex = points.first?.index,
-              let lastIndex = points.last?.index else {
+        guard let firstIndex = projection.points.first?.index,
+              let lastIndex = projection.points.last?.index else {
             return 0 ... 1
         }
         return (firstIndex - 0.5) ... (lastIndex + 0.5)
@@ -278,7 +142,7 @@ private struct HistoryCalorieTrendInteractiveChart: View {
                 .textCase(.uppercase)
 
             Chart {
-                ForEach(points) { point in
+                ForEach(projection.points) { point in
                     if point.isLogged {
                         BarMark(
                             x: .value("Period", point.index),
@@ -315,12 +179,12 @@ private struct HistoryCalorieTrendInteractiveChart: View {
                     }
                 }
 
-                RuleMark(y: .value("Target", summary.dailyCalorieTarget))
+                RuleMark(y: .value("Target", projection.dailyCalorieTarget))
                     .lineStyle(StrokeStyle(lineWidth: 1.8, lineCap: .round))
                     .foregroundStyle(CalorynTheme.textPrimary.opacity(0.62))
             }
             .chartXAxis {
-                AxisMarks(values: points.map(\.index)) { value in
+                AxisMarks(values: projection.points.map(\.index)) { value in
                     AxisValueLabel(centered: false) {
                         if let index = value.as(Double.self),
                            let point = chartPoint(for: index) {
@@ -353,7 +217,7 @@ private struct HistoryCalorieTrendInteractiveChart: View {
                                         }
                                 )
 
-                            ForEach(points) { point in
+                            ForEach(projection.points) { point in
                                 if let xPosition = proxy.position(forX: point.index) {
                                     Text(point.xAxisLabel)
                                         .font(CalorynTheme.chartAxisLabel)
@@ -398,27 +262,25 @@ private struct HistoryCalorieTrendInteractiveChart: View {
             }
             .chartYScale(domain: 0 ... yAxisUpperBound)
             .chartXScale(domain: xAxisDomain)
-            .frame(height: range == .week ? 220 : 240)
+            .frame(height: projection.range == .week ? 220 : 240)
             .accessibilityLabel(accessibilityLabel)
         }
         .glassCard()
     }
 
-    private func pointColor(_ point: HistoryCalorieTrendDetailPoint) -> Color {
+    private func pointColor(_ point: HistoryCalorieTrendPoint) -> Color {
         if let selectedPointID, selectedPointID != point.id {
             return point.status.tint.opacity(0.48)
         }
         return point.status.tint
     }
 
-    private func chartPoint(for index: Double) -> HistoryCalorieTrendDetailPoint? {
-        let roundedIndex = Int(index.rounded())
-        guard points.indices.contains(roundedIndex) else { return nil }
-        return points[roundedIndex]
+    private func chartPoint(for index: Double) -> HistoryCalorieTrendPoint? {
+        projection.point(for: index)
     }
 
     private func chartHitTargetWidth(in plotRect: CGRect) -> CGFloat {
-        let count = max(points.count, 1)
+        let count = max(projection.points.count, 1)
         return max(plotRect.width / CGFloat(count), 18)
     }
 
@@ -437,40 +299,41 @@ private struct HistoryCalorieTrendInteractiveChart: View {
     }
 
     private var accessibilityLabel: String {
-        "Detailed calorie trend for \(range.label). \(summary.loggedDayCount) of \(summary.totalDayCount) days logged."
+        "Detailed calorie trend for \(projection.range.label). \(projection.loggedDayCount) of \(projection.totalDayCount) days logged."
     }
 }
 
 private struct HistoryCalorieTrendSelectedAnalysis: View {
-    let range: HistoryRange
-    let summary: HistoryPeriodSummary
-    let selection: HistoryCalorieTrendSelection
+    let projection: HistoryCalorieTrendProjection
+    let point: HistoryCalorieTrendPoint
 
     var body: some View {
-        switch selection {
+        switch point.selection {
         case .day(let day):
+            let detail = day.makeDetail()
             HistoryCalorieTrendSelectedDayCard(
-                range: range,
-                summary: summary,
-                detail: day.makeDetail()
+                projection: projection,
+                detail: detail,
+                topFoods: detail.topFoods
             )
         case .week(let week):
             HistoryCalorieTrendSelectedWeekCard(
-                range: range,
-                summary: summary,
-                week: week
+                projection: projection,
+                week: week,
+                point: point,
+                topFoods: projection.topFoods(for: point.selection)
             )
         }
     }
 }
 
 private struct HistoryCalorieTrendSelectedDayCard: View {
-    let range: HistoryRange
-    let summary: HistoryPeriodSummary
+    let projection: HistoryCalorieTrendProjection
     let detail: HistoryDayDetail
+    let topFoods: [HistoryFoodSummary]
 
     private var visibleFoods: [HistoryFoodSummary] {
-        Array(detail.topFoods.prefix(3))
+        Array(topFoods.prefix(3))
     }
 
     private var mealRows: [HistoryCalorieTrendMealRow] {
@@ -528,14 +391,12 @@ private struct HistoryCalorieTrendSelectedDayCard: View {
 
     private var metricStack: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(HistoryCalorieTrendText.targetDelta(detail.calorieDifference, unit: "kcal"))
+            Text(projection.targetDeltaText(detail.calorieDifference, unit: "kcal"))
                 .font(CalorynTheme.numericBody)
                 .foregroundStyle(detail.status.tint)
 
-            if let averageDeltaText = HistoryCalorieTrendText.averageDelta(
+            if let averageDeltaText = projection.averageDeltaText(
                 value: detail.calories,
-                average: summary.averageCaloriesPerLoggedDay,
-                range: range,
                 unit: "kcal"
             ) {
                 Text(averageDeltaText)
@@ -589,8 +450,8 @@ private struct HistoryCalorieTrendSelectedDayCard: View {
                     foodRow(food)
                 }
 
-                if detail.topFoods.count > visibleFoods.count {
-                    Text("+ \(detail.topFoods.count - visibleFoods.count) more")
+                if topFoods.count > visibleFoods.count {
+                    Text("+ \(topFoods.count - visibleFoods.count) more")
                         .font(CalorynTheme.caption)
                         .foregroundStyle(CalorynTheme.textSecondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -648,13 +509,10 @@ private struct HistoryCalorieTrendSelectedDayCard: View {
 }
 
 private struct HistoryCalorieTrendSelectedWeekCard: View {
-    let range: HistoryRange
-    let summary: HistoryPeriodSummary
+    let projection: HistoryCalorieTrendProjection
     let week: HistoryWeekSummary
-
-    private var weeklyDelta: Int {
-        Int(week.averageCaloriesPerLoggedDay.rounded()) - summary.dailyCalorieTarget
-    }
+    let point: HistoryCalorieTrendPoint
+    let topFoods: [HistoryFoodSummary]
 
     private var biggestDay: HistoryDaySummary? {
         week.days.filter(\.isLogged).max {
@@ -663,7 +521,7 @@ private struct HistoryCalorieTrendSelectedWeekCard: View {
     }
 
     private var visibleFoods: [HistoryFoodSummary] {
-        Array(weekTopFoods.prefix(3))
+        Array(topFoods.prefix(3))
     }
 
     var body: some View {
@@ -672,14 +530,12 @@ private struct HistoryCalorieTrendSelectedWeekCard: View {
 
             if week.loggedDays > 0 {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(HistoryCalorieTrendText.targetDelta(weeklyDelta, unit: "kcal/day"))
+                    Text(projection.targetDeltaText(point.targetDelta, unit: "kcal/day"))
                         .font(CalorynTheme.numericBody)
-                        .foregroundStyle(statusTint)
+                        .foregroundStyle(point.status.tint)
 
-                    if let averageDeltaText = HistoryCalorieTrendText.averageDelta(
+                    if let averageDeltaText = projection.averageDeltaText(
                         value: week.averageCaloriesPerLoggedDay,
-                        average: summary.averageCaloriesPerLoggedDay,
-                        range: range,
                         unit: "kcal/day"
                     ) {
                         Text(averageDeltaText)
@@ -712,7 +568,7 @@ private struct HistoryCalorieTrendSelectedWeekCard: View {
                     Divider()
                         .foregroundStyle(CalorynTheme.stone.opacity(0.3))
 
-                    Text("Biggest swing: \(biggestDay.date.shortFormatted), \(HistoryCalorieTrendText.delta(biggestDay.calorieDifference, unit: "kcal"))")
+                    Text("Biggest swing: \(biggestDay.date.shortFormatted), \(HistoryCalorieTrendProjection.deltaText(biggestDay.calorieDifference, unit: "kcal"))")
                         .font(CalorynTheme.caption)
                         .foregroundStyle(CalorynTheme.textSecondary)
                 }
@@ -752,38 +608,6 @@ private struct HistoryCalorieTrendSelectedWeekCard: View {
                 .font(CalorynTheme.caption)
                 .foregroundStyle(CalorynTheme.textSecondary)
         }
-    }
-
-    private var statusTint: Color {
-        HistoryGoalStatus.calorieStatus(
-            calories: week.averageCaloriesPerLoggedDay,
-            loggedCount: week.loggedDays,
-            targetCalories: summary.dailyCalorieTarget
-        )
-        .tint
-    }
-
-    private var weekTopFoods: [HistoryFoodSummary] {
-        var foods: [String: HistoryCalorieTrendFoodAccumulator] = [:]
-
-        for day in week.days where day.isLogged {
-            for food in day.makeDetail().topFoods {
-                var accumulator = foods[food.id] ?? HistoryCalorieTrendFoodAccumulator(id: food.id, name: food.name)
-                accumulator.entryCount += food.entryCount
-                accumulator.portionGrams += food.portionGrams
-                accumulator.calories += food.calories
-                foods[food.id] = accumulator
-            }
-        }
-
-        return foods.values
-            .map(\.summary)
-            .sorted {
-                if $0.calories == $1.calories {
-                    return $0.name.localizedStandardCompare($1.name) == .orderedAscending
-                }
-                return $0.calories > $1.calories
-            }
     }
 
     private func compactMetric(
@@ -829,65 +653,6 @@ private struct HistoryCalorieTrendMealRow: Identifiable {
     let title: String
     let iconName: String
     let calories: Double
-}
-
-private struct HistoryCalorieTrendFoodAccumulator {
-    let id: String
-    let name: String
-    var entryCount = 0
-    var portionGrams: Double = 0
-    var calories: Double = 0
-
-    var summary: HistoryFoodSummary {
-        HistoryFoodSummary(
-            id: id,
-            name: name,
-            entryCount: entryCount,
-            portionGrams: portionGrams,
-            calories: calories
-        )
-    }
-}
-
-private enum HistoryCalorieTrendText {
-    static func targetDelta(_ difference: Int, unit: String) -> String {
-        if difference == 0 { return "On target" }
-        return "\(delta(difference, unit: unit)) target"
-    }
-
-    static func delta(_ difference: Int, unit: String) -> String {
-        if difference == 0 { return "On target" }
-        return "\(abs(difference).formatted()) \(unit) \(difference > 0 ? "over" : "under")"
-    }
-
-    static func averageDelta(
-        value: Double,
-        average: Double,
-        range: HistoryRange,
-        unit: String
-    ) -> String? {
-        guard average > 0 else { return nil }
-
-        let difference = Int((value - average).rounded())
-        if difference == 0 {
-            return "Matches \(averageLabel(for: range)) average"
-        }
-
-        return "\(abs(difference).formatted()) \(unit) \(difference > 0 ? "above" : "below") \(averageLabel(for: range)) average"
-    }
-
-    private static func averageLabel(for range: HistoryRange) -> String {
-        switch range {
-        case .week:
-            "7-day"
-        case .twoWeeks:
-            "14-day"
-        case .month:
-            "30-day"
-        case .quarter:
-            "90-day"
-        }
-    }
 }
 
 #if DEBUG
