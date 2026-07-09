@@ -26,7 +26,10 @@ private struct CalorynGroupedListStyleModifier: ViewModifier {
             .listStyle(.insetGrouped)
             .listSectionSpacing(.custom(CalorynTheme.cardSpacing))
             .scrollContentBackground(.hidden)
-            .calorynPageCanvas()
+            .background {
+                CalorynTheme.pageBackground
+                    .ignoresSafeArea()
+            }
     }
 }
 
