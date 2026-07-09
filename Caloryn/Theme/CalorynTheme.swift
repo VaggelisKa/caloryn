@@ -33,7 +33,7 @@ enum CalorynTheme {
     static let pageBackground = Color(UIColor { traits in
         traits.userInterfaceStyle == .dark
             ? .systemGroupedBackground
-            : UIColor(red: 0.992, green: 0.992, blue: 0.984, alpha: 1)   // #FDFDFB
+            : UIColor(red: 0.953, green: 0.945, blue: 0.925, alpha: 1)   // #F3F1EC
     })
 
     static let cardBackground = Color(UIColor { traits in

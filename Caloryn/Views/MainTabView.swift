@@ -23,6 +23,7 @@ struct MainTabView: View {
             }
         }
         .tint(CalorynTheme.sage)
+        .calorynPageCanvas()
     }
 }
 

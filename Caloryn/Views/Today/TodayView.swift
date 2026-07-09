@@ -144,13 +144,12 @@ struct TodayView: View {
                         actionsSection
                     }
                 }
-                .listStyle(.insetGrouped)
-                .listSectionSpacing(.custom(16))
+                .calorynGroupedListStyle()
                 .contentMargins(.top, 0, for: .scrollContent)
                 .id(selectedDate)
                 .animation(.smooth(duration: 0.35), value: hasNutriscoreData)
             }
-            .background(CalorynTheme.pageBackground)
+            .calorynPageCanvas()
             .sheet(item: $foodSearchPresentation) { presentation in
                 FoodSearchView(
                     mealType: presentation.mealType,
@@ -190,6 +189,7 @@ struct TodayView: View {
                     .presentationDragIndicator(.visible)
             }
         }
+        .calorynPageCanvas()
         .task(id: healthRefreshKey) {
             await activeEnergyTracker.configure(
                 date: selectedDate,
