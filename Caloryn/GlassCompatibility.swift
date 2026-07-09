@@ -39,18 +39,26 @@ extension View {
             self
                 .glassEffect(.regular, in: shape)
         } else {
-            self
-                .background {
-                    shape
-                        .fill(CalorynTheme.cardBackground)
-                        .shadow(color: .black.opacity(0.05), radius: 14, x: 0, y: 6)
-                }
-                .overlay {
-                    shape
-                        .stroke(CalorynTheme.cardSeparator.opacity(0.75), lineWidth: 0.8)
-                        .allowsHitTesting(false)
-                }
+            solidCardSurface(in: shape)
         }
+    }
+
+    func solidCardSurface(cornerRadius: CGFloat) -> some View {
+        solidCardSurface(in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+    }
+
+    func solidCardSurface<S: Shape>(in shape: S) -> some View {
+        self
+            .background {
+                shape
+                    .fill(CalorynTheme.cardBackground)
+                    .shadow(color: .black.opacity(0.05), radius: 14, x: 0, y: 6)
+            }
+            .overlay {
+                shape
+                    .stroke(CalorynTheme.cardSeparator.opacity(0.75), lineWidth: 0.8)
+                    .allowsHitTesting(false)
+            }
     }
 
     // MARK: - Circle glass

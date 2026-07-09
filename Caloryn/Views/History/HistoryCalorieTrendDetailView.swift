@@ -77,7 +77,7 @@ private struct HistoryCalorieTrendRangeSummaryCard: View {
                 }
             }
         }
-        .glassCard()
+        .historyCard()
         .accessibilityElement(children: .combine)
     }
 
@@ -265,7 +265,7 @@ private struct HistoryCalorieTrendInteractiveChart: View {
             .frame(height: projection.range == .week ? 220 : 240)
             .accessibilityLabel(accessibilityLabel)
         }
-        .glassCard()
+        .historyCard()
     }
 
     private func pointColor(_ point: HistoryCalorieTrendPoint) -> Color {
@@ -367,7 +367,7 @@ private struct HistoryCalorieTrendSelectedDayCard: View {
                 unloggedState
             }
         }
-        .glassCard()
+        .historyCard()
         .accessibilityElement(children: .contain)
     }
 
@@ -594,7 +594,7 @@ private struct HistoryCalorieTrendSelectedWeekCard: View {
                     .foregroundStyle(CalorynTheme.textSecondary)
             }
         }
-        .glassCard()
+        .historyCard()
         .accessibilityElement(children: .contain)
     }
 

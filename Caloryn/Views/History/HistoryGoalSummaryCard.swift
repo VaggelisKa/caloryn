@@ -17,7 +17,7 @@ struct HistoryGoalSummaryCard: View {
                     .foregroundStyle(CalorynTheme.textSecondary)
             }
         }
-        .glassCard()
+        .historyCard()
         .accessibilityElement(children: .contain)
     }
 

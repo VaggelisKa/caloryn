@@ -108,12 +108,13 @@ struct HistoryView: View {
                 .padding(.horizontal, CalorynTheme.pagePadding)
                 .padding(.bottom, 20)
             }
-            .background(CalorynTheme.pageBackground)
+            .calorynPageCanvas()
             .navigationTitle("History")
             .navigationDestination(for: HistoryDrillDownRoute.self) { route in
                 destination(for: route)
             }
         }
+        .calorynPageCanvas()
         .task(id: analyticsRefreshID) {
             // Range changes refresh synchronously through selectRange; data/profile
             // changes should recalculate for the range current when this task runs.

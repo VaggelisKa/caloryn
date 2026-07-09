@@ -24,7 +24,7 @@ struct MyFoodsView: View {
                 manualEntriesSection
                 recipesSection
             }
-            .listStyle(.insetGrouped)
+            .calorynGroupedListStyle()
             .navigationTitle("My Foods")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
@@ -52,6 +52,7 @@ struct MyFoodsView: View {
                     .presentationDragIndicator(.visible)
             }
         }
+        .calorynPageCanvas()
     }
 
     private var createMenu: some View {

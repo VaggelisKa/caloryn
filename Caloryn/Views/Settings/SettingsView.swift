@@ -59,8 +59,7 @@ struct SettingsView: View {
                 dataSection
                 aboutSection
             }
-            .scrollContentBackground(.hidden)
-            .background(CalorynTheme.pageBackground)
+            .calorynGroupedListStyle()
             .navigationTitle("Settings")
             .sheet(isPresented: $showExportSheet) {
                 if let url = exportURL {
@@ -73,6 +72,7 @@ struct SettingsView: View {
                 Text("iCloud sync changes will take effect the next time you open the app.")
             }
         }
+        .calorynPageCanvas()
         .onChange(of: scenePhase) { _, newPhase in
             guard newPhase == .active, let profile else { return }
 

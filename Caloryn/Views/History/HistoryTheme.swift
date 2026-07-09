@@ -31,6 +31,12 @@ enum HistoryTheme {
     }
 }
 
+extension View {
+    func historyCard() -> some View {
+        solidCard()
+    }
+}
+
 extension HistoryGoalStatus {
     var tint: Color {
         HistoryTheme.color(for: self)
