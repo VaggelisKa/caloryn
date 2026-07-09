@@ -47,19 +47,22 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                appearanceSection
+            ScrollView {
+                VStack(alignment: .leading, spacing: CalorynTheme.cardSpacing) {
+                    appearanceSection
 
-                if let profile {
-                    goalSection(profile)
-                    calorieEstimateSection(profile)
-                    profileSection(profile)
+                    if let profile {
+                        goalSection(profile)
+                        calorieEstimateSection(profile)
+                        profileSection(profile)
+                    }
+
+                    dataSection
+                    aboutSection
                 }
-
-                dataSection
-                aboutSection
+                .padding(.horizontal, CalorynTheme.pagePadding)
+                .padding(.bottom, 20)
             }
-            .scrollContentBackground(.hidden)
             .background(CalorynTheme.pageBackground)
             .navigationTitle("Settings")
             .sheet(isPresented: $showExportSheet) {
@@ -89,7 +92,7 @@ struct SettingsView: View {
     private func calorieEstimateSection(_ profile: UserProfile) -> some View {
         let budget = settingsBudget(for: profile)
 
-        return Section {
+        return SettingsCardSection("Calorie Estimate") {
             if profile.manualOverride {
                 Toggle(isOn: .constant(false)) {
                     calorieEstimateModeToggleLabel(for: profile)
@@ -105,16 +108,24 @@ struct SettingsView: View {
             }
 
             if !profile.manualOverride && profile.energyCalculationMode == .dynamicHealth {
+                SettingsDivider()
+
                 CalorieEstimateMetricRow(
                     title: "Valid Days",
                     description: "Active Energy days found; \(ActivityCalorieBudget.requiredDynamicActivityDays) days are needed before auto-adjust starts.",
                     value: "\(budget.validActivityDays)/\(ActivityCalorieBudget.requiredDynamicActivityDays)"
                 )
+
+                SettingsDivider()
+
                 CalorieEstimateMetricRow(
                     title: "Baseline",
                     description: "Your typical Active Energy from recent valid days.",
                     value: dynamicBaselineText(for: budget)
                 )
+
+                SettingsDivider()
+
                 CalorieEstimateMetricRow(
                     title: "Today",
                     description: "Active Energy read from Apple Health for today.",
@@ -122,6 +133,8 @@ struct SettingsView: View {
                 )
 
                 if let lastRefresh = settingsEnergyTracker.lastRefresh {
+                    SettingsDivider()
+
                     CalorieEstimateMetricRow(
                         title: "Updated",
                         description: "When Health data was last refreshed.",
@@ -131,6 +144,8 @@ struct SettingsView: View {
             }
 
             if isRequestingHealthAuthorization {
+                SettingsDivider()
+
                 HStack(spacing: 8) {
                     ProgressView()
 
@@ -140,6 +155,8 @@ struct SettingsView: View {
             }
 
             if let emptyActivityNotice = settingsEnergyTracker.emptyActivityNotice {
+                SettingsDivider()
+
                 VStack(alignment: .leading, spacing: 12) {
                     Text(emptyActivityNotice)
                         .font(CalorynTheme.caption)
@@ -163,18 +180,20 @@ struct SettingsView: View {
                     .accessibilityLabel("Open app settings")
                 }
             } else if let dynamicStatus = budget.dynamicStatusText {
+                SettingsDivider()
+
                 Text(dynamicStatus)
                     .font(CalorynTheme.caption)
                     .foregroundStyle(profile.energyCalculationMode == .dynamicHealth ? CalorynTheme.textSecondary : CalorynTheme.terracotta)
             }
 
             if let healthStatusMessage {
+                SettingsDivider()
+
                 Text(healthStatusMessage)
                     .font(CalorynTheme.caption)
                     .foregroundStyle(CalorynTheme.terracotta)
             }
-        } header: {
-            Text("Calorie Estimate")
         } footer: {
             Text(calorieEstimateFooterText(for: profile))
         }
@@ -335,28 +354,38 @@ struct SettingsView: View {
     }
 
     private var appearanceSection: some View {
-        Section {
-            Picker("Appearance", selection: $themePreferenceRaw) {
-                ForEach(ThemePreference.allCases, id: \.self) { preference in
-                    Label(preference.displayName, systemImage: preference.icon)
-                        .tag(preference.rawValue)
+        SettingsCardSection("Appearance") {
+            HStack(spacing: 12) {
+                Label("Appearance", systemImage: "circle.lefthalf.filled")
+                    .foregroundStyle(CalorynTheme.textPrimary)
+
+                Spacer(minLength: 12)
+
+                Picker("Appearance", selection: $themePreferenceRaw) {
+                    ForEach(ThemePreference.allCases, id: \.self) { preference in
+                        Label(preference.displayName, systemImage: preference.icon)
+                            .tag(preference.rawValue)
+                    }
                 }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .tint(CalorynTheme.sage)
             }
-            .tint(CalorynTheme.sage)
+
+            SettingsDivider()
 
             Toggle(isOn: $showNutriscore) {
                 Label("Show Nutri-Score", systemImage: "leaf")
+                    .foregroundStyle(CalorynTheme.textPrimary)
             }
             .tint(CalorynTheme.sage)
-        } header: {
-            Text("Appearance")
         } footer: {
             Text("Display nutrition quality scores from Open Food Facts on foods and in your daily summary.")
         }
     }
 
     private func goalSection(_ profile: UserProfile) -> some View {
-        Section {
+        SettingsCardSection("Goal") {
             HStack {
                 Label("Calories", systemImage: "flame.fill")
                     .foregroundStyle(CalorynTheme.textPrimary)
@@ -367,6 +396,8 @@ struct SettingsView: View {
             }
 
             if !profile.manualOverride {
+                SettingsDivider()
+
                 HStack {
                     Label("Adjustment", systemImage: "plusminus")
                         .foregroundStyle(CalorynTheme.textPrimary)
@@ -378,6 +409,8 @@ struct SettingsView: View {
             }
 
             ForEach(goalSummaryNutrients(for: profile)) { nutrient in
+                SettingsDivider()
+
                 HStack {
                     Label(nutrient.displayName, systemImage: nutrient.systemImage)
                         .foregroundStyle(CalorynTheme.textPrimary)
@@ -392,11 +425,14 @@ struct SettingsView: View {
                 }
             }
 
-            NavigationLink("Edit Goal") {
+            SettingsDivider()
+
+            NavigationLink {
                 GoalEditView(profile: profile)
+            } label: {
+                SettingsNavigationLabel(title: "Edit Goal")
             }
-        } header: {
-            Text("Goal")
+            .buttonStyle(.plain)
         }
     }
 
@@ -428,30 +464,40 @@ struct SettingsView: View {
     }
 
     private func profileSection(_ profile: UserProfile) -> some View {
-        Section {
+        SettingsCardSection("Profile") {
             LabeledContent("Age", value: "\(profile.age)")
+            SettingsDivider()
             LabeledContent("Sex", value: profile.sex.displayName)
+            SettingsDivider()
             LabeledContent("Height", value: "\(Int(profile.heightCm)) cm")
+            SettingsDivider()
             LabeledContent("Weight", value: String(format: "%.1f kg", profile.weightKg))
+            SettingsDivider()
             LabeledContent("Activity", value: profile.activityLevel.displayName)
 
-            NavigationLink("Edit Profile") {
+            SettingsDivider()
+
+            NavigationLink {
                 ProfileEditView(profile: profile)
+            } label: {
+                SettingsNavigationLabel(title: "Edit Profile")
             }
-        } header: {
-            Text("Profile")
+            .buttonStyle(.plain)
         }
     }
 
     private var dataSection: some View {
-        Section {
+        SettingsCardSection("Data") {
             Toggle(isOn: $iCloudSyncEnabled) {
                 Label("iCloud Sync", systemImage: "icloud")
+                    .foregroundStyle(CalorynTheme.textPrimary)
             }
             .tint(CalorynTheme.sage)
             .onChange(of: iCloudSyncEnabled) {
                 showRestartAlert = true
             }
+
+            SettingsDivider()
 
             Button {
                 exportURL = CSVExporter.exportURL(from: allEntries)
@@ -460,10 +506,10 @@ struct SettingsView: View {
                 }
             } label: {
                 Label("Export CSV", systemImage: "square.and.arrow.up")
+                    .foregroundStyle(allEntries.isEmpty ? CalorynTheme.textSecondary.opacity(0.55) : CalorynTheme.textPrimary)
             }
+            .buttonStyle(.plain)
             .disabled(allEntries.isEmpty)
-        } header: {
-            Text("Data")
         } footer: {
             if iCloudSyncEnabled {
                 Text("Your food log syncs automatically across your devices via iCloud.")
@@ -472,8 +518,10 @@ struct SettingsView: View {
     }
 
     private var aboutSection: some View {
-        Section {
+        SettingsCardSection("About") {
             LabeledContent("Version", value: appVersion)
+
+            SettingsDivider()
 
             Link(destination: URL(string: "https://caloryn.app/privacy")!) {
                 HStack {
@@ -484,20 +532,95 @@ struct SettingsView: View {
                         .foregroundStyle(CalorynTheme.textSecondary)
                 }
             }
+            .buttonStyle(.plain)
+
+            SettingsDivider()
 
             HStack {
                 Text("Food data by")
+                    .foregroundStyle(CalorynTheme.textPrimary)
                 Spacer()
                 Link("Open Food Facts", destination: URL(string: "https://openfoodfacts.org")!)
                     .font(CalorynTheme.caption)
+                    .tint(CalorynTheme.sage)
             }
-        } header: {
-            Text("About")
         }
     }
 
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "-"
+    }
+}
+
+private struct SettingsCardSection<Content: View, Footer: View>: View {
+    let title: String
+    let content: Content
+    let footer: Footer
+
+    init(
+        _ title: String,
+        @ViewBuilder content: () -> Content,
+        @ViewBuilder footer: () -> Footer
+    ) {
+        self.title = title
+        self.content = content()
+        self.footer = footer()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(CalorynTheme.caption)
+                .foregroundStyle(CalorynTheme.textSecondary)
+                .padding(.horizontal, CalorynTheme.cardPadding)
+
+            CalorynCard {
+                VStack(alignment: .leading, spacing: 12) {
+                    content
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            footer
+                .font(CalorynTheme.caption)
+                .foregroundStyle(CalorynTheme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, CalorynTheme.cardPadding)
+        }
+    }
+}
+
+private extension SettingsCardSection where Footer == EmptyView {
+    init(_ title: String, @ViewBuilder content: () -> Content) {
+        self.init(title, content: content) {
+            EmptyView()
+        }
+    }
+}
+
+private struct SettingsDivider: View {
+    var body: some View {
+        Divider()
+            .overlay(CalorynTheme.cardSeparator)
+    }
+}
+
+private struct SettingsNavigationLabel: View {
+    let title: String
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text(title)
+                .foregroundStyle(CalorynTheme.textPrimary)
+
+            Spacer(minLength: 12)
+
+            Image(systemName: "chevron.right")
+                .font(CalorynTheme.compactIcon)
+                .foregroundStyle(CalorynTheme.textSecondary)
+                .accessibilityHidden(true)
+        }
+        .contentShape(Rectangle())
     }
 }
 
