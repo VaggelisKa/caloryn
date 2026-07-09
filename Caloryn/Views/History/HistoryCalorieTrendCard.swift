@@ -63,7 +63,7 @@ struct HistoryCalorieTrendCard: View {
             header
             chart
         }
-        .historyGlassCard()
+        .historyCard()
         .accessibilityElement(children: .contain)
     }
 

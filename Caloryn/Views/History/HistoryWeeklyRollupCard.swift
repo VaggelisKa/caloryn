@@ -106,7 +106,7 @@ struct HistoryWeeklyRollupCard: View {
             .frame(height: 170)
             .accessibilityLabel(accessibilityLabel)
         }
-        .historyGlassCard()
+        .historyCard()
     }
 
     private var accessibilityLabel: String {

@@ -28,7 +28,7 @@ struct HistoryMacroPatternsCard: View {
                 }
             }
         }
-        .historyGlassCard()
+        .historyCard()
     }
 }
 
