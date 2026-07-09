@@ -2,10 +2,16 @@ import SwiftUI
 
 struct CalorynCard<Content: View>: View {
     var cornerRadius: CGFloat = CalorynTheme.cornerRadius
+    var glassTint: Color?
     let content: Content
 
-    init(cornerRadius: CGFloat = CalorynTheme.cornerRadius, @ViewBuilder content: () -> Content) {
+    init(
+        cornerRadius: CGFloat = CalorynTheme.cornerRadius,
+        glassTint: Color? = nil,
+        @ViewBuilder content: () -> Content
+    ) {
         self.cornerRadius = cornerRadius
+        self.glassTint = glassTint
         self.content = content()
     }
 
@@ -13,15 +19,16 @@ struct CalorynCard<Content: View>: View {
         content
             .padding(CalorynTheme.cardPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .adaptiveGlassCard(cornerRadius: cornerRadius)
+            .adaptiveGlassCard(cornerRadius: cornerRadius, tint: glassTint)
     }
 }
 
 struct GlassCardModifier: ViewModifier {
     var cornerRadius: CGFloat = CalorynTheme.cornerRadius
+    var glassTint: Color?
     
     func body(content: Content) -> some View {
-        CalorynCard(cornerRadius: cornerRadius) {
+        CalorynCard(cornerRadius: cornerRadius, glassTint: glassTint) {
             content
         }
     }
@@ -81,8 +88,11 @@ struct DestructiveGlassButton: View {
 }
 
 extension View {
-    func glassCard(cornerRadius: CGFloat = CalorynTheme.cornerRadius) -> some View {
-        modifier(GlassCardModifier(cornerRadius: cornerRadius))
+    func glassCard(
+        cornerRadius: CGFloat = CalorynTheme.cornerRadius,
+        glassTint: Color? = nil
+    ) -> some View {
+        modifier(GlassCardModifier(cornerRadius: cornerRadius, glassTint: glassTint))
     }
 
     func glassCircle() -> some View {

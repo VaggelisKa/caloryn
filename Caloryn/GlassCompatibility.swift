@@ -29,15 +29,23 @@ extension View {
     // MARK: - Card (rect glass)
 
     @ViewBuilder
-    func adaptiveGlassCard(cornerRadius: CGFloat) -> some View {
-        adaptiveGlassCard(in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+    func adaptiveGlassCard(cornerRadius: CGFloat, tint: Color? = nil) -> some View {
+        adaptiveGlassCard(
+            in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous),
+            tint: tint
+        )
     }
 
     @ViewBuilder
-    func adaptiveGlassCard<S: Shape>(in shape: S) -> some View {
+    func adaptiveGlassCard<S: Shape>(in shape: S, tint: Color? = nil) -> some View {
         if #available(iOS 26.0, *) {
-            self
-                .glassEffect(.regular, in: shape)
+            if let tint {
+                self
+                    .glassEffect(.regular.tint(tint), in: shape)
+            } else {
+                self
+                    .glassEffect(.regular, in: shape)
+            }
         } else {
             self
                 .background {
