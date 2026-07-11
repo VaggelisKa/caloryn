@@ -37,6 +37,7 @@ final class FoodSearchService {
         guard !trimmed.isEmpty else {
             searchResults = []
             isSearching = false
+            errorMessage = nil
             return
         }
 
