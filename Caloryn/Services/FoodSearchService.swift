@@ -37,6 +37,7 @@ final class FoodSearchService {
         guard !trimmed.isEmpty else {
             searchResults = []
             isSearching = false
+            errorMessage = nil
             return
         }
 
@@ -125,11 +126,19 @@ final class FoodSearchService {
 
     private func performSearch(query: String) async {
         let locale = SearchLocaleContext.current
-        let results = (try? await fetchResults(query: query, locale: locale)) ?? []
-        guard !Task.isCancelled else { return }
+        do {
+            let results = try await fetchResults(query: query, locale: locale)
+            guard !Task.isCancelled else { return }
 
-        searchResults = results
-        isSearching = false
+            searchResults = results
+            isSearching = false
+        } catch {
+            guard !Task.isCancelled else { return }
+
+            searchResults = []
+            errorMessage = "We couldn’t reach Open Food Facts. Try again in a moment."
+            isSearching = false
+        }
     }
 
     private func fetchResults(
@@ -149,10 +158,15 @@ final class FoodSearchService {
         var request = URLRequest(url: url, timeoutInterval: 8)
         request.setValue(Self.userAgent, forHTTPHeaderField: "User-Agent")
 
-        let (data, _) = try await URLSession.shared.data(for: request)
-        let response = try JSONDecoder().decode(SearchResponse.self, from: data)
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse,
+              200..<300 ~= httpResponse.statusCode else {
+            throw URLError(.badServerResponse)
+        }
 
-        return response.hits.filter { $0.productName != nil && $0.nutriments?.energyKcal100g != nil }
+        let decodedResponse = try JSONDecoder().decode(SearchResponse.self, from: data)
+
+        return decodedResponse.hits.filter { $0.productName != nil && $0.nutriments?.energyKcal100g != nil }
     }
 
     private static func validNutriscoreGrade(_ raw: String?) -> String? {

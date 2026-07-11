@@ -244,11 +244,18 @@ struct FoodSearchView: View {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let error = searchService.errorMessage, matchingCustomFoods.isEmpty && matchingRecipes.isEmpty {
-                ContentUnavailableView(
-                    "Search Error",
-                    systemImage: "wifi.exclamationmark",
-                    description: Text(error)
-                )
+                ContentUnavailableView {
+                    Label("Food Search Unavailable", systemImage: "wifi.exclamationmark")
+                } description: {
+                    Text(error)
+                } actions: {
+                    Button("Try Again") {
+                        searchService.search(query: searchText)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .tint(CalorynTheme.sage)
+                }
             } else if searchService.searchResults.isEmpty && matchingCustomFoods.isEmpty && matchingRecipes.isEmpty {
                 ContentUnavailableView(
                     "No Results",

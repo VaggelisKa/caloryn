@@ -119,6 +119,18 @@ final class FoodSearchServiceTests: XCTestCase {
         XCTAssertNil(service.errorMessage)
     }
 
+    func testEmptySearchClearsPreviousError() {
+        let service = FoodSearchService()
+        service.isSearching = true
+        service.errorMessage = "Network failed"
+
+        service.search(query: "   ")
+
+        XCTAssertTrue(service.searchResults.isEmpty)
+        XCTAssertFalse(service.isSearching)
+        XCTAssertNil(service.errorMessage)
+    }
+
     private func decodeProduct(_ json: String) throws -> OpenFoodFactsProduct {
         try JSONDecoder().decode(OpenFoodFactsProduct.self, from: Data(json.utf8))
     }
