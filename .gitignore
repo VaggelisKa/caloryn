@@ -32,3 +32,6 @@ Pods/
 .DS_Store
 *.swp
 *~
+
+# Local Open Food Facts snapshots and generated databases
+.local-data/

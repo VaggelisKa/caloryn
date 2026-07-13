@@ -1,6 +1,11 @@
 import Foundation
 import SwiftData
 
+enum FoodSearchProvider {
+    case calorynAPI
+    case openFoodFacts
+}
+
 @Observable
 final class FoodSearchService {
     var searchResults: [OpenFoodFactsProduct] = []
@@ -8,9 +13,12 @@ final class FoodSearchService {
     var errorMessage: String?
 
     private var searchTask: Task<Void, Never>?
+    private let provider: FoodSearchProvider
+    private let session: URLSession
 
-    private static let searchBaseURL = "https://search.openfoodfacts.org"
-    private static let barcodeBaseURL = "https://world.openfoodfacts.org"
+    private static let calorynAPIBaseURL = "https://caloryn-api.vercel.app"
+    private static let openFoodFactsSearchBaseURL = "https://search.openfoodfacts.org"
+    private static let openFoodFactsBarcodeBaseURL = "https://world.openfoodfacts.org"
     private static let userAgent = "Caloryn/1.0 (iOS; contact@caloryn.app)"
 
     private static let searchFields = [
@@ -30,6 +38,14 @@ final class FoodSearchService {
 
     private static let pageSize = 30
 
+    init(
+        provider: FoodSearchProvider = .calorynAPI,
+        session: URLSession = .shared
+    ) {
+        self.provider = provider
+        self.session = session
+    }
+
     func search(query: String) {
         searchTask?.cancel()
 
@@ -37,6 +53,7 @@ final class FoodSearchService {
         guard !trimmed.isEmpty else {
             searchResults = []
             isSearching = false
+            errorMessage = nil
             return
         }
 
@@ -59,7 +76,14 @@ final class FoodSearchService {
     }
 
     func lookupBarcode(_ code: String) async throws -> OpenFoodFactsProduct {
-        let urlString = "\(Self.barcodeBaseURL)/api/v0/product/\(code).json"
+        let encodedCode = code.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? code
+        let urlString: String
+        switch provider {
+        case .calorynAPI:
+            urlString = "\(Self.calorynAPIBaseURL)/api/v1/products/\(encodedCode)"
+        case .openFoodFacts:
+            urlString = "\(Self.openFoodFactsBarcodeBaseURL)/api/v0/product/\(encodedCode).json"
+        }
 
         guard let url = URL(string: urlString) else {
             throw URLError(.badURL)
@@ -67,11 +91,22 @@ final class FoodSearchService {
 
         var request = URLRequest(url: url, timeoutInterval: 8)
         request.setValue(Self.userAgent, forHTTPHeaderField: "User-Agent")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
 
-        let (data, _) = try await URLSession.shared.data(for: request)
-        let response = try JSONDecoder().decode(BarcodeLookupResponse.self, from: data)
+        let (data, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw URLError(.badServerResponse)
+        }
+        if httpResponse.statusCode == 404 {
+            throw BarcodeLookupError.productNotFound
+        }
+        guard (200..<300).contains(httpResponse.statusCode) else {
+            throw URLError(.badServerResponse)
+        }
 
-        guard response.status == 1, let product = response.product,
+        let decodedResponse = try JSONDecoder().decode(BarcodeLookupResponse.self, from: data)
+
+        guard decodedResponse.status == 1, let product = decodedResponse.product,
               product.productName != nil, product.nutriments?.energyKcal100g != nil else {
             throw BarcodeLookupError.productNotFound
         }
@@ -125,18 +160,49 @@ final class FoodSearchService {
 
     private func performSearch(query: String) async {
         let locale = SearchLocaleContext.current
-        let results = (try? await fetchResults(query: query, locale: locale)) ?? []
-        guard !Task.isCancelled else { return }
+        do {
+            let results = try await fetchResults(query: query, locale: locale)
+            guard !Task.isCancelled else { return }
 
-        searchResults = results
-        isSearching = false
+            searchResults = results
+            isSearching = false
+            errorMessage = nil
+        } catch {
+            guard !Task.isCancelled else { return }
+
+            searchResults = []
+            isSearching = false
+            errorMessage = "We couldn’t reach the food database. Try again in a moment."
+        }
     }
 
     private func fetchResults(
         query: String,
         locale: SearchLocaleContext
     ) async throws -> [OpenFoodFactsProduct] {
-        var components = URLComponents(string: "\(Self.searchBaseURL)/search")
+        switch provider {
+        case .calorynAPI:
+            try await fetchCalorynAPIResults(query: query)
+        case .openFoodFacts:
+            try await fetchOpenFoodFactsResults(query: query, locale: locale)
+        }
+    }
+
+    private func fetchCalorynAPIResults(query: String) async throws -> [OpenFoodFactsProduct] {
+        var components = URLComponents(string: "\(Self.calorynAPIBaseURL)/api/v1/search")
+        components?.queryItems = [
+            URLQueryItem(name: "q", value: query),
+            URLQueryItem(name: "limit", value: String(Self.pageSize))
+        ]
+
+        return try await fetchSearchResponse(from: components)
+    }
+
+    private func fetchOpenFoodFactsResults(
+        query: String,
+        locale: SearchLocaleContext
+    ) async throws -> [OpenFoodFactsProduct] {
+        var components = URLComponents(string: "\(Self.openFoodFactsSearchBaseURL)/search")
         components?.queryItems = [
             URLQueryItem(name: "q", value: query),
             URLQueryItem(name: "fields", value: Self.searchFields),
@@ -144,15 +210,25 @@ final class FoodSearchService {
             URLQueryItem(name: "langs", value: locale.preferredLanguageCodes.joined(separator: ","))
         ]
 
+        return try await fetchSearchResponse(from: components)
+    }
+
+    private func fetchSearchResponse(from components: URLComponents?) async throws -> [OpenFoodFactsProduct] {
         guard let url = components?.url else { throw URLError(.badURL) }
 
         var request = URLRequest(url: url, timeoutInterval: 8)
         request.setValue(Self.userAgent, forHTTPHeaderField: "User-Agent")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
 
-        let (data, _) = try await URLSession.shared.data(for: request)
-        let response = try JSONDecoder().decode(SearchResponse.self, from: data)
+        let (data, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200..<300).contains(httpResponse.statusCode) else {
+            throw URLError(.badServerResponse)
+        }
 
-        return response.hits.filter { $0.productName != nil && $0.nutriments?.energyKcal100g != nil }
+        let decodedResponse = try JSONDecoder().decode(SearchResponse.self, from: data)
+
+        return decodedResponse.hits.filter { $0.productName != nil && $0.nutriments?.energyKcal100g != nil }
     }
 
     private static func validNutriscoreGrade(_ raw: String?) -> String? {
