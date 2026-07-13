@@ -15,6 +15,7 @@ final class FoodSearchService {
     private var searchTask: Task<Void, Never>?
     private let provider: FoodSearchProvider
     private let session: URLSession
+    private let countryCode: String?
 
     private static let calorynAPIBaseURL = "https://caloryn-api.vercel.app"
     private static let openFoodFactsSearchBaseURL = "https://search.openfoodfacts.org"
@@ -40,10 +41,12 @@ final class FoodSearchService {
 
     init(
         provider: FoodSearchProvider = .calorynAPI,
-        session: URLSession = .shared
+        session: URLSession = .shared,
+        countryCode: String? = Locale.current.region?.identifier
     ) {
         self.provider = provider
         self.session = session
+        self.countryCode = Self.normalizedCountryCode(countryCode)
     }
 
     func search(query: String) {
@@ -182,18 +185,25 @@ final class FoodSearchService {
     ) async throws -> [OpenFoodFactsProduct] {
         switch provider {
         case .calorynAPI:
-            try await fetchCalorynAPIResults(query: query)
+            try await fetchCalorynAPIResults(query: query, countryCode: countryCode)
         case .openFoodFacts:
             try await fetchOpenFoodFactsResults(query: query, locale: locale)
         }
     }
 
-    private func fetchCalorynAPIResults(query: String) async throws -> [OpenFoodFactsProduct] {
+    private func fetchCalorynAPIResults(
+        query: String,
+        countryCode: String?
+    ) async throws -> [OpenFoodFactsProduct] {
         var components = URLComponents(string: "\(Self.calorynAPIBaseURL)/api/v1/search")
-        components?.queryItems = [
+        var queryItems = [
             URLQueryItem(name: "q", value: query),
             URLQueryItem(name: "limit", value: String(Self.pageSize))
         ]
+        if let countryCode {
+            queryItems.append(URLQueryItem(name: "country", value: countryCode))
+        }
+        components?.queryItems = queryItems
 
         return try await fetchSearchResponse(from: components)
     }
@@ -234,6 +244,18 @@ final class FoodSearchService {
     private static func validNutriscoreGrade(_ raw: String?) -> String? {
         guard let letter = raw?.lowercased(), ["a", "b", "c", "d", "e"].contains(letter) else { return nil }
         return letter
+    }
+
+    nonisolated private static func normalizedCountryCode(_ rawValue: String?) -> String? {
+        guard let rawValue,
+              rawValue.utf8.count == 2,
+              rawValue.utf8.allSatisfy({ byte in
+                  (65...90).contains(byte) || (97...122).contains(byte)
+              }) else {
+            return nil
+        }
+
+        return rawValue.uppercased()
     }
 
     private struct SearchLocaleContext {
