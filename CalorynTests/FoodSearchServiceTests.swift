@@ -22,6 +22,7 @@ final class FoodSearchServiceTests: XCTestCase {
             )
             XCTAssertEqual(queryItems["q"], "greek yogurt")
             XCTAssertEqual(queryItems["limit"], "30")
+            XCTAssertEqual(queryItems["country"], "DK")
             XCTAssertNil(queryItems["fields"])
             requestReceived.fulfill()
 
@@ -49,7 +50,10 @@ final class FoodSearchServiceTests: XCTestCase {
             )
         }
 
-        let service = FoodSearchService(session: makeStubbedSession())
+        let service = FoodSearchService(
+            session: makeStubbedSession(),
+            countryCode: "dk"
+        )
         service.search(query: "greek yogurt")
 
         await fulfillment(of: [requestReceived], timeout: 2)
@@ -58,6 +62,62 @@ final class FoodSearchServiceTests: XCTestCase {
         XCTAssertEqual(service.searchResults.first?.productName, "Greek Yogurt")
         XCTAssertNil(service.errorMessage)
         XCTAssertFalse(service.isSearching)
+    }
+
+    func testCalorynSearchOmitsCountryWhenRegionIsUnavailable() async throws {
+        let requestReceived = expectation(description: "Caloryn API request without country")
+        URLProtocolStub.requestHandler = { request in
+            let components = try XCTUnwrap(
+                URLComponents(url: try XCTUnwrap(request.url), resolvingAgainstBaseURL: false)
+            )
+            XCTAssertNil(components.queryItems?.first(where: { $0.name == "country" }))
+            requestReceived.fulfill()
+
+            return (
+                HTTPURLResponse(url: try XCTUnwrap(request.url), statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                Data(#"{"hits": []}"#.utf8)
+            )
+        }
+
+        let service = FoodSearchService(
+            session: makeStubbedSession(),
+            countryCode: nil
+        )
+        service.search(query: "yogurt")
+
+        await fulfillment(of: [requestReceived], timeout: 2)
+        try await Task.sleep(for: .milliseconds(50))
+
+        XCTAssertFalse(service.isSearching)
+        XCTAssertNil(service.errorMessage)
+    }
+
+    func testCalorynSearchOmitsInvalidCountryCode() async throws {
+        let requestReceived = expectation(description: "Caloryn API request without invalid country")
+        URLProtocolStub.requestHandler = { request in
+            let components = try XCTUnwrap(
+                URLComponents(url: try XCTUnwrap(request.url), resolvingAgainstBaseURL: false)
+            )
+            XCTAssertNil(components.queryItems?.first(where: { $0.name == "country" }))
+            requestReceived.fulfill()
+
+            return (
+                HTTPURLResponse(url: try XCTUnwrap(request.url), statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                Data(#"{"hits": []}"#.utf8)
+            )
+        }
+
+        let service = FoodSearchService(
+            session: makeStubbedSession(),
+            countryCode: "D1"
+        )
+        service.search(query: "yogurt")
+
+        await fulfillment(of: [requestReceived], timeout: 2)
+        try await Task.sleep(for: .milliseconds(50))
+
+        XCTAssertFalse(service.isSearching)
+        XCTAssertNil(service.errorMessage)
     }
 
     func testDefaultBarcodeLookupUsesCalorynAPI() async throws {
@@ -136,6 +196,7 @@ final class FoodSearchServiceTests: XCTestCase {
             XCTAssertEqual(queryItems["page_size"], "30")
             XCTAssertNotNil(queryItems["fields"])
             XCTAssertNotNil(queryItems["langs"])
+            XCTAssertNil(queryItems["country"])
             requestReceived.fulfill()
 
             return (
@@ -156,7 +217,8 @@ final class FoodSearchServiceTests: XCTestCase {
 
         let service = FoodSearchService(
             provider: .openFoodFacts,
-            session: makeStubbedSession()
+            session: makeStubbedSession(),
+            countryCode: "DK"
         )
         service.search(query: "legacy")
 
