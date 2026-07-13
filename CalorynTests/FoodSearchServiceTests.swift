@@ -284,13 +284,14 @@ final class FoodSearchServiceTests: XCTestCase {
 
     func testEmptySearchClearsPreviousError() {
         let service = FoodSearchService()
+        service.isSearching = true
         service.errorMessage = "Network failed"
 
         service.search(query: "   ")
 
-        XCTAssertNil(service.errorMessage)
         XCTAssertTrue(service.searchResults.isEmpty)
         XCTAssertFalse(service.isSearching)
+        XCTAssertNil(service.errorMessage)
     }
 
     private func makeStubbedSession() -> URLSession {
