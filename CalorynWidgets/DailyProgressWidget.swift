@@ -165,14 +165,17 @@ private struct MediumProgressView: View {
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.primary)
 
-                LazyVGrid(
-                    columns: [GridItem(.flexible()), GridItem(.flexible())],
-                    spacing: 8
-                ) {
-                    ForEach(WidgetMeal.allCases) { meal in
-                        QuickLogButton(meal: meal)
+                VStack(spacing: 8) {
+                    HStack(spacing: 8) {
+                        QuickLogButton(meal: .breakfast)
+                        QuickLogButton(meal: .lunch)
+                    }
+                    HStack(spacing: 8) {
+                        QuickLogButton(meal: .dinner)
+                        QuickLogButton(meal: .snack)
                     }
                 }
+                .frame(maxHeight: .infinity)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -218,16 +221,19 @@ private struct QuickLogButton: View {
 
     var body: some View {
         Link(destination: AppRoute.addFood(meal: meal).url) {
-            VStack(spacing: 4) {
+            VStack(spacing: 5) {
                 Image(systemName: meal.systemImage)
-                    .font(.caption.weight(.semibold))
+                    .font(.footnote.weight(.semibold))
                 Text(meal.displayName)
                     .font(.caption2.weight(.semibold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
+            .padding(.vertical, 6)
+            .padding(.horizontal, 4)
             .foregroundStyle(WidgetTheme.sage)
-            .frame(maxWidth: .infinity, minHeight: 40)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .frame(minHeight: 40)
             .background(WidgetTheme.sage.opacity(0.14), in: .rect(cornerRadius: 12))
         }
         .accessibilityLabel("Log \(meal.displayName)")
