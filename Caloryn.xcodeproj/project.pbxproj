@@ -6,9 +6,14 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		4B1000092F80000000A00001 /* CalorynWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4B1000012F80000000A00001 /* CalorynWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, CodeSignOnCopy, ); }; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		1C70CDD12F545455007DE238 /* Caloryn.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Caloryn.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2A60E0012F69000100A00001 /* CalorynTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CalorynTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		4B1000012F80000000A00001 /* CalorynWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = CalorynWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXContainerItemProxy section */
@@ -19,17 +24,71 @@
 			remoteGlobalIDString = 1C70CDD02F545455007DE238;
 			remoteInfo = Caloryn;
 		};
+		4B10000A2F80000000A00001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1C70CDC92F545455007DE238 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4B1000042F80000000A00001;
+			remoteInfo = CalorynWidgets;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		4B1000082F80000000A00001 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				4B1000092F80000000A00001 /* CalorynWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		4B10000F2F80000000A00001 /* Exceptions for "Caloryn" folder in "Caloryn" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 1C70CDD02F545455007DE238 /* Caloryn */;
+		};
+		4B1000102F80000000A00001 /* Exceptions for "CalorynWidgets" folder in "CalorynWidgets" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 4B1000042F80000000A00001 /* CalorynWidgets */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		1C70CDD32F545455007DE238 /* Caloryn */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				4B10000F2F80000000A00001 /* Exceptions for "Caloryn" folder in "Caloryn" target */,
+			);
 			path = Caloryn;
 			sourceTree = "<group>";
 		};
 		2A60E0022F69000100A00001 /* CalorynTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = CalorynTests;
+			sourceTree = "<group>";
+		};
+		4B1000022F80000000A00001 /* CalorynShared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = CalorynShared;
+			sourceTree = "<group>";
+		};
+		4B1000032F80000000A00001 /* CalorynWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				4B1000102F80000000A00001 /* Exceptions for "CalorynWidgets" folder in "CalorynWidgets" target */,
+			);
+			path = CalorynWidgets;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -49,6 +108,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		4B1000062F80000000A00001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -56,6 +122,8 @@
 			isa = PBXGroup;
 			children = (
 				1C70CDD32F545455007DE238 /* Caloryn */,
+				4B1000022F80000000A00001 /* CalorynShared */,
+				4B1000032F80000000A00001 /* CalorynWidgets */,
 				2A60E0022F69000100A00001 /* CalorynTests */,
 				1C70CDD22F545455007DE238 /* Products */,
 			);
@@ -65,6 +133,7 @@
 			isa = PBXGroup;
 			children = (
 				1C70CDD12F545455007DE238 /* Caloryn.app */,
+				4B1000012F80000000A00001 /* CalorynWidgets.appex */,
 				2A60E0012F69000100A00001 /* CalorynTests.xctest */,
 			);
 			name = Products;
@@ -80,13 +149,16 @@
 				1C70CDCD2F545455007DE238 /* Sources */,
 				1C70CDCE2F545455007DE238 /* Frameworks */,
 				1C70CDCF2F545455007DE238 /* Resources */,
+				4B1000082F80000000A00001 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				4B10000B2F80000000A00001 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				1C70CDD32F545455007DE238 /* Caloryn */,
+				4B1000022F80000000A00001 /* CalorynShared */,
 			);
 			name = Caloryn;
 			packageProductDependencies = (
@@ -118,6 +190,29 @@
 			productReference = 2A60E0012F69000100A00001 /* CalorynTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		4B1000042F80000000A00001 /* CalorynWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4B10000E2F80000000A00001 /* Build configuration list for PBXNativeTarget "CalorynWidgets" */;
+			buildPhases = (
+				4B1000052F80000000A00001 /* Sources */,
+				4B1000062F80000000A00001 /* Frameworks */,
+				4B1000072F80000000A00001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				4B1000032F80000000A00001 /* CalorynWidgets */,
+				4B1000022F80000000A00001 /* CalorynShared */,
+			);
+			name = CalorynWidgets;
+			packageProductDependencies = (
+			);
+			productName = CalorynWidgets;
+			productReference = 4B1000012F80000000A00001 /* CalorynWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -134,6 +229,9 @@
 					2A60E0032F69000100A00001 = {
 						CreatedOnToolsVersion = 26.2;
 						TestTargetID = 1C70CDD02F545455007DE238;
+					};
+					4B1000042F80000000A00001 = {
+						CreatedOnToolsVersion = 26.2;
 					};
 				};
 			};
@@ -152,6 +250,7 @@
 			projectRoot = "";
 			targets = (
 				1C70CDD02F545455007DE238 /* Caloryn */,
+				4B1000042F80000000A00001 /* CalorynWidgets */,
 				2A60E0032F69000100A00001 /* CalorynTests */,
 			);
 		};
@@ -166,6 +265,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		2A60E0062F69000100A00001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4B1000072F80000000A00001 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -189,6 +295,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		4B1000052F80000000A00001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -196,6 +309,11 @@
 			isa = PBXTargetDependency;
 			target = 1C70CDD02F545455007DE238 /* Caloryn */;
 			targetProxy = 2A60E00B2F69000100A00001 /* PBXContainerItemProxy */;
+		};
+		4B10000B2F80000000A00001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4B1000042F80000000A00001 /* CalorynWidgets */;
+			targetProxy = 4B10000A2F80000000A00001 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -331,7 +449,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = BN8VYT9W96;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Caloryn/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Caloryn;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Caloryn reads Active Energy from Apple Health to adjust your daily calorie budget on device.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Caloryn does not write data to Apple Health. It only reads Active Energy to adjust your calorie budget on device.";
@@ -371,7 +490,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = BN8VYT9W96;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Caloryn/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Caloryn;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Caloryn reads Active Energy from Apple Health to adjust your daily calorie budget on device.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Caloryn does not write data to Apple Health. It only reads Active Energy to adjust your calorie budget on device.";
@@ -461,6 +581,59 @@
 			};
 			name = Release;
 		};
+		4B10000C2F80000000A00001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = CalorynWidgets/CalorynWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = BN8VYT9W96;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = CalorynWidgets/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.10.2;
+				PRODUCT_BUNDLE_IDENTIFIER = www.caloryn.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		4B10000D2F80000000A00001 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = CalorynWidgets/CalorynWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = BN8VYT9W96;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = CalorynWidgets/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.10.2;
+				PRODUCT_BUNDLE_IDENTIFIER = www.caloryn.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -487,6 +660,15 @@
 			buildConfigurations = (
 				2A60E0082F69000100A00001 /* Debug */,
 				2A60E0092F69000100A00001 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4B10000E2F80000000A00001 /* Build configuration list for PBXNativeTarget "CalorynWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4B10000C2F80000000A00001 /* Debug */,
+				4B10000D2F80000000A00001 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

@@ -48,4 +48,17 @@ enum MealType: String, Codable, CaseIterable, Identifiable {
         guard self == .snack else { return displayName }
         return "Snack \(snackIndex)"
     }
+
+    init(widgetMeal: WidgetMeal) {
+        switch widgetMeal {
+        case .breakfast:
+            self = .breakfast
+        case .lunch:
+            self = .lunch
+        case .dinner:
+            self = .dinner
+        case .snack:
+            self = .snack
+        }
+    }
 }

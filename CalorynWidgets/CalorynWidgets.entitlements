@@ -6,15 +6,5 @@
 	<array>
 		<string>group.www.caloryn</string>
 	</array>
-	<key>com.apple.developer.icloud-container-identifiers</key>
-	<array>
-		<string>iCloud.www.caloryn</string>
-	</array>
-	<key>com.apple.developer.icloud-services</key>
-	<array>
-		<string>CloudKit</string>
-	</array>
-	<key>com.apple.developer.healthkit</key>
-	<true/>
 </dict>
 </plist>
