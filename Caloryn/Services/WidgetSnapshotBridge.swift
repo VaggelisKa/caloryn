@@ -21,19 +21,22 @@ final class WidgetSyncCoordinator {
     }
 
     func publish(_ snapshot: DailyWidgetSnapshot) {
+        // Load is best-effort: a schema-version mismatch or missing file must not
+        // prevent the new snapshot from being written, otherwise a failing load
+        // would freeze the widget permanently by never saving a fresh snapshot.
+        let previous: DailyWidgetSnapshot?
+        if let lastPublished {
+            previous = lastPublished
+        } else {
+            previous = try? store.load()
+        }
+
+        if let previous, previous.hasSameRenderableContent(as: snapshot) {
+            lastPublished = previous
+            return
+        }
+
         do {
-            let previous: DailyWidgetSnapshot?
-            if let lastPublished {
-                previous = lastPublished
-            } else {
-                previous = try store.load()
-            }
-
-            if let previous, previous.hasSameRenderableContent(as: snapshot) {
-                lastPublished = previous
-                return
-            }
-
             try store.save(snapshot)
             lastPublished = snapshot
             WidgetCenter.shared.reloadTimelines(ofKind: WidgetConstants.dailyProgressKind)
