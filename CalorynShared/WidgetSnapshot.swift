@@ -17,9 +17,6 @@ struct WidgetCalorieSummary: Codable, Hashable, Sendable {
     let consumed: Int
     let baseTarget: Int
     let target: Int
-    let remaining: Int
-    let overAmount: Int
-    let progress: Double
     let dynamicAdjustment: Int
 
     init(
@@ -28,18 +25,17 @@ struct WidgetCalorieSummary: Codable, Hashable, Sendable {
         target: Int,
         dynamicAdjustment: Int = 0
     ) {
-        let roundedConsumed = max(0, Int(consumed.rounded()))
-        let safeBaseTarget = max(1, baseTarget)
-        let safeTarget = max(1, target)
-
-        self.consumed = roundedConsumed
-        self.baseTarget = safeBaseTarget
-        self.target = safeTarget
-        self.remaining = max(0, safeTarget - roundedConsumed)
-        self.overAmount = max(0, roundedConsumed - safeTarget)
-        self.progress = min(max(Double(roundedConsumed) / Double(safeTarget), 0), 1)
+        self.consumed = max(0, Int(consumed.rounded()))
+        self.baseTarget = max(1, baseTarget)
+        self.target = max(1, target)
         self.dynamicAdjustment = dynamicAdjustment
     }
+
+    // Derived from the stored inputs above so they can never drift out of sync
+    // and don't bloat the serialized snapshot.
+    var remaining: Int { max(0, target - consumed) }
+    var overAmount: Int { max(0, consumed - target) }
+    var progress: Double { min(max(Double(consumed) / Double(target), 0), 1) }
 
     var isOver: Bool {
         overAmount > 0
@@ -74,38 +70,31 @@ struct DailyWidgetSnapshot: Codable, Hashable, Sendable {
     }
 
     static func needsOnboarding(at date: Date, calendar: Calendar = .current) -> DailyWidgetSnapshot {
-        DailyWidgetSnapshot(
-            generatedAt: date,
-            dayStart: calendar.startOfDay(for: date),
-            state: .needsOnboarding,
-            calories: WidgetCalorieSummary(
-                consumed: 0,
-                baseTarget: 2_000,
-                target: 2_000
-            )
-        )
+        fixed(state: .needsOnboarding, consumed: 0, at: date, calendar: calendar)
     }
 
     static func placeholder(at date: Date = .now, calendar: Calendar = .current) -> DailyWidgetSnapshot {
-        DailyWidgetSnapshot(
-            generatedAt: date,
-            dayStart: calendar.startOfDay(for: date),
-            state: .ready,
-            calories: WidgetCalorieSummary(
-                consumed: 1_258,
-                baseTarget: 2_000,
-                target: 2_000
-            )
-        )
+        fixed(state: .ready, consumed: 1_258, at: date, calendar: calendar)
     }
 
     static func unavailable(at date: Date, calendar: Calendar = .current) -> DailyWidgetSnapshot {
+        fixed(state: .unavailable, consumed: 0, at: date, calendar: calendar)
+    }
+
+    /// Builds a snapshot with the fixed 2,000 kcal fallback target used by the
+    /// onboarding / placeholder / unavailable states.
+    private static func fixed(
+        state: DailyWidgetState,
+        consumed: Double,
+        at date: Date,
+        calendar: Calendar
+    ) -> DailyWidgetSnapshot {
         DailyWidgetSnapshot(
             generatedAt: date,
             dayStart: calendar.startOfDay(for: date),
-            state: .unavailable,
+            state: state,
             calories: WidgetCalorieSummary(
-                consumed: 0,
+                consumed: consumed,
                 baseTarget: 2_000,
                 target: 2_000
             )

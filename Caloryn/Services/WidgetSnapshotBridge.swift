@@ -24,12 +24,7 @@ final class WidgetSyncCoordinator {
         // Load is best-effort: a schema-version mismatch or missing file must not
         // prevent the new snapshot from being written, otherwise a failing load
         // would freeze the widget permanently by never saving a fresh snapshot.
-        let previous: DailyWidgetSnapshot?
-        if let lastPublished {
-            previous = lastPublished
-        } else {
-            previous = try? store.load()
-        }
+        let previous = lastPublished ?? (try? store.load())
 
         if let previous, previous.hasSameRenderableContent(as: snapshot) {
             lastPublished = previous
@@ -107,7 +102,7 @@ struct WidgetSnapshotBridge: View {
             .onChange(of: scenePhase) { _, newPhase in
                 guard newPhase == .active else { return }
                 activeEnergyTracker.refreshWhenActive()
-                syncCoordinator.publish(currentSnapshot)
+                syncCoordinator.publish(snapshot)
             }
             .onDisappear {
                 activeEnergyTracker.stopObserving()
