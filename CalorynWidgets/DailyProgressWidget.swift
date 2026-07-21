@@ -88,7 +88,7 @@ struct DailyProgressWidget: Widget {
         }
         .configurationDisplayName("Today")
         .description("See today's calorie progress and quickly log a meal.")
-        .supportedFamilies([.systemSmall, .systemMedium])
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
     }
 }
 
@@ -101,9 +101,12 @@ private struct DailyProgressWidgetView: View {
         Group {
             switch entry.snapshot.state {
             case .ready:
-                if family == .systemMedium {
+                switch family {
+                case .systemLarge:
+                    LargeProgressView(entry: entry)
+                case .systemMedium:
                     MediumProgressView(entry: entry)
-                } else {
+                default:
                     SmallProgressView(entry: entry)
                 }
             case .needsOnboarding:
@@ -135,6 +138,7 @@ private struct SmallProgressView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             ConsumedFooter(calories: entry.snapshot.calories)
+                .padding(.top, 3)
         }
         .privacySensitive()
         .accessibilityElement(children: .combine)
@@ -154,31 +158,64 @@ private struct MediumProgressView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                 ConsumedFooter(calories: entry.snapshot.calories)
+                    .padding(.top, 3)
             }
             .frame(maxWidth: .infinity)
             .privacySensitive()
             .accessibilityElement(children: .combine)
             .accessibilityLabel(WidgetAccessibility.summary(for: entry.snapshot.calories))
 
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Log a meal")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.primary)
-
-                VStack(spacing: 8) {
-                    HStack(spacing: 8) {
-                        QuickLogButton(meal: .breakfast)
-                        QuickLogButton(meal: .lunch)
-                    }
-                    HStack(spacing: 8) {
-                        QuickLogButton(meal: .dinner)
-                        QuickLogButton(meal: .snack)
-                    }
-                }
-                .frame(maxHeight: .infinity)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            QuickLogSection()
         }
+    }
+}
+
+private struct LargeProgressView: View {
+    let entry: DailyProgressEntry
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 6) {
+                WidgetHeader(isStale: entry.isStale)
+
+                ProgressRing(summary: entry.snapshot.calories, compact: false)
+                    .frame(height: 128)
+                    .frame(maxWidth: .infinity)
+
+                ConsumedFooter(calories: entry.snapshot.calories)
+                    .padding(.top, 3)
+            }
+            .privacySensitive()
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(WidgetAccessibility.summary(for: entry.snapshot.calories))
+
+            Spacer(minLength: 0)
+
+            QuickLogSection()
+        }
+    }
+}
+
+private struct QuickLogSection: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Log a meal")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.primary)
+
+            VStack(spacing: 8) {
+                HStack(spacing: 8) {
+                    QuickLogButton(meal: .breakfast)
+                    QuickLogButton(meal: .lunch)
+                }
+                HStack(spacing: 8) {
+                    QuickLogButton(meal: .dinner)
+                    QuickLogButton(meal: .snack)
+                }
+            }
+            .frame(maxHeight: .infinity)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -216,7 +253,7 @@ private struct ConsumedFooter: View {
     }
 }
 
-private struct QuickLogButton: View {
+struct QuickLogButton: View {
     let meal: WidgetMeal
 
     var body: some View {
@@ -355,4 +392,25 @@ private struct WidgetMessageView: View {
     DailyProgressWidget()
 } timeline: {
     DailyProgressEntry(date: .now, snapshot: .needsOnboarding(at: .now), isStale: false)
+}
+
+#Preview("Large · in progress", as: .systemLarge) {
+    DailyProgressWidget()
+} timeline: {
+    DailyProgressEntry(date: .now, snapshot: .placeholder(), isStale: false)
+}
+
+#Preview("Large · over target", as: .systemLarge) {
+    DailyProgressWidget()
+} timeline: {
+    DailyProgressEntry(
+        date: .now,
+        snapshot: DailyWidgetSnapshot(
+            generatedAt: .now,
+            dayStart: Calendar.current.startOfDay(for: .now),
+            state: .ready,
+            calories: WidgetCalorieSummary(consumed: 2_450, baseTarget: 2_000, target: 2_000)
+        ),
+        isStale: false
+    )
 }

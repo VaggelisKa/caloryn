@@ -3,6 +3,7 @@ import Foundation
 enum WidgetConstants {
     static let appGroupIdentifier = "group.www.caloryn"
     static let dailyProgressKind = "CalorynDailyProgress"
+    static let quickLogKind = "CalorynQuickLog"
     static let snapshotFileName = "daily-widget-snapshot.json"
     static let currentSchemaVersion = 1
 }
