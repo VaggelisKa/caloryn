@@ -56,6 +56,7 @@ struct SettingsView: View {
                     profileSection(profile)
                 }
 
+                DailyReminderSettingsSection()
                 dataSection
                 aboutSection
             }
