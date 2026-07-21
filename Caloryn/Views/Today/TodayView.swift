@@ -4,6 +4,7 @@ import SwiftData
 struct TodayView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(AppRouter.self) private var router
     @Query(sort: \UserProfile.updatedAt, order: .reverse) private var profiles: [UserProfile]
     @Query private var allEntries: [FoodLogEntry]
 
@@ -196,6 +197,9 @@ struct TodayView: View {
                 isEnabled: profile?.effectiveEnergyCalculationMode == .dynamicHealth
             )
         }
+        .task(id: router.pendingRoute) {
+            handlePendingRoute()
+        }
         .onDisappear {
             activeEnergyTracker.stopObserving()
         }
@@ -317,6 +321,24 @@ struct TodayView: View {
         )
     }
 
+    private func handlePendingRoute() {
+        guard let route = router.consumePendingRoute() else { return }
+
+        selectedDate = Date.now.startOfDay
+        switch route {
+        case .today:
+            break
+        case .nutritionDetails:
+            showingNutritionDetails = true
+        case .addFood(let widgetMeal):
+            let mealType = MealType(widgetMeal: widgetMeal)
+            presentFoodSearch(
+                mealType: mealType,
+                snackIndex: mealType == .snack ? 1 : 0
+            )
+        }
+    }
+
     private func deleteEntry(_ entry: FoodLogEntry) {
         withAnimation(.smooth(duration: 0.3)) {
             modelContext.delete(entry)
@@ -389,4 +411,5 @@ private struct MissingFoodEntryView: View {
 #Preview {
     TodayView()
         .modelContainer(for: [UserProfile.self, FoodItem.self, FoodLogEntry.self, RecipeIngredient.self], inMemory: true)
+        .environment(AppRouter())
 }

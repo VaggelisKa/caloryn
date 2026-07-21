@@ -25,10 +25,14 @@ struct ContentView: View {
         }
         .preferredColorScheme(colorScheme)
         .animation(.smooth(duration: 0.4), value: hasCompletedOnboarding)
+        .background {
+            WidgetSnapshotBridge()
+        }
     }
 }
 
 #Preview {
     ContentView()
         .modelContainer(for: [UserProfile.self, FoodItem.self, FoodLogEntry.self, RecipeIngredient.self], inMemory: true)
+        .environment(AppRouter())
 }

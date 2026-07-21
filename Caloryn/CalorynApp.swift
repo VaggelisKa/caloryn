@@ -4,6 +4,7 @@ import SwiftData
 @main
 struct CalorynApp: App {
     let sharedModelContainer: ModelContainer
+    @State private var router = AppRouter()
 
     init() {
         let iCloudEnabled = UserDefaults.standard.object(forKey: "iCloudSyncEnabled") as? Bool ?? true
@@ -28,6 +29,8 @@ struct CalorynApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environment(router)
+                .onOpenURL(perform: router.handle)
         }
         .modelContainer(sharedModelContainer)
     }

@@ -2,23 +2,25 @@ import SwiftUI
 import SwiftData
 
 struct MainTabView: View {
-    @State private var selectedTab = 0
+    @Environment(AppRouter.self) private var router
 
     var body: some View {
-        TabView(selection: $selectedTab) {
-            Tab("Today", image: "CalorieRingTabIcon", value: 0) {
+        @Bindable var router = router
+
+        TabView(selection: $router.selectedTab) {
+            Tab("Today", image: "CalorieRingTabIcon", value: AppTab.today) {
                 TodayView()
             }
 
-            Tab("My Foods", systemImage: "fork.knife.circle.fill", value: 1) {
+            Tab("My Foods", systemImage: "fork.knife.circle.fill", value: AppTab.myFoods) {
                 MyFoodsView()
             }
 
-            Tab("History", systemImage: "chart.bar.fill", value: 2) {
+            Tab("History", systemImage: "chart.bar.fill", value: AppTab.history) {
                 HistoryView()
             }
 
-            Tab("Settings", systemImage: "gearshape.fill", value: 3) {
+            Tab("Settings", systemImage: "gearshape.fill", value: AppTab.settings) {
                 SettingsView()
             }
         }
@@ -30,4 +32,5 @@ struct MainTabView: View {
 #Preview {
     MainTabView()
         .modelContainer(for: [UserProfile.self, FoodItem.self, FoodLogEntry.self, RecipeIngredient.self], inMemory: true)
+        .environment(AppRouter())
 }
