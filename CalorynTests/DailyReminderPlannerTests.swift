@@ -37,9 +37,10 @@ final class DailyReminderPlannerTests: XCTestCase {
 
         XCTAssertEqual(plan.count, 7)
         XCTAssertEqual(plan.first?.identifier, "daily-reminder-2026-07-15")
-        XCTAssertEqual(plan.first?.body, "You have 450 calories left to reach today's goal.")
+        XCTAssertEqual(plan.first?.title, "🔥 450 calories to go")
+        XCTAssertEqual(plan.first?.body, "There's still time to log a meal and reach today's goal.")
         XCTAssertEqual(plan.last?.identifier, "daily-reminder-2026-07-21")
-        XCTAssertEqual(plan.last?.body, "You have 2000 calories left to reach today's goal.")
+        XCTAssertEqual(plan.last?.title, "🔥 2000 calories to go")
     }
 
     func testFutureDaysAssumeFullTargetRemaining() {
@@ -51,7 +52,7 @@ final class DailyReminderPlannerTests: XCTestCase {
         )
 
         for reminder in plan.dropFirst() {
-            XCTAssertEqual(reminder.body, "You have 2000 calories left to reach today's goal.")
+            XCTAssertEqual(reminder.title, "🔥 2000 calories to go")
         }
     }
 
@@ -129,7 +130,7 @@ final class DailyReminderPlannerTests: XCTestCase {
         )
 
         XCTAssertEqual(plan.count, 7)
-        XCTAssertEqual(plan.first?.body, "You have 100 calories left to reach today's goal.")
+        XCTAssertEqual(plan.first?.title, "🔥 100 calories to go")
     }
 
     func testGoalReachedSkipsToday() {

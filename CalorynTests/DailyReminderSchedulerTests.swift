@@ -55,10 +55,10 @@ final class DailyReminderSchedulerTests: XCTestCase {
         XCTAssertEqual(center.removedIdentifierBatches.first, ["daily-reminder-2026-07-14"])
         XCTAssertEqual(center.addedRequests.count, 7)
         XCTAssertEqual(center.addedRequests.first?.identifier, "daily-reminder-2026-07-15")
-        XCTAssertEqual(center.addedRequests.first?.content.title, "Daily goal check-in")
+        XCTAssertEqual(center.addedRequests.first?.content.title, "🔥 450 calories to go")
         XCTAssertEqual(
             center.addedRequests.first?.content.body,
-            "You have 450 calories left to reach today's goal."
+            "There's still time to log a meal and reach today's goal."
         )
 
         let trigger = center.addedRequests.first?.trigger as? UNCalendarNotificationTrigger
@@ -86,8 +86,8 @@ final class DailyReminderSchedulerTests: XCTestCase {
 
         XCTAssertEqual(center.addedRequests.count, 14)
         XCTAssertEqual(
-            center.addedRequests[7].content.body,
-            "You have 300 calories left to reach today's goal."
+            center.addedRequests[7].content.title,
+            "🔥 300 calories to go"
         )
         XCTAssertEqual(center.pending.count, 7)
     }
@@ -172,8 +172,8 @@ final class DailyReminderSchedulerTests: XCTestCase {
         XCTAssertEqual(center.addedRequests.count, 14)
         XCTAssertEqual(center.pending.count, 7)
         XCTAssertEqual(
-            center.addedRequests[7].content.body,
-            "You have 300 calories left to reach today's goal."
+            center.addedRequests[7].content.title,
+            "🔥 300 calories to go"
         )
     }
 }

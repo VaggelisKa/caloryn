@@ -83,7 +83,7 @@ final class DailyReminderScheduler {
 
         for reminder in plan {
             let content = UNMutableNotificationContent()
-            content.title = "Daily goal check-in"
+            content.title = reminder.title
             content.body = reminder.body
             content.sound = .default
 

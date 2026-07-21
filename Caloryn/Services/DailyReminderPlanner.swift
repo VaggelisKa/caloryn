@@ -1,10 +1,12 @@
 import Foundation
 
 /// One scheduled daily-reminder notification: a stable per-day identifier,
-/// local wall-clock fire components, and the finished message body.
+/// local wall-clock fire components, and the finished message. The remaining
+/// count lives in the title because iOS renders titles bold and bodies plain.
 struct PlannedReminder: Hashable {
     let identifier: String
     let fireDateComponents: DateComponents
+    let title: String
     let body: String
 }
 
@@ -54,7 +56,8 @@ enum DailyReminderPlanner {
                     [.year, .month, .day, .hour, .minute],
                     from: fireDate
                 ),
-                body: "You have \(remaining) calories left to reach today's goal."
+                title: "🔥 \(remaining) calories to go",
+                body: "There's still time to log a meal and reach today's goal."
             )
         }
     }
