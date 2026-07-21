@@ -33,6 +33,7 @@ extension UNUserNotificationCenter: ReminderNotificationCenter {
 final class DailyReminderScheduler {
     private let center: any ReminderNotificationCenter
     private var lastAppliedPlan: [PlannedReminder]?
+    private var pendingApply: Task<Void, Never>?
     private let logger = Logger(
         subsystem: "www.caloryn",
         category: "DailyReminder"
@@ -42,8 +43,25 @@ final class DailyReminderScheduler {
         self.center = center
     }
 
-    func apply(_ plan: [PlannedReminder]) async {
-        guard plan != lastAppliedPlan else { return }
+    /// Reconciliation suspends at several awaits, so overlapping calls could
+    /// otherwise interleave and let an older plan finish last. Chaining each
+    /// call on the previous one keeps applies strictly ordered.
+    ///
+    /// `force` skips the dedupe guard so callers can re-check authorization
+    /// even when the plan itself hasn't changed (e.g. on app foreground,
+    /// after permission was revoked in iOS Settings).
+    func apply(_ plan: [PlannedReminder], force: Bool = false) async {
+        let previous = pendingApply
+        let task = Task {
+            await previous?.value
+            await reconcile(plan, force: force)
+        }
+        pendingApply = task
+        await task.value
+    }
+
+    private func reconcile(_ plan: [PlannedReminder], force: Bool) async {
+        guard force || plan != lastAppliedPlan else { return }
 
         // `await` isn't allowed inside a `||` autoclosure, so evaluate the
         // authorization status up front only when there is a plan to schedule.
@@ -60,6 +78,8 @@ final class DailyReminderScheduler {
         }
 
         await removeAllPendingReminders()
+
+        var scheduledEveryReminder = true
 
         for reminder in plan {
             let content = UNMutableNotificationContent()
@@ -80,11 +100,14 @@ final class DailyReminderScheduler {
             do {
                 try await center.add(request)
             } catch {
+                scheduledEveryReminder = false
                 logger.error("Unable to schedule daily reminder: \(error.localizedDescription, privacy: .public)")
             }
         }
 
-        lastAppliedPlan = plan
+        // A partial apply must not be cached as applied, or the dedupe guard
+        // would keep skipping the failed days until the plan next changes.
+        lastAppliedPlan = scheduledEveryReminder ? plan : nil
     }
 
     private func removeAllPendingReminders() async {

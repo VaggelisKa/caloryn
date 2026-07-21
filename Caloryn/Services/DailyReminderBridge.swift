@@ -41,9 +41,11 @@ struct DailyReminderBridge: View {
             .onChange(of: scenePhase) { _, newPhase in
                 // Re-plan on foreground: crossing midnight, the reminder time,
                 // or a timezone change shifts the plan without any data change.
+                // Forcing also re-checks authorization, so permission revoked
+                // in iOS Settings clears the pending reminders here.
                 guard newPhase == .active else { return }
                 Task {
-                    await scheduler.apply(currentPlan)
+                    await scheduler.apply(currentPlan, force: true)
                 }
             }
     }

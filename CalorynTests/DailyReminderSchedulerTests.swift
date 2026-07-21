@@ -7,9 +7,13 @@ final class FakeReminderCenter: ReminderNotificationCenter, @unchecked Sendable 
     var pending: [String] = []
     var removedIdentifierBatches: [[String]] = []
     var addedRequests: [UNNotificationRequest] = []
+    var addError: Error?
+    /// Test hook to suspend an apply mid-reconciliation.
+    var beforeAuthorizationCheck: (() async -> Void)?
 
     func authorizationStatus() async -> UNAuthorizationStatus {
-        status
+        await beforeAuthorizationCheck?()
+        return status
     }
 
     func pendingReminderIdentifiers() async -> [String] {
@@ -22,6 +26,9 @@ final class FakeReminderCenter: ReminderNotificationCenter, @unchecked Sendable 
     }
 
     func add(_ request: UNNotificationRequest) async throws {
+        if let addError {
+            throw addError
+        }
         addedRequests.append(request)
         pending.append(request.identifier)
     }
@@ -107,5 +114,66 @@ final class DailyReminderSchedulerTests: XCTestCase {
 
         XCTAssertTrue(center.pending.isEmpty)
         XCTAssertTrue(center.addedRequests.isEmpty)
+    }
+
+    func testForcedApplyClearsRemindersAfterPermissionRevocation() async {
+        let center = FakeReminderCenter()
+        let scheduler = DailyReminderScheduler(center: center)
+        await scheduler.apply(makePlan())
+        XCTAssertEqual(center.pending.count, 7)
+
+        // Same plan, permission revoked in iOS Settings: only a forced apply
+        // gets past the dedupe guard to notice and clear the stale requests.
+        center.status = .denied
+        await scheduler.apply(makePlan(), force: true)
+
+        XCTAssertTrue(center.pending.isEmpty)
+        XCTAssertEqual(center.addedRequests.count, 7)
+    }
+
+    func testFailedAdditionsAreRetriedOnNextApply() async {
+        struct AddFailure: Error {}
+        let center = FakeReminderCenter()
+        center.addError = AddFailure()
+        let scheduler = DailyReminderScheduler(center: center)
+
+        await scheduler.apply(makePlan())
+        XCTAssertTrue(center.pending.isEmpty)
+
+        // A partial apply must not be cached, so the identical plan is retried.
+        center.addError = nil
+        await scheduler.apply(makePlan())
+
+        XCTAssertEqual(center.pending.count, 7)
+    }
+
+    func testOverlappingAppliesEndWithNewestPlan() async {
+        let center = FakeReminderCenter()
+        let scheduler = DailyReminderScheduler(center: center)
+
+        var releaseFirstApply: CheckedContinuation<Void, Never>?
+        center.beforeAuthorizationCheck = {
+            await withCheckedContinuation { releaseFirstApply = $0 }
+        }
+
+        let firstApply = Task { await scheduler.apply(self.makePlan(remaining: 450)) }
+        while releaseFirstApply == nil {
+            await Task.yield()
+        }
+        center.beforeAuthorizationCheck = nil
+
+        let secondApply = Task { await scheduler.apply(self.makePlan(remaining: 300)) }
+        await Task.yield()
+        releaseFirstApply?.resume()
+        await firstApply.value
+        await secondApply.value
+
+        // Applies are serialized, so the newer plan always lands last.
+        XCTAssertEqual(center.addedRequests.count, 14)
+        XCTAssertEqual(center.pending.count, 7)
+        XCTAssertEqual(
+            center.addedRequests[7].content.body,
+            "You have 300 calories left to reach today's goal."
+        )
     }
 }
