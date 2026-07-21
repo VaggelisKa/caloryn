@@ -27,6 +27,7 @@ struct ContentView: View {
         .animation(.smooth(duration: 0.4), value: hasCompletedOnboarding)
         .background {
             WidgetSnapshotBridge()
+            DailyReminderBridge()
         }
     }
 }
