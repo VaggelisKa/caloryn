@@ -100,6 +100,7 @@ final class FoodLogEntry {
     var createdAt: Date = Date()
     var replicationOperationID: UUID?
     var replicationItemIndex: Int?
+    var replicationPlanFingerprint: String?
 
     // MARK: Food-quality snapshot (issue #71)
     //
@@ -153,7 +154,8 @@ final class FoodLogEntry {
         snackIndex: Int,
         createdAt: Date = Date(),
         replicationOperationID: UUID? = nil,
-        replicationItemIndex: Int? = nil
+        replicationItemIndex: Int? = nil,
+        replicationPlanFingerprint: String? = nil
     ) {
         id = UUID()
         self.createdAt = createdAt
@@ -163,6 +165,7 @@ final class FoodLogEntry {
         self.foodItem = foodItem
         self.replicationOperationID = replicationOperationID
         self.replicationItemIndex = replicationItemIndex
+        self.replicationPlanFingerprint = replicationPlanFingerprint
         portionGrams = snapshot.portionGrams
         foodName = snapshot.foodName
         apply(nutrition: snapshot.nutrition)

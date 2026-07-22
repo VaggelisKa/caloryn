@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import SwiftData
 
@@ -12,6 +13,7 @@ struct MealTemplateLogPlan: Identifiable, Equatable {
     let destinationMeal: MealType
     let destinationSnackIndex: Int
     let items: [Item]
+    let fingerprint: String
 }
 
 @MainActor
@@ -22,6 +24,7 @@ enum MealTemplateCommands {
         case invalidSnapshot(String)
         case incompleteTemplate
         case partialDuplicate
+        case operationConflict
 
         var errorDescription: String? {
             switch self {
@@ -35,6 +38,8 @@ enum MealTemplateCommands {
                 "This meal template is incomplete and can’t be logged."
             case .partialDuplicate:
                 "This meal was only partly logged. Review the destination before trying again."
+            case .operationConflict:
+                "This save request was already used for different meal details. Review and try again."
             }
         }
     }
@@ -66,13 +71,30 @@ enum MealTemplateCommands {
         defaultSnackIndex: Int = 0,
         modelContext: ModelContext,
         operationID: UUID = UUID(),
-        now: Date = Date()
+        now: Date = Date(),
+        save: (ModelContext) throws -> Void = { try $0.save() }
     ) throws -> MealTemplate {
         let normalizedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !normalizedName.isEmpty else { throw CommandError.emptyName }
         guard !entries.isEmpty else { throw CommandError.emptySelection }
 
-        let existing = try modelContext.fetch(
+        let snapshots = entries.map(FoodLogEntrySnapshot.init(entry:))
+        try snapshots.forEach(validate)
+        let normalizedSnackIndex = DailyFoodLogCommands.normalizedSnackIndex(
+            for: defaultMeal,
+            requestedSnackIndex: defaultSnackIndex
+        )
+        let creationFingerprint = try fingerprint(
+            for: TemplateCreationFingerprintPayload(
+                name: normalizedName,
+                defaultMeal: defaultMeal,
+                defaultSnackIndex: normalizedSnackIndex,
+                snapshots: snapshots
+            )
+        )
+        let transactionContext = makeTransactionContext(from: modelContext)
+
+        let existing = try transactionContext.fetch(
             FetchDescriptor<MealTemplate>(
                 predicate: #Predicate { template in
                     template.creationOperationID == operationID
@@ -80,17 +102,18 @@ enum MealTemplateCommands {
             )
         )
         if let existing = existing.first {
+            guard existing.creationFingerprint == creationFingerprint else {
+                throw CommandError.operationConflict
+            }
             return existing
         }
-
-        let snapshots = entries.map(FoodLogEntrySnapshot.init(entry:))
-        try snapshots.forEach(validate)
 
         let template = MealTemplate(
             name: normalizedName,
             defaultMeal: defaultMeal,
-            defaultSnackIndex: defaultSnackIndex,
+            defaultSnackIndex: normalizedSnackIndex,
             creationOperationID: operationID,
+            creationFingerprint: creationFingerprint,
             createdAt: now
         )
         let items = try snapshots.enumerated().map { offset, snapshot in
@@ -104,17 +127,12 @@ enum MealTemplateCommands {
             return item
         }
 
-        modelContext.insert(template)
-        items.forEach(modelContext.insert)
+        transactionContext.insert(template)
+        items.forEach(transactionContext.insert)
         template.items = items
 
-        do {
-            try modelContext.save()
-            return template
-        } catch {
-            modelContext.rollback()
-            throw error
-        }
+        try save(transactionContext)
+        return template
     }
 
     static func snapshots(for template: MealTemplate) throws -> [FoodLogEntrySnapshot] {
@@ -142,16 +160,30 @@ enum MealTemplateCommands {
         guard !snapshots.isEmpty else { throw CommandError.emptySelection }
         try snapshots.forEach(validate)
 
+        let normalizedDestinationDate = calendar.startOfDay(for: destinationDate)
+        let normalizedSnackIndex = DailyFoodLogCommands.normalizedSnackIndex(
+            for: destinationMeal,
+            requestedSnackIndex: destinationSnackIndex
+        )
+        let fingerprint = try fingerprint(
+            for: LogFingerprintPayload(
+                destinationMillisecondsSince1970: Int64(
+                    (normalizedDestinationDate.timeIntervalSince1970 * 1_000).rounded()
+                ),
+                destinationMeal: destinationMeal,
+                destinationSnackIndex: normalizedSnackIndex,
+                snapshots: snapshots
+            )
+        )
+
         return MealTemplateLogPlan(
             id: operationID,
             sourceName: sourceName,
-            destinationDate: calendar.startOfDay(for: destinationDate),
+            destinationDate: normalizedDestinationDate,
             destinationMeal: destinationMeal,
-            destinationSnackIndex: DailyFoodLogCommands.normalizedSnackIndex(
-                for: destinationMeal,
-                requestedSnackIndex: destinationSnackIndex
-            ),
-            items: snapshots.map { MealTemplateLogPlan.Item(snapshot: $0) }
+            destinationSnackIndex: normalizedSnackIndex,
+            items: snapshots.map { MealTemplateLogPlan.Item(snapshot: $0) },
+            fingerprint: fingerprint
         )
     }
 
@@ -160,10 +192,12 @@ enum MealTemplateCommands {
         plan: MealTemplateLogPlan,
         availableFoods: [FoodItem],
         modelContext: ModelContext,
-        now: Date = Date()
+        now: Date = Date(),
+        save: (ModelContext) throws -> Void = { try $0.save() }
     ) throws -> [FoodLogEntry] {
         let operationID = plan.id
-        let existing = try modelContext.fetch(
+        let transactionContext = makeTransactionContext(from: modelContext)
+        let existing = try transactionContext.fetch(
             FetchDescriptor<FoodLogEntry>(
                 predicate: #Predicate { entry in
                     entry.replicationOperationID == operationID
@@ -173,6 +207,9 @@ enum MealTemplateCommands {
         )
 
         if !existing.isEmpty {
+            guard existing.allSatisfy({ $0.replicationPlanFingerprint == plan.fingerprint }) else {
+                throw CommandError.operationConflict
+            }
             let expectedIndices = Set(plan.items.indices)
             let actualIndices = Set(existing.compactMap(\.replicationItemIndex))
             guard existing.count == plan.items.count,
@@ -182,7 +219,12 @@ enum MealTemplateCommands {
             return existing
         }
 
-        let foodsByID = Dictionary(uniqueKeysWithValues: availableFoods.map { ($0.id, $0) })
+        let availableFoodIDs = Set(availableFoods.map(\.id))
+        let foodsByID = Dictionary(
+            uniqueKeysWithValues: try transactionContext.fetch(FetchDescriptor<FoodItem>())
+                .filter { availableFoodIDs.contains($0.id) }
+                .map { ($0.id, $0) }
+        )
         let entries = plan.items.enumerated().map { offset, item in
             let sourceFood = item.snapshot.sourceFoodID.flatMap { foodsByID[$0] }
             let entry = FoodLogEntry(
@@ -193,19 +235,15 @@ enum MealTemplateCommands {
                 snackIndex: plan.destinationSnackIndex,
                 createdAt: now.addingTimeInterval(Double(offset) / 1_000),
                 replicationOperationID: plan.id,
-                replicationItemIndex: offset
+                replicationItemIndex: offset,
+                replicationPlanFingerprint: plan.fingerprint
             )
-            modelContext.insert(entry)
+            transactionContext.insert(entry)
             return entry
         }
 
-        do {
-            try modelContext.save()
-            return entries
-        } catch {
-            modelContext.rollback()
-            throw error
-        }
+        try save(transactionContext)
+        return entries
     }
 
     static func missingSourceCount(
@@ -221,15 +259,50 @@ enum MealTemplateCommands {
 
     static func delete(
         _ template: MealTemplate,
-        modelContext: ModelContext
+        modelContext: ModelContext,
+        save: (ModelContext) throws -> Void = { try $0.save() }
     ) throws {
-        modelContext.delete(template)
-        do {
-            try modelContext.save()
-        } catch {
-            modelContext.rollback()
-            throw error
-        }
+        let templateID = template.id
+        let transactionContext = makeTransactionContext(from: modelContext)
+        let storedTemplate = try transactionContext.fetch(
+            FetchDescriptor<MealTemplate>(
+                predicate: #Predicate { candidate in
+                    candidate.id == templateID
+                }
+            )
+        ).first
+        guard let storedTemplate else { throw CommandError.incompleteTemplate }
+        transactionContext.delete(storedTemplate)
+        try save(transactionContext)
+    }
+
+    private struct TemplateCreationFingerprintPayload: Encodable {
+        let name: String
+        let defaultMeal: MealType
+        let defaultSnackIndex: Int
+        let snapshots: [FoodLogEntrySnapshot]
+    }
+
+    private struct LogFingerprintPayload: Encodable {
+        let destinationMillisecondsSince1970: Int64
+        let destinationMeal: MealType
+        let destinationSnackIndex: Int
+        let snapshots: [FoodLogEntrySnapshot]
+    }
+
+    private static func fingerprint<Payload: Encodable>(for payload: Payload) throws -> String {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        let digest = SHA256.hash(data: try encoder.encode(payload))
+        return digest.map { String(format: "%02x", $0) }.joined()
+    }
+
+    private static func makeTransactionContext(from sourceContext: ModelContext) -> ModelContext {
+        // Commands must not save or roll back unrelated edits pending in the
+        // shared SwiftUI environment context.
+        let context = ModelContext(sourceContext.container)
+        context.autosaveEnabled = false
+        return context
     }
 
     private static func validate(_ snapshot: FoodLogEntrySnapshot) throws {

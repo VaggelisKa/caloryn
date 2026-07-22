@@ -46,14 +46,46 @@ final class MealTemplateCommandsTests: XCTestCase {
             operationID: operationID
         )
         let repeated = try MealTemplateCommands.createTemplate(
-            name: "Delayed second tap",
+            name: "First name",
             entries: [entry],
-            defaultMeal: .lunch,
+            defaultMeal: .breakfast,
             modelContext: context,
             operationID: operationID
         )
 
         XCTAssertEqual(first.id, repeated.id)
+        XCTAssertEqual(try context.fetchCount(FetchDescriptor<MealTemplate>()), 1)
+        XCTAssertEqual(try context.fetchCount(FetchDescriptor<MealTemplateItem>()), 1)
+    }
+
+    func testCreateTemplateRejectsSameOperationIDForDifferentPlan() throws {
+        let context = ModelContext(try makeContainer())
+        let food = makeTestFoodItem(name: "Skyr")
+        let entry = makeTestEntry(foodItem: food)
+        context.insert(food)
+        context.insert(entry)
+        try context.save()
+        let operationID = UUID()
+
+        _ = try MealTemplateCommands.createTemplate(
+            name: "Breakfast",
+            entries: [entry],
+            defaultMeal: .breakfast,
+            modelContext: context,
+            operationID: operationID
+        )
+
+        XCTAssertThrowsError(
+            try MealTemplateCommands.createTemplate(
+                name: "Different breakfast",
+                entries: [entry],
+                defaultMeal: .breakfast,
+                modelContext: context,
+                operationID: operationID
+            )
+        ) { error in
+            XCTAssertEqual(error as? MealTemplateCommands.CommandError, .operationConflict)
+        }
         XCTAssertEqual(try context.fetchCount(FetchDescriptor<MealTemplate>()), 1)
         XCTAssertEqual(try context.fetchCount(FetchDescriptor<MealTemplateItem>()), 1)
     }
@@ -206,6 +238,7 @@ final class MealTemplateCommandsTests: XCTestCase {
         let entry = makeTestEntry(foodItem: food, portionGrams: 200)
         context.insert(food)
         context.insert(entry)
+        try context.save()
         let snapshot = FoodLogEntrySnapshot(entry: entry)
         food.name = "Current food"
         food.nutritionPer100g = .zero
@@ -222,7 +255,7 @@ final class MealTemplateCommandsTests: XCTestCase {
             modelContext: context
         )
 
-        XCTAssertTrue(logged.first?.foodItem === food)
+        XCTAssertEqual(logged.first?.foodItem?.id, food.id)
         XCTAssertEqual(logged.first?.foodName, "Recorded food")
         XCTAssertEqual(logged.first?.calories, 300)
         XCTAssertEqual(logged.first?.proteinG, 20)
@@ -280,6 +313,124 @@ final class MealTemplateCommandsTests: XCTestCase {
         XCTAssertEqual(try context.fetchCount(FetchDescriptor<FoodLogEntry>()), 2)
     }
 
+    func testLogRejectsEveryCompletePlanMismatchWithoutWrites() throws {
+        let context = ModelContext(try makeContainer())
+        let firstFood = makeTestFoodItem(name: "Rice")
+        let secondFood = makeTestFoodItem(name: "Beans")
+        let firstEntry = makeTestEntry(foodItem: firstFood, portionGrams: 100)
+        let secondEntry = makeTestEntry(foodItem: secondFood, portionGrams: 80)
+        [firstFood, secondFood].forEach(context.insert)
+        [firstEntry, secondEntry].forEach(context.insert)
+        try context.save()
+        let operationID = UUID()
+        let date = makeTestDate(year: 2026, month: 7, day: 25)
+        let originalSnapshots = [firstEntry, secondEntry].map(FoodLogEntrySnapshot.init(entry:))
+        let originalPlan = try MealTemplateCommands.plan(
+            sourceName: "Snack",
+            snapshots: originalSnapshots,
+            destinationDate: date,
+            destinationMeal: .snack,
+            destinationSnackIndex: 3,
+            operationID: operationID
+        )
+        let original = try MealTemplateCommands.log(
+            plan: originalPlan,
+            availableFoods: [firstFood, secondFood],
+            modelContext: context
+        )
+
+        var differentSource = originalSnapshots
+        differentSource[0].sourceFoodID = UUID()
+        var differentPayload = originalSnapshots
+        differentPayload[0].portionGrams += 1
+        let mismatches: [(String, [FoodLogEntrySnapshot], Date, MealType, Int)] = [
+            ("source food", differentSource, date, .snack, 3),
+            ("snapshot payload", differentPayload, date, .snack, 3),
+            ("date", originalSnapshots, date.addingTimeInterval(86_400), .snack, 3),
+            ("meal", originalSnapshots, date, .dinner, 0),
+            ("snack slot", originalSnapshots, date, .snack, 4),
+            ("order", Array(originalSnapshots.reversed()), date, .snack, 3),
+            ("count", [originalSnapshots[0]], date, .snack, 3),
+        ]
+
+        for (name, snapshots, destinationDate, meal, snackIndex) in mismatches {
+            let mismatchedPlan = try MealTemplateCommands.plan(
+                sourceName: "Snack",
+                snapshots: snapshots,
+                destinationDate: destinationDate,
+                destinationMeal: meal,
+                destinationSnackIndex: snackIndex,
+                operationID: operationID
+            )
+            XCTAssertThrowsError(
+                try MealTemplateCommands.log(
+                    plan: mismatchedPlan,
+                    availableFoods: [firstFood, secondFood],
+                    modelContext: context
+                ),
+                name
+            ) { error in
+                XCTAssertEqual(error as? MealTemplateCommands.CommandError, .operationConflict, name)
+            }
+        }
+
+        let stored = try ModelContext(context.container).fetch(
+            FetchDescriptor<FoodLogEntry>(
+                predicate: #Predicate { entry in
+                    entry.replicationOperationID == operationID
+                }
+            )
+        )
+        XCTAssertEqual(Set(stored.map(\.id)), Set(original.map(\.id)))
+        XCTAssertEqual(stored.count, 2)
+    }
+
+    func testExactLogRetryAfterReconstructedContextReturnsOriginalIDs() throws {
+        let container = try makeContainer()
+        let firstContext = ModelContext(container)
+        let food = makeTestFoodItem(name: "Rice")
+        let source = makeTestEntry(foodItem: food)
+        firstContext.insert(food)
+        firstContext.insert(source)
+        try firstContext.save()
+        let operationID = UUID()
+        let snapshots = [FoodLogEntrySnapshot(entry: source)]
+        let destination = makeTestDate(year: 2026, month: 7, day: 25, hour: 18)
+        let firstPlan = try MealTemplateCommands.plan(
+            sourceName: "Dinner",
+            snapshots: snapshots,
+            destinationDate: destination,
+            destinationMeal: .snack,
+            destinationSnackIndex: 4,
+            operationID: operationID
+        )
+        let original = try MealTemplateCommands.log(
+            plan: firstPlan,
+            availableFoods: [food],
+            modelContext: firstContext
+        )
+
+        let relaunchedContext = ModelContext(container)
+        let relaunchedFoods = try relaunchedContext.fetch(FetchDescriptor<FoodItem>())
+        let reconstructedPlan = try MealTemplateCommands.plan(
+            sourceName: "Dinner",
+            snapshots: snapshots,
+            destinationDate: destination,
+            destinationMeal: .snack,
+            destinationSnackIndex: 4,
+            operationID: operationID
+        )
+        let repeated = try MealTemplateCommands.log(
+            plan: reconstructedPlan,
+            availableFoods: relaunchedFoods,
+            modelContext: relaunchedContext
+        )
+
+        XCTAssertEqual(reconstructedPlan.fingerprint, firstPlan.fingerprint)
+        XCTAssertEqual(repeated.map(\.id), original.map(\.id))
+        XCTAssertEqual(repeated.first?.snackIndex, 4)
+    }
+
     func testLogRejectsPartiallyPersistedDuplicateBatch() throws {
         let context = ModelContext(try makeContainer())
         let food = makeTestFoodItem(name: "Rice")
@@ -301,7 +452,8 @@ final class MealTemplateCommandsTests: XCTestCase {
             snapshot: snapshots[0],
             snackIndex: 0,
             replicationOperationID: operationID,
-            replicationItemIndex: 0
+            replicationItemIndex: 0,
+            replicationPlanFingerprint: plan.fingerprint
         )
         context.insert(partial)
         try context.save()
@@ -316,6 +468,111 @@ final class MealTemplateCommandsTests: XCTestCase {
             XCTAssertEqual(error as? MealTemplateCommands.CommandError, .partialDuplicate)
         }
         XCTAssertEqual(try context.fetchCount(FetchDescriptor<FoodLogEntry>()), 1)
+    }
+
+    func testFailedCreateTransactionPreservesUnrelatedPendingEditsAndPersistsNothing() throws {
+        let container = try makeContainer()
+        let context = ModelContext(container)
+        let food = makeTestFoodItem(name: "Stored food")
+        let entry = makeTestEntry(foodItem: food)
+        context.insert(food)
+        context.insert(entry)
+        try context.save()
+        food.name = "Pending food edit"
+        entry.foodName = "Pending log edit"
+
+        XCTAssertThrowsError(
+            try MealTemplateCommands.createTemplate(
+                name: "Will fail",
+                entries: [entry],
+                defaultMeal: .breakfast,
+                modelContext: context,
+                save: { _ in throw InjectedFailure.save }
+            )
+        )
+
+        XCTAssertEqual(food.name, "Pending food edit")
+        XCTAssertEqual(entry.foodName, "Pending log edit")
+        XCTAssertTrue(context.hasChanges)
+        let verificationContext = ModelContext(container)
+        XCTAssertEqual(try verificationContext.fetchCount(FetchDescriptor<MealTemplate>()), 0)
+        XCTAssertEqual(try verificationContext.fetchCount(FetchDescriptor<MealTemplateItem>()), 0)
+    }
+
+    func testFailedLogTransactionPreservesUnrelatedPendingEditsAndPersistsNoBatch() throws {
+        let container = try makeContainer()
+        let context = ModelContext(container)
+        let food = makeTestFoodItem(name: "Stored food")
+        let source = makeTestEntry(foodItem: food)
+        context.insert(food)
+        context.insert(source)
+        try context.save()
+        let operationID = UUID()
+        let plan = try MealTemplateCommands.plan(
+            sourceName: "Will fail",
+            snapshots: [FoodLogEntrySnapshot(entry: source)],
+            destinationDate: makeTestDate(year: 2026, month: 7, day: 25),
+            destinationMeal: .lunch,
+            operationID: operationID
+        )
+        food.name = "Pending food edit"
+        source.foodName = "Pending log edit"
+
+        XCTAssertThrowsError(
+            try MealTemplateCommands.log(
+                plan: plan,
+                availableFoods: [food],
+                modelContext: context,
+                save: { _ in throw InjectedFailure.save }
+            )
+        )
+
+        XCTAssertEqual(food.name, "Pending food edit")
+        XCTAssertEqual(source.foodName, "Pending log edit")
+        XCTAssertTrue(context.hasChanges)
+        let verificationContext = ModelContext(container)
+        let replicatedCount = try verificationContext.fetchCount(
+            FetchDescriptor<FoodLogEntry>(
+                predicate: #Predicate { entry in
+                    entry.replicationOperationID == operationID
+                }
+            )
+        )
+        XCTAssertEqual(replicatedCount, 0)
+        XCTAssertEqual(try verificationContext.fetchCount(FetchDescriptor<FoodLogEntry>()), 1)
+    }
+
+    func testFailedDeleteTransactionPreservesUnrelatedPendingEditsAndTemplate() throws {
+        let container = try makeContainer()
+        let context = ModelContext(container)
+        let food = makeTestFoodItem(name: "Stored food")
+        let source = makeTestEntry(foodItem: food)
+        context.insert(food)
+        context.insert(source)
+        try context.save()
+        let template = try MealTemplateCommands.createTemplate(
+            name: "Keep on failure",
+            entries: [source],
+            defaultMeal: .breakfast,
+            modelContext: context
+        )
+        food.name = "Pending food edit"
+        source.foodName = "Pending log edit"
+
+        XCTAssertThrowsError(
+            try MealTemplateCommands.delete(
+                template,
+                modelContext: context,
+                save: { _ in throw InjectedFailure.save }
+            )
+        )
+
+        XCTAssertEqual(food.name, "Pending food edit")
+        XCTAssertEqual(source.foodName, "Pending log edit")
+        XCTAssertTrue(context.hasChanges)
+        let verificationContext = ModelContext(container)
+        XCTAssertEqual(try verificationContext.fetchCount(FetchDescriptor<MealTemplate>()), 1)
+        XCTAssertEqual(try verificationContext.fetchCount(FetchDescriptor<MealTemplateItem>()), 1)
     }
 
     func testMissingSourceEntryCanBeEditedWithoutLiveFood() throws {
@@ -382,5 +639,9 @@ final class MealTemplateCommandsTests: XCTestCase {
             MealTemplateItem.self,
             configurations: configuration
         )
+    }
+
+    private enum InjectedFailure: Error {
+        case save
     }
 }

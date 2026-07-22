@@ -10,6 +10,7 @@ final class MealTemplate {
     var createdAt: Date = Date()
     var updatedAt: Date = Date()
     var creationOperationID: UUID?
+    var creationFingerprint: String?
 
     @Relationship(deleteRule: .cascade, inverse: \MealTemplateItem.template)
     var items: [MealTemplateItem]?
@@ -19,6 +20,7 @@ final class MealTemplate {
         defaultMeal: MealType,
         defaultSnackIndex: Int,
         creationOperationID: UUID,
+        creationFingerprint: String,
         createdAt: Date = Date()
     ) {
         id = UUID()
@@ -26,6 +28,7 @@ final class MealTemplate {
         defaultMealRaw = defaultMeal.rawValue
         defaultSnackIndexRaw = defaultMeal == .snack ? max(1, defaultSnackIndex) : 0
         self.creationOperationID = creationOperationID
+        self.creationFingerprint = creationFingerprint
         self.createdAt = createdAt
         updatedAt = createdAt
     }
