@@ -271,6 +271,7 @@ private struct HistoryEntrySignature: Equatable {
     let alcoholG: Double?
     let nutriscoreGrade: String?
     let produceKindRaw: String?
+    let produceItemsSnapshotRaw: String?
 
     init(entry: FoodLogEntry) {
         id = entry.id
@@ -290,8 +291,9 @@ private struct HistoryEntrySignature: Equatable {
         sodiumG = entry.sodiumG
         cholesterolG = entry.cholesterolG
         alcoholG = entry.alcoholG
-        nutriscoreGrade = entry.foodItem?.nutriscoreGrade
-        produceKindRaw = entry.foodItem?.produceKind.rawValue
+        nutriscoreGrade = entry.historicalNutriscoreGrade
+        produceKindRaw = entry.historicalProduceKind?.rawValue
+        produceItemsSnapshotRaw = entry.produceItemsSnapshotRaw
     }
 }
 

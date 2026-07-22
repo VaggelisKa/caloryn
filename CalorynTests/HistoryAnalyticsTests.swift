@@ -167,6 +167,56 @@ final class HistoryAnalyticsTests: XCTestCase {
         XCTAssertEqual(detail.nutriscoreDistribution.map(\.count), [1, 1, 1])
     }
 
+    func testNutriscoreDistributionSurvivesFoodEditAndDeletion() {
+        let profile = makeProfile()
+        let date = makeTestDate(year: 2026, month: 1, day: 30)
+        let apple = makeTestFoodItem(name: "Apple", nutriscoreGrade: "a", produceKind: .fruit)
+        let cereal = makeTestFoodItem(name: "Cereal", nutriscoreGrade: "c")
+        let appleEntry = makeTestEntry(date: date, foodItem: apple, portionGrams: 100)
+        let cerealEntry = makeTestEntry(date: date, foodItem: cereal, portionGrams: 50)
+
+        // The apple is later edited and the cereal deleted from My Foods.
+        apple.nutriscoreGrade = "e"
+        cerealEntry.foodItem = nil
+
+        let analytics = HistoryAnalytics(
+            entries: [appleEntry, cerealEntry],
+            profile: profile,
+            range: .week,
+            endDate: date
+        )
+
+        let detail = analytics.current.days.last!.makeDetail()
+        XCTAssertEqual(detail.nutriscoreDistribution.map(\.grade), ["a", "c"])
+        XCTAssertEqual(detail.nutriscoreDistribution.map(\.count), [1, 1])
+    }
+
+    func testNutriscoreDistributionFallsBackToLiveFoodForLegacyEntries() {
+        let profile = makeProfile()
+        let date = makeTestDate(year: 2026, month: 1, day: 30)
+        let yogurt = makeTestFoodItem(name: "Yogurt", nutriscoreGrade: "b")
+        let legacyEntry = makeLegacyTestEntry(date: date, foodItem: yogurt, portionGrams: 150)
+        let detachedLegacyEntry = makeLegacyTestEntry(
+            date: date,
+            foodItem: makeTestFoodItem(name: "Gone Food", nutriscoreGrade: "d"),
+            portionGrams: 100
+        )
+        detachedLegacyEntry.foodItem = nil
+
+        let analytics = HistoryAnalytics(
+            entries: [legacyEntry, detachedLegacyEntry],
+            profile: profile,
+            range: .week,
+            endDate: date
+        )
+
+        let detail = analytics.current.days.last!.makeDetail()
+        // Legacy entry with a live food keeps the pre-snapshot behavior; the
+        // detached legacy entry is excluded rather than given an invented grade.
+        XCTAssertEqual(detail.nutriscoreDistribution.map(\.grade), ["b"])
+        XCTAssertEqual(detail.nutriscoreDistribution.map(\.count), [1])
+    }
+
     func testUnloggedDayDetailPreservesTargetAndEmptyCollections() {
         let profile = makeProfile()
         let endDate = makeTestDate(year: 2026, month: 1, day: 30)

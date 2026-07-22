@@ -576,7 +576,7 @@ struct HistoryDayDetail: Identifiable {
         let validGrades = ["a", "b", "c", "d", "e"]
         let order = Dictionary(uniqueKeysWithValues: validGrades.enumerated().map { ($1, $0) })
         let counts = entries.reduce(into: [String: Int]()) { result, entry in
-            guard let grade = entry.foodItem?.nutriscoreGrade?.lowercased(),
+            guard let grade = entry.historicalNutriscoreGrade?.lowercased(),
                   order[grade] != nil else { return }
             result[grade, default: 0] += 1
         }
