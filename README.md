@@ -7,7 +7,7 @@ Caloryn is a native iOS nutrition tracker built with SwiftUI and SwiftData. It c
 - SwiftUI for the app UI and navigation
 - SwiftData for local persistence
 - CloudKit-backed SwiftData sync when iCloud sync is enabled
-- Open Food Facts for product search, nutrition data, and barcode lookup
+- Bounded Caloryn API → Open Food Facts failover for product search and barcode lookup
 - Xcode project-based setup with no external package dependencies
 
 ## Features
@@ -41,8 +41,8 @@ Caloryn.xcodeproj/
 The app persists three main SwiftData models:
 
 - `UserProfile`: user demographics, activity level, calorie target, and macro targets
-- `FoodItem`: reusable food definitions, including barcode, serving info, nutrition per 100g, custom-food flags, recipe flags, Nutri-Score, and produce classification
-- `FoodLogEntry`: logged portions for a specific date and meal slot, with nutrition values denormalized at write time
+- `FoodItem`: reusable food definitions, including barcode, serving info, nutrition per 100g, provenance/completeness, custom-food flags, recipe flags, Nutri-Score, and produce classification
+- `FoodLogEntry`: logged portions for a specific date and meal slot, with nutrition values and provenance denormalized at write time
 
 Recipes add a related `RecipeIngredient` model so recipe nutrition is stored from ingredient snapshots and can be logged like any other food.
 
@@ -52,7 +52,7 @@ Recipes add a related `RecipeIngredient` model so recipe nutrition is stored fro
 - On first launch, users complete onboarding; afterwards the app opens into the main tab flow in [`Caloryn/ContentView.swift`](Caloryn/ContentView.swift).
 - Daily logging lives in [`Caloryn/Views/Today/TodayView.swift`](Caloryn/Views/Today/TodayView.swift), with detailed nutrition totals in [`Caloryn/Views/Today/NutritionDetailsView.swift`](Caloryn/Views/Today/NutritionDetailsView.swift).
 - Reusable manual foods and recipes live in [`Caloryn/Views/MyFoods/MyFoodsView.swift`](Caloryn/Views/MyFoods/MyFoodsView.swift).
-- Food lookup is handled by [`Caloryn/Services/FoodSearchService.swift`](Caloryn/Services/FoodSearchService.swift), which queries Open Food Facts search and barcode endpoints.
+- Food lookup is handled by [`Caloryn/Services/FoodSearchService.swift`](Caloryn/Services/FoodSearchService.swift), which applies the bounded provider policy documented in [`docs/adr/0002-food-provider-failover.md`](docs/adr/0002-food-provider-failover.md).
 - Goal calculation is centralized in [`Caloryn/Services/NutritionCalculator.swift`](Caloryn/Services/NutritionCalculator.swift), with activity budget adjustment logic in [`Caloryn/Services/ActivityCalorieBudget.swift`](Caloryn/Services/ActivityCalorieBudget.swift).
 
 ## Running The App
@@ -70,7 +70,7 @@ Current project settings in the checked-in Xcode project:
 
 ## Notes
 
-- The app uses network calls to Open Food Facts, so search and barcode lookup require connectivity.
+- The app uses network calls to the Caloryn API and Open Food Facts, so search and barcode lookup require connectivity.
 - SwiftData sync is configured to use CloudKit when the `iCloudSyncEnabled` preference is on.
 - Calorie auto-adjust is opt-in, reads Apple Health Active Energy only, recalculates the activity baseline on device, and does not store Health samples in SwiftData.
 - CSV export writes a temporary file and presents the native iOS share sheet.
