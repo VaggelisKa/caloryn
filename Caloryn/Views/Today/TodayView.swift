@@ -16,6 +16,7 @@ struct TodayView: View {
     }
 
     @State private var selectedDate: Date = Date().startOfDay
+    @State private var lastKnownToday: Date = Date().startOfDay
     @State private var showingNutritionDetails = false
     @State private var foodSearchPresentation: FoodSearchPresentation?
     @State private var entryToEdit: FoodLogEntry?
@@ -212,6 +213,7 @@ struct TodayView: View {
         }
         .onChange(of: scenePhase) { _, newPhase in
             guard newPhase == .active else { return }
+            followCalendarRollover()
             activeEnergyTracker.refreshWhenActive()
         }
     }
@@ -346,6 +348,16 @@ struct TodayView: View {
     /// the day against the goal that actually applied. Only the current
     /// calendar day is ever recorded (the store enforces this), and the last
     /// write before midnight finalizes the day.
+    /// Keeps the screen on the current day when the calendar rolls over while
+    /// the app is open, so the new day still gets its goal snapshot.
+    private func followCalendarRollover() {
+        selectedDate = SelectedDayRollover.selectedDay(
+            selected: selectedDate,
+            lastKnownToday: lastKnownToday
+        )
+        lastKnownToday = Date.now.startOfDay
+    }
+
     private func recordDailyGoalSnapshotIfNeeded() {
         guard let profile else { return }
         // Skip transient budgets while Health data is still loading so a

@@ -57,8 +57,15 @@ enum DailyGoalSnapshotStore {
         }
 
         guard didChange else { return false }
-        try? context.save()
-        return true
+        do {
+            try context.save()
+            return true
+        } catch {
+            // The caller learns the day was not durably recorded; History will
+            // fall back to its documented estimate rather than a value that
+            // only ever existed in memory.
+            return false
+        }
     }
 
     /// Collapses fetched snapshots into one value per day key, preferring the
