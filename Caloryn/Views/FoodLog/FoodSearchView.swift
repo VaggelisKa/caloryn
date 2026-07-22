@@ -295,7 +295,10 @@ struct FoodSearchView: View {
             .onAppear {
                 captureSuggestionsIfNeeded()
                 if automaticallyFocusSearch {
-                    isSearchFocused = true
+                    // Keep focus away from a covered search field while a barcode
+                    // result is presented so its navigation title settles cleanly.
+                    isSearchFocused = !isLookingUpBarcode
+                        && barcodeLookupError == nil
                 }
             }
             .task(id: pendingBarcode) {

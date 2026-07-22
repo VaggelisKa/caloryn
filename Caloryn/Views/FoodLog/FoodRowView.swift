@@ -58,21 +58,24 @@ struct FoodRowView: View {
                 }
 
                 if let provenance, provenance.source != .userEntered {
-                    HStack(spacing: 6) {
+                    VStack(alignment: .leading, spacing: 2) {
                         Label(provenance.source.shortLabel, systemImage: "checkmark.seal")
+                            .accessibilityLabel("Data source: \(provenance.source.shortLabel)")
 
                         if provenance.recoveredByFallback {
-                            Text("Recovered")
+                            Text("Recovered via backup")
+                                .accessibilityLabel("Recovered using backup provider")
                         }
 
                         if let warning = provenance.completeness.warningLabel {
                             Label(warning, systemImage: "exclamationmark.triangle.fill")
                                 .foregroundStyle(CalorynTheme.terracotta)
+                                .accessibilityLabel("Nutrition completeness: \(warning)")
                         }
                     }
                     .font(CalorynTheme.numericMicroCaption)
                     .foregroundStyle(CalorynTheme.textSecondary)
-                    .lineLimit(1)
+                    .fixedSize(horizontal: false, vertical: true)
                 }
             }
 
