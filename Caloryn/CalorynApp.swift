@@ -8,6 +8,8 @@ struct CalorynApp: App {
 
     init() {
         let iCloudEnabled = UserDefaults.standard.object(forKey: "iCloudSyncEnabled") as? Bool ?? true
+        let screenshotFixtureActive = Issue74ScreenshotScenario.current != nil
+            || Issue77ScreenshotScenario.current != nil
         let schema = Schema([
             UserProfile.self,
             FoodItem.self,
@@ -19,8 +21,8 @@ struct CalorynApp: App {
         ])
         let config = ModelConfiguration(
             schema: schema,
-            isStoredInMemoryOnly: Issue74ScreenshotScenario.current != nil,
-            cloudKitDatabase: Issue74ScreenshotScenario.current != nil
+            isStoredInMemoryOnly: screenshotFixtureActive,
+            cloudKitDatabase: screenshotFixtureActive
                 ? .none
                 : (iCloudEnabled ? .automatic : .none)
         )
@@ -35,7 +37,9 @@ struct CalorynApp: App {
     var body: some Scene {
         WindowGroup {
             #if DEBUG
-            if let screenshotScenario = Issue74ScreenshotScenario.current {
+            if let screenshotScenario = Issue77ScreenshotScenario.current {
+                Issue77ScreenshotHost(scenario: screenshotScenario)
+            } else if let screenshotScenario = Issue74ScreenshotScenario.current {
                 Issue74ScreenshotHost(scenario: screenshotScenario)
             } else {
                 ContentView()
