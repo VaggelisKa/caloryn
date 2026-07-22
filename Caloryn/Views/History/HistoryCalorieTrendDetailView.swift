@@ -75,6 +75,10 @@ private struct HistoryCalorieTrendRangeSummaryCard: View {
                 if let biggestInconsistencyText = projection.biggestInconsistencyText {
                     summaryLine(biggestInconsistencyText)
                 }
+
+                if let estimatedTargetNoteText = projection.estimatedTargetNoteText {
+                    summaryLine(estimatedTargetNoteText)
+                }
             }
         }
         .historyCard()
@@ -402,6 +406,13 @@ private struct HistoryCalorieTrendSelectedDayCard: View {
                 Text(averageDeltaText)
                     .font(CalorynTheme.caption)
                     .foregroundStyle(CalorynTheme.textSecondary)
+            }
+
+            if detail.isTargetEstimated {
+                Text("Compared with your current target — no saved goal for this day.")
+                    .font(CalorynTheme.microCaption)
+                    .foregroundStyle(CalorynTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
