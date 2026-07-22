@@ -205,10 +205,12 @@ struct MealTemplateCreationView: View {
         entries: [FoodLogEntry],
         defaultMeal: MealType,
         defaultSnackIndex: Int,
+        initialName: String = "",
         onSaved: @escaping () -> Void
     ) {
         self.entries = entries
         self.onSaved = onSaved
+        _name = State(initialValue: initialName)
         _defaultMeal = State(initialValue: defaultMeal)
         _defaultSnackIndex = State(initialValue: defaultSnackIndex)
     }
@@ -378,11 +380,13 @@ struct MealLogConfirmationView: View {
                     Stepper("Snack slot: \(destinationSnackIndex)", value: $destinationSnackIndex, in: 1...20)
                         .accessibilityIdentifier("mealReuse.destinationSnackSlot")
                 }
+
+                Text("Every selected item will be added to \(destinationMeal.displayName(snackIndex: normalizedDestinationSnackIndex)) on \(destinationDate.shortFormatted).")
+                    .font(.footnote)
+                    .foregroundStyle(CalorynTheme.textSecondary)
+                    .accessibilityIdentifier("mealReuse.destinationSummary")
             } header: {
                 Text("Destination")
-            } footer: {
-                Text("Every selected item will be added to \(destinationMeal.displayName(snackIndex: normalizedDestinationSnackIndex)) on \(destinationDate.shortFormatted).")
-                    .accessibilityIdentifier("mealReuse.destinationSummary")
             }
 
             if missingSourceCount > 0 {
@@ -394,8 +398,10 @@ struct MealLogConfirmationView: View {
                             .foregroundStyle(CalorynTheme.terracotta)
                     }
                     .accessibilityIdentifier("mealReuse.missingSourceWarning")
-                } footer: {
+
                     Text("Caloryn will use the names, portions, nutrition, and quality values saved with this meal. The new log entries stay editable.")
+                        .font(.footnote)
+                        .foregroundStyle(CalorynTheme.textSecondary)
                 }
             }
 

@@ -19,7 +19,10 @@ struct CalorynApp: App {
         ])
         let config = ModelConfiguration(
             schema: schema,
-            cloudKitDatabase: iCloudEnabled ? .automatic : .none
+            isStoredInMemoryOnly: Issue74ScreenshotScenario.current != nil,
+            cloudKitDatabase: Issue74ScreenshotScenario.current != nil
+                ? .none
+                : (iCloudEnabled ? .automatic : .none)
         )
 
         do {
@@ -31,9 +34,19 @@ struct CalorynApp: App {
 
     var body: some Scene {
         WindowGroup {
+            #if DEBUG
+            if let screenshotScenario = Issue74ScreenshotScenario.current {
+                Issue74ScreenshotHost(scenario: screenshotScenario)
+            } else {
+                ContentView()
+                    .environment(router)
+                    .onOpenURL(perform: router.handle)
+            }
+            #else
             ContentView()
                 .environment(router)
                 .onOpenURL(perform: router.handle)
+            #endif
         }
         .modelContainer(sharedModelContainer)
     }

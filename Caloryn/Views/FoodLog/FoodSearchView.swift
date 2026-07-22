@@ -32,6 +32,7 @@ struct FoodSearchView: View {
     let logDate: Date
     var snackIndex: Int = 0
     var mode: FoodSearchMode = .logging
+    var automaticallyFocusSearch = true
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -184,7 +185,9 @@ struct FoodSearchView: View {
                 Text(templateErrorMessage ?? "Please try again.")
             }
             .onAppear {
-                isSearchFocused = true
+                if automaticallyFocusSearch {
+                    isSearchFocused = true
+                }
             }
         }
     }
