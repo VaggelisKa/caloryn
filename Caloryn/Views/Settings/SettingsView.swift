@@ -604,14 +604,25 @@ struct GoalEditView: View {
     @Environment(\.dismiss) private var dismiss
 
     @FocusState private var focusedField: GoalEditFocus?
-    @State private var targetText: String = ""
-    @State private var manualOverride = false
-    @State private var calorieDeficit: Double = 500
-    @State private var proteinRatio: Double = 0.30
-    @State private var carbRatio: Double = 0.40
-    @State private var fatRatio: Double = 0.30
+    @State private var targetText: String
+    @State private var manualOverride: Bool
+    @State private var calorieDeficit: Double
+    @State private var proteinRatio: Double
+    @State private var carbRatio: Double
+    @State private var fatRatio: Double
     @State private var nutrientTargetTexts: [TrackedNutrient: String] = [:]
     @State private var nutrientGoalKinds: [TrackedNutrient: NutrientGoalKind] = [:]
+
+    init(profile: UserProfile) {
+        self.profile = profile
+        let seed = GoalEditSeed(profile: profile)
+        _targetText = State(initialValue: seed.targetText)
+        _manualOverride = State(initialValue: seed.manualOverride)
+        _calorieDeficit = State(initialValue: seed.calorieDeficit)
+        _proteinRatio = State(initialValue: seed.proteinRatio)
+        _carbRatio = State(initialValue: seed.carbRatio)
+        _fatRatio = State(initialValue: seed.fatRatio)
+    }
 
     private var macroTotal: Double { proteinRatio + carbRatio + fatRatio }
     private var isMacroValid: Bool { abs(macroTotal - 1.0) <= 0.01 }
@@ -778,15 +789,6 @@ struct GoalEditView: View {
             }
         }
         .onAppear {
-            targetText = "\(profile.dailyCalorieTarget)"
-            manualOverride = profile.manualOverride
-            calorieDeficit = profile.calorieDeficit
-            let cal = Double(profile.dailyCalorieTarget)
-            if cal > 0 {
-                proteinRatio = (profile.proteinTargetG * 4.0) / cal
-                carbRatio = (profile.carbTargetG * 4.0) / cal
-                fatRatio = (profile.fatTargetG * 9.0) / cal
-            }
             loadAdditionalNutrientGoals()
         }
     }
