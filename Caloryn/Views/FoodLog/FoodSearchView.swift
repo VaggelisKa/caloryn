@@ -22,6 +22,12 @@ enum FoodSearchMode {
 }
 
 struct FoodSearchView: View {
+    private struct TemplateLogPresentation: Identifiable {
+        let id = UUID()
+        let templateName: String
+        let snapshots: [FoodLogEntrySnapshot]
+    }
+
     let mealType: MealType
     let logDate: Date
     var snackIndex: Int = 0
@@ -30,6 +36,7 @@ struct FoodSearchView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Query(sort: \FoodItem.lastUsed, order: .reverse) private var recentFoods: [FoodItem]
+    @Query(sort: \MealTemplate.updatedAt, order: .reverse) private var mealTemplates: [MealTemplate]
 
     @State private var searchService = FoodSearchService()
     @State private var searchText = ""
@@ -41,6 +48,8 @@ struct FoodSearchView: View {
     @State private var barcodeLookupError: String?
     @State private var favoriteErrorMessage: String?
     @State private var showsAllFavorites = false
+    @State private var templateLogPresentation: TemplateLogPresentation?
+    @State private var templateErrorMessage: String?
     @FocusState private var isSearchFocused: Bool
 
     private var showingRecent: Bool {
@@ -141,6 +150,19 @@ struct FoodSearchView: View {
                     }
                 })
             }
+            .sheet(item: $templateLogPresentation) { presentation in
+                NavigationStack {
+                    MealLogConfirmationView(
+                        snapshots: presentation.snapshots,
+                        sourceName: presentation.templateName,
+                        initialDate: logDate,
+                        initialMeal: mealType,
+                        initialSnackIndex: snackIndex,
+                        onLogged: dismiss.callAsFunction
+                    )
+                }
+                .presentationDragIndicator(.visible)
+            }
             .fullScreenCover(isPresented: $showingScanner) {
                 barcodeScannerSheet
             }
@@ -153,6 +175,13 @@ struct FoodSearchView: View {
                 }
             } message: {
                 Text(favoriteErrorMessage ?? "Please try again.")
+            }
+            .alert("Couldn’t Reuse Meal", isPresented: templateErrorIsPresented) {
+                Button("OK", role: .cancel) {
+                    templateErrorMessage = nil
+                }
+            } message: {
+                Text(templateErrorMessage ?? "Please try again.")
             }
             .onAppear {
                 isSearchFocused = true
@@ -217,6 +246,32 @@ struct FoodSearchView: View {
 
     private var recentFoodsList: some View {
         List {
+            if !mode.isIngredientSelection {
+                Section {
+                    if mealTemplates.isEmpty {
+                        SearchEmptyRow(
+                            title: "No Reusable Meals",
+                            message: "Save logged entries from Today to reuse them here.",
+                            systemImage: "square.stack.3d.up"
+                        )
+                    } else {
+                        ForEach(mealTemplates) { template in
+                            Button {
+                                reuse(template)
+                            } label: {
+                                MealTemplateLibraryRow(template: template)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier("mealTemplate.select.\(template.id.uuidString)")
+                        }
+                    }
+                } header: {
+                    Label("Reusable Meals", systemImage: "square.stack.3d.up.fill")
+                        .font(CalorynTheme.caption)
+                        .foregroundStyle(CalorynTheme.textSecondary)
+                }
+            }
+
             if !favoriteFoods.isEmpty {
                 Section {
                     ForEach(visibleFavoriteFoods) { food in
@@ -520,12 +575,34 @@ struct FoodSearchView: View {
         }
     }
 
+    private func reuse(_ template: MealTemplate) {
+        do {
+            templateLogPresentation = TemplateLogPresentation(
+                templateName: template.name,
+                snapshots: try MealTemplateCommands.snapshots(for: template)
+            )
+        } catch {
+            templateErrorMessage = error.localizedDescription
+        }
+    }
+
     private var favoriteErrorIsPresented: Binding<Bool> {
         Binding(
             get: { favoriteErrorMessage != nil },
             set: { isPresented in
                 if !isPresented {
                     favoriteErrorMessage = nil
+                }
+            }
+        )
+    }
+
+    private var templateErrorIsPresented: Binding<Bool> {
+        Binding(
+            get: { templateErrorMessage != nil },
+            set: { isPresented in
+                if !isPresented {
+                    templateErrorMessage = nil
                 }
             }
         )
@@ -642,5 +719,5 @@ struct FoodSearchView: View {
 
 #Preview {
     FoodSearchView(mealType: .breakfast, logDate: .now)
-        .modelContainer(for: [UserProfile.self, FoodItem.self, FoodLogEntry.self, RecipeIngredient.self], inMemory: true)
+        .modelContainer(for: [UserProfile.self, FoodItem.self, FoodLogEntry.self, RecipeIngredient.self, MealTemplate.self, MealTemplateItem.self], inMemory: true)
 }

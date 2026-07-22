@@ -88,6 +88,31 @@ enum DailyFoodLogCommands {
         modelContext.delete(entry)
     }
 
+    @discardableResult
+    static func updateSnapshotEntry(
+        _ entry: FoodLogEntry,
+        date: Date,
+        mealType: MealType,
+        portionGrams: Double,
+        snackIndex: Int? = nil
+    ) throws -> FoodLogEntry {
+        guard entry.foodItem == nil,
+              PinnedFoodLogging.isSafePortion(entry.portionGrams),
+              PinnedFoodLogging.isSafePortion(portionGrams) else {
+            throw MealTemplateCommands.CommandError.invalidSnapshot(entry.foodName)
+        }
+        entry.updateFromSnapshot(
+            date: date,
+            mealType: mealType,
+            portionGrams: portionGrams,
+            snackIndex: normalizedSnackIndex(
+                for: mealType,
+                requestedSnackIndex: snackIndex
+            )
+        )
+        return entry
+    }
+
     static func normalizedSnackIndex(for mealType: MealType) -> Int {
         normalizedSnackIndex(for: mealType, requestedSnackIndex: nil)
     }

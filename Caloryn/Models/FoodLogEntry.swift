@@ -45,6 +45,14 @@ struct FoodLogEntrySnapshot: Codable, Equatable {
         produceKindSnapshotRaw = entry.produceKindSnapshotRaw
         produceItemsSnapshot = entry.produceItemsSnapshot
     }
+
+    func scaled(toPortionGrams newPortionGrams: Double) -> FoodLogEntrySnapshot {
+        guard portionGrams > 0 else { return self }
+        var copy = self
+        copy.portionGrams = newPortionGrams
+        copy.nutrition = nutrition.scaled(by: newPortionGrams / portionGrams)
+        return copy
+    }
 }
 
 @Model
@@ -90,6 +98,8 @@ final class FoodLogEntry {
 
     var foodName: String = ""
     var createdAt: Date = Date()
+    var replicationOperationID: UUID?
+    var replicationItemIndex: Int?
 
     // MARK: Food-quality snapshot (issue #71)
     //
@@ -141,7 +151,9 @@ final class FoodLogEntry {
         foodItem: FoodItem?,
         snapshot: FoodLogEntrySnapshot,
         snackIndex: Int,
-        createdAt: Date = Date()
+        createdAt: Date = Date(),
+        replicationOperationID: UUID? = nil,
+        replicationItemIndex: Int? = nil
     ) {
         id = UUID()
         self.createdAt = createdAt
@@ -149,12 +161,29 @@ final class FoodLogEntry {
         self.mealType = mealType
         self.snackIndex = mealType == .snack ? snackIndex : 0
         self.foodItem = foodItem
+        self.replicationOperationID = replicationOperationID
+        self.replicationItemIndex = replicationItemIndex
         portionGrams = snapshot.portionGrams
         foodName = snapshot.foodName
         apply(nutrition: snapshot.nutrition)
         nutriscoreGradeSnapshot = snapshot.nutriscoreGradeSnapshot
         produceKindSnapshotRaw = snapshot.produceKindSnapshotRaw
         produceItemsSnapshot = snapshot.produceItemsSnapshot
+    }
+
+    func updateFromSnapshot(
+        date: Date,
+        mealType: MealType,
+        portionGrams: Double,
+        snackIndex: Int = 1
+    ) {
+        let scaledSnapshot = FoodLogEntrySnapshot(entry: self)
+            .scaled(toPortionGrams: portionGrams)
+        self.date = Calendar.current.startOfDay(for: date)
+        self.mealType = mealType
+        self.snackIndex = mealType == .snack ? snackIndex : 0
+        self.portionGrams = scaledSnapshot.portionGrams
+        apply(nutrition: scaledSnapshot.nutrition)
     }
 
     func update(

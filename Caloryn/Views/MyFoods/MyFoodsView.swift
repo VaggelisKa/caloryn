@@ -2,8 +2,17 @@ import SwiftData
 import SwiftUI
 
 struct MyFoodsView: View {
+    private struct TemplateLogPresentation: Identifiable {
+        let id = UUID()
+        let templateName: String
+        let defaultMeal: MealType
+        let defaultSnackIndex: Int
+        let snapshots: [FoodLogEntrySnapshot]
+    }
+
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \FoodItem.name) private var foodItems: [FoodItem]
+    @Query(sort: \MealTemplate.updatedAt, order: .reverse) private var mealTemplates: [MealTemplate]
 
     @State private var showingManualEntryForm = false
     @State private var showingRecipeForm = false
@@ -11,6 +20,8 @@ struct MyFoodsView: View {
     @State private var editingRecipe: FoodItem?
     @State private var favoriteErrorMessage: String?
     @State private var showsAllFavorites = false
+    @State private var templateLogPresentation: TemplateLogPresentation?
+    @State private var templateErrorMessage: String?
 
     private var manualEntries: [FoodItem] {
         foodItems.filter { $0.isCustom && !$0.isRecipe }
@@ -42,6 +53,8 @@ struct MyFoodsView: View {
     var body: some View {
         NavigationStack {
             List {
+                reusableMealsSection
+
                 if !favorites.isEmpty {
                     favoritesSection
                 }
@@ -85,6 +98,20 @@ struct MyFoodsView: View {
                 RecipeFormView(existingRecipe: recipe)
                     .presentationDragIndicator(.visible)
             }
+            .sheet(item: $templateLogPresentation) { presentation in
+                NavigationStack {
+                    MealLogConfirmationView(
+                        snapshots: presentation.snapshots,
+                        sourceName: presentation.templateName,
+                        initialDate: .now,
+                        initialMeal: presentation.defaultMeal,
+                        initialSnackIndex: presentation.defaultSnackIndex
+                    ) {
+                        templateLogPresentation = nil
+                    }
+                }
+                .presentationDragIndicator(.visible)
+            }
             .alert("Couldn’t Update Favorite", isPresented: favoriteErrorIsPresented) {
                 Button("OK", role: .cancel) {
                     favoriteErrorMessage = nil
@@ -92,8 +119,51 @@ struct MyFoodsView: View {
             } message: {
                 Text(favoriteErrorMessage ?? "Please try again.")
             }
+            .alert("Couldn’t Update Reusable Meal", isPresented: templateErrorIsPresented) {
+                Button("OK", role: .cancel) {
+                    templateErrorMessage = nil
+                }
+            } message: {
+                Text(templateErrorMessage ?? "Please try again.")
+            }
         }
         .calorynPageCanvas()
+    }
+
+    private var reusableMealsSection: some View {
+        Section {
+            if mealTemplates.isEmpty {
+                EmptyFoodGroupRow(
+                    title: "No Reusable Meals",
+                    message: "Select logged entries from Today to save a reusable meal.",
+                    systemImage: "square.stack.3d.up"
+                )
+            } else {
+                ForEach(mealTemplates) { template in
+                    Button {
+                        reuse(template)
+                    } label: {
+                        MealTemplateLibraryRow(template: template)
+                    }
+                    .buttonStyle(.plain)
+                    .swipeActions(edge: .trailing) {
+                        Button(role: .destructive) {
+                            delete(template)
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                    }
+                }
+            }
+        } header: {
+            Text("Reusable Meals")
+                .font(CalorynTheme.caption)
+                .foregroundStyle(CalorynTheme.textSecondary)
+        } footer: {
+            if !mealTemplates.isEmpty {
+                Text("Choose a meal to review its date and destination before logging.")
+            }
+        }
     }
 
     private var favoritesSection: some View {
@@ -256,6 +326,27 @@ struct MyFoodsView: View {
         try? modelContext.save()
     }
 
+    private func reuse(_ template: MealTemplate) {
+        do {
+            templateLogPresentation = TemplateLogPresentation(
+                templateName: template.name,
+                defaultMeal: template.defaultMeal,
+                defaultSnackIndex: template.defaultSnackIndex,
+                snapshots: try MealTemplateCommands.snapshots(for: template)
+            )
+        } catch {
+            templateErrorMessage = error.localizedDescription
+        }
+    }
+
+    private func delete(_ template: MealTemplate) {
+        do {
+            try MealTemplateCommands.delete(template, modelContext: modelContext)
+        } catch {
+            templateErrorMessage = error.localizedDescription
+        }
+    }
+
     private func favoriteButton(for food: FoodItem) -> some View {
         Button {
             toggleFavorite(food)
@@ -300,6 +391,17 @@ struct MyFoodsView: View {
             set: { isPresented in
                 if !isPresented {
                     favoriteErrorMessage = nil
+                }
+            }
+        )
+    }
+
+    private var templateErrorIsPresented: Binding<Bool> {
+        Binding(
+            get: { templateErrorMessage != nil },
+            set: { isPresented in
+                if !isPresented {
+                    templateErrorMessage = nil
                 }
             }
         )
@@ -405,5 +507,5 @@ private struct RecipeLibraryRow: View {
 
 #Preview {
     MyFoodsView()
-        .modelContainer(for: [UserProfile.self, FoodItem.self, FoodLogEntry.self, RecipeIngredient.self], inMemory: true)
+        .modelContainer(for: [UserProfile.self, FoodItem.self, FoodLogEntry.self, RecipeIngredient.self, MealTemplate.self, MealTemplateItem.self], inMemory: true)
 }

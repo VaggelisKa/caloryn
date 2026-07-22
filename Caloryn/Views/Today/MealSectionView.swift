@@ -7,6 +7,7 @@ struct MealSectionView: View {
     var snackIndex: Int
     var titleOverride: String?
     var onAdd: () -> Void
+    var onReuse: (() -> Void)?
     var onEdit: (FoodLogEntry) -> Void
     var onDelete: (FoodLogEntry) -> Void
 
@@ -16,6 +17,7 @@ struct MealSectionView: View {
         snackIndex: Int = 0,
         titleOverride: String? = nil,
         onAdd: @escaping () -> Void,
+        onReuse: (() -> Void)? = nil,
         onEdit: @escaping (FoodLogEntry) -> Void,
         onDelete: @escaping (FoodLogEntry) -> Void
     ) {
@@ -24,6 +26,7 @@ struct MealSectionView: View {
         self.snackIndex = snackIndex
         self.titleOverride = titleOverride
         self.onAdd = onAdd
+        self.onReuse = onReuse
         self.onEdit = onEdit
         self.onDelete = onDelete
     }
@@ -67,12 +70,26 @@ struct MealSectionView: View {
                 }
             }
         } header: {
-            Button(action: onAdd) {
-                sectionHeader
+            HStack(spacing: 8) {
+                Button(action: onAdd) {
+                    sectionHeader
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Add food to \(sectionTitle)")
+                .accessibilityHint("Double tap to add food")
+
+                if let onReuse, !entries.isEmpty {
+                    Button(action: onReuse) {
+                        Image(systemName: "square.on.square")
+                            .font(CalorynTheme.compactIcon)
+                            .foregroundStyle(CalorynTheme.sage)
+                            .frame(width: 44, height: 44)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Reuse \(sectionTitle)")
+                    .accessibilityHint("Select entries to copy or save as a reusable meal")
+                }
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Add food to \(sectionTitle)")
-            .accessibilityHint("Double tap to add food")
         }
     }
 
@@ -120,6 +137,7 @@ struct MealSectionView: View {
                 .font(.system(.title3, weight: .semibold))
                 .foregroundStyle(CalorynTheme.sage)
         }
+        .frame(maxWidth: .infinity)
         .contentShape(Rectangle())
     }
 }
