@@ -139,6 +139,7 @@ struct FoodSearchView: View {
                     foodItem: food,
                     mealType: mealType,
                     logDate: logDate,
+                    snackIndex: snackIndex,
                     onLogged: dismiss.callAsFunction
                 )
                 .presentationDetents([.medium])
@@ -469,14 +470,19 @@ struct FoodSearchView: View {
     }
 
     private var destinationDescription: String {
-        "\(logDate.shortFormatted) · \(mealType.displayName)"
+        let normalizedSnackIndex = DailyFoodLogCommands.normalizedSnackIndex(
+            for: mealType,
+            requestedSnackIndex: snackIndex
+        )
+        return "\(logDate.shortFormatted) · \(mealType.displayName(snackIndex: normalizedSnackIndex))"
     }
 
     private func pinnedPlan(for food: FoodItem) -> PinnedFoodLogPlan {
         PinnedFoodLogging.plan(
             for: food,
             destinationMeal: mealType,
-            destinationDate: logDate
+            destinationDate: logDate,
+            destinationSnackIndex: snackIndex
         )
     }
 

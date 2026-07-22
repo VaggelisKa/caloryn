@@ -11,6 +11,7 @@ struct PinnedFoodLogPlan: Equatable {
     let foodID: UUID
     let destinationDate: Date
     let destinationMeal: MealType
+    let destinationSnackIndex: Int
     let action: Action
 }
 
@@ -37,15 +38,21 @@ enum PinnedFoodLogging {
         for food: FoodItem,
         destinationMeal: MealType,
         destinationDate: Date,
+        destinationSnackIndex: Int = 0,
         calendar: Calendar = .current
     ) -> PinnedFoodLogPlan {
         let date = calendar.startOfDay(for: destinationDate)
+        let snackIndex = DailyFoodLogCommands.normalizedSnackIndex(
+            for: destinationMeal,
+            requestedSnackIndex: destinationSnackIndex
+        )
 
         guard isAvailableForLogging(food) else {
             return PinnedFoodLogPlan(
                 foodID: food.id,
                 destinationDate: date,
                 destinationMeal: destinationMeal,
+                destinationSnackIndex: snackIndex,
                 action: .unavailable
             )
         }
@@ -60,6 +67,7 @@ enum PinnedFoodLogging {
             foodID: food.id,
             destinationDate: date,
             destinationMeal: destinationMeal,
+            destinationSnackIndex: snackIndex,
             action: action
         )
     }
@@ -69,9 +77,14 @@ enum PinnedFoodLogging {
         portionGrams: Double,
         destinationMeal: MealType,
         destinationDate: Date,
+        destinationSnackIndex: Int = 0,
         calendar: Calendar = .current
     ) -> PinnedFoodLogPlan {
         let date = calendar.startOfDay(for: destinationDate)
+        let snackIndex = DailyFoodLogCommands.normalizedSnackIndex(
+            for: destinationMeal,
+            requestedSnackIndex: destinationSnackIndex
+        )
         let action: PinnedFoodLogPlan.Action
 
         if !isAvailableForLogging(food) {
@@ -86,6 +99,7 @@ enum PinnedFoodLogging {
             foodID: food.id,
             destinationDate: date,
             destinationMeal: destinationMeal,
+            destinationSnackIndex: snackIndex,
             action: action
         )
     }
@@ -125,6 +139,7 @@ enum PinnedFoodLogging {
             logDate: plan.destinationDate,
             isNewFood: false,
             modelContext: modelContext,
+            snackIndex: plan.destinationSnackIndex,
             now: now
         )
         try modelContext.save()
@@ -153,6 +168,12 @@ enum PinnedFoodLogging {
         let defaultPortion = food.defaultServingG ?? 100
         guard isSafePortion(defaultPortion) else { return 100 }
         return defaultPortion
+    }
+
+    static func maximumConfirmationPortion(for food: FoodItem) -> Double {
+        let suggestedPortion = suggestedPortion(for: food)
+        let suggestedLimit = ceil(suggestedPortion * 4 / 5) * 5
+        return min(100_000, max(500, max(suggestedPortion, suggestedLimit)))
     }
 
     static func setPinned(

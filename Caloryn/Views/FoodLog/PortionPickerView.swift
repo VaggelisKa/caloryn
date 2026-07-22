@@ -493,7 +493,8 @@ struct PortionPickerView: View {
                 date: logDate,
                 mealType: selectedMeal,
                 foodItem: foodItem,
-                portionGrams: portionGrams
+                portionGrams: portionGrams,
+                snackIndex: snackIndex
             )
             try? modelContext.save()
         } else {
@@ -503,7 +504,8 @@ struct PortionPickerView: View {
                 mealType: selectedMeal,
                 logDate: logDate,
                 isNewFood: isNewFood,
-                modelContext: modelContext
+                modelContext: modelContext,
+                snackIndex: snackIndex
             )
             try? modelContext.save()
         }

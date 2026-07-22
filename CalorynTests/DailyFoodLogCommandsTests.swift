@@ -43,6 +43,25 @@ final class DailyFoodLogCommandsTests: XCTestCase {
         XCTAssertEqual(entry.snackIndex, 1)
     }
 
+    func testLogFoodPreservesExplicitSnackSection() throws {
+        let context = try makeContext()
+        let food = makeTestFoodItem(name: "Trail Mix")
+        context.insert(food)
+
+        let entry = DailyFoodLogCommands.logFood(
+            foodItem: food,
+            portionGrams: 45,
+            mealType: .snack,
+            logDate: makeTestDate(year: 2026, month: 3, day: 4),
+            isNewFood: false,
+            modelContext: context,
+            snackIndex: 3
+        )
+
+        XCTAssertEqual(entry.mealType, .snack)
+        XCTAssertEqual(entry.snackIndex, 3)
+    }
+
     func testLogFoodInsertsNewFoodAndEntryTogether() throws {
         let context = try makeContext()
         let food = makeTestFoodItem(name: "Apple", isCustom: false)
@@ -196,6 +215,30 @@ final class DailyFoodLogCommandsTests: XCTestCase {
 
         XCTAssertEqual(entry.mealType, .dinner)
         XCTAssertEqual(entry.snackIndex, 0)
+    }
+
+    func testUpdateLoggedEntryPreservesExplicitSnackSection() throws {
+        let context = try makeContext()
+        let food = makeTestFoodItem(name: "Fruit")
+        let entry = makeTestEntry(
+            mealType: .snack,
+            foodItem: food,
+            snackIndex: 3
+        )
+        context.insert(food)
+        context.insert(entry)
+
+        DailyFoodLogCommands.updateLoggedEntry(
+            entry,
+            date: makeTestDate(year: 2026, month: 3, day: 7),
+            mealType: .snack,
+            foodItem: food,
+            portionGrams: 160,
+            snackIndex: 3
+        )
+
+        XCTAssertEqual(entry.mealType, .snack)
+        XCTAssertEqual(entry.snackIndex, 3)
     }
 
     func testDeleteLoggedEntryRemovesOnlyTheLogEntry() throws {

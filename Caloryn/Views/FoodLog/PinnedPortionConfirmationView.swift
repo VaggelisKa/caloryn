@@ -5,6 +5,7 @@ struct PinnedPortionConfirmationView: View {
     let foodItem: FoodItem
     let mealType: MealType
     let logDate: Date
+    let snackIndex: Int
     var onLogged: (() -> Void)?
 
     @Environment(\.dismiss) private var dismiss
@@ -17,22 +18,26 @@ struct PinnedPortionConfirmationView: View {
         foodItem: FoodItem,
         mealType: MealType,
         logDate: Date,
+        snackIndex: Int = 0,
         onLogged: (() -> Void)? = nil
     ) {
         self.foodItem = foodItem
         self.mealType = mealType
         self.logDate = logDate
+        self.snackIndex = DailyFoodLogCommands.normalizedSnackIndex(
+            for: mealType,
+            requestedSnackIndex: snackIndex
+        )
         self.onLogged = onLogged
         _portionGrams = State(initialValue: PinnedFoodLogging.suggestedPortion(for: foodItem))
     }
 
     private var destinationDescription: String {
-        "\(logDate.shortFormatted) · \(mealType.displayName)"
+        "\(logDate.shortFormatted) · \(mealType.displayName(snackIndex: snackIndex))"
     }
 
     private var maximumPortion: Double {
-        let suggestedLimit = ceil(PinnedFoodLogging.suggestedPortion(for: foodItem) * 4 / 5) * 5
-        return min(100_000, max(500, suggestedLimit))
+        PinnedFoodLogging.maximumConfirmationPortion(for: foodItem)
     }
 
     private var calories: Double {
@@ -135,7 +140,8 @@ struct PinnedPortionConfirmationView: View {
             for: foodItem,
             portionGrams: portionGrams,
             destinationMeal: mealType,
-            destinationDate: logDate
+            destinationDate: logDate,
+            destinationSnackIndex: snackIndex
         )
 
         do {

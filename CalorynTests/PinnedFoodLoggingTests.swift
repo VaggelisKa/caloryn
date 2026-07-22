@@ -213,6 +213,52 @@ final class PinnedFoodLoggingTests: XCTestCase {
         XCTAssertEqual(food.lastUsed, now)
     }
 
+    func testOneTapLogPreservesExplicitSnackSlot() throws {
+        let context = ModelContext(try makeContainer())
+        let food = makeTestFoodItem(name: "Afternoon Snack")
+        context.insert(food)
+        let previous = makeTestEntry(
+            date: makeTestDate(year: 2026, month: 7, day: 18),
+            mealType: .snack,
+            foodItem: food,
+            portionGrams: 80,
+            snackIndex: 1
+        )
+        context.insert(previous)
+        try context.save()
+        let destination = makeTestDate(year: 2026, month: 7, day: 21)
+        let plan = PinnedFoodLogging.plan(
+            for: food,
+            destinationMeal: .snack,
+            destinationDate: destination,
+            destinationSnackIndex: 3
+        )
+
+        let logged = try PinnedFoodLogging.log(
+            plan: plan,
+            food: food,
+            modelContext: context
+        )
+
+        XCTAssertEqual(plan.destinationSnackIndex, 3)
+        XCTAssertEqual(logged.mealType, .snack)
+        XCTAssertEqual(logged.snackIndex, 3)
+    }
+
+    func testLargeSuggestedPortionFitsWithinConfirmationRange() {
+        let food = makeTestFoodItem(
+            name: "Large Recipe",
+            defaultServingG: 1_000
+        )
+
+        let suggested = PinnedFoodLogging.suggestedPortion(for: food)
+        let maximum = PinnedFoodLogging.maximumConfirmationPortion(for: food)
+
+        XCTAssertEqual(suggested, 1_000)
+        XCTAssertEqual(maximum, 4_000)
+        XCTAssertLessThanOrEqual(suggested, maximum)
+    }
+
     func testEditingLatestLogImmediatelyChangesNextPinnedPortion() throws {
         let context = ModelContext(try makeContainer())
         let food = makeTestFoodItem(name: "Editable Favorite")
