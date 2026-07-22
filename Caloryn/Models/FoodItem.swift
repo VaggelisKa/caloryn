@@ -183,6 +183,11 @@ final class FoodItem {
 
     var lastUsed: Date = Date()
 
+    // Optional storage keeps the schema additive for existing SwiftData /
+    // CloudKit stores. A nil value is the migrated, never-pinned state.
+    var isPinnedRaw: Bool?
+    var pinnedAt: Date?
+
     @Relationship(deleteRule: .cascade, inverse: \FoodLogEntry.foodItem)
     var logEntries: [FoodLogEntry]?
 
@@ -290,6 +295,23 @@ final class FoodItem {
         }
         set {
             produceKindRaw = newValue.rawValue
+        }
+    }
+
+    var isPinned: Bool {
+        isPinnedRaw ?? false
+    }
+
+    func setPinned(_ pinned: Bool, at date: Date = Date()) {
+        let wasPinned = isPinned
+        isPinnedRaw = pinned
+
+        if pinned {
+            if !wasPinned || pinnedAt == nil {
+                pinnedAt = date
+            }
+        } else {
+            pinnedAt = nil
         }
     }
 
