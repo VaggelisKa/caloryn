@@ -33,6 +33,10 @@ struct FoodLogEntrySnapshot: Codable, Equatable {
     var nutriscoreGradeSnapshot: String?
     var produceKindSnapshotRaw: String?
     var produceItemsSnapshot: [FoodLogProduceItemSnapshot]?
+    var lookupProviderSnapshotRaw: String?
+    var dataSourceSnapshotRaw: String?
+    var nutritionCompletenessSnapshotRaw: String?
+    var recoveredByFallbackSnapshotRaw: Bool?
 
     init(entry: FoodLogEntry) {
         sourceFoodID = entry.foodItem?.id
@@ -44,6 +48,10 @@ struct FoodLogEntrySnapshot: Codable, Equatable {
         nutriscoreGradeSnapshot = entry.nutriscoreGradeSnapshot
         produceKindSnapshotRaw = entry.produceKindSnapshotRaw
         produceItemsSnapshot = entry.produceItemsSnapshot
+        lookupProviderSnapshotRaw = entry.lookupProviderSnapshotRaw
+        dataSourceSnapshotRaw = entry.dataSourceSnapshotRaw
+        nutritionCompletenessSnapshotRaw = entry.nutritionCompletenessSnapshotRaw
+        recoveredByFallbackSnapshotRaw = entry.recoveredByFallbackSnapshotRaw
     }
 
     init(
@@ -63,6 +71,11 @@ struct FoodLogEntrySnapshot: Codable, Equatable {
         nutrition = foodItem.nutrition(forGrams: portionGrams)
         nutriscoreGradeSnapshot = foodItem.nutriscoreGrade
         produceKindSnapshotRaw = foodItem.produceKind.rawValue
+        let provenance = foodItem.provenance
+        lookupProviderSnapshotRaw = provenance.provider?.rawValue
+        dataSourceSnapshotRaw = provenance.source.rawValue
+        nutritionCompletenessSnapshotRaw = provenance.completeness.rawValue
+        recoveredByFallbackSnapshotRaw = provenance.recoveredByFallback
 
         if foodItem.isRecipe,
            let ingredients = foodItem.recipeIngredients,
@@ -155,6 +168,16 @@ final class FoodLogEntry {
     /// ingredients; nil for non-recipe entries and legacy entries.
     var produceItemsSnapshotRaw: String?
 
+    // MARK: Food provenance snapshot (issue #72)
+    //
+    // Optional fields migrate existing entries without fabricating a source.
+    // New and updated entries always snapshot the saved food's provider,
+    // source, completeness, and fallback-recovery state.
+    var lookupProviderSnapshotRaw: String?
+    var dataSourceSnapshotRaw: String?
+    var nutritionCompletenessSnapshotRaw: String?
+    var recoveredByFallbackSnapshotRaw: Bool?
+
     init(
         date: Date,
         mealType: MealType,
@@ -202,6 +225,10 @@ final class FoodLogEntry {
         nutriscoreGradeSnapshot = snapshot.nutriscoreGradeSnapshot
         produceKindSnapshotRaw = snapshot.produceKindSnapshotRaw
         produceItemsSnapshot = snapshot.produceItemsSnapshot
+        lookupProviderSnapshotRaw = snapshot.lookupProviderSnapshotRaw
+        dataSourceSnapshotRaw = snapshot.dataSourceSnapshotRaw
+        nutritionCompletenessSnapshotRaw = snapshot.nutritionCompletenessSnapshotRaw
+        recoveredByFallbackSnapshotRaw = snapshot.recoveredByFallbackSnapshotRaw
     }
 
     func updateFromSnapshot(
@@ -235,6 +262,7 @@ final class FoodLogEntry {
         apply(nutrition: nutrition)
         self.foodName = foodItem.name
         snapshotQuality(from: foodItem)
+        snapshotProvenance(from: foodItem)
     }
 
     private func apply(nutrition: NutritionValues) {
@@ -286,6 +314,14 @@ final class FoodLogEntry {
         }
     }
 
+    private func snapshotProvenance(from foodItem: FoodItem) {
+        let provenance = foodItem.provenance
+        lookupProviderSnapshotRaw = provenance.provider?.rawValue
+        dataSourceSnapshotRaw = provenance.source.rawValue
+        nutritionCompletenessSnapshotRaw = provenance.completeness.rawValue
+        recoveredByFallbackSnapshotRaw = provenance.recoveredByFallback
+    }
+
     /// True when this entry carries a quality snapshot. False only for legacy
     /// entries created before quality snapshots existed.
     var hasQualitySnapshot: Bool {
@@ -327,5 +363,21 @@ final class FoodLogEntry {
     /// which is distinct from a known `.unclassified` value.
     var historicalProduceKind: ProduceKind? {
         hasQualitySnapshot ? produceKindSnapshot : foodItem?.produceKind
+    }
+
+    var hasProvenanceSnapshot: Bool {
+        dataSourceSnapshotRaw != nil || nutritionCompletenessSnapshotRaw != nil
+    }
+
+    var historicalProvenance: FoodProvenance {
+        if hasProvenanceSnapshot {
+            return FoodProvenance(
+                provider: lookupProviderSnapshotRaw.flatMap(FoodSearchProvider.init(rawValue:)),
+                source: dataSourceSnapshotRaw.flatMap(FoodDataSource.init(rawValue:)) ?? .unknown,
+                completeness: nutritionCompletenessSnapshotRaw.flatMap(NutritionCompleteness.init(rawValue:)) ?? .unknown,
+                recoveredByFallback: recoveredByFallbackSnapshotRaw ?? false
+            )
+        }
+        return foodItem?.provenance ?? .unknown
     }
 }

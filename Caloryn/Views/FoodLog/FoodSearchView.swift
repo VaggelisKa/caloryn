@@ -77,13 +77,14 @@ struct FoodSearchView: View {
     @Query(sort: \MealTemplate.updatedAt, order: .reverse) private var mealTemplates: [MealTemplate]
 
     @State private var searchService = FoodSearchService()
-    @State private var searchText = ""
-    @State private var selectedProduct: OpenFoodFactsProduct?
+    @State private var searchText = FoodSearchService.debugInitialSearchText
+    @State private var selectedResult: FoodSearchResult?
     @State private var selectedFoodItem: FoodItem?
     @State private var showingScanner = false
     @State private var showingCustomFoodForm = false
     @State private var isLookingUpBarcode = false
-    @State private var barcodeLookupError: String?
+    @State private var barcodeLookupError = FoodSearchService.debugInitialBarcodeFailure
+    @State private var pendingBarcode: String?
     @State private var favoriteErrorMessage: String?
     @State private var showsAllFavorites = false
     @State private var mealErrorMessage: String?
@@ -234,8 +235,8 @@ struct FoodSearchView: View {
                 }
                 .animation(selectionChangeAnimation, value: selectedItemCount)
             }
-            .navigationDestination(item: $selectedProduct) { product in
-                let food = searchService.createFoodItem(from: product)
+            .navigationDestination(item: $selectedResult) { result in
+                let food = searchService.createFoodItem(from: result)
                 PortionPickerView(
                     foodItem: food,
                     mealType: mealType,
@@ -296,6 +297,10 @@ struct FoodSearchView: View {
                 if automaticallyFocusSearch {
                     isSearchFocused = true
                 }
+            }
+            .task(id: pendingBarcode) {
+                guard let pendingBarcode else { return }
+                await performBarcodeLookup(pendingBarcode)
             }
         }
     }
@@ -519,18 +524,9 @@ struct FoodSearchView: View {
             if searchService.isSearching && !hasLocalMatches {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if let error = searchService.errorMessage, !hasLocalMatches {
-                ContentUnavailableView {
-                    Label("Food Search Unavailable", systemImage: "wifi.exclamationmark")
-                } description: {
-                    Text(error)
-                } actions: {
-                    Button("Try Again") {
-                        searchService.search(query: searchText)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
-                    .tint(CalorynTheme.sage)
+            } else if let failure = searchService.failure, !hasLocalMatches {
+                FoodLookupFailureView(failure: failure) {
+                    searchService.search(query: searchText)
                 }
             } else if searchService.searchResults.isEmpty && !hasLocalMatches {
                 ContentUnavailableView(
@@ -611,13 +607,13 @@ struct FoodSearchView: View {
                                 nonStickySectionTitle("Search Results")
                             }
 
-                            ForEach(searchService.searchResults) { product in
-                                remoteProductRow(product)
+                            ForEach(searchService.searchResults) { result in
+                                remoteProductRow(result)
                             }
                         } else {
                             Section {
-                                ForEach(searchService.searchResults) { product in
-                                    remoteProductRow(product)
+                                ForEach(searchService.searchResults) { result in
+                                    remoteProductRow(result)
                                 }
                             } header: {
                                 if hasLocalMatches {
@@ -656,7 +652,8 @@ struct FoodSearchView: View {
                         nutriscoreGrade: food.nutriscoreGrade,
                         servingDescription: food.servingDescription,
                         isCustom: true,
-                        showsTypeBadge: false
+                        showsTypeBadge: false,
+                        provenance: food.provenance
                     )
                 }
                 .contentShape(Rectangle())
@@ -682,7 +679,8 @@ struct FoodSearchView: View {
                         caloriesPer100g: food.caloriesPer100g,
                         caloriesPerServing: food.calories(forGrams: food.defaultServingG ?? 100),
                         isRecipe: true,
-                        showsTypeBadge: false
+                        showsTypeBadge: false,
+                        provenance: food.provenance
                     )
                 }
                 .contentShape(Rectangle())
@@ -706,7 +704,8 @@ struct FoodSearchView: View {
                     brand: food.brand,
                     caloriesPer100g: food.caloriesPer100g,
                     nutriscoreGrade: food.nutriscoreGrade,
-                    servingDescription: food.servingDescription
+                    servingDescription: food.servingDescription,
+                    provenance: food.provenance
                 )
             }
             .contentShape(Rectangle())
@@ -715,9 +714,10 @@ struct FoodSearchView: View {
         .accessibilityValue(selectionAccessibilityValue(for: .food(food.id)))
     }
 
-    private func remoteProductRow(_ product: OpenFoodFactsProduct) -> some View {
-        Button {
-            handleProductSelection(product)
+    private func remoteProductRow(_ result: FoodSearchResult) -> some View {
+        let product = result.product
+        return Button {
+            handleProductSelection(result)
         } label: {
             selectionRow(
                 isSelected: isSelected(.remoteProduct(product.id))
@@ -732,7 +732,8 @@ struct FoodSearchView: View {
                             : nil
                     },
                     servingDescription: product.formattedServingDescription,
-                    caloriesPerServing: product.caloriesPerServing
+                    caloriesPerServing: product.caloriesPerServing,
+                    provenance: result.provenance
                 )
             }
             .contentShape(Rectangle())
@@ -930,7 +931,8 @@ struct FoodSearchView: View {
         )
     }
 
-    private func toggleRemoteProductSelection(_ product: OpenFoodFactsProduct) {
+    private func toggleRemoteProductSelection(_ result: FoodSearchResult) {
+        let product = result.product
         let id = MultiAddSelectionGroup.ID.remoteProduct(product.id)
         if multiAddSelection.contains(id) {
             withAnimation(selectionChangeAnimation) {
@@ -940,7 +942,7 @@ struct FoodSearchView: View {
             withAnimation(selectionChangeAnimation) {
                 multiAddSelection.toggle(
                     .remoteProduct(
-                        product,
+                        result,
                         searchService: searchService,
                         meal: mealType,
                         snackIndex: snackIndex
@@ -1141,10 +1143,14 @@ struct FoodSearchView: View {
         VStack(spacing: 16) {
             Spacer()
             if let error = barcodeLookupError {
-                Image(systemName: "barcode.viewfinder")
+                let presentation = error.presentation
+                Image(systemName: presentation.systemImage)
                     .font(CalorynTheme.emptyStateIcon)
                     .foregroundStyle(CalorynTheme.textSecondary)
-                Text(error)
+                Text(presentation.title)
+                    .font(CalorynTheme.sectionTitle)
+                    .foregroundStyle(CalorynTheme.textPrimary)
+                Text(presentation.message)
                     .font(CalorynTheme.bodyText)
                     .foregroundStyle(CalorynTheme.textSecondary)
                     .multilineTextAlignment(.center)
@@ -1155,12 +1161,14 @@ struct FoodSearchView: View {
                     .buttonStyle(.bordered)
                     .tint(CalorynTheme.textSecondary)
 
-                    Button("Try Again") {
-                        barcodeLookupError = nil
-                        showingScanner = true
+                    if presentation.retryTitle != nil || error == .notFound || error == .invalidRequest {
+                        Button(error == .notFound ? "Scan Another" : "Try Again") {
+                            barcodeLookupError = nil
+                            showingScanner = true
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(CalorynTheme.sage)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(CalorynTheme.sage)
                 }
             } else {
                 ProgressView()
@@ -1177,21 +1185,28 @@ struct FoodSearchView: View {
     private func handleScannedBarcode(_ code: String) {
         isLookingUpBarcode = true
         barcodeLookupError = nil
+        pendingBarcode = code
+    }
 
-        Task {
-            do {
-                let product = try await searchService.lookupBarcode(code)
-                isLookingUpBarcode = false
-                handleProductSelection(product)
-            } catch is BarcodeLookupError {
-                isLookingUpBarcode = false
-                barcodeLookupError = "No results found\nfor this barcode."
-                triggerBarcodeLookupHaptic(.warning)
-            } catch {
-                isLookingUpBarcode = false
-                barcodeLookupError = "Lookup failed.\nCheck your connection."
-                triggerBarcodeLookupHaptic(.error)
-            }
+    private func performBarcodeLookup(_ code: String) async {
+        do {
+            let result = try await searchService.lookupBarcode(code)
+            guard !Task.isCancelled else { return }
+            isLookingUpBarcode = false
+            pendingBarcode = nil
+            handleProductSelection(result)
+        } catch let error as FoodLookupError {
+            guard !Task.isCancelled, error != .cancelled else { return }
+            isLookingUpBarcode = false
+            pendingBarcode = nil
+            barcodeLookupError = error
+            triggerBarcodeLookupHaptic(error == .notFound ? .warning : .error)
+        } catch {
+            guard !Task.isCancelled else { return }
+            isLookingUpBarcode = false
+            pendingBarcode = nil
+            barcodeLookupError = .unavailable
+            triggerBarcodeLookupHaptic(.error)
         }
     }
 
@@ -1201,16 +1216,16 @@ struct FoodSearchView: View {
         generator.notificationOccurred(type)
     }
 
-    private func handleProductSelection(_ product: OpenFoodFactsProduct) {
+    private func handleProductSelection(_ result: FoodSearchResult) {
         switch mode {
         case .logging:
             if isSelectingMultiple {
-                toggleRemoteProductSelection(product)
+                toggleRemoteProductSelection(result)
             } else {
-                selectedProduct = product
+                selectedResult = result
             }
         case .ingredientSelection(let handler), .mealComponentSelection(let handler):
-            let food = searchService.createFoodItem(from: product)
+            let food = searchService.createFoodItem(from: result)
             handler(food)
             dismiss()
         }
@@ -1230,6 +1245,27 @@ struct FoodSearchView: View {
         }
     }
 
+}
+
+private struct FoodLookupFailureView: View {
+    let failure: FoodLookupError
+    let onRetry: () -> Void
+
+    var body: some View {
+        let presentation = failure.presentation
+        ContentUnavailableView {
+            Label(presentation.title, systemImage: presentation.systemImage)
+        } description: {
+            Text(presentation.message)
+        } actions: {
+            if let retryTitle = presentation.retryTitle {
+                Button(retryTitle, action: onRetry)
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .tint(CalorynTheme.sage)
+            }
+        }
+    }
 }
 
 #Preview {

@@ -183,6 +183,10 @@ struct PortionPickerView: View {
             VStack(spacing: 24) {
                 foodHeader
 
+                if foodItem.provenance.source != .userEntered || foodItem.provenance.completeness != .complete {
+                    provenanceCard
+                }
+
                 caloriePreview
 
                 portionPicker
@@ -316,6 +320,41 @@ struct PortionPickerView: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 20)
         .glassCard()
+    }
+
+    private var provenanceCard: some View {
+        let provenance = foodItem.provenance
+
+        return VStack(alignment: .leading, spacing: 8) {
+            Label(provenance.source.detailLabel, systemImage: "checkmark.seal")
+                .font(CalorynTheme.caption)
+                .foregroundStyle(CalorynTheme.textSecondary)
+
+            if provenance.recoveredByFallback {
+                Label("Recovered using the backup food database", systemImage: "arrow.trianglehead.2.clockwise.rotate.90")
+                    .font(CalorynTheme.caption)
+                    .foregroundStyle(CalorynTheme.textSecondary)
+            }
+
+            if provenance.completeness == .partial {
+                Label(
+                    "Some nutrition values were not provided and appear as zero. Compare with the package label before logging.",
+                    systemImage: "exclamationmark.triangle.fill"
+                )
+                .font(CalorynTheme.caption)
+                .foregroundStyle(CalorynTheme.terracotta)
+            } else if provenance.completeness == .unknown {
+                Label(
+                    "Nutrition completeness was not recorded for this saved food.",
+                    systemImage: "questionmark.circle"
+                )
+                .font(CalorynTheme.caption)
+                .foregroundStyle(CalorynTheme.textSecondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+        .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
     }
 
     private var maxServingCount: Int {

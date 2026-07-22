@@ -39,6 +39,10 @@ final class RecipeIngredient {
     var serumProteinsPer100g: Double?
     var alcoholPer100g: Double?
     var produceKindRaw: String?
+    var lookupProviderRaw: String?
+    var dataSourceRaw: String?
+    var nutritionCompletenessRaw: String?
+    var recoveredByFallbackRaw: Bool?
 
     var sortOrder: Int = 0
     var createdAt: Date = Date()
@@ -80,7 +84,8 @@ final class RecipeIngredient {
         serumProteinsPer100g: Double? = nil,
         alcoholPer100g: Double? = nil,
         sortOrder: Int,
-        produceKind: ProduceKind = .unclassified
+        produceKind: ProduceKind = .unclassified,
+        provenance: FoodProvenance = .userEntered
     ) {
         self.id = UUID()
         self.name = name
@@ -118,6 +123,7 @@ final class RecipeIngredient {
         self.alcoholPer100g = alcoholPer100g
         self.sortOrder = sortOrder
         self.produceKindRaw = produceKind.rawValue
+        self.provenance = provenance
         self.createdAt = Date()
     }
 
@@ -157,7 +163,8 @@ final class RecipeIngredient {
             serumProteinsPer100g: foodItem.serumProteinsPer100g,
             alcoholPer100g: foodItem.alcoholPer100g,
             sortOrder: sortOrder,
-            produceKind: foodItem.produceKind
+            produceKind: foodItem.produceKind,
+            provenance: foodItem.provenance
         )
     }
 
@@ -167,6 +174,23 @@ final class RecipeIngredient {
         }
         set {
             produceKindRaw = newValue.rawValue
+        }
+    }
+
+    var provenance: FoodProvenance {
+        get {
+            FoodProvenance(
+                provider: lookupProviderRaw.flatMap(FoodSearchProvider.init(rawValue:)),
+                source: dataSourceRaw.flatMap(FoodDataSource.init(rawValue:)) ?? .unknown,
+                completeness: nutritionCompletenessRaw.flatMap(NutritionCompleteness.init(rawValue:)) ?? .unknown,
+                recoveredByFallback: recoveredByFallbackRaw ?? false
+            )
+        }
+        set {
+            lookupProviderRaw = newValue.provider?.rawValue
+            dataSourceRaw = newValue.source.rawValue
+            nutritionCompletenessRaw = newValue.completeness.rawValue
+            recoveredByFallbackRaw = newValue.recoveredByFallback
         }
     }
 

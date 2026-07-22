@@ -10,6 +10,7 @@ struct FoodRowView: View {
     var isCustom: Bool = false
     var isRecipe: Bool = false
     var showsTypeBadge: Bool = true
+    var provenance: FoodProvenance? = nil
 
     @AppStorage("showNutriscore") private var showNutriscore = true
 
@@ -55,6 +56,24 @@ struct FoodRowView: View {
                         .foregroundStyle(CalorynTheme.textSecondary)
                         .lineLimit(1)
                 }
+
+                if let provenance, provenance.source != .userEntered {
+                    HStack(spacing: 6) {
+                        Label(provenance.source.shortLabel, systemImage: "checkmark.seal")
+
+                        if provenance.recoveredByFallback {
+                            Text("Recovered")
+                        }
+
+                        if let warning = provenance.completeness.warningLabel {
+                            Label(warning, systemImage: "exclamationmark.triangle.fill")
+                                .foregroundStyle(CalorynTheme.terracotta)
+                        }
+                    }
+                    .font(CalorynTheme.numericMicroCaption)
+                    .foregroundStyle(CalorynTheme.textSecondary)
+                    .lineLimit(1)
+                }
             }
 
             Spacer()
@@ -80,6 +99,7 @@ struct FoodRowView: View {
             }
         }
         .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
     }
 }
 
