@@ -67,6 +67,9 @@ struct HistoryCalorieTrendProjection {
     let loggedDayCount: Int
     let onTrackLoggedDayCount: Int
     let averageCaloriesPerLoggedDay: Double
+    let averageTargetPerLoggedDay: Int
+    let loggedDayTargetTotal: Int
+    let hasEstimatedTargets: Bool
     let totalCalories: Double
     let biggestInconsistencyText: String?
     let points: [HistoryCalorieTrendPoint]
@@ -78,6 +81,9 @@ struct HistoryCalorieTrendProjection {
         loggedDayCount = summary.loggedDayCount
         onTrackLoggedDayCount = summary.onTrackLoggedDayCount
         averageCaloriesPerLoggedDay = summary.averageCaloriesPerLoggedDay
+        averageTargetPerLoggedDay = summary.averageTargetPerLoggedDay
+        loggedDayTargetTotal = summary.loggedDayTargetTotal
+        hasEstimatedTargets = summary.hasEstimatedTargets
         totalCalories = summary.days
             .filter(\.isLogged)
             .reduce(0) { $0 + $1.calories }
@@ -93,7 +99,7 @@ struct HistoryCalorieTrendProjection {
                 let status = HistoryGoalStatus.calorieStatus(
                     calories: averageCalories,
                     loggedCount: week.loggedDays,
-                    targetCalories: summary.dailyCalorieTarget
+                    targetCalories: week.targetPerLoggedDay
                 )
                 let label = "W\(offset + 1)"
 
@@ -101,7 +107,7 @@ struct HistoryCalorieTrendProjection {
                     id: "week-\(week.id.ISO8601Format())",
                     index: Double(offset),
                     value: averageCalories,
-                    targetDelta: Int(averageCalories.rounded()) - summary.dailyCalorieTarget,
+                    targetDelta: Int(averageCalories.rounded()) - week.targetPerLoggedDay,
                     status: status,
                     isLogged: week.loggedDays > 0,
                     xAxisLabel: label,
@@ -152,17 +158,23 @@ struct HistoryCalorieTrendProjection {
 
     var averageDifferenceText: String {
         guard hasLoggedData else { return "No logged days" }
-        return Self.differenceText(Int(averageCaloriesPerLoggedDay.rounded()) - dailyCalorieTarget)
+        return Self.differenceText(Int(averageCaloriesPerLoggedDay.rounded()) - averageTargetPerLoggedDay)
     }
 
     var totalDifferenceText: String {
         guard hasLoggedData else { return "No logged days" }
-        let targetTotal = dailyCalorieTarget * loggedDayCount
-        return Self.differenceText(Int(totalCalories.rounded()) - targetTotal)
+        return Self.differenceText(Int(totalCalories.rounded()) - loggedDayTargetTotal)
     }
 
     var totalTargetDelta: Int {
-        Int(totalCalories.rounded()) - dailyCalorieTarget * loggedDayCount
+        Int(totalCalories.rounded()) - loggedDayTargetTotal
+    }
+
+    /// Shown when some days in range use the documented fallback target
+    /// instead of a persisted daily goal snapshot.
+    var estimatedTargetNoteText: String? {
+        guard hasEstimatedTargets else { return nil }
+        return "Days without a saved daily goal are compared with your current target."
     }
 
     var totalTargetDeltaText: String {
@@ -220,19 +232,19 @@ struct HistoryCalorieTrendProjection {
         case .quarter:
             let loggedWeeks = summary.weeklyRollups.filter { $0.loggedDays > 0 }
             guard let week = loggedWeeks.max(by: { lhs, rhs in
-                abs(weeklyDelta(lhs, target: summary.dailyCalorieTarget))
-                    < abs(weeklyDelta(rhs, target: summary.dailyCalorieTarget))
+                abs(weeklyDelta(lhs, target: lhs.targetPerLoggedDay))
+                    < abs(weeklyDelta(rhs, target: rhs.targetPerLoggedDay))
             }) else {
                 return nil
             }
 
             if loggedWeeks.allSatisfy({
-                weeklyStatus($0, target: summary.dailyCalorieTarget) == .onTrack
+                weeklyStatus($0, target: $0.targetPerLoggedDay) == .onTrack
             }) {
                 return "Most stable: logged weeks stayed near target"
             }
 
-            return "Biggest swing: week of \(week.startDate.dayMonthFormatted), \(deltaText(weeklyDelta(week, target: summary.dailyCalorieTarget), unit: "kcal/day"))"
+            return "Biggest swing: week of \(week.startDate.dayMonthFormatted), \(deltaText(weeklyDelta(week, target: week.targetPerLoggedDay), unit: "kcal/day"))"
 
         case .week, .twoWeeks, .month:
             let loggedDays = summary.days.filter(\.isLogged)

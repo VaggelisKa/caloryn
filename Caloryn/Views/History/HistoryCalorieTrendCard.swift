@@ -62,6 +62,13 @@ struct HistoryCalorieTrendCard: View {
         VStack(alignment: .leading, spacing: 14) {
             header
             chart
+
+            if let estimatedTargetNoteText = projection.estimatedTargetNoteText {
+                Text(estimatedTargetNoteText)
+                    .font(CalorynTheme.microCaption)
+                    .foregroundStyle(CalorynTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .historyCard()
         .accessibilityElement(children: .contain)
@@ -224,8 +231,8 @@ struct HistoryCalorieTrendCard: View {
     private var averageDifferenceColor: Color {
         guard hasLoggedData else { return CalorynTheme.textSecondary }
         return color(
-            forDifference: Double(Int(averageCalories.rounded()) - projection.dailyCalorieTarget),
-            target: Double(projection.dailyCalorieTarget)
+            forDifference: Double(Int(averageCalories.rounded()) - projection.averageTargetPerLoggedDay),
+            target: Double(projection.averageTargetPerLoggedDay)
         )
     }
 
@@ -235,7 +242,7 @@ struct HistoryCalorieTrendCard: View {
 
     private var totalDifferenceColor: Color {
         guard hasLoggedData else { return CalorynTheme.textSecondary }
-        let targetTotal = projection.dailyCalorieTarget * projection.loggedDayCount
+        let targetTotal = projection.loggedDayTargetTotal
         return color(
             forDifference: Double(Int(totalCalories.rounded()) - targetTotal),
             target: Double(targetTotal)

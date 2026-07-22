@@ -106,10 +106,15 @@ struct HistoryAnalytics {
         profile: UserProfile?,
         range: HistoryRange,
         endDate: Date = .now,
-        calendar: Calendar = .current
+        calendar: Calendar = .current,
+        targetResolver: HistoryDayTargetResolver? = nil
     ) {
         self.range = range
-        let dailyCalorieTarget = profile?.dailyCalorieTarget ?? 2_000
+        // Without snapshots every day falls back to the current profile target,
+        // which matches the pre-snapshot behavior of History.
+        let resolver = targetResolver ?? HistoryDayTargetResolver(
+            fallbackTarget: profile?.dailyCalorieTarget ?? 2_000
+        )
 
         let groupedEntries = Dictionary(grouping: entries) { entry in
             calendar.startOfDay(for: entry.date)
@@ -121,13 +126,13 @@ struct HistoryAnalytics {
         current = HistoryPeriodSummary(
             dates: currentDates,
             entriesByDate: groupedEntries,
-            dailyCalorieTarget: dailyCalorieTarget,
+            targetResolver: resolver,
             calendar: calendar
         )
         previous = HistoryPeriodSummary(
             dates: previousDates,
             entriesByDate: groupedEntries,
-            dailyCalorieTarget: dailyCalorieTarget,
+            targetResolver: resolver,
             calendar: calendar
         )
         goalComparison = HistoryGoalComparison(current: current, previous: previous)
@@ -169,6 +174,9 @@ struct HistoryAnalytics {
 }
 
 struct HistoryPeriodSummary {
+    /// Reference target for period-level chart context (rounded average of the
+    /// per-day effective targets). Day and week statuses never use this value —
+    /// they compare against their own per-day targets.
     let dailyCalorieTarget: Int
     let days: [HistoryDaySummary]
     let weeklyRollups: [HistoryWeekSummary]
@@ -203,21 +211,47 @@ struct HistoryPeriodSummary {
         count(for: .onTrack)
     }
 
+    /// Sum of the effective targets across logged days, for honest period totals.
+    var loggedDayTargetTotal: Int {
+        days.filter(\.isLogged).reduce(0) { $0 + $1.dailyCalorieTarget }
+    }
+
+    /// Rounded average effective target across logged days; falls back to the
+    /// period reference target when nothing is logged.
+    var averageTargetPerLoggedDay: Int {
+        let loggedDays = days.filter(\.isLogged)
+        guard !loggedDays.isEmpty else { return dailyCalorieTarget }
+        return Int((Double(loggedDayTargetTotal) / Double(loggedDays.count)).rounded())
+    }
+
+    /// `true` when at least one logged day has no persisted goal snapshot and
+    /// uses the documented current-profile fallback target. Unlogged days are
+    /// ignored: nothing is compared against their target, so flagging them
+    /// would warn about precision the reader was never shown.
+    var hasEstimatedTargets: Bool {
+        days.contains { $0.isLogged && $0.isTargetEstimated }
+    }
+
     init(
         dates: [Date],
         entriesByDate: [Date: [FoodLogEntry]],
-        dailyCalorieTarget: Int,
+        targetResolver: HistoryDayTargetResolver,
         calendar: Calendar
     ) {
-        self.dailyCalorieTarget = dailyCalorieTarget
-        self.days = dates.map { date in
-            HistoryDaySummary(
+        let days = dates.map { date -> HistoryDaySummary in
+            let target = targetResolver.target(for: date, calendar: calendar)
+            return HistoryDaySummary(
                 date: date,
                 entries: entriesByDate[calendar.startOfDay(for: date)] ?? [],
-                dailyCalorieTarget: dailyCalorieTarget
+                dailyCalorieTarget: target.calories,
+                isTargetEstimated: target.isEstimated
             )
         }
-        self.weeklyRollups = Self.weeklyRollups(from: self.days)
+        self.days = days
+        self.dailyCalorieTarget = days.isEmpty
+            ? targetResolver.fallbackTarget
+            : Int((Double(days.reduce(0) { $0 + $1.dailyCalorieTarget }) / Double(days.count)).rounded())
+        self.weeklyRollups = Self.weeklyRollups(from: days)
     }
 
     func count(for status: HistoryGoalStatus) -> Int {
@@ -305,6 +339,9 @@ struct HistoryDaySummary: Identifiable {
     let date: Date
     let entryCount: Int
     let dailyCalorieTarget: Int
+    /// `true` when the target is the documented fallback (current profile
+    /// target) because no goal snapshot exists for this day.
+    let isTargetEstimated: Bool
     let calories: Double
     let proteinG: Double
     let carbsG: Double
@@ -328,11 +365,13 @@ struct HistoryDaySummary: Identifiable {
     init(
         date: Date,
         entries: [FoodLogEntry],
-        dailyCalorieTarget: Int
+        dailyCalorieTarget: Int,
+        isTargetEstimated: Bool = false
     ) {
         self.date = date
         self.entries = entries
         self.dailyCalorieTarget = dailyCalorieTarget
+        self.isTargetEstimated = isTargetEstimated
         entryCount = entries.count
 
         let nutrition = entries.reduce(.zero) { $0 + $1.nutrition }
@@ -359,7 +398,8 @@ struct HistoryDaySummary: Identifiable {
             date: date,
             entries: entries,
             dailyCalorieTarget: dailyCalorieTarget,
-            status: status
+            status: status,
+            isTargetEstimated: isTargetEstimated
         )
     }
 
@@ -392,6 +432,8 @@ struct HistoryDaySummary: Identifiable {
 struct HistoryDayDetail: Identifiable {
     let date: Date
     let dailyCalorieTarget: Int
+    /// See `HistoryDaySummary.isTargetEstimated`.
+    let isTargetEstimated: Bool
     let entryCount: Int
     let totalPortionGrams: Double
     let calories: Double
@@ -421,10 +463,12 @@ struct HistoryDayDetail: Identifiable {
         date: Date,
         entries: [FoodLogEntry],
         dailyCalorieTarget: Int,
-        status: HistoryGoalStatus? = nil
+        status: HistoryGoalStatus? = nil,
+        isTargetEstimated: Bool = false
     ) {
         self.date = date
         self.dailyCalorieTarget = dailyCalorieTarget
+        self.isTargetEstimated = isTargetEstimated
         entryCount = entries.count
         totalPortionGrams = entries.reduce(0) { $0 + $1.portionGrams }
         let nutrition = entries.reduce(.zero) { $0 + $1.nutrition }
@@ -592,6 +636,13 @@ struct HistoryWeekSummary: Identifiable {
     let loggedDays: Int
     let onTrackDays: Int
     let averageCaloriesPerLoggedDay: Double
+    /// Rounded average effective target across the week's logged days (all
+    /// days when nothing is logged). Weekly status compares average calories
+    /// per logged day against this, so a later profile-target change cannot
+    /// rewrite a past week's status.
+    let targetPerLoggedDay: Int
+    /// `true` when any logged day in the week uses the fallback target.
+    let hasEstimatedTargets: Bool
 
     var id: Date { startDate }
 
@@ -615,6 +666,11 @@ struct HistoryWeekSummary: Identifiable {
         averageCaloriesPerLoggedDay = logged.isEmpty
             ? 0
             : logged.reduce(0) { $0 + $1.calories } / Double(logged.count)
+        let targetDays = logged.isEmpty ? days : logged
+        targetPerLoggedDay = targetDays.isEmpty
+            ? 0
+            : Int((Double(targetDays.reduce(0) { $0 + $1.dailyCalorieTarget }) / Double(targetDays.count)).rounded())
+        hasEstimatedTargets = targetDays.contains(where: \.isTargetEstimated)
     }
 }
 

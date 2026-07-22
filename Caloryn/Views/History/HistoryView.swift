@@ -6,6 +6,7 @@ struct HistoryView: View {
     // that helper early-exits when it reaches entries older than its window.
     @Query(sort: \FoodLogEntry.date, order: .reverse) private var allEntries: [FoodLogEntry]
     @Query(sort: \UserProfile.updatedAt, order: .reverse) private var profiles: [UserProfile]
+    @Query private var goalSnapshots: [DailyGoalSnapshot]
 
     @State private var historyState: HistoryViewState
     @State private var navigationPath: [HistoryDrillDownRoute] = []
@@ -70,7 +71,16 @@ struct HistoryView: View {
         HistoryAnalyticsRefreshID(
             profile: profile.map { HistoryProfileSignature(profile: $0) },
             entries: relevantEntries(startingAt: widestAnalyticsStartDate)
-                .map { HistoryEntrySignature(entry: $0) }
+                .map { HistoryEntrySignature(entry: $0) },
+            goalSnapshots: goalSnapshots
+                .map { HistoryGoalSnapshotSignature(snapshot: $0) }
+        )
+    }
+
+    private var targetResolver: HistoryDayTargetResolver {
+        HistoryDayTargetResolver(
+            fallbackTarget: profile?.dailyCalorieTarget ?? 2_000,
+            valuesByDayKey: DailyGoalSnapshotStore.latestValuesByDayKey(goalSnapshots)
         )
     }
 
@@ -128,7 +138,8 @@ struct HistoryView: View {
             analytics: HistoryAnalytics(
                 entries: relevantEntries(for: range),
                 profile: profile,
-                range: range
+                range: range,
+                targetResolver: targetResolver
             )
         )
     }
@@ -201,6 +212,19 @@ private struct HistoryCalorieTrendSnapshot: Hashable {
 private struct HistoryAnalyticsRefreshID: Equatable {
     let profile: HistoryProfileSignature?
     let entries: [HistoryEntrySignature]
+    let goalSnapshots: [HistoryGoalSnapshotSignature]
+}
+
+private struct HistoryGoalSnapshotSignature: Equatable {
+    let dayKey: String
+    let effectiveCalorieTarget: Int
+    let updatedAt: Date
+
+    init(snapshot: DailyGoalSnapshot) {
+        dayKey = snapshot.dayKey
+        effectiveCalorieTarget = snapshot.effectiveCalorieTarget
+        updatedAt = snapshot.updatedAt
+    }
 }
 
 private struct HistoryProfileSignature: Equatable {

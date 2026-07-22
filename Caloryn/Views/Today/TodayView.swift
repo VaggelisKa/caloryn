@@ -200,6 +200,9 @@ struct TodayView: View {
         .task(id: router.pendingRoute) {
             handlePendingRoute()
         }
+        .task(id: calorieBudget) {
+            recordDailyGoalSnapshotIfNeeded()
+        }
         .onDisappear {
             activeEnergyTracker.stopObserving()
         }
@@ -337,6 +340,24 @@ struct TodayView: View {
                 snackIndex: mealType == .snack ? 1 : 0
             )
         }
+    }
+
+    /// Persists today's effective calorie target so History can later compare
+    /// the day against the goal that actually applied. Only the current
+    /// calendar day is ever recorded (the store enforces this), and the last
+    /// write before midnight finalizes the day.
+    private func recordDailyGoalSnapshotIfNeeded() {
+        guard let profile else { return }
+        // Skip transient budgets while Health data is still loading so a
+        // dynamic day is not momentarily snapshotted without its adjustment.
+        guard !calorieBudget.isActivityLoading else { return }
+
+        DailyGoalSnapshotStore.recordSnapshot(
+            values: calorieBudget.goalSnapshotValues,
+            for: selectedDate,
+            profile: profile,
+            in: modelContext
+        )
     }
 
     private func deleteEntry(_ entry: FoodLogEntry) {
