@@ -51,22 +51,42 @@ struct ProduceVarietySummary {
         var uniqueItems: [String: ProduceVarietyItem] = [:]
 
         for entry in entries where entry.portionGrams > 0 {
-            guard let foodItem = entry.foodItem else { continue }
-
-            if foodItem.isRecipe, let ingredients = foodItem.recipeIngredients, !ingredients.isEmpty {
-                for ingredient in ingredients where ingredient.portionGrams > 0 {
+            if entry.hasQualitySnapshot {
+                if let snapshotItems = entry.produceItemsSnapshot {
+                    for item in snapshotItems {
+                        Self.insert(
+                            name: item.name,
+                            kind: item.kind,
+                            into: &uniqueItems
+                        )
+                    }
+                } else {
                     Self.insert(
-                        name: ingredient.name,
-                        kind: ingredient.produceKind,
+                        name: entry.foodName,
+                        kind: entry.produceKindSnapshot ?? .unclassified,
                         into: &uniqueItems
                     )
                 }
-            } else {
-                Self.insert(
-                    name: foodItem.name,
-                    kind: foodItem.produceKind,
-                    into: &uniqueItems
-                )
+            } else if let foodItem = entry.foodItem {
+                // Legacy entries (pre-snapshot) fall back to the live
+                // saved-food relationship, exactly as before snapshots
+                // existed. Once that food is deleted nothing is counted —
+                // classifications are never fabricated.
+                if foodItem.isRecipe, let ingredients = foodItem.recipeIngredients, !ingredients.isEmpty {
+                    for ingredient in ingredients where ingredient.portionGrams > 0 {
+                        Self.insert(
+                            name: ingredient.name,
+                            kind: ingredient.produceKind,
+                            into: &uniqueItems
+                        )
+                    }
+                } else {
+                    Self.insert(
+                        name: foodItem.name,
+                        kind: foodItem.produceKind,
+                        into: &uniqueItems
+                    )
+                }
             }
         }
 

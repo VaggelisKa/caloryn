@@ -83,6 +83,27 @@ func makeTestEntry(
     )
 }
 
+/// Simulates a pre-snapshot (legacy) log entry as it appears after lightweight
+/// migration: the quality snapshot fields are nil.
+@MainActor
+func makeLegacyTestEntry(
+    date: Date = makeTestDate(year: 2026, month: 1, day: 1),
+    mealType: MealType = .breakfast,
+    foodItem: FoodItem,
+    portionGrams: Double = 100
+) -> FoodLogEntry {
+    let entry = makeTestEntry(
+        date: date,
+        mealType: mealType,
+        foodItem: foodItem,
+        portionGrams: portionGrams
+    )
+    entry.nutriscoreGradeSnapshot = nil
+    entry.produceKindSnapshotRaw = nil
+    entry.produceItemsSnapshotRaw = nil
+    return entry
+}
+
 @MainActor
 func makeTestEntry(
     date: Date = makeTestDate(year: 2026, month: 1, day: 1),

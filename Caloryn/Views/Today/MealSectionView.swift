@@ -270,7 +270,7 @@ private struct MealEntryRow: View {
                         .foregroundStyle(CalorynTheme.textPrimary)
                         .lineLimit(1)
 
-                    if showNutriscore, let grade = entry.foodItem?.nutriscoreGrade {
+                    if showNutriscore, let grade = entry.historicalNutriscoreGrade {
                         NutriscoreBadge(grade: grade)
                     }
                 }

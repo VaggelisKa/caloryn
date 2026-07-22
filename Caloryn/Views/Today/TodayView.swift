@@ -66,7 +66,7 @@ struct TodayView: View {
     }
 
     private var nutriscoreDistribution: [(grade: String, count: Int)] {
-        let grades = todayEntries.compactMap { $0.foodItem?.nutriscoreGrade }
+        let grades = todayEntries.compactMap { $0.historicalNutriscoreGrade }
         let valid = ["a", "b", "c", "d", "e"]
         return valid.map { grade in
             (grade, grades.filter { $0.lowercased() == grade }.count)
@@ -74,7 +74,7 @@ struct TodayView: View {
     }
 
     private var hasNutriscoreData: Bool {
-        todayEntries.contains { $0.foodItem?.nutriscoreGrade != nil }
+        todayEntries.contains { $0.historicalNutriscoreGrade != nil }
     }
 
     private var coreMeals: [MealType] {
