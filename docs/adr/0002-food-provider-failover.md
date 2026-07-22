@@ -35,6 +35,10 @@ duplicates the primary, so it cannot loop or issue duplicate attempts.
 | HTTP 429 | No | Ask the user to try later; do not route around rate limits |
 | Invalid query/barcode or other HTTP 4xx | No | Ask the user to change the input |
 
+Barcode input is accepted only when it contains 4–32 ASCII digits (`0`–`9`).
+Validation happens before telemetry or a provider request; Unicode numerals are
+rejected as invalid input.
+
 When two eligible attempts fail, the final error stays conservative. A result
 is only “not found” when every completed attempt is not found. If one provider
 was unavailable, the final state is unavailable because absence was not
@@ -65,7 +69,20 @@ Provider, source, completeness, and fallback-recovery state are stored on
 `FoodItem`, copied to `RecipeIngredient`, and snapshotted on `FoodLogEntry`.
 All new SwiftData columns are optional raw fields. Lightweight migration leaves
 legacy rows nil, and computed accessors report `unknown` instead of inventing
-historical provenance.
+historical provenance. A legacy log entry never falls back to the mutable
+provenance on its linked food.
+
+The same optional provenance fields travel in final-main’s immutable
+`FoodLogEntrySnapshot` payload. That keeps authored Meals, explicit meal/snack
+routing, multi-add review and retry, and copy flows faithful to the source that
+was recorded even if the linked food is later edited or deleted. Older encoded
+snapshots decode with those fields absent and therefore remain `unknown`.
+
+Saving nutrition through the manual editor makes the user the source of the
+current values. It clears provider and fallback attribution and recomputes
+completeness from the three core macro fields. A cleared field is `partial`,
+while an explicitly entered zero is a present value. Log entries snapshot that
+edited provenance, so later edits cannot rewrite the warning shown for history.
 
 ### Operational telemetry and privacy
 
@@ -88,4 +105,7 @@ Lookups can issue one additional request after an eligible primary failure.
 Cancellation, offline state, authentication, validation, and rate limits never
 fan out. Saved and historical entries can explain source quality without
 depending on a live food relationship, while legacy data remains explicitly
-unknown.
+unknown. Search rows stay focused on product selection; the pre-log portion
+screen contains the source, fallback, and completeness explanation when it is
+relevant. Barcode misses use a message-only empty state because name search is
+already the primary control on the screen.

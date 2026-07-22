@@ -308,6 +308,25 @@ final class FoodItem {
         }
     }
 
+    /// Applying nutrition from the manual editor makes the user the source of
+    /// the current values. Provider and fallback attribution are intentionally
+    /// cleared, while field presence is retained as completeness metadata.
+    func applyUserNutritionEdit(
+        _ nutrition: NutritionValues,
+        suppliedProtein: Double?,
+        suppliedCarbohydrates: Double?,
+        suppliedFat: Double?
+    ) {
+        nutritionPer100g = nutrition
+        provenance = .manuallyEntered(
+            completeness: .assessingCoreNutrition(
+                protein: suppliedProtein,
+                carbohydrates: suppliedCarbohydrates,
+                fat: suppliedFat
+            )
+        )
+    }
+
     var categoryTags: [String] {
         get {
             Self.categoryTags(fromRaw: categoryTagsRaw)

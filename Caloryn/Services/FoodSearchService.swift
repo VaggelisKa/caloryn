@@ -190,6 +190,31 @@ enum FoodLookupError: LocalizedError, Equatable, Sendable {
         }
     }
 
+    func presentation(for operation: FoodLookupOperation) -> FoodLookupFailurePresentation {
+        switch (operation, self) {
+        case (.barcode, .notFound):
+            FoodLookupFailurePresentation(
+                title: "Barcode Not Found",
+                message: "This barcode isn’t in our food database.",
+                systemImage: "barcode.viewfinder",
+                retryTitle: nil
+            )
+        case (.barcode, .invalidRequest):
+            FoodLookupFailurePresentation(
+                title: "Barcode Couldn’t Be Read",
+                message: "This doesn’t appear to be a valid product barcode.",
+                systemImage: "barcode.viewfinder",
+                retryTitle: nil
+            )
+        default:
+            presentation
+        }
+    }
+
+    var dismissesWhenNameSearchBegins: Bool {
+        self == .notFound || self == .invalidRequest
+    }
+
     var errorDescription: String? {
         presentation.message
     }
@@ -649,7 +674,8 @@ final class FoodSearchService {
     }
 
     private static func isValidBarcode(_ value: String) -> Bool {
-        (4...32).contains(value.count) && value.allSatisfy(\.isNumber)
+        (4...32).contains(value.utf8.count)
+            && value.utf8.allSatisfy { (48...57).contains($0) }
     }
 
     private static func validNutriscoreGrade(_ raw: String?) -> String? {

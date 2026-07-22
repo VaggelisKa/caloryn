@@ -91,6 +91,92 @@ final class FoodProvenancePersistenceTests: XCTestCase {
         XCTAssertEqual(entry.historicalProvenance, .unknown)
     }
 
+    func testLaterFoodEditsDoNotRewriteLegacyProvenanceHistory() {
+        let food = makeTestFoodItem(
+            provenance: FoodProvenance(
+                provider: .calorynAPI,
+                source: .calorynCatalog,
+                completeness: .complete,
+                recoveredByFallback: false
+            )
+        )
+        let entry = makeTestEntry(foodItem: food)
+        entry.lookupProviderSnapshotRaw = nil
+        entry.dataSourceSnapshotRaw = nil
+        entry.nutritionCompletenessSnapshotRaw = nil
+        entry.recoveredByFallbackSnapshotRaw = nil
+
+        XCTAssertFalse(entry.hasProvenanceSnapshot)
+        XCTAssertEqual(entry.historicalProvenance, .unknown)
+
+        food.provenance = FoodProvenance(
+            provider: .openFoodFacts,
+            source: .openFoodFactsCommunity,
+            completeness: .partial,
+            recoveredByFallback: true
+        )
+
+        XCTAssertEqual(entry.historicalProvenance, .unknown)
+    }
+
+    func testUserNutritionEditsReplaceProviderAttributionAndSnapshotCompleteness() {
+        let food = makeTestFoodItem(
+            provenance: FoodProvenance(
+                provider: .openFoodFacts,
+                source: .openFoodFactsCommunity,
+                completeness: .complete,
+                recoveredByFallback: true
+            )
+        )
+        let editedNutrition = NutritionValues(
+            calories: 110,
+            proteinG: 12,
+            carbsG: 18,
+            fatG: 0,
+            fiberG: 3
+        )
+
+        food.applyUserNutritionEdit(
+            editedNutrition,
+            suppliedProtein: 12,
+            suppliedCarbohydrates: 18,
+            suppliedFat: nil
+        )
+
+        XCTAssertNil(food.provenance.provider)
+        XCTAssertEqual(food.provenance.source, .userEntered)
+        XCTAssertEqual(food.provenance.completeness, .partial)
+        XCTAssertFalse(food.provenance.recoveredByFallback)
+        XCTAssertNil(food.lookupProviderRaw)
+        XCTAssertEqual(food.dataSourceRaw, FoodDataSource.userEntered.rawValue)
+        XCTAssertEqual(food.nutritionCompletenessRaw, NutritionCompleteness.partial.rawValue)
+        XCTAssertEqual(food.recoveredByFallbackRaw, false)
+        XCTAssertEqual(food.provenance.completeness.warningLabel, "Some nutrition missing")
+        let partialEntry = makeTestEntry(foodItem: food)
+        XCTAssertEqual(partialEntry.historicalProvenance, food.provenance)
+        XCTAssertEqual(
+            partialEntry.historicalProvenance.completeness.warningLabel,
+            "Some nutrition missing"
+        )
+
+        food.applyUserNutritionEdit(
+            editedNutrition,
+            suppliedProtein: 12,
+            suppliedCarbohydrates: 18,
+            suppliedFat: 0
+        )
+
+        XCTAssertEqual(food.provenance, .userEntered)
+        XCTAssertEqual(food.nutritionCompletenessRaw, NutritionCompleteness.complete.rawValue)
+        XCTAssertNil(food.provenance.completeness.warningLabel)
+        let completeEntry = makeTestEntry(foodItem: food)
+        XCTAssertEqual(completeEntry.historicalProvenance, .userEntered)
+        XCTAssertNil(completeEntry.historicalProvenance.completeness.warningLabel)
+
+        // The earlier partial snapshot stays partial after a later complete edit.
+        XCTAssertEqual(partialEntry.historicalProvenance.completeness, .partial)
+    }
+
     func testRecipeIngredientCopiesProviderProvenance() {
         let provenance = FoodProvenance(
             provider: .openFoodFacts,

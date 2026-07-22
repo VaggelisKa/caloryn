@@ -13,6 +13,23 @@ final class MultiAddSelectionTests: XCTestCase {
         )
     }
 
+    func testIngredientAndMealComponentModesRemainSingleSelectWithFinalMainBehavior() {
+        let ingredient = FoodSearchMode.ingredientSelection { _ in }
+        let mealComponent = FoodSearchMode.mealComponentSelection { _ in }
+
+        XCTAssertTrue(ingredient.isSelection)
+        XCTAssertTrue(ingredient.isIngredientSelection)
+        XCTAssertFalse(ingredient.includesRecipes)
+        XCTAssertTrue(ingredient.allowsManualEntryCreation)
+
+        XCTAssertTrue(mealComponent.isSelection)
+        XCTAssertFalse(mealComponent.isIngredientSelection)
+        XCTAssertTrue(mealComponent.includesRecipes)
+        XCTAssertFalse(mealComponent.allowsManualEntryCreation)
+        XCTAssertFalse(ingredient.supportsMultiSelection)
+        XCTAssertFalse(mealComponent.supportsMultiSelection)
+    }
+
     func testSavedFoodDraftUsesResolvedPortionAndDestinationSnapshot() throws {
         let food = makeTestFoodItem(
             name: "Oats",

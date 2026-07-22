@@ -52,6 +52,16 @@ enum NutritionCompleteness: String, Codable, Sendable {
         case .unknown: "Completeness unknown"
         }
     }
+
+    /// A nil input means the user cleared or did not supply that core field;
+    /// zero remains a valid, explicitly supplied nutrition value.
+    static func assessingCoreNutrition(
+        protein: Double?,
+        carbohydrates: Double?,
+        fat: Double?
+    ) -> NutritionCompleteness {
+        protein != nil && carbohydrates != nil && fat != nil ? .complete : .partial
+    }
 }
 
 struct FoodProvenance: Hashable, Sendable {
@@ -73,4 +83,13 @@ struct FoodProvenance: Hashable, Sendable {
         completeness: .unknown,
         recoveredByFallback: false
     )
+
+    static func manuallyEntered(completeness: NutritionCompleteness) -> FoodProvenance {
+        FoodProvenance(
+            provider: nil,
+            source: .userEntered,
+            completeness: completeness,
+            recoveredByFallback: false
+        )
+    }
 }

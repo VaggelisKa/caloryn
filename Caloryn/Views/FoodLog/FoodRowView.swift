@@ -10,7 +10,6 @@ struct FoodRowView: View {
     var isCustom: Bool = false
     var isRecipe: Bool = false
     var showsTypeBadge: Bool = true
-    var provenance: FoodProvenance? = nil
 
     @AppStorage("showNutriscore") private var showNutriscore = true
 
@@ -55,27 +54,6 @@ struct FoodRowView: View {
                         .font(CalorynTheme.caption)
                         .foregroundStyle(CalorynTheme.textSecondary)
                         .lineLimit(1)
-                }
-
-                if let provenance, provenance.source != .userEntered {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Label(provenance.source.shortLabel, systemImage: "checkmark.seal")
-                            .accessibilityLabel("Data source: \(provenance.source.shortLabel)")
-
-                        if provenance.recoveredByFallback {
-                            Text("Recovered via backup")
-                                .accessibilityLabel("Recovered using backup provider")
-                        }
-
-                        if let warning = provenance.completeness.warningLabel {
-                            Label(warning, systemImage: "exclamationmark.triangle.fill")
-                                .foregroundStyle(CalorynTheme.terracotta)
-                                .accessibilityLabel("Nutrition completeness: \(warning)")
-                        }
-                    }
-                    .font(CalorynTheme.numericMicroCaption)
-                    .foregroundStyle(CalorynTheme.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
                 }
             }
 

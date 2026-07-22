@@ -381,6 +381,59 @@ final class MealTemplateCommandsTests: XCTestCase {
         XCTAssertEqual(logged.map(\.replicationItemIndex), [0, 1])
     }
 
+    func testProviderProvenanceRoundTripsThroughMealAtExplicitDestination() throws {
+        let context = ModelContext(try makeContainer())
+        let provenance = FoodProvenance(
+            provider: .openFoodFacts,
+            source: .openFoodFactsCommunity,
+            completeness: .partial,
+            recoveredByFallback: true
+        )
+        let food = makeTestFoodItem(
+            name: "Fallback component",
+            provenance: provenance
+        )
+        context.insert(food)
+        try context.save()
+        let meal = try MealTemplateCommands.saveMeal(
+            name: "Provider meal",
+            snapshots: [
+                FoodLogEntrySnapshot(
+                    foodItem: food,
+                    portionGrams: 140,
+                    mealType: .breakfast
+                ),
+            ],
+            modelContext: context
+        )
+        let storedSnapshot = try XCTUnwrap(
+            MealTemplateCommands.snapshots(for: meal).first
+        )
+        food.provenance = .userEntered
+        try context.save()
+        let destination = makeTestDate(year: 2026, month: 7, day: 28, hour: 20)
+        let plan = try MealTemplateCommands.plan(
+            sourceName: meal.name,
+            snapshots: [storedSnapshot],
+            destinationDate: destination,
+            destinationMeal: .snack,
+            destinationSnackIndex: 4
+        )
+
+        let logged = try MealTemplateCommands.log(
+            plan: plan,
+            availableFoods: [food],
+            modelContext: context
+        )
+        let entry = try XCTUnwrap(logged.first)
+
+        XCTAssertEqual(entry.date, destination.startOfDay)
+        XCTAssertEqual(entry.mealType, .snack)
+        XCTAssertEqual(entry.snackIndex, 4)
+        XCTAssertEqual(entry.historicalProvenance, provenance)
+        XCTAssertEqual(entry.foodItem?.provenance, .userEntered)
+    }
+
     func testTemplateAndReusePlanPreserveExplicitSnackSlots() throws {
         let context = ModelContext(try makeContainer())
         let food = makeTestFoodItem(name: "Afternoon fruit")

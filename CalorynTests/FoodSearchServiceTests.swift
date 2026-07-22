@@ -16,6 +16,63 @@ final class FoodSearchServiceTests: XCTestCase {
         )
     }
 
+    func testBarcodeNotFoundPresentationHasNoRedundantAction() {
+        let searchPresentation = FoodLookupError.notFound.presentation(for: .search)
+        let barcodePresentation = FoodLookupError.notFound.presentation(for: .barcode)
+        let invalidBarcodePresentation = FoodLookupError.invalidRequest.presentation(for: .barcode)
+
+        XCTAssertEqual(searchPresentation.title, "No Results")
+        XCTAssertNil(searchPresentation.retryTitle)
+        XCTAssertEqual(barcodePresentation.title, "Barcode Not Found")
+        XCTAssertEqual(
+            barcodePresentation.message,
+            "This barcode isn’t in our food database."
+        )
+        XCTAssertNil(barcodePresentation.retryTitle)
+        XCTAssertNil(invalidBarcodePresentation.retryTitle)
+        XCTAssertTrue(FoodLookupError.notFound.dismissesWhenNameSearchBegins)
+        XCTAssertTrue(FoodLookupError.invalidRequest.dismissesWhenNameSearchBegins)
+        XCTAssertFalse(FoodLookupError.unavailable.dismissesWhenNameSearchBegins)
+    }
+
+    func testContextualSuggestionRankingDoesNotInvokeFoodProviders() {
+        var requestCount = 0
+        URLProtocolStub.requestHandler = { request in
+            requestCount += 1
+            return try response(request, status: 200, body: #"{"hits":[]}"#)
+        }
+        let service = FoodSearchService(session: makeStubbedSession())
+        let food = makeTestFoodItem(name: "Local oats")
+        let destination = makeTestDate(year: 2026, month: 7, day: 22, hour: 8)
+        let entries = (0..<3).map { offset in
+            let date = Calendar.current.date(
+                byAdding: .day,
+                value: -offset,
+                to: destination
+            )!
+            let entry = makeTestEntry(
+                date: date,
+                mealType: .breakfast,
+                foodItem: food,
+                portionGrams: 80
+            )
+            entry.createdAt = date
+            return entry
+        }
+
+        let suggestions = ContextualFoodSuggestionAdapter.rank(
+            foods: [food],
+            entries: entries,
+            destinationDate: destination,
+            destinationMeal: .breakfast,
+            now: destination
+        )
+
+        XCTAssertEqual(suggestions.map(\.foodID), [food.id])
+        XCTAssertTrue(service.searchResults.isEmpty)
+        XCTAssertEqual(requestCount, 0)
+    }
+
     func testPrimarySearchSuccessDoesNotCallSecondary() async throws {
         let telemetry = RecordingTelemetryReporter()
         var requestCount = 0
@@ -227,6 +284,31 @@ final class FoodSearchServiceTests: XCTestCase {
 
         do {
             _ = try await service.lookupBarcode("abc")
+            XCTFail("Expected invalid request")
+        } catch let error as FoodLookupError {
+            XCTAssertEqual(error, .invalidRequest)
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+
+        XCTAssertEqual(requestCount, 0)
+        XCTAssertTrue(telemetry.events.isEmpty)
+    }
+
+    func testArabicIndicBarcodeDigitsAreRejectedBeforeAnyProviderRequest() async {
+        let telemetry = RecordingTelemetryReporter()
+        var requestCount = 0
+        URLProtocolStub.requestHandler = { request in
+            requestCount += 1
+            return try response(request, status: 200, body: "{}")
+        }
+        let service = FoodSearchService(
+            session: makeStubbedSession(),
+            telemetry: telemetry
+        )
+
+        do {
+            _ = try await service.lookupBarcode("١٢٣٤٥٦٧٨")
             XCTFail("Expected invalid request")
         } catch let error as FoodLookupError {
             XCTAssertEqual(error, .invalidRequest)
