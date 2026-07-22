@@ -27,6 +27,7 @@ struct FoodSearchView: View {
     var snackIndex: Int = 0
     var mode: FoodSearchMode = .logging
 
+    @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Query(sort: \FoodItem.lastUsed, order: .reverse) private var recentFoods: [FoodItem]
 
@@ -38,6 +39,8 @@ struct FoodSearchView: View {
     @State private var showingCustomFoodForm = false
     @State private var isLookingUpBarcode = false
     @State private var barcodeLookupError: String?
+    @State private var quantityConfirmationFood: FoodItem?
+    @State private var favoriteErrorMessage: String?
     @FocusState private var isSearchFocused: Bool
 
     private var showingRecent: Bool {
@@ -54,7 +57,16 @@ struct FoodSearchView: View {
     }
 
     private var displayedRecentFoods: [FoodItem] {
-        Array(recentFoods.filter { !$0.isCustom && !$0.isRecipe }.prefix(20))
+        Array(
+            recentFoods
+                .filter { !$0.isPinned && !$0.isCustom && !$0.isRecipe }
+                .prefix(20)
+        )
+    }
+
+    private var pinnedFoods: [FoodItem] {
+        guard !mode.isIngredientSelection else { return [] }
+        return PinnedFoodLogging.sortedPinnedFoods(from: recentFoods)
     }
 
     var body: some View {
@@ -122,8 +134,28 @@ struct FoodSearchView: View {
                     }
                 })
             }
+            .sheet(item: $quantityConfirmationFood) { food in
+                PinnedPortionConfirmationView(
+                    foodItem: food,
+                    mealType: mealType,
+                    logDate: logDate,
+                    onLogged: dismiss.callAsFunction
+                )
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
+            }
             .fullScreenCover(isPresented: $showingScanner) {
                 barcodeScannerSheet
+            }
+            .alert(
+                "Couldn’t Log Favorite",
+                isPresented: favoriteErrorIsPresented
+            ) {
+                Button("OK", role: .cancel) {
+                    favoriteErrorMessage = nil
+                }
+            } message: {
+                Text(favoriteErrorMessage ?? "Please try again.")
             }
             .onAppear {
                 isSearchFocused = true
@@ -188,7 +220,7 @@ struct FoodSearchView: View {
 
     private var recentFoodsList: some View {
         Group {
-            if displayedRecentFoods.isEmpty {
+            if mode.isIngredientSelection && displayedRecentFoods.isEmpty {
                 ContentUnavailableView(
                     "No Recent Foods",
                     systemImage: "clock",
@@ -196,24 +228,48 @@ struct FoodSearchView: View {
                 )
             } else {
                 List {
-                    Section {
-                        ForEach(displayedRecentFoods) { food in
-                            FoodRowView(
-                                name: food.name,
-                                brand: food.brand,
-                                caloriesPer100g: food.caloriesPer100g,
-                                nutriscoreGrade: food.nutriscoreGrade,
-                                servingDescription: food.servingDescription
-                            )
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                handleFoodItemSelection(food)
+                    if !mode.isIngredientSelection {
+                        Section {
+                            if pinnedFoods.isEmpty {
+                                PinnedFoodsEmptyRow()
+                            } else {
+                                ForEach(pinnedFoods) { food in
+                                    PinnedFoodRowView(
+                                        food: food,
+                                        plan: pinnedPlan(for: food),
+                                        destinationDescription: destinationDescription,
+                                        onLog: { handlePinnedFoodAction(food) },
+                                        onUnpin: { togglePinned(food) }
+                                    )
+                                }
+                            }
+                        } header: {
+                            Label("Pinned", systemImage: "star.fill")
+                                .font(CalorynTheme.caption)
+                                .foregroundStyle(CalorynTheme.textSecondary)
+                        }
+                    }
+
+                    if displayedRecentFoods.isEmpty {
+                        if pinnedFoods.isEmpty {
+                            Section {
+                                SearchEmptyRow(
+                                    title: "No Recent Foods",
+                                    message: "Search above or create saved foods from My Foods.",
+                                    systemImage: "clock"
+                                )
+                            } header: {
+                                recentSectionHeader
                             }
                         }
-                    } header: {
-                        Text("Recent")
-                            .font(CalorynTheme.caption)
-                            .foregroundStyle(CalorynTheme.textSecondary)
+                    } else {
+                        Section {
+                            ForEach(displayedRecentFoods) { food in
+                                savedFoodRow(for: food)
+                            }
+                        } header: {
+                            recentSectionHeader
+                        }
                     }
                 }
                 .listStyle(.plain)
@@ -291,18 +347,20 @@ struct FoodSearchView: View {
                     if !searchService.searchResults.isEmpty {
                         Section {
                             ForEach(searchService.searchResults) { product in
-                                FoodRowView(
-                                    name: product.productName ?? "Unknown",
-                                    brand: product.brands,
-                                    caloriesPer100g: product.nutriments?.energyKcal100g ?? 0,
-                                    nutriscoreGrade: product.nutritionGrades.flatMap { g in ["a","b","c","d","e"].contains(g.lowercased()) ? g.lowercased() : nil },
-                                    servingDescription: product.formattedServingDescription,
-                                    caloriesPerServing: product.caloriesPerServing
-                                )
-                                .contentShape(Rectangle())
-                                .onTapGesture {
+                                Button {
                                     handleProductSelection(product)
+                                } label: {
+                                    FoodRowView(
+                                        name: product.productName ?? "Unknown",
+                                        brand: product.brands,
+                                        caloriesPer100g: product.nutriments?.energyKcal100g ?? 0,
+                                        nutriscoreGrade: product.nutritionGrades.flatMap { g in ["a","b","c","d","e"].contains(g.lowercased()) ? g.lowercased() : nil },
+                                        servingDescription: product.formattedServingDescription,
+                                        caloriesPerServing: product.caloriesPerServing
+                                    )
+                                    .contentShape(Rectangle())
                                 }
+                                .buttonStyle(.plain)
                             }
                         } header: {
                             if !matchingCustomFoods.isEmpty || !matchingRecipes.isEmpty {
@@ -328,34 +386,142 @@ struct FoodSearchView: View {
     }
 
     private func customFoodRow(for food: FoodItem) -> some View {
-        FoodRowView(
-            name: food.name,
-            brand: food.brand,
-            caloriesPer100g: food.caloriesPer100g,
-            nutriscoreGrade: food.nutriscoreGrade,
-            servingDescription: food.servingDescription,
-            isCustom: true,
-            showsTypeBadge: false
-        )
-        .contentShape(Rectangle())
-        .onTapGesture {
-            handleFoodItemSelection(food)
+        HStack(spacing: 12) {
+            Button {
+                handleFoodItemSelection(food)
+            } label: {
+                FoodRowView(
+                    name: food.name,
+                    brand: food.brand,
+                    caloriesPer100g: food.caloriesPer100g,
+                    nutriscoreGrade: food.nutriscoreGrade,
+                    servingDescription: food.servingDescription,
+                    isCustom: true,
+                    showsTypeBadge: false
+                )
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            pinButton(for: food)
         }
     }
 
     private func recipeRow(for food: FoodItem) -> some View {
-        FoodRowView(
-            name: food.name,
-            brand: food.brand,
-            caloriesPer100g: food.caloriesPer100g,
-            caloriesPerServing: food.calories(forGrams: food.defaultServingG ?? 100),
-            isRecipe: true,
-            showsTypeBadge: false
-        )
-        .contentShape(Rectangle())
-        .onTapGesture {
-            handleFoodItemSelection(food)
+        HStack(spacing: 12) {
+            Button {
+                handleFoodItemSelection(food)
+            } label: {
+                FoodRowView(
+                    name: food.name,
+                    brand: food.brand,
+                    caloriesPer100g: food.caloriesPer100g,
+                    caloriesPerServing: food.calories(forGrams: food.defaultServingG ?? 100),
+                    isRecipe: true,
+                    showsTypeBadge: false
+                )
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            pinButton(for: food)
         }
+    }
+
+    private func savedFoodRow(for food: FoodItem) -> some View {
+        HStack(spacing: 12) {
+            Button {
+                handleFoodItemSelection(food)
+            } label: {
+                FoodRowView(
+                    name: food.name,
+                    brand: food.brand,
+                    caloriesPer100g: food.caloriesPer100g,
+                    nutriscoreGrade: food.nutriscoreGrade,
+                    servingDescription: food.servingDescription
+                )
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            pinButton(for: food)
+        }
+    }
+
+    private func pinButton(for food: FoodItem) -> some View {
+        Button {
+            togglePinned(food)
+        } label: {
+            Image(systemName: food.isPinned ? "star.fill" : "star")
+                .font(CalorynTheme.inlineIcon)
+                .foregroundStyle(food.isPinned ? CalorynTheme.terracotta : CalorynTheme.textSecondary)
+                .frame(width: 44, height: 44)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(food.isPinned ? "Unpin \(food.name)" : "Pin \(food.name)")
+        .accessibilityHint(food.isPinned ? "Removes this item from favorites" : "Adds this item to favorites")
+    }
+
+    private var recentSectionHeader: some View {
+        Text("Recent")
+            .font(CalorynTheme.caption)
+            .foregroundStyle(CalorynTheme.textSecondary)
+    }
+
+    private var destinationDescription: String {
+        "\(logDate.shortFormatted) · \(mealType.displayName)"
+    }
+
+    private func pinnedPlan(for food: FoodItem) -> PinnedFoodLogPlan {
+        PinnedFoodLogging.plan(
+            for: food,
+            destinationMeal: mealType,
+            destinationDate: logDate
+        )
+    }
+
+    private func handlePinnedFoodAction(_ food: FoodItem) {
+        let plan = pinnedPlan(for: food)
+        switch plan.action {
+        case .log:
+            do {
+                try PinnedFoodLogging.log(
+                    plan: plan,
+                    food: food,
+                    modelContext: modelContext
+                )
+                dismiss()
+            } catch {
+                favoriteErrorMessage = error.localizedDescription
+            }
+        case .confirmQuantity:
+            quantityConfirmationFood = food
+        case .unavailable:
+            favoriteErrorMessage = PinnedFoodLogging.LoggingError.unavailable.localizedDescription
+        }
+    }
+
+    private func togglePinned(_ food: FoodItem) {
+        do {
+            try PinnedFoodLogging.setPinned(
+                !food.isPinned,
+                for: food,
+                modelContext: modelContext
+            )
+        } catch {
+            favoriteErrorMessage = "Your favorite couldn’t be updated. Please try again."
+        }
+    }
+
+    private var favoriteErrorIsPresented: Binding<Bool> {
+        Binding(
+            get: { favoriteErrorMessage != nil },
+            set: { isPresented in
+                if !isPresented {
+                    favoriteErrorMessage = nil
+                }
+            }
+        )
     }
 
     private var barcodeScannerSheet: some View {

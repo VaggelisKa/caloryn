@@ -21,6 +21,7 @@ struct PortionPickerView: View {
     @State private var selectedServingCount: Int = 1
     @State private var selectedRecipeServingID = RecipeServingOption.one.id
     @State private var showingDeleteConfirmation = false
+    @State private var favoriteErrorMessage: String?
 
     private enum PortionMode: Hashable {
         case grams
@@ -219,6 +220,18 @@ struct PortionPickerView: View {
                     .accessibilityLabel("Delete Log Entry")
                 }
             }
+
+            if !isNewFood {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(action: togglePinned) {
+                        Image(systemName: foodItem.isPinned ? "star.fill" : "star")
+                            .font(CalorynTheme.toolbarIcon)
+                            .foregroundStyle(foodItem.isPinned ? CalorynTheme.terracotta : CalorynTheme.sage)
+                    }
+                    .accessibilityLabel(foodItem.isPinned ? "Unpin \(foodItem.name)" : "Pin \(foodItem.name)")
+                    .accessibilityHint(foodItem.isPinned ? "Removes this item from favorites" : "Adds this item to favorites")
+                }
+            }
         }
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 0) {
@@ -240,6 +253,13 @@ struct PortionPickerView: View {
             Button("Delete", role: .destructive, action: deleteEntry)
         } message: {
             Text("Remove \(foodItem.name) from your log?")
+        }
+        .alert("Couldn’t Update Favorite", isPresented: favoriteErrorIsPresented) {
+            Button("OK", role: .cancel) {
+                favoriteErrorMessage = nil
+            }
+        } message: {
+            Text(favoriteErrorMessage ?? "Please try again.")
         }
     }
 
@@ -506,6 +526,29 @@ struct PortionPickerView: View {
             try? modelContext.save()
         }
         dismiss()
+    }
+
+    private func togglePinned() {
+        do {
+            try PinnedFoodLogging.setPinned(
+                !foodItem.isPinned,
+                for: foodItem,
+                modelContext: modelContext
+            )
+        } catch {
+            favoriteErrorMessage = "Your favorite couldn’t be updated. Please try again."
+        }
+    }
+
+    private var favoriteErrorIsPresented: Binding<Bool> {
+        Binding(
+            get: { favoriteErrorMessage != nil },
+            set: { isPresented in
+                if !isPresented {
+                    favoriteErrorMessage = nil
+                }
+            }
+        )
     }
 
     private var selectedRecipeServingOption: RecipeServingOption? {

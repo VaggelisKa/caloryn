@@ -9,6 +9,7 @@ struct MyFoodsView: View {
     @State private var showingRecipeForm = false
     @State private var editingManualEntry: FoodItem?
     @State private var editingRecipe: FoodItem?
+    @State private var favoriteErrorMessage: String?
 
     private var manualEntries: [FoodItem] {
         foodItems.filter { $0.isCustom && !$0.isRecipe }
@@ -51,6 +52,13 @@ struct MyFoodsView: View {
                 RecipeFormView(existingRecipe: recipe)
                     .presentationDragIndicator(.visible)
             }
+            .alert("Couldn’t Update Favorite", isPresented: favoriteErrorIsPresented) {
+                Button("OK", role: .cancel) {
+                    favoriteErrorMessage = nil
+                }
+            } message: {
+                Text(favoriteErrorMessage ?? "Please try again.")
+            }
         }
         .calorynPageCanvas()
     }
@@ -92,6 +100,9 @@ struct MyFoodsView: View {
                         manualEntryRow(for: food)
                     }
                     .buttonStyle(.plain)
+                    .swipeActions(edge: .leading) {
+                        favoriteButton(for: food)
+                    }
                     .swipeActions(edge: .trailing) {
                         Button(role: .destructive) {
                             delete(food)
@@ -124,6 +135,9 @@ struct MyFoodsView: View {
                         RecipeLibraryRow(recipe: recipe)
                     }
                     .buttonStyle(.plain)
+                    .swipeActions(edge: .leading) {
+                        favoriteButton(for: recipe)
+                    }
                     .swipeActions(edge: .trailing) {
                         Button(role: .destructive) {
                             delete(recipe)
@@ -157,6 +171,38 @@ struct MyFoodsView: View {
     private func delete(_ food: FoodItem) {
         food.deletePreservingLogEntrySnapshots(from: modelContext)
         try? modelContext.save()
+    }
+
+    private func favoriteButton(for food: FoodItem) -> some View {
+        Button {
+            togglePinned(food)
+        } label: {
+            Label(food.isPinned ? "Unpin" : "Pin", systemImage: food.isPinned ? "star.slash" : "star")
+        }
+        .tint(food.isPinned ? CalorynTheme.textSecondary : CalorynTheme.terracotta)
+    }
+
+    private func togglePinned(_ food: FoodItem) {
+        do {
+            try PinnedFoodLogging.setPinned(
+                !food.isPinned,
+                for: food,
+                modelContext: modelContext
+            )
+        } catch {
+            favoriteErrorMessage = "Your favorite couldn’t be updated. Please try again."
+        }
+    }
+
+    private var favoriteErrorIsPresented: Binding<Bool> {
+        Binding(
+            get: { favoriteErrorMessage != nil },
+            set: { isPresented in
+                if !isPresented {
+                    favoriteErrorMessage = nil
+                }
+            }
+        )
     }
 }
 
