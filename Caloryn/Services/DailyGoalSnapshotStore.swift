@@ -61,9 +61,12 @@ enum DailyGoalSnapshotStore {
             try context.save()
             return true
         } catch {
-            // The caller learns the day was not durably recorded; History will
-            // fall back to its documented estimate rather than a value that
-            // only ever existed in memory.
+            // Discard the insert, update, and duplicate deletions staged above.
+            // Leaving them pending would let History read a target that was
+            // never stored, or let an unrelated later save persist it. The
+            // caller learns the day was not recorded and History falls back to
+            // its documented estimate.
+            context.rollback()
             return false
         }
     }

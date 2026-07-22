@@ -1,3 +1,4 @@
+import Combine
 import SwiftUI
 import SwiftData
 
@@ -215,6 +216,15 @@ struct TodayView: View {
             guard newPhase == .active else { return }
             followCalendarRollover()
             activeEnergyTracker.refreshWhenActive()
+        }
+        // Covers midnight passing while Today stays on screen, when no scene
+        // transition ever happens.
+        .onReceive(
+            NotificationCenter.default
+                .publisher(for: .NSCalendarDayChanged)
+                .receive(on: RunLoop.main)
+        ) { _ in
+            followCalendarRollover()
         }
     }
 
