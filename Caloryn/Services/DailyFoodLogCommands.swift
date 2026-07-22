@@ -38,17 +38,18 @@ enum DailyFoodLogCommands {
     static func copyLoggedEntries(
         _ entries: [FoodLogEntry],
         to date: Date,
-        modelContext: ModelContext
+        modelContext: ModelContext,
+        now: Date = Date()
     ) -> [FoodLogEntry] {
-        entries.compactMap { entry in
-            guard let food = entry.foodItem else { return nil }
-
+        entries.enumerated().map { offset, entry in
+            let snapshot = FoodLogEntrySnapshot(entry: entry)
             let copiedEntry = FoodLogEntry(
                 date: date,
-                mealType: entry.mealType,
-                foodItem: food,
-                portionGrams: entry.portionGrams,
-                snackIndex: normalizedSnackIndex(for: entry.mealType)
+                mealType: snapshot.mealType,
+                foodItem: entry.foodItem,
+                snapshot: snapshot,
+                snackIndex: normalizedSnackIndex(for: snapshot.mealType),
+                createdAt: now.addingTimeInterval(Double(offset) / 1_000)
             )
             modelContext.insert(copiedEntry)
             return copiedEntry

@@ -1,6 +1,6 @@
 import Foundation
 
-struct NutritionValues: Equatable {
+struct NutritionValues: Codable, Equatable {
     var calories: Double = 0
     var proteinG: Double = 0
     var carbsG: Double = 0

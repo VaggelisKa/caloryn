@@ -18,6 +18,35 @@ struct FoodLogProduceItemSnapshot: Codable, Equatable {
     }
 }
 
+/// The complete, reusable payload of a logged food entry.
+///
+/// Copy and template flows must use this payload instead of recalculating from
+/// a live `FoodItem`. A saved food can change or disappear after logging, while
+/// the nutrition and quality values recorded in the log must remain stable.
+struct FoodLogEntrySnapshot: Codable, Equatable {
+    var sourceFoodID: UUID?
+    var mealType: MealType
+    var snackIndex: Int
+    var foodName: String
+    var portionGrams: Double
+    var nutrition: NutritionValues
+    var nutriscoreGradeSnapshot: String?
+    var produceKindSnapshotRaw: String?
+    var produceItemsSnapshot: [FoodLogProduceItemSnapshot]?
+
+    init(entry: FoodLogEntry) {
+        sourceFoodID = entry.foodItem?.id
+        mealType = entry.mealType
+        snackIndex = entry.snackIndex
+        foodName = entry.foodName
+        portionGrams = entry.portionGrams
+        nutrition = entry.nutrition
+        nutriscoreGradeSnapshot = entry.nutriscoreGradeSnapshot
+        produceKindSnapshotRaw = entry.produceKindSnapshotRaw
+        produceItemsSnapshot = entry.produceItemsSnapshot
+    }
+}
+
 @Model
 final class FoodLogEntry {
     var id: UUID = UUID()
@@ -103,6 +132,31 @@ final class FoodLogEntry {
         )
     }
 
+    /// Creates a normal editable log entry from an immutable logged snapshot.
+    /// The live food relationship is retained when available, but it is never
+    /// used to recalculate the recorded nutrition or quality values.
+    init(
+        date: Date,
+        mealType: MealType,
+        foodItem: FoodItem?,
+        snapshot: FoodLogEntrySnapshot,
+        snackIndex: Int,
+        createdAt: Date = Date()
+    ) {
+        id = UUID()
+        self.createdAt = createdAt
+        self.date = Calendar.current.startOfDay(for: date)
+        self.mealType = mealType
+        self.snackIndex = mealType == .snack ? snackIndex : 0
+        self.foodItem = foodItem
+        portionGrams = snapshot.portionGrams
+        foodName = snapshot.foodName
+        apply(nutrition: snapshot.nutrition)
+        nutriscoreGradeSnapshot = snapshot.nutriscoreGradeSnapshot
+        produceKindSnapshotRaw = snapshot.produceKindSnapshotRaw
+        produceItemsSnapshot = snapshot.produceItemsSnapshot
+    }
+
     func update(
         date: Date,
         mealType: MealType,
@@ -116,38 +170,42 @@ final class FoodLogEntry {
         self.foodItem = foodItem
         self.portionGrams = portionGrams
         let nutrition = foodItem.nutrition(forGrams: portionGrams)
-        self.calories = nutrition.calories
-        self.proteinG = nutrition.proteinG
-        self.carbsG = nutrition.carbsG
-        self.fatG = nutrition.fatG
-        self.fiberG = nutrition.fiberG
-        self.sugarsG = nutrition.sugarsG
-        self.addedSugarsG = nutrition.addedSugarsG
-        self.sucroseG = nutrition.sucroseG
-        self.glucoseG = nutrition.glucoseG
-        self.fructoseG = nutrition.fructoseG
-        self.lactoseG = nutrition.lactoseG
-        self.maltoseG = nutrition.maltoseG
-        self.maltodextrinsG = nutrition.maltodextrinsG
-        self.starchG = nutrition.starchG
-        self.polyolsG = nutrition.polyolsG
-        self.saturatedFatG = nutrition.saturatedFatG
-        self.transFatG = nutrition.transFatG
-        self.monounsaturatedFatG = nutrition.monounsaturatedFatG
-        self.polyunsaturatedFatG = nutrition.polyunsaturatedFatG
-        self.omega3FatG = nutrition.omega3FatG
-        self.omega6FatG = nutrition.omega6FatG
-        self.omega9FatG = nutrition.omega9FatG
-        self.saltG = nutrition.saltG
-        self.sodiumG = nutrition.sodiumG
-        self.cholesterolG = nutrition.cholesterolG
-        self.solubleFiberG = nutrition.solubleFiberG
-        self.insolubleFiberG = nutrition.insolubleFiberG
-        self.caseinG = nutrition.caseinG
-        self.serumProteinsG = nutrition.serumProteinsG
-        self.alcoholG = nutrition.alcoholG
+        apply(nutrition: nutrition)
         self.foodName = foodItem.name
         snapshotQuality(from: foodItem)
+    }
+
+    private func apply(nutrition: NutritionValues) {
+        calories = nutrition.calories
+        proteinG = nutrition.proteinG
+        carbsG = nutrition.carbsG
+        fatG = nutrition.fatG
+        fiberG = nutrition.fiberG
+        sugarsG = nutrition.sugarsG
+        addedSugarsG = nutrition.addedSugarsG
+        sucroseG = nutrition.sucroseG
+        glucoseG = nutrition.glucoseG
+        fructoseG = nutrition.fructoseG
+        lactoseG = nutrition.lactoseG
+        maltoseG = nutrition.maltoseG
+        maltodextrinsG = nutrition.maltodextrinsG
+        starchG = nutrition.starchG
+        polyolsG = nutrition.polyolsG
+        saturatedFatG = nutrition.saturatedFatG
+        transFatG = nutrition.transFatG
+        monounsaturatedFatG = nutrition.monounsaturatedFatG
+        polyunsaturatedFatG = nutrition.polyunsaturatedFatG
+        omega3FatG = nutrition.omega3FatG
+        omega6FatG = nutrition.omega6FatG
+        omega9FatG = nutrition.omega9FatG
+        saltG = nutrition.saltG
+        sodiumG = nutrition.sodiumG
+        cholesterolG = nutrition.cholesterolG
+        solubleFiberG = nutrition.solubleFiberG
+        insolubleFiberG = nutrition.insolubleFiberG
+        caseinG = nutrition.caseinG
+        serumProteinsG = nutrition.serumProteinsG
+        alcoholG = nutrition.alcoholG
     }
 
     private func snapshotQuality(from foodItem: FoodItem) {
