@@ -24,6 +24,7 @@ struct OnboardingContainerView: View {
     @State private var energyCalculationMode: EnergyCalculationMode = .lifestyleEstimate
     @State private var calorieDeficit: Double = 500
     @State private var finalCalorieTarget: Int = 2000
+    @State private var isManualCalorieTarget = false
     @State private var proteinRatio: Double = 0.30
     @State private var carbRatio: Double = 0.40
     @State private var fatRatio: Double = 0.30
@@ -72,8 +73,9 @@ struct OnboardingContainerView: View {
                         weightKg: weightKg,
                         activityLevel: activityLevel,
                         calorieDeficit: $calorieDeficit
-                    ) { target in
+                    ) { target, isManual in
                         finalCalorieTarget = target
+                        isManualCalorieTarget = isManual
                         path.append(.macroRatios(target))
                     }
                 case .macroRatios(let calorieTarget):
@@ -143,42 +145,31 @@ struct OnboardingContainerView: View {
     }
 
     private func saveProfile() {
-        let computedBmr = NutritionCalculator.bmr(sex: sex, weightKg: weightKg, heightCm: heightCm, age: age)
-        let computedTdee = NutritionCalculator.tdee(bmr: computedBmr, activity: activityLevel)
-
-        if let profile = profiles.first {
-            profile.age = age
-            profile.sex = sex
-            profile.heightCm = heightCm
-            profile.weightKg = weightKg
-            profile.activityLevel = activityLevel
-            profile.energyCalculationMode = energyCalculationMode
-            profile.manualOverride = false
-            profile.calorieDeficit = calorieDeficit
-            profile.bmr = computedBmr
-            profile.tdee = computedTdee
-            profile.dailyCalorieTarget = finalCalorieTarget
-            profile.proteinTargetG = NutritionCalculator.macroGrams(calories: Double(finalCalorieTarget), ratio: proteinRatio, caloriesPerGram: 4)
-            profile.carbTargetG = NutritionCalculator.macroGrams(calories: Double(finalCalorieTarget), ratio: carbRatio, caloriesPerGram: 4)
-            profile.fatTargetG = NutritionCalculator.macroGrams(calories: Double(finalCalorieTarget), ratio: fatRatio, caloriesPerGram: 9)
-            profile.updatedAt = Date()
-            return
-        }
-
-        let profile = UserProfile(
+        let selections = OnboardingProfileSave.Selections(
             age: age,
             sex: sex,
             heightCm: heightCm,
             weightKg: weightKg,
             activityLevel: activityLevel,
-            dailyCalorieTarget: finalCalorieTarget,
-            calorieDeficit: calorieDeficit,
             energyCalculationMode: energyCalculationMode,
+            calorieDeficit: calorieDeficit,
+            calorieTarget: finalCalorieTarget,
+            isManualTarget: isManualCalorieTarget,
             proteinRatio: proteinRatio,
             carbRatio: carbRatio,
             fatRatio: fatRatio
         )
-        modelContext.insert(profile)
+
+        if isManualCalorieTarget {
+            AppleHealthAdjustmentSettings.disable()
+        }
+
+        if let profile = profiles.first {
+            OnboardingProfileSave.apply(selections, to: profile)
+            return
+        }
+
+        modelContext.insert(OnboardingProfileSave.makeProfile(from: selections))
     }
 }
 

@@ -7,7 +7,7 @@ struct GoalSummaryStepView: View {
     let weightKg: Double
     let activityLevel: ActivityLevel
     @Binding var calorieDeficit: Double
-    var onContinue: (Int) -> Void
+    var onContinue: (Int, Bool) -> Void
 
     @State private var manualTarget: String = ""
     @State private var useManualOverride = false
@@ -25,8 +25,15 @@ struct GoalSummaryStepView: View {
         NutritionCalculator.defaultTarget(tdee: tdee, deficit: calorieDeficit)
     }
 
-    private var displayTarget: Int {
+    private var appliesManualTarget: Bool {
         if useManualOverride, let manual = Int(manualTarget), manual >= 1000 {
+            return true
+        }
+        return false
+    }
+
+    private var displayTarget: Int {
+        if appliesManualTarget, let manual = Int(manualTarget) {
             return manual
         }
         return calculatedTarget
@@ -57,7 +64,7 @@ struct GoalSummaryStepView: View {
             .padding(.bottom, 100)
         }
         .safeAreaInset(edge: .bottom) {
-            Button { onContinue(displayTarget) } label: {
+            Button { onContinue(displayTarget, appliesManualTarget) } label: {
                 Text("Continue")
                     .font(CalorynTheme.buttonLabel)
                     .frame(maxWidth: .infinity)
@@ -187,6 +194,6 @@ struct GoalSummaryStepView: View {
             weightKg: 80,
             activityLevel: .moderatelyActive,
             calorieDeficit: .constant(500)
-        ) { _ in }
+        ) { _, _ in }
     }
 }
