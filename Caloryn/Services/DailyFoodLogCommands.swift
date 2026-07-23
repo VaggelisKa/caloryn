@@ -97,8 +97,8 @@ enum DailyFoodLogCommands {
         snackIndex: Int? = nil
     ) throws -> FoodLogEntry {
         guard entry.foodItem == nil,
-              PinnedFoodLogging.isSafePortion(entry.portionGrams),
-              PinnedFoodLogging.isSafePortion(portionGrams) else {
+              FavoriteFoodLogging.isSafePortion(entry.portionGrams),
+              FavoriteFoodLogging.isSafePortion(portionGrams) else {
             throw MealTemplateCommands.CommandError.invalidSnapshot(entry.foodName)
         }
         entry.updateFromSnapshot(

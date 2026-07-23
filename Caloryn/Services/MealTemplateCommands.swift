@@ -340,7 +340,7 @@ enum MealTemplateCommands {
             snapshot.nutrition.alcoholG,
         ]
         guard !snapshot.foodName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              PinnedFoodLogging.isSafePortion(snapshot.portionGrams),
+              FavoriteFoodLogging.isSafePortion(snapshot.portionGrams),
               values.compactMap({ $0 }).allSatisfy({ $0.isFinite && $0 >= 0 }) else {
             throw CommandError.invalidSnapshot(snapshot.foodName.isEmpty ? "This item" : snapshot.foodName)
         }

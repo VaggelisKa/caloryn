@@ -252,7 +252,7 @@ struct FoodSearchView: View {
             if !mode.isIngredientSelection {
                 Section {
                     if mealTemplates.isEmpty {
-                        SearchEmptyRow(
+                        ReusableMealEmptyRow(
                             title: "No Reusable Meals",
                             message: "Save logged entries from Today to reuse them here.",
                             systemImage: "square.stack.3d.up"
@@ -718,6 +718,33 @@ struct FoodSearchView: View {
         }
     }
 
+}
+
+private struct ReusableMealEmptyRow: View {
+    let title: String
+    let message: String
+    let systemImage: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: systemImage)
+                .font(CalorynTheme.inlineIcon)
+                .foregroundStyle(CalorynTheme.textSecondary)
+                .frame(width: 28, height: 28)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(CalorynTheme.itemTitle)
+                    .foregroundStyle(CalorynTheme.textPrimary)
+
+                Text(message)
+                    .font(CalorynTheme.caption)
+                    .foregroundStyle(CalorynTheme.textSecondary)
+            }
+        }
+        .padding(.vertical, 6)
+        .accessibilityElement(children: .combine)
+    }
 }
 
 #Preview {

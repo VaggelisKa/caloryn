@@ -520,7 +520,7 @@ private struct MissingFoodEntryView: View {
                     Button("Save") {
                         save()
                     }
-                    .disabled(!PinnedFoodLogging.isSafePortion(portionGrams))
+                    .disabled(!FavoriteFoodLogging.isSafePortion(portionGrams))
                     .accessibilityIdentifier("missingEntry.save")
                 }
             }
