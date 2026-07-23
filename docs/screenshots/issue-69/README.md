@@ -4,10 +4,13 @@ Captured on an iPhone 17 Pro simulator running iOS 26.4.
 
 | State | Evidence |
 | --- | --- |
-| Absent Pinned and Recent sections stay hidden | ![Hidden empty sections](empty-pinned-foods.jpg) |
-| Simplified pinned row without a reusable portion | ![Pinned food requiring quantity](pinned-needs-quantity.jpg) |
-| Compact quantity confirmation with explicit destination | ![Quantity confirmation](quantity-confirmation.jpg) |
-| One-tap last-portion action with explicit meal and date | ![One-tap last portion](one-tap-last-portion.jpg) |
-| Duplicate names remain distinct and show different action states | ![Duplicate names and action states](duplicate-names-and-states.jpg) |
-| Unavailable pinned food is retained and clearly labeled | ![Unavailable pinned food](unavailable-favorite.jpg) |
-| Unavailable action explains how to recover | ![Unavailable pinned food alert](unavailable-favorite-alert.jpg) |
+| My Foods keeps Favorites at the top, hides duplicate rows, and limits the collapsed section to five | ![Collapsed My Foods favorites](my-foods-favorites-collapsed.jpg) |
+| A leading swipe on an eligible custom food exposes Favorite | ![Favorite leading swipe](add-favorite-swipe.jpg) |
+| A trailing swipe on a favorite exposes Remove Favorite beside Delete | ![Remove favorite and delete trailing swipe](remove-favorite-swipe.jpg) |
+| An existing custom food can be favorited from the edit toolbar beside Save | ![Favorite control in the custom food edit toolbar](favorite-edit-toolbar.jpg) |
+| Quick logging shows five compact favorites, remembered amounts, and no redundant destination label | ![Collapsed quick-log favorites](quick-log-collapsed.jpg) |
+| Show all expands large favorite collections and Show less collapses them again | ![Expanded quick-log favorites](quick-log-expanded.jpg) |
+
+The no-history path reuses the app's standard portion input sheet. The logged-food
+editor deliberately has no favorite control because favorites belong to custom food
+definitions, not individual log entries.
