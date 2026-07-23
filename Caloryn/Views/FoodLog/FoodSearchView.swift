@@ -5,18 +5,41 @@ import UIKit
 enum FoodSearchMode {
     case logging
     case ingredientSelection((FoodItem) -> Void)
+    case mealComponentSelection((FoodItem) -> Void)
 
     var title: String {
         switch self {
         case .logging: "Add Food"
         case .ingredientSelection: "Add Ingredient"
+        case .mealComponentSelection: "Add Meal Item"
         }
     }
 
-    var isIngredientSelection: Bool {
+    var isSelection: Bool {
         switch self {
         case .logging: false
+        case .ingredientSelection, .mealComponentSelection: true
+        }
+    }
+
+    var includesRecipes: Bool {
+        switch self {
+        case .logging, .mealComponentSelection: true
+        case .ingredientSelection: false
+        }
+    }
+
+    var usesNonStickySectionTitles: Bool {
+        switch self {
+        case .mealComponentSelection: true
+        case .logging, .ingredientSelection: false
+        }
+    }
+
+    var allowsManualEntryCreation: Bool {
+        switch self {
         case .ingredientSelection: true
+        case .logging, .mealComponentSelection: false
         }
     }
 }
@@ -26,10 +49,12 @@ struct FoodSearchView: View {
     let logDate: Date
     var snackIndex: Int = 0
     var mode: FoodSearchMode = .logging
+    var automaticallyFocusSearch = true
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Query(sort: \FoodItem.lastUsed, order: .reverse) private var recentFoods: [FoodItem]
+    @Query(sort: \MealTemplate.updatedAt, order: .reverse) private var mealTemplates: [MealTemplate]
 
     @State private var searchService = FoodSearchService()
     @State private var searchText = ""
@@ -41,6 +66,7 @@ struct FoodSearchView: View {
     @State private var barcodeLookupError: String?
     @State private var favoriteErrorMessage: String?
     @State private var showsAllFavorites = false
+    @State private var mealErrorMessage: String?
     @FocusState private var isSearchFocused: Bool
 
     private var showingRecent: Bool {
@@ -48,7 +74,7 @@ struct FoodSearchView: View {
     }
 
     private var recipes: [FoodItem] {
-        guard !mode.isIngredientSelection else { return [] }
+        guard mode.includesRecipes else { return [] }
         return recentFoods.filter { $0.isRecipe }
     }
 
@@ -65,7 +91,7 @@ struct FoodSearchView: View {
     }
 
     private var favoriteFoods: [FoodItem] {
-        guard !mode.isIngredientSelection else { return [] }
+        guard !mode.isSelection else { return [] }
         return FavoriteFoodLogging.sortedFavorites(from: recentFoods)
     }
 
@@ -101,7 +127,7 @@ struct FoodSearchView: View {
                     }
                     .accessibilityLabel("Close")
                 }
-                if mode.isIngredientSelection {
+                if mode.allowsManualEntryCreation {
                     ToolbarItem(placement: .primaryAction) {
                         Button {
                             showingCustomFoodForm = true
@@ -154,8 +180,17 @@ struct FoodSearchView: View {
             } message: {
                 Text(favoriteErrorMessage ?? "Please try again.")
             }
+            .alert("Couldn’t Add Meal", isPresented: mealErrorIsPresented) {
+                Button("OK", role: .cancel) {
+                    mealErrorMessage = nil
+                }
+            } message: {
+                Text(mealErrorMessage ?? "Please try again.")
+            }
             .onAppear {
-                isSearchFocused = true
+                if automaticallyFocusSearch {
+                    isSearchFocused = true
+                }
             }
         }
     }
@@ -254,13 +289,71 @@ struct FoodSearchView: View {
                 }
             }
 
-            if !displayedRecentFoods.isEmpty {
+            if !mode.isSelection, !mealTemplates.isEmpty {
                 Section {
+                    ForEach(mealTemplates) { meal in
+                        Button {
+                            addMeal(meal)
+                        } label: {
+                            MealTemplateLibraryRow(template: meal)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("meal.select.\(meal.id.uuidString)")
+                    }
+                } header: {
+                    Label("Meals", systemImage: "fork.knife")
+                        .font(CalorynTheme.caption)
+                        .foregroundStyle(CalorynTheme.textSecondary)
+                }
+            }
+
+            if mode.isSelection, !recipes.isEmpty {
+                if mode.usesNonStickySectionTitles {
+                    nonStickySectionTitle("Recipes")
+
+                    ForEach(recipes) { recipe in
+                        recipeRow(for: recipe)
+                    }
+                } else {
+                    Section("Recipes") {
+                        ForEach(recipes) { recipe in
+                            recipeRow(for: recipe)
+                        }
+                    }
+                }
+            }
+
+            if mode.isSelection, !customFoods.isEmpty {
+                if mode.usesNonStickySectionTitles {
+                    nonStickySectionTitle("Manual Entries")
+
+                    ForEach(customFoods) { food in
+                        customFoodRow(for: food)
+                    }
+                } else {
+                    Section("Manual Entries") {
+                        ForEach(customFoods) { food in
+                            customFoodRow(for: food)
+                        }
+                    }
+                }
+            }
+
+            if !displayedRecentFoods.isEmpty {
+                if mode.usesNonStickySectionTitles {
+                    nonStickySectionTitle("Recent")
+
                     ForEach(displayedRecentFoods) { food in
                         savedFoodRow(for: food)
                     }
-                } header: {
-                    recentSectionHeader
+                } else {
+                    Section {
+                        ForEach(displayedRecentFoods) { food in
+                            savedFoodRow(for: food)
+                        }
+                    } header: {
+                        recentSectionHeader
+                    }
                 }
             }
         }
@@ -284,12 +377,25 @@ struct FoodSearchView: View {
         }
     }
 
+    private var matchingMeals: [MealTemplate] {
+        guard !mode.isSelection else { return [] }
+        let query = searchText.lowercased().trimmingCharacters(in: .whitespaces)
+        guard !query.isEmpty else { return [] }
+        return mealTemplates.filter {
+            $0.name.lowercased().contains(query)
+        }
+    }
+
+    private var hasLocalMatches: Bool {
+        !matchingMeals.isEmpty || !matchingCustomFoods.isEmpty || !matchingRecipes.isEmpty
+    }
+
     private var searchResultsList: some View {
         Group {
-            if searchService.isSearching && matchingCustomFoods.isEmpty && matchingRecipes.isEmpty {
+            if searchService.isSearching && !hasLocalMatches {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if let error = searchService.errorMessage, matchingCustomFoods.isEmpty && matchingRecipes.isEmpty {
+            } else if let error = searchService.errorMessage, !hasLocalMatches {
                 ContentUnavailableView {
                     Label("Food Search Unavailable", systemImage: "wifi.exclamationmark")
                 } description: {
@@ -302,7 +408,7 @@ struct FoodSearchView: View {
                     .controlSize(.large)
                     .tint(CalorynTheme.sage)
                 }
-            } else if searchService.searchResults.isEmpty && matchingCustomFoods.isEmpty && matchingRecipes.isEmpty {
+            } else if searchService.searchResults.isEmpty && !hasLocalMatches {
                 ContentUnavailableView(
                     "No Results",
                     systemImage: "magnifyingglass",
@@ -310,32 +416,69 @@ struct FoodSearchView: View {
                 )
             } else {
                 List {
-                    if !matchingRecipes.isEmpty {
+                    if !matchingMeals.isEmpty {
                         Section {
+                            ForEach(matchingMeals) { meal in
+                                Button {
+                                    addMeal(meal)
+                                } label: {
+                                    MealTemplateLibraryRow(template: meal)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        } header: {
+                            Text("Meals")
+                                .font(CalorynTheme.caption)
+                                .foregroundStyle(CalorynTheme.textSecondary)
+                        }
+                    }
+
+                    if !matchingRecipes.isEmpty {
+                        if mode.usesNonStickySectionTitles {
+                            nonStickySectionTitle("Recipes")
+
                             ForEach(matchingRecipes) { food in
                                 recipeRow(for: food)
                             }
-                        } header: {
-                            Text("Recipes")
-                                .font(CalorynTheme.caption)
-                                .foregroundStyle(CalorynTheme.textSecondary)
+                        } else {
+                            Section {
+                                ForEach(matchingRecipes) { food in
+                                    recipeRow(for: food)
+                                }
+                            } header: {
+                                Text("Recipes")
+                                    .font(CalorynTheme.caption)
+                                    .foregroundStyle(CalorynTheme.textSecondary)
+                            }
                         }
                     }
 
                     if !matchingCustomFoods.isEmpty {
-                        Section {
+                        if mode.usesNonStickySectionTitles {
+                            nonStickySectionTitle("Manual Entries")
+
                             ForEach(matchingCustomFoods) { food in
                                 customFoodRow(for: food)
                             }
-                        } header: {
-                            Text("Manual Entries")
-                                .font(CalorynTheme.caption)
-                                .foregroundStyle(CalorynTheme.textSecondary)
+                        } else {
+                            Section {
+                                ForEach(matchingCustomFoods) { food in
+                                    customFoodRow(for: food)
+                                }
+                            } header: {
+                                Text("Manual Entries")
+                                    .font(CalorynTheme.caption)
+                                    .foregroundStyle(CalorynTheme.textSecondary)
+                            }
                         }
                     }
 
                     if !searchService.searchResults.isEmpty {
-                        Section {
+                        if mode.usesNonStickySectionTitles {
+                            if hasLocalMatches {
+                                nonStickySectionTitle("Search Results")
+                            }
+
                             ForEach(searchService.searchResults) { product in
                                 Button {
                                     handleProductSelection(product)
@@ -352,11 +495,30 @@ struct FoodSearchView: View {
                                 }
                                 .buttonStyle(.plain)
                             }
-                        } header: {
-                            if !matchingCustomFoods.isEmpty || !matchingRecipes.isEmpty {
-                                Text("Search Results")
-                                    .font(CalorynTheme.caption)
-                                    .foregroundStyle(CalorynTheme.textSecondary)
+                        } else {
+                            Section {
+                                ForEach(searchService.searchResults) { product in
+                                    Button {
+                                        handleProductSelection(product)
+                                    } label: {
+                                        FoodRowView(
+                                            name: product.productName ?? "Unknown",
+                                            brand: product.brands,
+                                            caloriesPer100g: product.nutriments?.energyKcal100g ?? 0,
+                                            nutriscoreGrade: product.nutritionGrades.flatMap { g in ["a","b","c","d","e"].contains(g.lowercased()) ? g.lowercased() : nil },
+                                            servingDescription: product.formattedServingDescription,
+                                            caloriesPerServing: product.caloriesPerServing
+                                        )
+                                        .contentShape(Rectangle())
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            } header: {
+                                if hasLocalMatches {
+                                    Text("Search Results")
+                                        .font(CalorynTheme.caption)
+                                        .foregroundStyle(CalorynTheme.textSecondary)
+                                }
                             }
                         }
                     }
@@ -393,7 +555,7 @@ struct FoodSearchView: View {
             }
             .buttonStyle(.plain)
 
-            if !mode.isIngredientSelection {
+            if !mode.isSelection {
                 favoriteButton(for: food)
             }
         }
@@ -416,7 +578,9 @@ struct FoodSearchView: View {
             }
             .buttonStyle(.plain)
 
-            favoriteButton(for: food)
+            if !mode.isSelection {
+                favoriteButton(for: food)
+            }
         }
     }
 
@@ -462,6 +626,16 @@ struct FoodSearchView: View {
         Text("Recent")
             .font(CalorynTheme.caption)
             .foregroundStyle(CalorynTheme.textSecondary)
+    }
+
+    private func nonStickySectionTitle(_ title: String) -> some View {
+        Text(title)
+            .font(CalorynTheme.caption)
+            .foregroundStyle(CalorynTheme.textSecondary)
+            .accessibilityAddTraits(.isHeader)
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
+            .padding(.top, 8)
     }
 
     private var destinationDescription: String {
@@ -520,12 +694,43 @@ struct FoodSearchView: View {
         }
     }
 
+    private func addMeal(_ meal: MealTemplate) {
+        do {
+            let plan = try MealTemplateCommands.plan(
+                sourceName: meal.name,
+                snapshots: MealTemplateCommands.snapshots(for: meal),
+                destinationDate: logDate,
+                destinationMeal: mealType,
+                destinationSnackIndex: snackIndex
+            )
+            try MealTemplateCommands.log(
+                plan: plan,
+                availableFoods: recentFoods,
+                modelContext: modelContext
+            )
+            dismiss()
+        } catch {
+            mealErrorMessage = error.localizedDescription
+        }
+    }
+
     private var favoriteErrorIsPresented: Binding<Bool> {
         Binding(
             get: { favoriteErrorMessage != nil },
             set: { isPresented in
                 if !isPresented {
                     favoriteErrorMessage = nil
+                }
+            }
+        )
+    }
+
+    private var mealErrorIsPresented: Binding<Bool> {
+        Binding(
+            get: { mealErrorMessage != nil },
+            set: { isPresented in
+                if !isPresented {
+                    mealErrorMessage = nil
                 }
             }
         )
@@ -621,7 +826,7 @@ struct FoodSearchView: View {
         switch mode {
         case .logging:
             selectedProduct = product
-        case .ingredientSelection(let handler):
+        case .ingredientSelection(let handler), .mealComponentSelection(let handler):
             let food = searchService.createFoodItem(from: product)
             handler(food)
             dismiss()
@@ -632,7 +837,7 @@ struct FoodSearchView: View {
         switch mode {
         case .logging:
             selectedFoodItem = food
-        case .ingredientSelection(let handler):
+        case .ingredientSelection(let handler), .mealComponentSelection(let handler):
             handler(food)
             dismiss()
         }
@@ -642,5 +847,5 @@ struct FoodSearchView: View {
 
 #Preview {
     FoodSearchView(mealType: .breakfast, logDate: .now)
-        .modelContainer(for: [UserProfile.self, FoodItem.self, FoodLogEntry.self, RecipeIngredient.self], inMemory: true)
+        .modelContainer(for: [UserProfile.self, FoodItem.self, FoodLogEntry.self, RecipeIngredient.self, MealTemplate.self, MealTemplateItem.self], inMemory: true)
 }

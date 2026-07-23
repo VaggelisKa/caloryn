@@ -307,9 +307,7 @@ struct TodayView: View {
 
     private var copyYesterdayButton: some View {
         Button {
-            withAnimation {
-                copyEntries(from: yesterdayEntries)
-            }
+            copyYesterday()
         } label: {
             Label("Copy Yesterday's Meals", systemImage: "doc.on.doc")
                 .font(CalorynTheme.buttonLabel)
@@ -334,6 +332,21 @@ struct TodayView: View {
             logDate: selectedDate,
             snackIndex: snackIndex
         )
+    }
+
+    private func copyYesterday() {
+        let orderedEntries = yesterdayEntries.sorted {
+            if $0.mealType.sortOrder != $1.mealType.sortOrder {
+                return $0.mealType.sortOrder < $1.mealType.sortOrder
+            }
+            return $0.createdAt < $1.createdAt
+        }
+        DailyFoodLogCommands.copyLoggedEntries(
+            orderedEntries,
+            to: selectedDate,
+            modelContext: modelContext
+        )
+        try? modelContext.save()
     }
 
     private func handlePendingRoute() {
@@ -389,31 +402,79 @@ struct TodayView: View {
         }
     }
 
-    private func copyEntries(from entries: [FoodLogEntry]) {
-        DailyFoodLogCommands.copyLoggedEntries(
-            entries,
-            to: selectedDate,
-            modelContext: modelContext
-        )
-        try? modelContext.save()
-    }
 }
 
 private struct MissingFoodEntryView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
 
     let entry: FoodLogEntry
     let onDelete: () -> Void
 
+    @State private var date: Date
+    @State private var mealType: MealType
+    @State private var snackIndex: Int
+    @State private var portionGrams: Double
     @State private var showingDeleteConfirmation = false
+    @State private var errorMessage: String?
+
+    init(entry: FoodLogEntry, onDelete: @escaping () -> Void) {
+        self.entry = entry
+        self.onDelete = onDelete
+        _date = State(initialValue: entry.date)
+        _mealType = State(initialValue: entry.mealType)
+        _snackIndex = State(initialValue: max(1, entry.snackIndex))
+        _portionGrams = State(initialValue: entry.portionGrams)
+    }
 
     var body: some View {
         NavigationStack {
-            ContentUnavailableView(
-                "Food Missing",
-                systemImage: "exclamationmark.triangle",
-                description: Text("\(entry.foodName) no longer has a food attached.")
-            )
+            Form {
+                Section {
+                    Label {
+                        Text("The original saved food is missing. Editing uses the nutrition and quality values recorded in this log entry.")
+                    } icon: {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(CalorynTheme.terracotta)
+                    }
+                }
+
+                Section("Entry") {
+                    LabeledContent("Food", value: entry.foodName)
+
+                    TextField("Portion (g)", value: $portionGrams, format: .number)
+                        .keyboardType(.decimalPad)
+                        .accessibilityLabel("Portion in grams")
+                        .accessibilityIdentifier("missingEntry.portion")
+
+                    DatePicker(
+                        "Date",
+                        selection: $date,
+                        in: ...Date.now.tomorrow,
+                        displayedComponents: .date
+                    )
+
+                    Picker("Meal", selection: $mealType) {
+                        ForEach(MealType.allCases) { meal in
+                            Text(meal.displayName).tag(meal)
+                        }
+                    }
+
+                    if mealType == .snack {
+                        Stepper("Snack slot: \(snackIndex)", value: $snackIndex, in: 1...20)
+                            .accessibilityIdentifier("missingEntry.snackSlot")
+                    }
+                }
+
+                Section {
+                    Button(role: .destructive) {
+                        showingDeleteConfirmation = true
+                    } label: {
+                        Label("Delete Log Entry", systemImage: "trash")
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+            }
             .navigationTitle("Edit Portion")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -427,16 +488,12 @@ private struct MissingFoodEntryView: View {
                     .accessibilityLabel("Close")
                 }
 
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button(role: .destructive) {
-                        showingDeleteConfirmation = true
-                    } label: {
-                        Label("Delete", systemImage: "trash.fill")
-                            .font(CalorynTheme.toolbarIcon)
-                            .foregroundStyle(.red)
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        save()
                     }
-                    .tint(.red)
-                    .accessibilityLabel("Delete Log Entry")
+                    .disabled(!FavoriteFoodLogging.isSafePortion(portionGrams))
+                    .accessibilityIdentifier("missingEntry.save")
                 }
             }
             .confirmationDialog("Delete Log Entry", isPresented: $showingDeleteConfirmation) {
@@ -447,12 +504,40 @@ private struct MissingFoodEntryView: View {
             } message: {
                 Text("Remove \(entry.foodName) from your log?")
             }
+            .alert("Couldn’t Update Entry", isPresented: errorIsPresented) {
+                Button("OK", role: .cancel) { errorMessage = nil }
+            } message: {
+                Text(errorMessage ?? "Please try again.")
+            }
         }
+    }
+
+    private func save() {
+        do {
+            try DailyFoodLogCommands.saveSnapshotEntry(
+                entry,
+                date: date,
+                mealType: mealType,
+                portionGrams: portionGrams,
+                modelContext: modelContext,
+                snackIndex: snackIndex
+            )
+            dismiss()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private var errorIsPresented: Binding<Bool> {
+        Binding(
+            get: { errorMessage != nil },
+            set: { if !$0 { errorMessage = nil } }
+        )
     }
 }
 
 #Preview {
     TodayView()
-        .modelContainer(for: [UserProfile.self, FoodItem.self, FoodLogEntry.self, RecipeIngredient.self], inMemory: true)
+        .modelContainer(for: [UserProfile.self, FoodItem.self, FoodLogEntry.self, RecipeIngredient.self, MealTemplate.self, MealTemplateItem.self], inMemory: true)
         .environment(AppRouter())
 }

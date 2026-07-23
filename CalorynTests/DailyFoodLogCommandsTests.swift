@@ -114,9 +114,114 @@ final class DailyFoodLogCommandsTests: XCTestCase {
         XCTAssertEqual(copiedEntry.calories, sourceEntry.calories, accuracy: 0.001)
     }
 
-    func testCopyLoggedEntriesSkipsEntriesWithoutFoodItem() throws {
+    func testCopyLoggedEntriesPreservesRecordedSnapshotAfterFoodChanges() throws {
         let context = try makeContext()
-        let food = makeTestFoodItem(name: "Deleted Food")
+        let food = makeTestFoodItem(
+            name: "Original Yogurt",
+            caloriesPer100g: 120,
+            proteinPer100g: 9,
+            carbsPer100g: 4,
+            fatPer100g: 5,
+            fiberPer100g: 1,
+            sugarsPer100g: 3,
+            nutriscoreGrade: "a",
+            produceKind: .fruit
+        )
+        let sourceEntry = makeTestEntry(
+            mealType: .breakfast,
+            foodItem: food,
+            portionGrams: 200
+        )
+        context.insert(food)
+        context.insert(sourceEntry)
+        try context.save()
+
+        food.name = "Edited Yogurt"
+        food.nutritionPer100g = NutritionValues(
+            calories: 999,
+            proteinG: 1,
+            carbsG: 1,
+            fatG: 1
+        )
+        food.nutriscoreGrade = "e"
+        food.produceKind = .unclassified
+
+        let copied = DailyFoodLogCommands.copyLoggedEntries(
+            [sourceEntry],
+            to: makeTestDate(year: 2026, month: 3, day: 6),
+            modelContext: context
+        )
+
+        let copiedEntry = try XCTUnwrap(copied.first)
+        XCTAssertTrue(copiedEntry.foodItem === food)
+        XCTAssertEqual(copiedEntry.foodName, "Original Yogurt")
+        XCTAssertEqual(copiedEntry.portionGrams, 200, accuracy: 0.001)
+        XCTAssertEqual(copiedEntry.nutrition, sourceEntry.nutrition)
+        XCTAssertEqual(copiedEntry.calories, 240, accuracy: 0.001)
+        XCTAssertEqual(copiedEntry.nutriscoreGradeSnapshot, "a")
+        XCTAssertEqual(copiedEntry.produceKindSnapshot, .fruit)
+    }
+
+    func testCopyLoggedEntriesPreservesCompleteNutritionPayload() throws {
+        let context = try makeContext()
+        let food = makeTestFoodItem(name: "Complete Food")
+        let recordedNutrition = NutritionValues(
+            calories: 101,
+            proteinG: 2,
+            carbsG: 3,
+            fatG: 4,
+            fiberG: 5,
+            sugarsG: 6,
+            addedSugarsG: 7,
+            sucroseG: 8,
+            glucoseG: 9,
+            fructoseG: 10,
+            lactoseG: 11,
+            maltoseG: 12,
+            maltodextrinsG: 13,
+            starchG: 14,
+            polyolsG: 15,
+            saturatedFatG: 16,
+            transFatG: 17,
+            monounsaturatedFatG: 18,
+            polyunsaturatedFatG: 19,
+            omega3FatG: 20,
+            omega6FatG: 21,
+            omega9FatG: 22,
+            saltG: 23,
+            sodiumG: 24,
+            cholesterolG: 25,
+            solubleFiberG: 26,
+            insolubleFiberG: 27,
+            caseinG: 28,
+            serumProteinsG: 29,
+            alcoholG: 30
+        )
+        food.nutritionPer100g = recordedNutrition
+        let sourceEntry = makeTestEntry(foodItem: food, portionGrams: 100)
+        context.insert(food)
+        context.insert(sourceEntry)
+
+        food.nutritionPer100g = .zero
+
+        let copied = DailyFoodLogCommands.copyLoggedEntries(
+            [sourceEntry],
+            to: makeTestDate(year: 2026, month: 3, day: 6),
+            modelContext: context
+        )
+
+        XCTAssertEqual(copied.first?.nutrition, recordedNutrition)
+    }
+
+    func testCopyLoggedEntriesCopiesSnapshotWhenFoodItemIsMissing() throws {
+        let context = try makeContext()
+        let food = makeTestFoodItem(
+            name: "Deleted Food",
+            caloriesPer100g: 175,
+            proteinPer100g: 12,
+            nutriscoreGrade: "b",
+            produceKind: .vegetable
+        )
         let sourceEntry = makeTestEntry(
             mealType: .lunch,
             foodItem: food,
@@ -135,7 +240,63 @@ final class DailyFoodLogCommandsTests: XCTestCase {
             modelContext: context
         )
 
-        XCTAssertTrue(copied.isEmpty)
+        let copiedEntry = try XCTUnwrap(copied.first)
+        XCTAssertEqual(copied.count, 1)
+        XCTAssertNil(copiedEntry.foodItem)
+        XCTAssertEqual(copiedEntry.foodName, "Deleted Food")
+        XCTAssertEqual(copiedEntry.portionGrams, sourceEntry.portionGrams, accuracy: 0.001)
+        XCTAssertEqual(copiedEntry.nutrition, sourceEntry.nutrition)
+        XCTAssertEqual(copiedEntry.nutriscoreGradeSnapshot, "b")
+        XCTAssertEqual(copiedEntry.produceKindSnapshot, .vegetable)
+    }
+
+    func testCopyLoggedEntriesPreservesLegacyQualityMarker() throws {
+        let context = try makeContext()
+        let food = makeTestFoodItem(
+            name: "Legacy Food",
+            nutriscoreGrade: "a",
+            produceKind: .fruit
+        )
+        let sourceEntry = makeLegacyTestEntry(foodItem: food, portionGrams: 100)
+        context.insert(food)
+        context.insert(sourceEntry)
+
+        let copied = DailyFoodLogCommands.copyLoggedEntries(
+            [sourceEntry],
+            to: makeTestDate(year: 2026, month: 3, day: 6),
+            modelContext: context
+        )
+
+        let copiedEntry = try XCTUnwrap(copied.first)
+        XCTAssertFalse(copiedEntry.hasQualitySnapshot)
+        XCTAssertNil(copiedEntry.nutriscoreGradeSnapshot)
+        XCTAssertNil(copiedEntry.produceKindSnapshotRaw)
+        XCTAssertNil(copiedEntry.produceItemsSnapshotRaw)
+    }
+
+    func testCopyLoggedEntriesAssignsStableCreationOrder() throws {
+        let context = try makeContext()
+        let firstFood = makeTestFoodItem(name: "First")
+        let secondFood = makeTestFoodItem(name: "Second")
+        let firstEntry = makeTestEntry(mealType: .snack, foodItem: firstFood)
+        let secondEntry = makeTestEntry(mealType: .snack, foodItem: secondFood)
+        context.insert(firstFood)
+        context.insert(secondFood)
+        context.insert(firstEntry)
+        context.insert(secondEntry)
+        let now = makeTestDate(year: 2026, month: 3, day: 6, hour: 9)
+
+        let copied = DailyFoodLogCommands.copyLoggedEntries(
+            [secondEntry, firstEntry],
+            to: now,
+            modelContext: context,
+            now: now
+        )
+
+        XCTAssertEqual(copied.map(\.foodName), ["Second", "First"])
+        XCTAssertEqual(copied.map(\.snackIndex), [1, 1])
+        XCTAssertEqual(copied[0].createdAt, now)
+        XCTAssertEqual(copied[1].createdAt, now.addingTimeInterval(0.001))
     }
 
     func testUpdateLoggedEntryRefreshesExistingEntryWithoutReplacingIt() throws {
@@ -241,6 +402,96 @@ final class DailyFoodLogCommandsTests: XCTestCase {
         XCTAssertEqual(entry.snackIndex, 3)
     }
 
+    func testSaveSnapshotEntryPersistsInIsolatedContext() throws {
+        let container = try makeContainer()
+        let context = ModelContext(container)
+        let sourceFood = makeTestFoodItem(name: "Archived soup", caloriesPer100g: 80)
+        let source = makeTestEntry(foodItem: sourceFood, portionGrams: 250)
+        let entry = FoodLogEntry(
+            date: makeTestDate(year: 2026, month: 3, day: 7),
+            mealType: .lunch,
+            foodItem: nil,
+            snapshot: FoodLogEntrySnapshot(entry: source),
+            snackIndex: 0
+        )
+        context.insert(entry)
+        try context.save()
+
+        try DailyFoodLogCommands.saveSnapshotEntry(
+            entry,
+            date: makeTestDate(year: 2026, month: 3, day: 8, hour: 20),
+            mealType: .snack,
+            portionGrams: 125,
+            modelContext: context,
+            snackIndex: 3
+        )
+
+        let verificationContext = ModelContext(container)
+        let persisted = try XCTUnwrap(
+            verificationContext.fetch(FetchDescriptor<FoodLogEntry>()).first
+        )
+        XCTAssertNil(persisted.foodItem)
+        XCTAssertEqual(persisted.foodName, "Archived soup")
+        XCTAssertEqual(persisted.date, makeTestDate(year: 2026, month: 3, day: 8).startOfDay)
+        XCTAssertEqual(persisted.mealType, .snack)
+        XCTAssertEqual(persisted.snackIndex, 3)
+        XCTAssertEqual(persisted.portionGrams, 125)
+        XCTAssertEqual(persisted.calories, 100)
+    }
+
+    func testFailedSnapshotSavePreservesUnrelatedPendingEditsAndStoredEntry() throws {
+        let container = try makeContainer()
+        let context = ModelContext(container)
+        let food = makeTestFoodItem(name: "Stored food", caloriesPer100g: 80)
+        let unrelatedEntry = makeTestEntry(foodItem: food)
+        let source = makeTestEntry(foodItem: food, portionGrams: 250)
+        let targetEntry = FoodLogEntry(
+            date: makeTestDate(year: 2026, month: 3, day: 7),
+            mealType: .lunch,
+            foodItem: nil,
+            snapshot: FoodLogEntrySnapshot(entry: source),
+            snackIndex: 0
+        )
+        context.insert(food)
+        context.insert(unrelatedEntry)
+        context.insert(targetEntry)
+        try context.save()
+        food.name = "Pending food edit"
+        unrelatedEntry.foodName = "Pending log edit"
+
+        XCTAssertThrowsError(
+            try DailyFoodLogCommands.saveSnapshotEntry(
+                targetEntry,
+                date: makeTestDate(year: 2026, month: 3, day: 8),
+                mealType: .snack,
+                portionGrams: 125,
+                modelContext: context,
+                snackIndex: 4,
+                save: { _ in throw InjectedFailure.save }
+            )
+        )
+
+        XCTAssertEqual(food.name, "Pending food edit")
+        XCTAssertEqual(unrelatedEntry.foodName, "Pending log edit")
+        XCTAssertTrue(context.hasChanges)
+
+        let verificationContext = ModelContext(container)
+        let targetEntryID = targetEntry.id
+        let persisted = try XCTUnwrap(
+            verificationContext.fetch(
+                FetchDescriptor<FoodLogEntry>(
+                    predicate: #Predicate { entry in
+                        entry.id == targetEntryID
+                    }
+                )
+            ).first
+        )
+        XCTAssertEqual(persisted.date, makeTestDate(year: 2026, month: 3, day: 7).startOfDay)
+        XCTAssertEqual(persisted.mealType, .lunch)
+        XCTAssertEqual(persisted.snackIndex, 0)
+        XCTAssertEqual(persisted.portionGrams, 250)
+    }
+
     func testDeleteLoggedEntryRemovesOnlyTheLogEntry() throws {
         let context = try makeContext()
         let food = makeTestFoodItem(name: "Apple")
@@ -259,14 +510,21 @@ final class DailyFoodLogCommandsTests: XCTestCase {
     }
 
     private func makeContext() throws -> ModelContext {
+        ModelContext(try makeContainer())
+    }
+
+    private func makeContainer() throws -> ModelContainer {
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(
+        return try ModelContainer(
             for: UserProfile.self,
             FoodItem.self,
             FoodLogEntry.self,
             RecipeIngredient.self,
             configurations: configuration
         )
-        return ModelContext(container)
+    }
+
+    private enum InjectedFailure: Error {
+        case save
     }
 }

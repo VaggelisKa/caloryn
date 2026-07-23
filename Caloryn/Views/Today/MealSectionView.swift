@@ -71,8 +71,8 @@ struct MealSectionView: View {
                 sectionHeader
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Add food to \(sectionTitle)")
-            .accessibilityHint("Double tap to add food")
+            .accessibilityLabel("Add food or meal to \(sectionTitle)")
+            .accessibilityHint("Double tap to add food or a saved meal")
         }
     }
 
@@ -120,6 +120,7 @@ struct MealSectionView: View {
                 .font(.system(.title3, weight: .semibold))
                 .foregroundStyle(CalorynTheme.sage)
         }
+        .frame(maxWidth: .infinity)
         .contentShape(Rectangle())
     }
 }

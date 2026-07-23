@@ -4,12 +4,16 @@ import SwiftUI
 struct MyFoodsView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \FoodItem.name) private var foodItems: [FoodItem]
+    @Query(sort: \MealTemplate.updatedAt, order: .reverse) private var mealTemplates: [MealTemplate]
 
     @State private var showingManualEntryForm = false
     @State private var showingRecipeForm = false
+    @State private var showingMealForm = false
     @State private var editingManualEntry: FoodItem?
     @State private var editingRecipe: FoodItem?
+    @State private var editingMeal: MealTemplate?
     @State private var favoriteErrorMessage: String?
+    @State private var mealErrorMessage: String?
     @State private var showsAllFavorites = false
 
     private var manualEntries: [FoodItem] {
@@ -42,20 +46,20 @@ struct MyFoodsView: View {
     var body: some View {
         NavigationStack {
             List {
-                if !favorites.isEmpty {
-                    favoritesSection
-                }
-
-                if manualEntries.isEmpty {
-                    emptyManualEntriesSection
-                } else if !nonFavoriteManualEntries.isEmpty {
-                    manualEntriesSection
-                }
+                favoritesSection
 
                 if recipes.isEmpty {
                     emptyRecipesSection
                 } else if !nonFavoriteRecipes.isEmpty {
                     recipesSection
+                }
+
+                mealsSection
+
+                if manualEntries.isEmpty {
+                    emptyManualEntriesSection
+                } else if !nonFavoriteManualEntries.isEmpty {
+                    manualEntriesSection
                 }
             }
             .calorynGroupedListStyle()
@@ -77,6 +81,12 @@ struct MyFoodsView: View {
                 })
                 .presentationDragIndicator(.visible)
             }
+            .sheet(isPresented: $showingMealForm) {
+                MealFormView {
+                    showingMealForm = false
+                }
+                .presentationDragIndicator(.visible)
+            }
             .sheet(item: $editingManualEntry) { food in
                 CustomFoodFormView(existingFood: food)
                     .presentationDragIndicator(.visible)
@@ -85,6 +95,10 @@ struct MyFoodsView: View {
                 RecipeFormView(existingRecipe: recipe)
                     .presentationDragIndicator(.visible)
             }
+            .sheet(item: $editingMeal) { meal in
+                MealFormView(existingMeal: meal)
+                .presentationDragIndicator(.visible)
+            }
             .alert("Couldn’t Update Favorite", isPresented: favoriteErrorIsPresented) {
                 Button("OK", role: .cancel) {
                     favoriteErrorMessage = nil
@@ -92,37 +106,84 @@ struct MyFoodsView: View {
             } message: {
                 Text(favoriteErrorMessage ?? "Please try again.")
             }
+            .alert("Couldn’t Update Meal", isPresented: mealErrorIsPresented) {
+                Button("OK", role: .cancel) {
+                    mealErrorMessage = nil
+                }
+            } message: {
+                Text(mealErrorMessage ?? "Please try again.")
+            }
         }
         .calorynPageCanvas()
     }
 
+    private var mealsSection: some View {
+        Section {
+            if mealTemplates.isEmpty {
+                EmptyFoodGroupRow(
+                    title: "No Meals",
+                    message: "Create a meal from foods, manual entries, or recipes.",
+                    systemImage: "fork.knife"
+                )
+            } else {
+                ForEach(mealTemplates) { meal in
+                    Button {
+                        editingMeal = meal
+                    } label: {
+                        MealTemplateLibraryRow(template: meal)
+                    }
+                    .buttonStyle(.plain)
+                    .swipeActions(edge: .trailing) {
+                        Button(role: .destructive) {
+                            delete(meal)
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                    }
+                }
+            }
+        } header: {
+            Text("Meals")
+                .font(CalorynTheme.caption)
+                .foregroundStyle(CalorynTheme.textSecondary)
+        }
+    }
+
     private var favoritesSection: some View {
         Section {
-            ForEach(visibleFavorites) { food in
-                libraryButton(for: food)
-                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                        deleteButton(for: food)
-                        favoriteButton(for: food)
-                    }
-            }
-
-            if favorites.count > FavoriteFoodLogging.collapsedFavoriteLimit {
-                Button(action: toggleFavoritesDisclosure) {
-                    HStack {
-                        Text(showsAllFavorites ? "Show less" : "Show all \(favorites.count)")
-                        Spacer()
-                        Image(systemName: showsAllFavorites ? "chevron.up" : "chevron.down")
-                    }
-                    .font(CalorynTheme.caption)
-                    .foregroundStyle(CalorynTheme.sage)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(
-                    showsAllFavorites
-                        ? "Show fewer favorites"
-                        : "Show all \(favorites.count) favorites"
+            if favorites.isEmpty {
+                EmptyFoodGroupRow(
+                    title: "No Favorites",
+                    message: "Favorite recipes or manual entries for quick access.",
+                    systemImage: "star"
                 )
+            } else {
+                ForEach(visibleFavorites) { food in
+                    libraryButton(for: food)
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            deleteButton(for: food)
+                            favoriteButton(for: food)
+                        }
+                }
+
+                if favorites.count > FavoriteFoodLogging.collapsedFavoriteLimit {
+                    Button(action: toggleFavoritesDisclosure) {
+                        HStack {
+                            Text(showsAllFavorites ? "Show less" : "Show all \(favorites.count)")
+                            Spacer()
+                            Image(systemName: showsAllFavorites ? "chevron.up" : "chevron.down")
+                        }
+                        .font(CalorynTheme.caption)
+                        .foregroundStyle(CalorynTheme.sage)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(
+                        showsAllFavorites
+                            ? "Show fewer favorites"
+                            : "Show all \(favorites.count) favorites"
+                    )
+                }
             }
         } header: {
             HStack {
@@ -147,6 +208,12 @@ struct MyFoodsView: View {
                 showingRecipeForm = true
             } label: {
                 Label("Create Recipe", systemImage: "list.bullet.rectangle")
+            }
+
+            Button {
+                showingMealForm = true
+            } label: {
+                Label("Create Meal", systemImage: "fork.knife")
             }
         } label: {
             Image(systemName: "plus")
@@ -256,6 +323,14 @@ struct MyFoodsView: View {
         try? modelContext.save()
     }
 
+    private func delete(_ meal: MealTemplate) {
+        do {
+            try MealTemplateCommands.delete(meal, modelContext: modelContext)
+        } catch {
+            mealErrorMessage = error.localizedDescription
+        }
+    }
+
     private func favoriteButton(for food: FoodItem) -> some View {
         Button {
             toggleFavorite(food)
@@ -304,6 +379,18 @@ struct MyFoodsView: View {
             }
         )
     }
+
+    private var mealErrorIsPresented: Binding<Bool> {
+        Binding(
+            get: { mealErrorMessage != nil },
+            set: { isPresented in
+                if !isPresented {
+                    mealErrorMessage = nil
+                }
+            }
+        )
+    }
+
 }
 
 private struct EmptyFoodGroupRow: View {
@@ -405,5 +492,5 @@ private struct RecipeLibraryRow: View {
 
 #Preview {
     MyFoodsView()
-        .modelContainer(for: [UserProfile.self, FoodItem.self, FoodLogEntry.self, RecipeIngredient.self], inMemory: true)
+        .modelContainer(for: [UserProfile.self, FoodItem.self, FoodLogEntry.self, RecipeIngredient.self, MealTemplate.self, MealTemplateItem.self], inMemory: true)
 }

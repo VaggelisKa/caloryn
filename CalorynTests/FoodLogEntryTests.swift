@@ -44,6 +44,56 @@ final class FoodLogEntryTests: XCTestCase {
         XCTAssertEqual(entry.cholesterolG ?? -1, 0.02, accuracy: 0.001)
     }
 
+    func testReusableSnapshotCapturesSourceIdentityMealContextAndPayload() {
+        let food = makeTestFoodItem(
+            name: "Greek Yogurt",
+            caloriesPer100g: 120,
+            proteinPer100g: 9,
+            carbsPer100g: 4,
+            fatPer100g: 5,
+            nutriscoreGrade: "a",
+            produceKind: .fruit
+        )
+        let entry = makeTestEntry(
+            mealType: .snack,
+            foodItem: food,
+            portionGrams: 200,
+            snackIndex: 3
+        )
+
+        let snapshot = FoodLogEntrySnapshot(entry: entry)
+
+        XCTAssertEqual(snapshot.sourceFoodID, food.id)
+        XCTAssertEqual(snapshot.mealType, .snack)
+        XCTAssertEqual(snapshot.snackIndex, 3)
+        XCTAssertEqual(snapshot.foodName, "Greek Yogurt")
+        XCTAssertEqual(snapshot.portionGrams, 200, accuracy: 0.001)
+        XCTAssertEqual(snapshot.nutrition, entry.nutrition)
+        XCTAssertEqual(snapshot.nutriscoreGradeSnapshot, "a")
+        XCTAssertEqual(snapshot.produceKindSnapshotRaw, ProduceKind.fruit.rawValue)
+    }
+
+    func testReusableSnapshotRoundTripsForFuturePersistence() throws {
+        let food = makeTestFoodItem(
+            name: "Persistent Yogurt",
+            caloriesPer100g: 120,
+            sugarsPer100g: 3,
+            nutriscoreGrade: "a",
+            produceKind: .fruit
+        )
+        let entry = makeTestEntry(
+            mealType: .breakfast,
+            foodItem: food,
+            portionGrams: 175
+        )
+        let snapshot = FoodLogEntrySnapshot(entry: entry)
+
+        let encoded = try JSONEncoder().encode(snapshot)
+        let decoded = try JSONDecoder().decode(FoodLogEntrySnapshot.self, from: encoded)
+
+        XCTAssertEqual(decoded, snapshot)
+    }
+
     func testSnackEntriesPreserveSnackIndexForDisplay() {
         let entry = makeTestEntry(mealType: .snack, snackIndex: 3)
 
