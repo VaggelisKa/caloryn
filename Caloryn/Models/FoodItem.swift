@@ -183,8 +183,9 @@ final class FoodItem {
 
     var lastUsed: Date = Date()
 
-    // Optional storage keeps the schema additive for existing SwiftData /
-    // CloudKit stores. A nil value is the migrated, never-pinned state.
+    // These storage names predate the user-facing "Favorites" terminology.
+    // Keeping them preserves lightweight SwiftData / CloudKit migration.
+    // A nil value is the migrated, never-favorited state.
     var isPinnedRaw: Bool?
     var pinnedAt: Date?
 
@@ -298,16 +299,20 @@ final class FoodItem {
         }
     }
 
-    var isPinned: Bool {
-        isPinnedRaw ?? false
+    var isUserCreatedFood: Bool {
+        isCustom || isRecipe
     }
 
-    func setPinned(_ pinned: Bool, at date: Date = Date()) {
-        let wasPinned = isPinned
-        isPinnedRaw = pinned
+    var isFavorite: Bool {
+        isUserCreatedFood && (isPinnedRaw ?? false)
+    }
 
-        if pinned {
-            if !wasPinned || pinnedAt == nil {
+    func setFavorite(_ favorite: Bool, at date: Date = Date()) {
+        let wasFavorite = isFavorite
+        isPinnedRaw = favorite
+
+        if favorite {
+            if !wasFavorite || pinnedAt == nil {
                 pinnedAt = date
             }
         } else {

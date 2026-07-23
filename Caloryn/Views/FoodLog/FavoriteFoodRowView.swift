@@ -1,11 +1,11 @@
 import SwiftUI
 
-struct PinnedFoodRowView: View {
+struct FavoriteFoodRowView: View {
     let food: FoodItem
-    let plan: PinnedFoodLogPlan
+    let plan: FavoriteFoodLogPlan
     let destinationDescription: String
     let onLog: () -> Void
-    let onUnpin: () -> Void
+    let onRemoveFavorite: () -> Void
 
     private var identityDescription: String {
         let type = food.isRecipe ? "Recipe" : (food.isCustom ? "Manual entry" : "Saved food")
@@ -14,7 +14,18 @@ struct PinnedFoodRowView: View {
             .map { "\($0) · \(type)" } ?? type
     }
 
-    private var actionDescription: String {
+    private var visualActionDescription: String? {
+        switch plan.action {
+        case .log(let portionGrams):
+            portionGrams.portionFormatted
+        case .confirmQuantity:
+            nil
+        case .unavailable:
+            "Unavailable"
+        }
+    }
+
+    private var accessibilityActionDescription: String {
         switch plan.action {
         case .log(let portionGrams):
             "Log \(portionGrams.portionFormatted)"
@@ -32,7 +43,7 @@ struct PinnedFoodRowView: View {
         case .confirmQuantity:
             "Opens a quantity confirmation for \(destinationDescription)"
         case .unavailable:
-            "This saved item must be edited or unpinned"
+            "This saved item must be edited or removed from Favorites"
         }
     }
 
@@ -53,21 +64,33 @@ struct PinnedFoodRowView: View {
 
                 Spacer(minLength: 8)
 
-                Text(actionDescription)
-                    .font(CalorynTheme.numericMicroCaptionEmphasized)
-                    .foregroundStyle(actionColor)
-                    .multilineTextAlignment(.trailing)
+                if let visualActionDescription {
+                    Text(visualActionDescription)
+                        .font(CalorynTheme.numericMicroCaptionEmphasized)
+                        .foregroundStyle(actionColor)
+                        .multilineTextAlignment(.trailing)
+                } else {
+                    Image(systemName: "chevron.right")
+                        .font(CalorynTheme.microCaption)
+                        .foregroundStyle(CalorynTheme.textSecondary)
+                        .accessibilityHidden(true)
+                }
             }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(food.name), \(identityDescription), \(actionDescription), destination \(destinationDescription)")
+        .accessibilityLabel(
+            "\(food.name), \(identityDescription), \(accessibilityActionDescription), destination \(destinationDescription)"
+        )
         .accessibilityHint(actionHint)
-        .accessibilityAction(named: "Unpin \(food.name)", onUnpin)
+        .accessibilityAction(
+            named: "Remove \(food.name) from favorites",
+            onRemoveFavorite
+        )
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-            Button(action: onUnpin) {
-                Label("Unpin", systemImage: "pin.slash")
+            Button(action: onRemoveFavorite) {
+                Label("Remove Favorite", systemImage: "star.slash")
             }
             .tint(CalorynTheme.terracotta)
         }

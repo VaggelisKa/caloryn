@@ -10,6 +10,7 @@ struct MyFoodsView: View {
     @State private var editingManualEntry: FoodItem?
     @State private var editingRecipe: FoodItem?
     @State private var favoriteErrorMessage: String?
+    @State private var showsAllFavorites = false
 
     private var manualEntries: [FoodItem] {
         foodItems.filter { $0.isCustom && !$0.isRecipe }
@@ -19,11 +20,43 @@ struct MyFoodsView: View {
         foodItems.filter(\.isRecipe)
     }
 
+    private var favorites: [FoodItem] {
+        FavoriteFoodLogging.sortedFavorites(from: foodItems)
+    }
+
+    private var visibleFavorites: [FoodItem] {
+        FavoriteFoodLogging.visibleFavorites(
+            from: foodItems,
+            showsAll: showsAllFavorites
+        )
+    }
+
+    private var nonFavoriteManualEntries: [FoodItem] {
+        manualEntries.filter { !$0.isFavorite }
+    }
+
+    private var nonFavoriteRecipes: [FoodItem] {
+        recipes.filter { !$0.isFavorite }
+    }
+
     var body: some View {
         NavigationStack {
             List {
-                manualEntriesSection
-                recipesSection
+                if !favorites.isEmpty {
+                    favoritesSection
+                }
+
+                if manualEntries.isEmpty {
+                    emptyManualEntriesSection
+                } else if !nonFavoriteManualEntries.isEmpty {
+                    manualEntriesSection
+                }
+
+                if recipes.isEmpty {
+                    emptyRecipesSection
+                } else if !nonFavoriteRecipes.isEmpty {
+                    recipesSection
+                }
             }
             .calorynGroupedListStyle()
             .navigationTitle("My Foods")
@@ -52,7 +85,7 @@ struct MyFoodsView: View {
                 RecipeFormView(existingRecipe: recipe)
                     .presentationDragIndicator(.visible)
             }
-            .alert("Couldn’t Update Pin", isPresented: favoriteErrorIsPresented) {
+            .alert("Couldn’t Update Favorite", isPresented: favoriteErrorIsPresented) {
                 Button("OK", role: .cancel) {
                     favoriteErrorMessage = nil
                 }
@@ -61,6 +94,45 @@ struct MyFoodsView: View {
             }
         }
         .calorynPageCanvas()
+    }
+
+    private var favoritesSection: some View {
+        Section {
+            ForEach(visibleFavorites) { food in
+                libraryButton(for: food)
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        deleteButton(for: food)
+                        favoriteButton(for: food)
+                    }
+            }
+
+            if favorites.count > FavoriteFoodLogging.collapsedFavoriteLimit {
+                Button(action: toggleFavoritesDisclosure) {
+                    HStack {
+                        Text(showsAllFavorites ? "Show less" : "Show all \(favorites.count)")
+                        Spacer()
+                        Image(systemName: showsAllFavorites ? "chevron.up" : "chevron.down")
+                    }
+                    .font(CalorynTheme.caption)
+                    .foregroundStyle(CalorynTheme.sage)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(
+                    showsAllFavorites
+                        ? "Show fewer favorites"
+                        : "Show all \(favorites.count) favorites"
+                )
+            }
+        } header: {
+            HStack {
+                Label("Favorites", systemImage: "star.fill")
+                Spacer()
+                Text("\(favorites.count)")
+            }
+            .font(CalorynTheme.caption)
+            .foregroundStyle(CalorynTheme.textSecondary)
+        }
     }
 
     private var createMenu: some View {
@@ -86,31 +158,14 @@ struct MyFoodsView: View {
 
     private var manualEntriesSection: some View {
         Section {
-            if manualEntries.isEmpty {
-                EmptyFoodGroupRow(
-                    title: "No Manual Entries",
-                    message: "Create foods you enter yourself.",
-                    systemImage: "pencil.and.list.clipboard"
-                )
-            } else {
-                ForEach(manualEntries) { food in
-                    Button {
-                        editingManualEntry = food
-                    } label: {
-                        manualEntryRow(for: food)
-                    }
-                    .buttonStyle(.plain)
-                    .swipeActions(edge: .leading) {
+            ForEach(nonFavoriteManualEntries) { food in
+                libraryButton(for: food)
+                    .swipeActions(edge: .leading, allowsFullSwipe: false) {
                         favoriteButton(for: food)
                     }
-                    .swipeActions(edge: .trailing) {
-                        Button(role: .destructive) {
-                            delete(food)
-                        } label: {
-                            Label("Delete", systemImage: "trash")
-                        }
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        deleteButton(for: food)
                     }
-                }
             }
         } header: {
             Text("Manual Entries")
@@ -121,37 +176,65 @@ struct MyFoodsView: View {
 
     private var recipesSection: some View {
         Section {
-            if recipes.isEmpty {
-                EmptyFoodGroupRow(
-                    title: "No Recipes",
-                    message: "Create recipes from reusable ingredients.",
-                    systemImage: "list.bullet.rectangle"
-                )
-            } else {
-                ForEach(recipes) { recipe in
-                    Button {
-                        editingRecipe = recipe
-                    } label: {
-                        RecipeLibraryRow(recipe: recipe)
-                    }
-                    .buttonStyle(.plain)
-                    .swipeActions(edge: .leading) {
+            ForEach(nonFavoriteRecipes) { recipe in
+                libraryButton(for: recipe)
+                    .swipeActions(edge: .leading, allowsFullSwipe: false) {
                         favoriteButton(for: recipe)
                     }
-                    .swipeActions(edge: .trailing) {
-                        Button(role: .destructive) {
-                            delete(recipe)
-                        } label: {
-                            Label("Delete", systemImage: "trash")
-                        }
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        deleteButton(for: recipe)
                     }
-                }
             }
         } header: {
             Text("Recipes")
                 .font(CalorynTheme.caption)
                 .foregroundStyle(CalorynTheme.textSecondary)
         }
+    }
+
+    private var emptyManualEntriesSection: some View {
+        Section {
+            EmptyFoodGroupRow(
+                title: "No Manual Entries",
+                message: "Create foods you enter yourself.",
+                systemImage: "pencil.and.list.clipboard"
+            )
+        } header: {
+            Text("Manual Entries")
+                .font(CalorynTheme.caption)
+                .foregroundStyle(CalorynTheme.textSecondary)
+        }
+    }
+
+    private var emptyRecipesSection: some View {
+        Section {
+            EmptyFoodGroupRow(
+                title: "No Recipes",
+                message: "Create recipes from reusable ingredients.",
+                systemImage: "list.bullet.rectangle"
+            )
+        } header: {
+            Text("Recipes")
+                .font(CalorynTheme.caption)
+                .foregroundStyle(CalorynTheme.textSecondary)
+        }
+    }
+
+    private func libraryButton(for food: FoodItem) -> some View {
+        Button {
+            if food.isRecipe {
+                editingRecipe = food
+            } else {
+                editingManualEntry = food
+            }
+        } label: {
+            if food.isRecipe {
+                RecipeLibraryRow(recipe: food)
+            } else {
+                manualEntryRow(for: food)
+            }
+        }
+        .buttonStyle(.plain)
     }
 
     private func manualEntryRow(for food: FoodItem) -> some View {
@@ -175,22 +258,39 @@ struct MyFoodsView: View {
 
     private func favoriteButton(for food: FoodItem) -> some View {
         Button {
-            togglePinned(food)
+            toggleFavorite(food)
         } label: {
-            Label(food.isPinned ? "Unpin" : "Pin", systemImage: food.isPinned ? "pin.slash" : "pin")
+            Label(
+                food.isFavorite ? "Remove Favorite" : "Favorite",
+                systemImage: food.isFavorite ? "star.slash" : "star"
+            )
         }
-        .tint(food.isPinned ? CalorynTheme.textSecondary : CalorynTheme.terracotta)
+        .tint(food.isFavorite ? CalorynTheme.textSecondary : CalorynTheme.terracotta)
     }
 
-    private func togglePinned(_ food: FoodItem) {
+    private func deleteButton(for food: FoodItem) -> some View {
+        Button(role: .destructive) {
+            delete(food)
+        } label: {
+            Label("Delete", systemImage: "trash")
+        }
+    }
+
+    private func toggleFavorite(_ food: FoodItem) {
         do {
-            try PinnedFoodLogging.setPinned(
-                !food.isPinned,
+            try FavoriteFoodLogging.setFavorite(
+                !food.isFavorite,
                 for: food,
                 modelContext: modelContext
             )
         } catch {
-            favoriteErrorMessage = "Your pin couldn’t be updated. Please try again."
+            favoriteErrorMessage = error.localizedDescription
+        }
+    }
+
+    private func toggleFavoritesDisclosure() {
+        withAnimation {
+            showsAllFavorites.toggle()
         }
     }
 

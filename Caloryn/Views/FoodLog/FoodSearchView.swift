@@ -39,8 +39,8 @@ struct FoodSearchView: View {
     @State private var showingCustomFoodForm = false
     @State private var isLookingUpBarcode = false
     @State private var barcodeLookupError: String?
-    @State private var quantityConfirmationFood: FoodItem?
     @State private var favoriteErrorMessage: String?
+    @State private var showsAllFavorites = false
     @FocusState private var isSearchFocused: Bool
 
     private var showingRecent: Bool {
@@ -59,14 +59,21 @@ struct FoodSearchView: View {
     private var displayedRecentFoods: [FoodItem] {
         Array(
             recentFoods
-                .filter { !$0.isPinned && !$0.isCustom && !$0.isRecipe }
+                .filter { !$0.isUserCreatedFood }
                 .prefix(20)
         )
     }
 
-    private var pinnedFoods: [FoodItem] {
+    private var favoriteFoods: [FoodItem] {
         guard !mode.isIngredientSelection else { return [] }
-        return PinnedFoodLogging.sortedPinnedFoods(from: recentFoods)
+        return FavoriteFoodLogging.sortedFavorites(from: recentFoods)
+    }
+
+    private var visibleFavoriteFoods: [FoodItem] {
+        FavoriteFoodLogging.visibleFavorites(
+            from: favoriteFoods,
+            showsAll: showsAllFavorites
+        )
     }
 
     var body: some View {
@@ -134,22 +141,11 @@ struct FoodSearchView: View {
                     }
                 })
             }
-            .sheet(item: $quantityConfirmationFood) { food in
-                PinnedPortionConfirmationView(
-                    foodItem: food,
-                    mealType: mealType,
-                    logDate: logDate,
-                    snackIndex: snackIndex,
-                    onLogged: dismiss.callAsFunction
-                )
-                .presentationDetents([.medium])
-                .presentationDragIndicator(.visible)
-            }
             .fullScreenCover(isPresented: $showingScanner) {
                 barcodeScannerSheet
             }
             .alert(
-                "Couldn’t Log Pinned Food",
+                "Couldn’t Log Favorite",
                 isPresented: favoriteErrorIsPresented
             ) {
                 Button("OK", role: .cancel) {
@@ -221,23 +217,38 @@ struct FoodSearchView: View {
 
     private var recentFoodsList: some View {
         List {
-            if !mode.isIngredientSelection && !pinnedFoods.isEmpty {
+            if !favoriteFoods.isEmpty {
                 Section {
-                    ForEach(pinnedFoods) { food in
-                        PinnedFoodRowView(
+                    ForEach(visibleFavoriteFoods) { food in
+                        FavoriteFoodRowView(
                             food: food,
-                            plan: pinnedPlan(for: food),
+                            plan: favoritePlan(for: food),
                             destinationDescription: destinationDescription,
-                            onLog: { handlePinnedFoodAction(food) },
-                            onUnpin: { togglePinned(food) }
+                            onLog: { handleFavoriteFoodAction(food) },
+                            onRemoveFavorite: { toggleFavorite(food) }
+                        )
+                    }
+
+                    if favoriteFoods.count > FavoriteFoodLogging.collapsedFavoriteLimit {
+                        Button(action: toggleFavoritesDisclosure) {
+                            HStack {
+                                Text(showsAllFavorites ? "Show less" : "Show all \(favoriteFoods.count)")
+                                Spacer()
+                                Image(systemName: showsAllFavorites ? "chevron.up" : "chevron.down")
+                            }
+                            .font(CalorynTheme.caption)
+                            .foregroundStyle(CalorynTheme.sage)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(
+                            showsAllFavorites
+                                ? "Show fewer favorites"
+                                : "Show all \(favoriteFoods.count) favorites"
                         )
                     }
                 } header: {
-                    HStack {
-                        Label("Pinned", systemImage: "pin.fill")
-                        Spacer()
-                        Text(destinationDescription)
-                    }
+                    Label("Favorites", systemImage: "star.fill")
                     .font(CalorynTheme.caption)
                     .foregroundStyle(CalorynTheme.textSecondary)
                 }
@@ -382,7 +393,9 @@ struct FoodSearchView: View {
             }
             .buttonStyle(.plain)
 
-            pinButton(for: food)
+            if !mode.isIngredientSelection {
+                favoriteButton(for: food)
+            }
         }
     }
 
@@ -403,42 +416,46 @@ struct FoodSearchView: View {
             }
             .buttonStyle(.plain)
 
-            pinButton(for: food)
+            favoriteButton(for: food)
         }
     }
 
     private func savedFoodRow(for food: FoodItem) -> some View {
-        HStack(spacing: 12) {
-            Button {
-                handleFoodItemSelection(food)
-            } label: {
-                FoodRowView(
-                    name: food.name,
-                    brand: food.brand,
-                    caloriesPer100g: food.caloriesPer100g,
-                    nutriscoreGrade: food.nutriscoreGrade,
-                    servingDescription: food.servingDescription
-                )
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-
-            pinButton(for: food)
+        Button {
+            handleFoodItemSelection(food)
+        } label: {
+            FoodRowView(
+                name: food.name,
+                brand: food.brand,
+                caloriesPer100g: food.caloriesPer100g,
+                nutriscoreGrade: food.nutriscoreGrade,
+                servingDescription: food.servingDescription
+            )
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
     }
 
-    private func pinButton(for food: FoodItem) -> some View {
+    private func favoriteButton(for food: FoodItem) -> some View {
         Button {
-            togglePinned(food)
+            toggleFavorite(food)
         } label: {
-            Image(systemName: food.isPinned ? "pin.fill" : "pin")
+            Image(systemName: food.isFavorite ? "star.fill" : "star")
                 .font(CalorynTheme.inlineIcon)
-                .foregroundStyle(food.isPinned ? CalorynTheme.terracotta : CalorynTheme.textSecondary)
+                .foregroundStyle(food.isFavorite ? CalorynTheme.terracotta : CalorynTheme.textSecondary)
                 .frame(width: 44, height: 44)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(food.isPinned ? "Unpin \(food.name)" : "Pin \(food.name)")
-        .accessibilityHint(food.isPinned ? "Removes this item from pinned foods" : "Adds this item to pinned foods")
+        .accessibilityLabel(
+            food.isFavorite
+                ? "Remove \(food.name) from favorites"
+                : "Add \(food.name) to favorites"
+        )
+        .accessibilityHint(
+            food.isFavorite
+                ? "Removes this item from quick logging favorites"
+                : "Adds this item to quick logging favorites"
+        )
     }
 
     private var recentSectionHeader: some View {
@@ -455,8 +472,8 @@ struct FoodSearchView: View {
         return "\(logDate.shortFormatted) · \(mealType.displayName(snackIndex: normalizedSnackIndex))"
     }
 
-    private func pinnedPlan(for food: FoodItem) -> PinnedFoodLogPlan {
-        PinnedFoodLogging.plan(
+    private func favoritePlan(for food: FoodItem) -> FavoriteFoodLogPlan {
+        FavoriteFoodLogging.plan(
             for: food,
             destinationMeal: mealType,
             destinationDate: logDate,
@@ -464,12 +481,12 @@ struct FoodSearchView: View {
         )
     }
 
-    private func handlePinnedFoodAction(_ food: FoodItem) {
-        let plan = pinnedPlan(for: food)
+    private func handleFavoriteFoodAction(_ food: FoodItem) {
+        let plan = favoritePlan(for: food)
         switch plan.action {
         case .log:
             do {
-                try PinnedFoodLogging.log(
+                try FavoriteFoodLogging.log(
                     plan: plan,
                     food: food,
                     modelContext: modelContext
@@ -479,21 +496,27 @@ struct FoodSearchView: View {
                 favoriteErrorMessage = error.localizedDescription
             }
         case .confirmQuantity:
-            quantityConfirmationFood = food
+            selectedFoodItem = food
         case .unavailable:
-            favoriteErrorMessage = PinnedFoodLogging.LoggingError.unavailable.localizedDescription
+            favoriteErrorMessage = FavoriteFoodLogging.LoggingError.unavailable.localizedDescription
         }
     }
 
-    private func togglePinned(_ food: FoodItem) {
+    private func toggleFavorite(_ food: FoodItem) {
         do {
-            try PinnedFoodLogging.setPinned(
-                !food.isPinned,
+            try FavoriteFoodLogging.setFavorite(
+                !food.isFavorite,
                 for: food,
                 modelContext: modelContext
             )
         } catch {
-            favoriteErrorMessage = "Your pin couldn’t be updated. Please try again."
+            favoriteErrorMessage = error.localizedDescription
+        }
+    }
+
+    private func toggleFavoritesDisclosure() {
+        withAnimation {
+            showsAllFavorites.toggle()
         }
     }
 

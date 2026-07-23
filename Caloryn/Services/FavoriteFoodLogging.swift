@@ -1,7 +1,7 @@
 import Foundation
 import SwiftData
 
-struct PinnedFoodLogPlan: Equatable {
+struct FavoriteFoodLogPlan: Equatable {
     enum Action: Equatable {
         case log(portionGrams: Double)
         case confirmQuantity
@@ -16,7 +16,20 @@ struct PinnedFoodLogPlan: Equatable {
 }
 
 @MainActor
-enum PinnedFoodLogging {
+enum FavoriteFoodLogging {
+    static let collapsedFavoriteLimit = 5
+
+    enum FavoriteError: LocalizedError, Equatable {
+        case requiresUserCreatedFood
+
+        var errorDescription: String? {
+            switch self {
+            case .requiresUserCreatedFood:
+                "Only manual entries and recipes can be added to Favorites."
+            }
+        }
+    }
+
     enum LoggingError: LocalizedError {
         case stalePlan
         case quantityRequired
@@ -25,11 +38,11 @@ enum PinnedFoodLogging {
         var errorDescription: String? {
             switch self {
             case .stalePlan:
-                "This pinned food changed. Please try again."
+                "This favorite changed. Please try again."
             case .quantityRequired:
                 "Choose a valid quantity before logging."
             case .unavailable:
-                "This pinned food is unavailable. Edit or unpin it before logging."
+                "This favorite is unavailable. Edit it or remove it from Favorites before logging."
             }
         }
     }
@@ -40,7 +53,7 @@ enum PinnedFoodLogging {
         destinationDate: Date,
         destinationSnackIndex: Int = 0,
         calendar: Calendar = .current
-    ) -> PinnedFoodLogPlan {
+    ) -> FavoriteFoodLogPlan {
         let date = calendar.startOfDay(for: destinationDate)
         let snackIndex = DailyFoodLogCommands.normalizedSnackIndex(
             for: destinationMeal,
@@ -48,7 +61,7 @@ enum PinnedFoodLogging {
         )
 
         guard isAvailableForLogging(food) else {
-            return PinnedFoodLogPlan(
+            return FavoriteFoodLogPlan(
                 foodID: food.id,
                 destinationDate: date,
                 destinationMeal: destinationMeal,
@@ -63,39 +76,7 @@ enum PinnedFoodLogging {
             calendar: calendar
         )
 
-        return PinnedFoodLogPlan(
-            foodID: food.id,
-            destinationDate: date,
-            destinationMeal: destinationMeal,
-            destinationSnackIndex: snackIndex,
-            action: action
-        )
-    }
-
-    static func confirmedPlan(
-        for food: FoodItem,
-        portionGrams: Double,
-        destinationMeal: MealType,
-        destinationDate: Date,
-        destinationSnackIndex: Int = 0,
-        calendar: Calendar = .current
-    ) -> PinnedFoodLogPlan {
-        let date = calendar.startOfDay(for: destinationDate)
-        let snackIndex = DailyFoodLogCommands.normalizedSnackIndex(
-            for: destinationMeal,
-            requestedSnackIndex: destinationSnackIndex
-        )
-        let action: PinnedFoodLogPlan.Action
-
-        if !isAvailableForLogging(food) {
-            action = .unavailable
-        } else if isSafePortion(portionGrams) {
-            action = .log(portionGrams: portionGrams)
-        } else {
-            action = .confirmQuantity
-        }
-
-        return PinnedFoodLogPlan(
+        return FavoriteFoodLogPlan(
             foodID: food.id,
             destinationDate: date,
             destinationMeal: destinationMeal,
@@ -106,7 +87,7 @@ enum PinnedFoodLogging {
 
     @discardableResult
     static func log(
-        plan: PinnedFoodLogPlan,
+        plan: FavoriteFoodLogPlan,
         food: FoodItem,
         modelContext: ModelContext,
         now: Date = Date()
@@ -146,9 +127,9 @@ enum PinnedFoodLogging {
         return entry
     }
 
-    static func sortedPinnedFoods(from foods: [FoodItem]) -> [FoodItem] {
+    static func sortedFavorites(from foods: [FoodItem]) -> [FoodItem] {
         foods
-            .filter(\.isPinned)
+            .filter(\.isFavorite)
             .sorted { lhs, rhs in
                 let lhsDate = lhs.pinnedAt ?? .distantPast
                 let rhsDate = rhs.pinnedAt ?? .distantPast
@@ -164,27 +145,36 @@ enum PinnedFoodLogging {
             }
     }
 
-    static func suggestedPortion(for food: FoodItem) -> Double {
-        let defaultPortion = food.defaultServingG ?? 100
-        guard isSafePortion(defaultPortion) else { return 100 }
-        return defaultPortion
+    static func visibleFavorites(
+        from foods: [FoodItem],
+        showsAll: Bool
+    ) -> [FoodItem] {
+        let favorites = sortedFavorites(from: foods)
+        guard !showsAll else { return favorites }
+        return Array(favorites.prefix(collapsedFavoriteLimit))
     }
 
-    static func maximumConfirmationPortion(for food: FoodItem) -> Double {
-        let suggestedPortion = suggestedPortion(for: food)
-        let suggestedLimit = ceil(suggestedPortion * 4 / 5) * 5
-        return min(100_000, max(500, max(suggestedPortion, suggestedLimit)))
+    static func hiddenFavoriteCount(
+        from foods: [FoodItem],
+        showsAll: Bool
+    ) -> Int {
+        guard !showsAll else { return 0 }
+        return max(0, sortedFavorites(from: foods).count - collapsedFavoriteLimit)
     }
 
-    static func setPinned(
-        _ pinned: Bool,
+    static func setFavorite(
+        _ favorite: Bool,
         for food: FoodItem,
         modelContext: ModelContext,
         at date: Date = Date()
     ) throws {
+        guard !favorite || food.isUserCreatedFood else {
+            throw FavoriteError.requiresUserCreatedFood
+        }
+
         let previousRawValue = food.isPinnedRaw
         let previousPinnedAt = food.pinnedAt
-        food.setPinned(pinned, at: date)
+        food.setFavorite(favorite, at: date)
 
         do {
             try modelContext.save()
@@ -230,7 +220,7 @@ enum PinnedFoodLogging {
         for food: FoodItem,
         onOrBefore destinationDate: Date,
         calendar: Calendar
-    ) -> PinnedFoodLogPlan.Action {
+    ) -> FavoriteFoodLogPlan.Action {
         let start = calendar.startOfDay(for: destinationDate)
         guard let end = calendar.date(byAdding: .day, value: 1, to: start) else {
             return .confirmQuantity

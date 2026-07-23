@@ -221,15 +221,23 @@ struct PortionPickerView: View {
                 }
             }
 
-            if !isNewFood {
+            if !isEditing && !isNewFood && foodItem.isUserCreatedFood {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button(action: togglePinned) {
-                        Image(systemName: foodItem.isPinned ? "pin.fill" : "pin")
+                    Button(action: toggleFavorite) {
+                        Image(systemName: foodItem.isFavorite ? "star.fill" : "star")
                             .font(CalorynTheme.toolbarIcon)
-                            .foregroundStyle(foodItem.isPinned ? CalorynTheme.terracotta : CalorynTheme.sage)
+                            .foregroundStyle(foodItem.isFavorite ? CalorynTheme.terracotta : CalorynTheme.sage)
                     }
-                    .accessibilityLabel(foodItem.isPinned ? "Unpin \(foodItem.name)" : "Pin \(foodItem.name)")
-                    .accessibilityHint(foodItem.isPinned ? "Removes this item from pinned foods" : "Adds this item to pinned foods")
+                    .accessibilityLabel(
+                        foodItem.isFavorite
+                            ? "Remove \(foodItem.name) from favorites"
+                            : "Add \(foodItem.name) to favorites"
+                    )
+                    .accessibilityHint(
+                        foodItem.isFavorite
+                            ? "Removes this item from quick logging favorites"
+                            : "Adds this item to quick logging favorites"
+                    )
                 }
             }
         }
@@ -254,7 +262,7 @@ struct PortionPickerView: View {
         } message: {
             Text("Remove \(foodItem.name) from your log?")
         }
-        .alert("Couldn’t Update Pin", isPresented: favoriteErrorIsPresented) {
+        .alert("Couldn’t Update Favorite", isPresented: favoriteErrorIsPresented) {
             Button("OK", role: .cancel) {
                 favoriteErrorMessage = nil
             }
@@ -530,15 +538,15 @@ struct PortionPickerView: View {
         dismiss()
     }
 
-    private func togglePinned() {
+    private func toggleFavorite() {
         do {
-            try PinnedFoodLogging.setPinned(
-                !foodItem.isPinned,
+            try FavoriteFoodLogging.setFavorite(
+                !foodItem.isFavorite,
                 for: foodItem,
                 modelContext: modelContext
             )
         } catch {
-            favoriteErrorMessage = "Your pin couldn’t be updated. Please try again."
+            favoriteErrorMessage = error.localizedDescription
         }
     }
 
