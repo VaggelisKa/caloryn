@@ -46,6 +46,36 @@ struct FoodLogEntrySnapshot: Codable, Equatable {
         produceItemsSnapshot = entry.produceItemsSnapshot
     }
 
+    init(
+        foodItem: FoodItem,
+        portionGrams: Double,
+        mealType: MealType = .breakfast,
+        snackIndex: Int = 0
+    ) {
+        sourceFoodID = foodItem.id
+        self.mealType = mealType
+        self.snackIndex = DailyFoodLogCommands.normalizedSnackIndex(
+            for: mealType,
+            requestedSnackIndex: snackIndex
+        )
+        foodName = foodItem.name
+        self.portionGrams = portionGrams
+        nutrition = foodItem.nutrition(forGrams: portionGrams)
+        nutriscoreGradeSnapshot = foodItem.nutriscoreGrade
+        produceKindSnapshotRaw = foodItem.produceKind.rawValue
+
+        if foodItem.isRecipe,
+           let ingredients = foodItem.recipeIngredients,
+           !ingredients.isEmpty {
+            produceItemsSnapshot = ingredients
+                .filter { $0.portionGrams > 0 }
+                .sorted { $0.sortOrder < $1.sortOrder }
+                .map { FoodLogProduceItemSnapshot(name: $0.name, kind: $0.produceKind) }
+        } else {
+            produceItemsSnapshot = nil
+        }
+    }
+
     func scaled(toPortionGrams newPortionGrams: Double) -> FoodLogEntrySnapshot {
         guard portionGrams > 0 else { return self }
         var copy = self

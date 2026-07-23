@@ -31,11 +31,11 @@ enum MealTemplateCommands {
             case .emptyName:
                 "Name this meal before saving it."
             case .emptySelection:
-                "Select at least one logged item."
+                "Add at least one item to this meal."
             case .invalidSnapshot(let name):
                 "\(name) has saved values that can’t be reused."
             case .incompleteTemplate:
-                "This meal template is incomplete and can’t be logged."
+                "This meal is incomplete and can’t be added."
             case .partialDuplicate:
                 "This meal was only partly logged. Review the destination before trying again."
             case .operationConflict:
@@ -61,6 +61,85 @@ enum MealTemplateCommands {
             for: meal,
             requestedSnackIndex: requestedIndex
         )
+    }
+
+    @discardableResult
+    static func saveMeal(
+        name: String,
+        snapshots: [FoodLogEntrySnapshot],
+        existingMealID: UUID? = nil,
+        modelContext: ModelContext,
+        now: Date = Date(),
+        save: (ModelContext) throws -> Void = { try $0.save() }
+    ) throws -> MealTemplate {
+        let normalizedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalizedName.isEmpty else { throw CommandError.emptyName }
+        guard !snapshots.isEmpty else { throw CommandError.emptySelection }
+        try snapshots.forEach(validate)
+
+        let transactionContext = makeTransactionContext(from: modelContext)
+        let meal: MealTemplate
+
+        if let existingMealID {
+            guard let storedMeal = try transactionContext.fetch(
+                FetchDescriptor<MealTemplate>(
+                    predicate: #Predicate { candidate in
+                        candidate.id == existingMealID
+                    }
+                )
+            ).first else {
+                throw CommandError.incompleteTemplate
+            }
+            meal = storedMeal
+            meal.name = normalizedName
+            meal.updatedAt = now
+            for item in meal.items ?? [] {
+                transactionContext.delete(item)
+            }
+        } else {
+            let creationOperationID = UUID()
+            let creationFingerprint = try fingerprint(
+                for: TemplateCreationFingerprintPayload(
+                    name: normalizedName,
+                    defaultMeal: .breakfast,
+                    defaultSnackIndex: 0,
+                    snapshots: snapshots
+                )
+            )
+            meal = MealTemplate(
+                name: normalizedName,
+                defaultMeal: .breakfast,
+                defaultSnackIndex: 0,
+                creationOperationID: creationOperationID,
+                creationFingerprint: creationFingerprint,
+                createdAt: now
+            )
+            transactionContext.insert(meal)
+        }
+
+        let items = try snapshots.enumerated().map { offset, snapshot in
+            let item = MealTemplateItem(
+                snapshotData: try JSONEncoder().encode(snapshot),
+                sourceFoodID: snapshot.sourceFoodID,
+                sortOrder: offset,
+                createdAt: now.addingTimeInterval(Double(offset) / 1_000)
+            )
+            item.template = meal
+            transactionContext.insert(item)
+            return item
+        }
+        meal.items = items
+        meal.creationFingerprint = try fingerprint(
+            for: TemplateCreationFingerprintPayload(
+                name: normalizedName,
+                defaultMeal: meal.defaultMeal,
+                defaultSnackIndex: meal.defaultSnackIndex,
+                snapshots: snapshots
+            )
+        )
+
+        try save(transactionContext)
+        return meal
     }
 
     @discardableResult

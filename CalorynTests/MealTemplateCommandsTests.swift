@@ -4,6 +4,193 @@ import XCTest
 
 @MainActor
 final class MealTemplateCommandsTests: XCTestCase {
+    func testSaveMealCreatesFromFoodRecipeAndManualEntrySnapshots() throws {
+        let container = try makeContainer()
+        let context = ModelContext(container)
+        let catalogFood = makeTestFoodItem(name: "Banana", caloriesPer100g: 90)
+        let recipe = makeTestFoodItem(
+            name: "Protein shake",
+            caloriesPer100g: 120,
+            isRecipe: true
+        )
+        let manualEntry = makeTestFoodItem(
+            name: "Coffee",
+            caloriesPer100g: 15,
+            isCustom: true
+        )
+        [catalogFood, recipe, manualEntry].forEach(context.insert)
+        try context.save()
+
+        let snapshots = [
+            FoodLogEntrySnapshot(foodItem: catalogFood, portionGrams: 110),
+            FoodLogEntrySnapshot(foodItem: recipe, portionGrams: 300),
+            FoodLogEntrySnapshot(foodItem: manualEntry, portionGrams: 250),
+        ]
+        let meal = try MealTemplateCommands.saveMeal(
+            name: "  Weekday breakfast  ",
+            snapshots: snapshots,
+            modelContext: context
+        )
+
+        let reloadedContext = ModelContext(container)
+        let reloaded = try XCTUnwrap(
+            reloadedContext.fetch(FetchDescriptor<MealTemplate>())
+                .first { $0.id == meal.id }
+        )
+        let savedSnapshots = try MealTemplateCommands.snapshots(for: reloaded)
+
+        XCTAssertEqual(reloaded.name, "Weekday breakfast")
+        XCTAssertEqual(savedSnapshots.map(\.foodName), ["Banana", "Protein shake", "Coffee"])
+        XCTAssertEqual(savedSnapshots.map(\.portionGrams), [110, 300, 250])
+        XCTAssertEqual(
+            savedSnapshots.map(\.sourceFoodID),
+            [catalogFood.id, recipe.id, manualEntry.id]
+        )
+    }
+
+    func testSaveMealEditReplacesComponentsWithoutLeavingOldItems() throws {
+        let container = try makeContainer()
+        let context = ModelContext(container)
+        let firstFood = makeTestFoodItem(name: "First", caloriesPer100g: 100)
+        let secondFood = makeTestFoodItem(name: "Second", caloriesPer100g: 200)
+        [firstFood, secondFood].forEach(context.insert)
+        try context.save()
+
+        let created = try MealTemplateCommands.saveMeal(
+            name: "Original",
+            snapshots: [
+                FoodLogEntrySnapshot(foodItem: firstFood, portionGrams: 50),
+                FoodLogEntrySnapshot(foodItem: secondFood, portionGrams: 75),
+            ],
+            modelContext: context
+        )
+        _ = try MealTemplateCommands.saveMeal(
+            name: "Updated",
+            snapshots: [
+                FoodLogEntrySnapshot(foodItem: secondFood, portionGrams: 125),
+            ],
+            existingMealID: created.id,
+            modelContext: context
+        )
+
+        let reloadedContext = ModelContext(container)
+        let reloaded = try XCTUnwrap(
+            reloadedContext.fetch(FetchDescriptor<MealTemplate>())
+                .first { $0.id == created.id }
+        )
+        let snapshots = try MealTemplateCommands.snapshots(for: reloaded)
+
+        XCTAssertEqual(reloaded.name, "Updated")
+        XCTAssertEqual(snapshots.map(\.foodName), ["Second"])
+        XCTAssertEqual(snapshots.map(\.portionGrams), [125])
+        XCTAssertEqual(try reloadedContext.fetchCount(FetchDescriptor<MealTemplateItem>()), 1)
+    }
+
+    func testSavedMealLogsComponentsAsOrdinaryEntriesAtExplicitDestination() throws {
+        let context = ModelContext(try makeContainer())
+        let recipe = makeTestFoodItem(
+            name: "Overnight oats",
+            caloriesPer100g: 150,
+            isRecipe: true
+        )
+        let fruit = makeTestFoodItem(name: "Blueberries", caloriesPer100g: 60)
+        [recipe, fruit].forEach(context.insert)
+        try context.save()
+        let meal = try MealTemplateCommands.saveMeal(
+            name: "Breakfast",
+            snapshots: [
+                FoodLogEntrySnapshot(foodItem: recipe, portionGrams: 200),
+                FoodLogEntrySnapshot(foodItem: fruit, portionGrams: 100),
+            ],
+            modelContext: context
+        )
+        let destination = makeTestDate(year: 2026, month: 7, day: 25)
+        let plan = try MealTemplateCommands.plan(
+            sourceName: meal.name,
+            snapshots: MealTemplateCommands.snapshots(for: meal),
+            destinationDate: destination,
+            destinationMeal: .snack,
+            destinationSnackIndex: 4
+        )
+
+        let entries = try MealTemplateCommands.log(
+            plan: plan,
+            availableFoods: [recipe, fruit],
+            modelContext: context
+        )
+
+        XCTAssertEqual(entries.map(\.foodName), ["Overnight oats", "Blueberries"])
+        XCTAssertEqual(entries.map(\.portionGrams), [200, 100])
+        XCTAssertEqual(entries.map(\.mealType), [.snack, .snack])
+        XCTAssertEqual(entries.map(\.snackIndex), [4, 4])
+        XCTAssertEqual(entries.map(\.calories), [300, 60])
+    }
+
+    func testFailedMealCreationPreservesUnrelatedPendingEditAndPersistsNothing() throws {
+        let container = try makeContainer()
+        let context = ModelContext(container)
+        let pendingFood = makeTestFoodItem(name: "Original")
+        context.insert(pendingFood)
+        try context.save()
+        pendingFood.name = "Pending edit"
+        let snapshot = FoodLogEntrySnapshot(foodItem: pendingFood, portionGrams: 100)
+
+        XCTAssertThrowsError(
+            try MealTemplateCommands.saveMeal(
+                name: "Failed meal",
+                snapshots: [snapshot],
+                modelContext: context,
+                save: { _ in throw InjectedFailure.save }
+            )
+        )
+
+        XCTAssertEqual(pendingFood.name, "Pending edit")
+        let reloadedContext = ModelContext(container)
+        XCTAssertEqual(
+            try XCTUnwrap(reloadedContext.fetch(FetchDescriptor<FoodItem>()).first).name,
+            "Original"
+        )
+        XCTAssertEqual(try reloadedContext.fetchCount(FetchDescriptor<MealTemplate>()), 0)
+        XCTAssertEqual(try reloadedContext.fetchCount(FetchDescriptor<MealTemplateItem>()), 0)
+    }
+
+    func testFailedMealEditKeepsStoredMealAndPendingMainContextEdit() throws {
+        let container = try makeContainer()
+        let context = ModelContext(container)
+        let food = makeTestFoodItem(name: "Food")
+        context.insert(food)
+        try context.save()
+        let meal = try MealTemplateCommands.saveMeal(
+            name: "Stored meal",
+            snapshots: [FoodLogEntrySnapshot(foodItem: food, portionGrams: 100)],
+            modelContext: context
+        )
+        food.name = "Pending food edit"
+
+        XCTAssertThrowsError(
+            try MealTemplateCommands.saveMeal(
+                name: "Uncommitted meal edit",
+                snapshots: [FoodLogEntrySnapshot(foodItem: food, portionGrams: 200)],
+                existingMealID: meal.id,
+                modelContext: context,
+                save: { _ in throw InjectedFailure.save }
+            )
+        )
+
+        XCTAssertEqual(food.name, "Pending food edit")
+        let reloadedContext = ModelContext(container)
+        let reloadedMeal = try XCTUnwrap(
+            reloadedContext.fetch(FetchDescriptor<MealTemplate>())
+                .first { $0.id == meal.id }
+        )
+        XCTAssertEqual(reloadedMeal.name, "Stored meal")
+        XCTAssertEqual(
+            try MealTemplateCommands.snapshots(for: reloadedMeal).map(\.portionGrams),
+            [100]
+        )
+        XCTAssertEqual(try reloadedContext.fetchCount(FetchDescriptor<MealTemplateItem>()), 1)
+    }
+
     func testCreateTemplatePreservesSelectedEntriesOrderPortionsAndSuggestedMeal() throws {
         let context = ModelContext(try makeContainer())
         let toast = makeTestFoodItem(name: "Toast", caloriesPer100g: 250)

@@ -16,18 +16,11 @@ struct TodayView: View {
         let snackIndex: Int
     }
 
-    private struct EntryReusePresentation: Identifiable {
-        let id = UUID()
-        let entries: [FoodLogEntry]
-        let initiallySelectedIDs: Set<UUID>
-    }
-
     @State private var selectedDate: Date = Date().startOfDay
     @State private var lastKnownToday: Date = Date().startOfDay
     @State private var showingNutritionDetails = false
     @State private var foodSearchPresentation: FoodSearchPresentation?
     @State private var entryToEdit: FoodLogEntry?
-    @State private var entryReusePresentation: EntryReusePresentation?
 
     @AppStorage("showNutriscore") private var showNutriscore = true
     @State private var activeEnergyTracker = ActiveEnergyDayTracker()
@@ -129,9 +122,6 @@ struct TodayView: View {
                             onAdd: {
                                 presentFoodSearch(mealType: meal, snackIndex: 0)
                             },
-                            onReuse: {
-                                presentEntryReuse(entries(for: meal))
-                            },
                             onEdit: { entry in
                                 entryToEdit = entry
                             },
@@ -146,9 +136,6 @@ struct TodayView: View {
                         titleOverride: "Snacks",
                         onAdd: {
                             presentFoodSearch(mealType: .snack, snackIndex: 1)
-                        },
-                        onReuse: {
-                            presentEntryReuse(entries(for: .snack))
                         },
                         onEdit: { entry in
                             entryToEdit = entry
@@ -166,20 +153,6 @@ struct TodayView: View {
                 .animation(.smooth(duration: 0.35), value: hasNutriscoreData)
             }
             .calorynPageCanvas()
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        presentEntryReuse(todayEntries)
-                    } label: {
-                        Image(systemName: "square.on.square")
-                            .font(CalorynTheme.toolbarIcon)
-                            .foregroundStyle(CalorynTheme.sage)
-                    }
-                    .disabled(todayEntries.isEmpty)
-                    .accessibilityLabel("Reuse logged entries")
-                    .accessibilityHint("Select items from this day to copy or save")
-                }
-            }
             .sheet(item: $foodSearchPresentation) { presentation in
                 FoodSearchView(
                     mealType: presentation.mealType,
@@ -187,14 +160,6 @@ struct TodayView: View {
                     snackIndex: presentation.snackIndex
                 )
                     .presentationDragIndicator(.visible)
-            }
-            .sheet(item: $entryReusePresentation) { presentation in
-                MealReuseSelectionView(
-                    entries: presentation.entries,
-                    initiallySelectedIDs: presentation.initiallySelectedIDs,
-                    destinationDate: selectedDate
-                )
-                .presentationDragIndicator(.visible)
             }
             .sheet(item: $entryToEdit) { entry in
                 if let food = entry.foodItem {
@@ -342,7 +307,7 @@ struct TodayView: View {
 
     private var copyYesterdayButton: some View {
         Button {
-            presentEntryReuse(yesterdayEntries)
+            copyYesterday()
         } label: {
             Label("Copy Yesterday's Meals", systemImage: "doc.on.doc")
                 .font(CalorynTheme.buttonLabel)
@@ -369,12 +334,19 @@ struct TodayView: View {
         )
     }
 
-    private func presentEntryReuse(_ entries: [FoodLogEntry]) {
-        guard !entries.isEmpty else { return }
-        entryReusePresentation = EntryReusePresentation(
-            entries: entries,
-            initiallySelectedIDs: Set(entries.map(\.id))
+    private func copyYesterday() {
+        let orderedEntries = yesterdayEntries.sorted {
+            if $0.mealType.sortOrder != $1.mealType.sortOrder {
+                return $0.mealType.sortOrder < $1.mealType.sortOrder
+            }
+            return $0.createdAt < $1.createdAt
+        }
+        DailyFoodLogCommands.copyLoggedEntries(
+            orderedEntries,
+            to: selectedDate,
+            modelContext: modelContext
         )
+        try? modelContext.save()
     }
 
     private func handlePendingRoute() {

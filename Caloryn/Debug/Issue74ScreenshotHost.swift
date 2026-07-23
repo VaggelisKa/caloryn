@@ -65,25 +65,13 @@ struct Issue74ScreenshotHost: View {
     private var scenarioContent: some View {
         switch scenario {
         case .creation:
-            MealTemplateCreationView(
-                entries: sourceEntries,
-                defaultMeal: .breakfast,
-                defaultSnackIndex: 0,
-                initialName: "Morning Bowl",
-                onSaved: {}
-            )
+            MealFormView()
         case .destination:
-            if let template, let snapshots = try? MealTemplateCommands.snapshots(for: template) {
-                NavigationStack {
-                    MealLogConfirmationView(
-                        snapshots: snapshots,
-                        sourceName: template.name,
-                        initialDate: .now,
-                        initialMeal: .lunch,
-                        onLogged: {}
-                    )
-                }
-            }
+            FoodSearchView(
+                mealType: .lunch,
+                logDate: .now,
+                automaticallyFocusSearch: false
+            )
         case .reuse:
             FoodSearchView(
                 mealType: .breakfast,
@@ -91,17 +79,11 @@ struct Issue74ScreenshotHost: View {
                 automaticallyFocusSearch: false
             )
         case .missingSource:
-            if let missingEntry {
-                NavigationStack {
-                    MealLogConfirmationView(
-                        snapshots: [FoodLogEntrySnapshot(entry: missingEntry)],
-                        sourceName: "Archived Lunch",
-                        initialDate: .now,
-                        initialMeal: .lunch,
-                        onLogged: {}
-                    )
-                }
-            }
+            FoodSearchView(
+                mealType: .lunch,
+                logDate: .now,
+                automaticallyFocusSearch: false
+            )
         case .duplicatePrevention:
             DuplicatePreventionEvidenceView(
                 entries: duplicateEntries,
