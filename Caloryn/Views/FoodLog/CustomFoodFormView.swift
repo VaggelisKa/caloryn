@@ -155,10 +155,13 @@ struct CustomFoodFormView: View {
                 }
 
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Save") {
+                    Button {
                         saveFood()
+                    } label: {
+                        Image(systemName: "checkmark")
+                            .font(CalorynTheme.toolbarIcon)
                     }
-                    .font(CalorynTheme.toolbarAction)
+                    .accessibilityLabel("Save")
                     .disabled(!canSave)
                 }
             }

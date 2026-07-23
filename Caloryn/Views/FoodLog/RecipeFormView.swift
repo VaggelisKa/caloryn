@@ -112,10 +112,13 @@ struct RecipeFormView: View {
                 }
 
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Save") {
+                    Button {
                         saveRecipe()
+                    } label: {
+                        Image(systemName: "checkmark")
+                            .font(CalorynTheme.toolbarIcon)
                     }
-                    .font(CalorynTheme.toolbarAction)
+                    .accessibilityLabel("Save")
                     .disabled(!canSave)
                 }
             }
