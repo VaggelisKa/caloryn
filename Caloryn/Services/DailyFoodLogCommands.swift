@@ -3,6 +3,17 @@ import SwiftData
 
 @MainActor
 enum DailyFoodLogCommands {
+    enum CommandError: LocalizedError, Equatable {
+        case missingEntry
+
+        var errorDescription: String? {
+            switch self {
+            case .missingEntry:
+                "This log entry is no longer available."
+            }
+        }
+    }
+
     @discardableResult
     static func logFood(
         foodItem: FoodItem,
@@ -113,6 +124,41 @@ enum DailyFoodLogCommands {
         return entry
     }
 
+    /// Persists a missing-source edit in an isolated context so a failed save
+    /// cannot roll back or commit unrelated changes in the SwiftUI context.
+    @discardableResult
+    static func saveSnapshotEntry(
+        _ entry: FoodLogEntry,
+        date: Date,
+        mealType: MealType,
+        portionGrams: Double,
+        modelContext: ModelContext,
+        snackIndex: Int? = nil,
+        save: (ModelContext) throws -> Void = { try $0.save() }
+    ) throws -> FoodLogEntry {
+        let entryID = entry.id
+        let transactionContext = makeTransactionContext(from: modelContext)
+        guard let storedEntry = try transactionContext.fetch(
+            FetchDescriptor<FoodLogEntry>(
+                predicate: #Predicate { candidate in
+                    candidate.id == entryID
+                }
+            )
+        ).first else {
+            throw CommandError.missingEntry
+        }
+
+        try updateSnapshotEntry(
+            storedEntry,
+            date: date,
+            mealType: mealType,
+            portionGrams: portionGrams,
+            snackIndex: snackIndex
+        )
+        try save(transactionContext)
+        return storedEntry
+    }
+
     static func normalizedSnackIndex(for mealType: MealType) -> Int {
         normalizedSnackIndex(for: mealType, requestedSnackIndex: nil)
     }
@@ -123,5 +169,11 @@ enum DailyFoodLogCommands {
     ) -> Int {
         guard mealType == .snack else { return 0 }
         return max(1, requestedSnackIndex ?? 1)
+    }
+
+    private static func makeTransactionContext(from sourceContext: ModelContext) -> ModelContext {
+        let context = ModelContext(sourceContext.container)
+        context.autosaveEnabled = false
+        return context
     }
 }

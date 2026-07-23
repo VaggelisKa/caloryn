@@ -402,6 +402,96 @@ final class DailyFoodLogCommandsTests: XCTestCase {
         XCTAssertEqual(entry.snackIndex, 3)
     }
 
+    func testSaveSnapshotEntryPersistsInIsolatedContext() throws {
+        let container = try makeContainer()
+        let context = ModelContext(container)
+        let sourceFood = makeTestFoodItem(name: "Archived soup", caloriesPer100g: 80)
+        let source = makeTestEntry(foodItem: sourceFood, portionGrams: 250)
+        let entry = FoodLogEntry(
+            date: makeTestDate(year: 2026, month: 3, day: 7),
+            mealType: .lunch,
+            foodItem: nil,
+            snapshot: FoodLogEntrySnapshot(entry: source),
+            snackIndex: 0
+        )
+        context.insert(entry)
+        try context.save()
+
+        try DailyFoodLogCommands.saveSnapshotEntry(
+            entry,
+            date: makeTestDate(year: 2026, month: 3, day: 8, hour: 20),
+            mealType: .snack,
+            portionGrams: 125,
+            modelContext: context,
+            snackIndex: 3
+        )
+
+        let verificationContext = ModelContext(container)
+        let persisted = try XCTUnwrap(
+            verificationContext.fetch(FetchDescriptor<FoodLogEntry>()).first
+        )
+        XCTAssertNil(persisted.foodItem)
+        XCTAssertEqual(persisted.foodName, "Archived soup")
+        XCTAssertEqual(persisted.date, makeTestDate(year: 2026, month: 3, day: 8).startOfDay)
+        XCTAssertEqual(persisted.mealType, .snack)
+        XCTAssertEqual(persisted.snackIndex, 3)
+        XCTAssertEqual(persisted.portionGrams, 125)
+        XCTAssertEqual(persisted.calories, 100)
+    }
+
+    func testFailedSnapshotSavePreservesUnrelatedPendingEditsAndStoredEntry() throws {
+        let container = try makeContainer()
+        let context = ModelContext(container)
+        let food = makeTestFoodItem(name: "Stored food", caloriesPer100g: 80)
+        let unrelatedEntry = makeTestEntry(foodItem: food)
+        let source = makeTestEntry(foodItem: food, portionGrams: 250)
+        let targetEntry = FoodLogEntry(
+            date: makeTestDate(year: 2026, month: 3, day: 7),
+            mealType: .lunch,
+            foodItem: nil,
+            snapshot: FoodLogEntrySnapshot(entry: source),
+            snackIndex: 0
+        )
+        context.insert(food)
+        context.insert(unrelatedEntry)
+        context.insert(targetEntry)
+        try context.save()
+        food.name = "Pending food edit"
+        unrelatedEntry.foodName = "Pending log edit"
+
+        XCTAssertThrowsError(
+            try DailyFoodLogCommands.saveSnapshotEntry(
+                targetEntry,
+                date: makeTestDate(year: 2026, month: 3, day: 8),
+                mealType: .snack,
+                portionGrams: 125,
+                modelContext: context,
+                snackIndex: 4,
+                save: { _ in throw InjectedFailure.save }
+            )
+        )
+
+        XCTAssertEqual(food.name, "Pending food edit")
+        XCTAssertEqual(unrelatedEntry.foodName, "Pending log edit")
+        XCTAssertTrue(context.hasChanges)
+
+        let verificationContext = ModelContext(container)
+        let targetEntryID = targetEntry.id
+        let persisted = try XCTUnwrap(
+            verificationContext.fetch(
+                FetchDescriptor<FoodLogEntry>(
+                    predicate: #Predicate { entry in
+                        entry.id == targetEntryID
+                    }
+                )
+            ).first
+        )
+        XCTAssertEqual(persisted.date, makeTestDate(year: 2026, month: 3, day: 7).startOfDay)
+        XCTAssertEqual(persisted.mealType, .lunch)
+        XCTAssertEqual(persisted.snackIndex, 0)
+        XCTAssertEqual(persisted.portionGrams, 250)
+    }
+
     func testDeleteLoggedEntryRemovesOnlyTheLogEntry() throws {
         let context = try makeContext()
         let food = makeTestFoodItem(name: "Apple")
@@ -420,14 +510,21 @@ final class DailyFoodLogCommandsTests: XCTestCase {
     }
 
     private func makeContext() throws -> ModelContext {
+        ModelContext(try makeContainer())
+    }
+
+    private func makeContainer() throws -> ModelContainer {
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(
+        return try ModelContainer(
             for: UserProfile.self,
             FoodItem.self,
             FoodLogEntry.self,
             RecipeIngredient.self,
             configurations: configuration
         )
-        return ModelContext(container)
+    }
+
+    private enum InjectedFailure: Error {
+        case save
     }
 }

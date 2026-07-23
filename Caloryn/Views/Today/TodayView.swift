@@ -542,17 +542,16 @@ private struct MissingFoodEntryView: View {
 
     private func save() {
         do {
-            try DailyFoodLogCommands.updateSnapshotEntry(
+            try DailyFoodLogCommands.saveSnapshotEntry(
                 entry,
                 date: date,
                 mealType: mealType,
                 portionGrams: portionGrams,
+                modelContext: modelContext,
                 snackIndex: snackIndex
             )
-            try modelContext.save()
             dismiss()
         } catch {
-            modelContext.rollback()
             errorMessage = error.localizedDescription
         }
     }
