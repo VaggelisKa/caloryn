@@ -183,6 +183,12 @@ final class FoodItem {
 
     var lastUsed: Date = Date()
 
+    // These storage names predate the user-facing "Favorites" terminology.
+    // Keeping them preserves lightweight SwiftData / CloudKit migration.
+    // A nil value is the migrated, never-favorited state.
+    var isPinnedRaw: Bool?
+    var pinnedAt: Date?
+
     @Relationship(deleteRule: .cascade, inverse: \FoodLogEntry.foodItem)
     var logEntries: [FoodLogEntry]?
 
@@ -290,6 +296,27 @@ final class FoodItem {
         }
         set {
             produceKindRaw = newValue.rawValue
+        }
+    }
+
+    var isUserCreatedFood: Bool {
+        isCustom || isRecipe
+    }
+
+    var isFavorite: Bool {
+        isUserCreatedFood && (isPinnedRaw ?? false)
+    }
+
+    func setFavorite(_ favorite: Bool, at date: Date = Date()) {
+        let wasFavorite = isFavorite
+        isPinnedRaw = favorite
+
+        if favorite {
+            if !wasFavorite || pinnedAt == nil {
+                pinnedAt = date
+            }
+        } else {
+            pinnedAt = nil
         }
     }
 

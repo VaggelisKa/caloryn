@@ -14,6 +14,7 @@ struct RecipeFormView: View {
     @State private var showingIngredientSearch = false
     @State private var ingredientForAmount: RecipeIngredientDraft?
     @State private var showingDeleteConfirmation = false
+    @State private var favoriteErrorMessage: String?
 
     @FocusState private var isNameFocused: Bool
 
@@ -85,11 +86,39 @@ struct RecipeFormView: View {
                     .accessibilityLabel("Close")
                 }
 
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        saveRecipe()
+                if let existingRecipe {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            toggleFavorite(existingRecipe)
+                        } label: {
+                            Image(systemName: existingRecipe.isFavorite ? "star.fill" : "star")
+                                .font(CalorynTheme.toolbarIcon)
+                                .foregroundStyle(
+                                    existingRecipe.isFavorite
+                                        ? CalorynTheme.terracotta
+                                        : CalorynTheme.sage
+                                )
+                        }
+                        .accessibilityLabel(
+                            existingRecipe.isFavorite
+                                ? "Remove \(existingRecipe.name) from favorites"
+                                : "Add \(existingRecipe.name) to favorites"
+                        )
                     }
-                    .font(CalorynTheme.toolbarAction)
+
+                    if #available(iOS 26.0, *) {
+                        ToolbarSpacer(.fixed, placement: .topBarTrailing)
+                    }
+                }
+
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        saveRecipe()
+                    } label: {
+                        Image(systemName: "checkmark")
+                            .font(CalorynTheme.toolbarIcon)
+                    }
+                    .accessibilityLabel("Save")
                     .disabled(!canSave)
                 }
             }
@@ -118,6 +147,13 @@ struct RecipeFormView: View {
                 Button("Delete", role: .destructive, action: deleteRecipe)
             } message: {
                 Text("This will permanently remove \"\(name)\" from your recipes.")
+            }
+            .alert("Couldn’t Update Favorite", isPresented: favoriteErrorIsPresented) {
+                Button("OK", role: .cancel) {
+                    favoriteErrorMessage = nil
+                }
+            } message: {
+                Text(favoriteErrorMessage ?? "Please try again.")
             }
         }
         .presentationDetents([.large])
@@ -387,6 +423,29 @@ struct RecipeFormView: View {
             try? modelContext.save()
         }
         dismiss()
+    }
+
+    private func toggleFavorite(_ recipe: FoodItem) {
+        do {
+            try FavoriteFoodLogging.setFavorite(
+                !recipe.isFavorite,
+                for: recipe,
+                modelContext: modelContext
+            )
+        } catch {
+            favoriteErrorMessage = error.localizedDescription
+        }
+    }
+
+    private var favoriteErrorIsPresented: Binding<Bool> {
+        Binding(
+            get: { favoriteErrorMessage != nil },
+            set: { isPresented in
+                if !isPresented {
+                    favoriteErrorMessage = nil
+                }
+            }
+        )
     }
 }
 

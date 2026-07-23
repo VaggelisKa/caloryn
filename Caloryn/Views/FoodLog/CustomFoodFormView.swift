@@ -25,6 +25,7 @@ struct CustomFoodFormView: View {
     @State private var servingSizeGrams = "100"
     @State private var produceKind: ProduceKind = .unclassified
     @State private var showingDeleteConfirmation = false
+    @State private var favoriteErrorMessage: String?
 
     @FocusState private var focusedField: Field?
 
@@ -128,11 +129,39 @@ struct CustomFoodFormView: View {
                     }
                     .accessibilityLabel("Close")
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        saveFood()
+                if let existingFood {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            toggleFavorite(existingFood)
+                        } label: {
+                            Image(systemName: existingFood.isFavorite ? "star.fill" : "star")
+                                .font(CalorynTheme.toolbarIcon)
+                                .foregroundStyle(
+                                    existingFood.isFavorite
+                                        ? CalorynTheme.terracotta
+                                        : CalorynTheme.sage
+                                )
+                        }
+                        .accessibilityLabel(
+                            existingFood.isFavorite
+                                ? "Remove \(existingFood.name) from favorites"
+                                : "Add \(existingFood.name) to favorites"
+                        )
                     }
-                    .font(CalorynTheme.toolbarAction)
+
+                    if #available(iOS 26.0, *) {
+                        ToolbarSpacer(.fixed, placement: .topBarTrailing)
+                    }
+                }
+
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        saveFood()
+                    } label: {
+                        Image(systemName: "checkmark")
+                            .font(CalorynTheme.toolbarIcon)
+                    }
+                    .accessibilityLabel("Save")
                     .disabled(!canSave)
                 }
             }
@@ -141,6 +170,13 @@ struct CustomFoodFormView: View {
                 Button("Delete", role: .destructive, action: deleteFood)
             } message: {
                 Text("This will permanently remove \"\(name)\" from your manual entries.")
+            }
+            .alert("Couldn’t Update Favorite", isPresented: favoriteErrorIsPresented) {
+                Button("OK", role: .cancel) {
+                    favoriteErrorMessage = nil
+                }
+            } message: {
+                Text(favoriteErrorMessage ?? "Please try again.")
             }
         }
         .presentationDetents([.large])
@@ -502,6 +538,29 @@ struct CustomFoodFormView: View {
             food.deletePreservingLogEntrySnapshots(from: modelContext)
         }
         dismiss()
+    }
+
+    private func toggleFavorite(_ food: FoodItem) {
+        do {
+            try FavoriteFoodLogging.setFavorite(
+                !food.isFavorite,
+                for: food,
+                modelContext: modelContext
+            )
+        } catch {
+            favoriteErrorMessage = error.localizedDescription
+        }
+    }
+
+    private var favoriteErrorIsPresented: Binding<Bool> {
+        Binding(
+            get: { favoriteErrorMessage != nil },
+            set: { isPresented in
+                if !isPresented {
+                    favoriteErrorMessage = nil
+                }
+            }
+        )
     }
 }
 

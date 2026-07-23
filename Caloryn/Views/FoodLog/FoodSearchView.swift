@@ -27,6 +27,7 @@ struct FoodSearchView: View {
     var snackIndex: Int = 0
     var mode: FoodSearchMode = .logging
 
+    @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Query(sort: \FoodItem.lastUsed, order: .reverse) private var recentFoods: [FoodItem]
 
@@ -38,6 +39,8 @@ struct FoodSearchView: View {
     @State private var showingCustomFoodForm = false
     @State private var isLookingUpBarcode = false
     @State private var barcodeLookupError: String?
+    @State private var favoriteErrorMessage: String?
+    @State private var showsAllFavorites = false
     @FocusState private var isSearchFocused: Bool
 
     private var showingRecent: Bool {
@@ -54,7 +57,23 @@ struct FoodSearchView: View {
     }
 
     private var displayedRecentFoods: [FoodItem] {
-        Array(recentFoods.filter { !$0.isCustom && !$0.isRecipe }.prefix(20))
+        Array(
+            recentFoods
+                .filter { !$0.isUserCreatedFood }
+                .prefix(20)
+        )
+    }
+
+    private var favoriteFoods: [FoodItem] {
+        guard !mode.isIngredientSelection else { return [] }
+        return FavoriteFoodLogging.sortedFavorites(from: recentFoods)
+    }
+
+    private var visibleFavoriteFoods: [FoodItem] {
+        FavoriteFoodLogging.visibleFavorites(
+            from: favoriteFoods,
+            showsAll: showsAllFavorites
+        )
     }
 
     var body: some View {
@@ -125,6 +144,16 @@ struct FoodSearchView: View {
             .fullScreenCover(isPresented: $showingScanner) {
                 barcodeScannerSheet
             }
+            .alert(
+                "Couldn’t Log Favorite",
+                isPresented: favoriteErrorIsPresented
+            ) {
+                Button("OK", role: .cancel) {
+                    favoriteErrorMessage = nil
+                }
+            } message: {
+                Text(favoriteErrorMessage ?? "Please try again.")
+            }
             .onAppear {
                 isSearchFocused = true
             }
@@ -187,38 +216,55 @@ struct FoodSearchView: View {
     }
 
     private var recentFoodsList: some View {
-        Group {
-            if displayedRecentFoods.isEmpty {
-                ContentUnavailableView(
-                    "No Recent Foods",
-                    systemImage: "clock",
-                    description: Text("Search above or create saved foods from My Foods.")
-                )
-            } else {
-                List {
-                    Section {
-                        ForEach(displayedRecentFoods) { food in
-                            FoodRowView(
-                                name: food.name,
-                                brand: food.brand,
-                                caloriesPer100g: food.caloriesPer100g,
-                                nutriscoreGrade: food.nutriscoreGrade,
-                                servingDescription: food.servingDescription
-                            )
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                handleFoodItemSelection(food)
-                            }
-                        }
-                    } header: {
-                        Text("Recent")
-                            .font(CalorynTheme.caption)
-                            .foregroundStyle(CalorynTheme.textSecondary)
+        List {
+            if !favoriteFoods.isEmpty {
+                Section {
+                    ForEach(visibleFavoriteFoods) { food in
+                        FavoriteFoodRowView(
+                            food: food,
+                            plan: favoritePlan(for: food),
+                            destinationDescription: destinationDescription,
+                            onLog: { handleFavoriteFoodAction(food) },
+                            onRemoveFavorite: { toggleFavorite(food) }
+                        )
                     }
+
+                    if favoriteFoods.count > FavoriteFoodLogging.collapsedFavoriteLimit {
+                        Button(action: toggleFavoritesDisclosure) {
+                            HStack {
+                                Text(showsAllFavorites ? "Show less" : "Show all \(favoriteFoods.count)")
+                                Spacer()
+                                Image(systemName: showsAllFavorites ? "chevron.up" : "chevron.down")
+                            }
+                            .font(CalorynTheme.caption)
+                            .foregroundStyle(CalorynTheme.sage)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(
+                            showsAllFavorites
+                                ? "Show fewer favorites"
+                                : "Show all \(favoriteFoods.count) favorites"
+                        )
+                    }
+                } header: {
+                    Label("Favorites", systemImage: "star.fill")
+                    .font(CalorynTheme.caption)
+                    .foregroundStyle(CalorynTheme.textSecondary)
                 }
-                .listStyle(.plain)
+            }
+
+            if !displayedRecentFoods.isEmpty {
+                Section {
+                    ForEach(displayedRecentFoods) { food in
+                        savedFoodRow(for: food)
+                    }
+                } header: {
+                    recentSectionHeader
+                }
             }
         }
+        .listStyle(.plain)
     }
 
     private var matchingCustomFoods: [FoodItem] {
@@ -291,18 +337,20 @@ struct FoodSearchView: View {
                     if !searchService.searchResults.isEmpty {
                         Section {
                             ForEach(searchService.searchResults) { product in
-                                FoodRowView(
-                                    name: product.productName ?? "Unknown",
-                                    brand: product.brands,
-                                    caloriesPer100g: product.nutriments?.energyKcal100g ?? 0,
-                                    nutriscoreGrade: product.nutritionGrades.flatMap { g in ["a","b","c","d","e"].contains(g.lowercased()) ? g.lowercased() : nil },
-                                    servingDescription: product.formattedServingDescription,
-                                    caloriesPerServing: product.caloriesPerServing
-                                )
-                                .contentShape(Rectangle())
-                                .onTapGesture {
+                                Button {
                                     handleProductSelection(product)
+                                } label: {
+                                    FoodRowView(
+                                        name: product.productName ?? "Unknown",
+                                        brand: product.brands,
+                                        caloriesPer100g: product.nutriments?.energyKcal100g ?? 0,
+                                        nutriscoreGrade: product.nutritionGrades.flatMap { g in ["a","b","c","d","e"].contains(g.lowercased()) ? g.lowercased() : nil },
+                                        servingDescription: product.formattedServingDescription,
+                                        caloriesPerServing: product.caloriesPerServing
+                                    )
+                                    .contentShape(Rectangle())
                                 }
+                                .buttonStyle(.plain)
                             }
                         } header: {
                             if !matchingCustomFoods.isEmpty || !matchingRecipes.isEmpty {
@@ -328,34 +376,159 @@ struct FoodSearchView: View {
     }
 
     private func customFoodRow(for food: FoodItem) -> some View {
-        FoodRowView(
-            name: food.name,
-            brand: food.brand,
-            caloriesPer100g: food.caloriesPer100g,
-            nutriscoreGrade: food.nutriscoreGrade,
-            servingDescription: food.servingDescription,
-            isCustom: true,
-            showsTypeBadge: false
-        )
-        .contentShape(Rectangle())
-        .onTapGesture {
-            handleFoodItemSelection(food)
+        HStack(spacing: 12) {
+            Button {
+                handleFoodItemSelection(food)
+            } label: {
+                FoodRowView(
+                    name: food.name,
+                    brand: food.brand,
+                    caloriesPer100g: food.caloriesPer100g,
+                    nutriscoreGrade: food.nutriscoreGrade,
+                    servingDescription: food.servingDescription,
+                    isCustom: true,
+                    showsTypeBadge: false
+                )
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            if !mode.isIngredientSelection {
+                favoriteButton(for: food)
+            }
         }
     }
 
     private func recipeRow(for food: FoodItem) -> some View {
-        FoodRowView(
-            name: food.name,
-            brand: food.brand,
-            caloriesPer100g: food.caloriesPer100g,
-            caloriesPerServing: food.calories(forGrams: food.defaultServingG ?? 100),
-            isRecipe: true,
-            showsTypeBadge: false
-        )
-        .contentShape(Rectangle())
-        .onTapGesture {
-            handleFoodItemSelection(food)
+        HStack(spacing: 12) {
+            Button {
+                handleFoodItemSelection(food)
+            } label: {
+                FoodRowView(
+                    name: food.name,
+                    brand: food.brand,
+                    caloriesPer100g: food.caloriesPer100g,
+                    caloriesPerServing: food.calories(forGrams: food.defaultServingG ?? 100),
+                    isRecipe: true,
+                    showsTypeBadge: false
+                )
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            favoriteButton(for: food)
         }
+    }
+
+    private func savedFoodRow(for food: FoodItem) -> some View {
+        Button {
+            handleFoodItemSelection(food)
+        } label: {
+            FoodRowView(
+                name: food.name,
+                brand: food.brand,
+                caloriesPer100g: food.caloriesPer100g,
+                nutriscoreGrade: food.nutriscoreGrade,
+                servingDescription: food.servingDescription
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func favoriteButton(for food: FoodItem) -> some View {
+        Button {
+            toggleFavorite(food)
+        } label: {
+            Image(systemName: food.isFavorite ? "star.fill" : "star")
+                .font(CalorynTheme.inlineIcon)
+                .foregroundStyle(food.isFavorite ? CalorynTheme.terracotta : CalorynTheme.textSecondary)
+                .frame(width: 44, height: 44)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(
+            food.isFavorite
+                ? "Remove \(food.name) from favorites"
+                : "Add \(food.name) to favorites"
+        )
+        .accessibilityHint(
+            food.isFavorite
+                ? "Removes this item from quick logging favorites"
+                : "Adds this item to quick logging favorites"
+        )
+    }
+
+    private var recentSectionHeader: some View {
+        Text("Recent")
+            .font(CalorynTheme.caption)
+            .foregroundStyle(CalorynTheme.textSecondary)
+    }
+
+    private var destinationDescription: String {
+        let normalizedSnackIndex = DailyFoodLogCommands.normalizedSnackIndex(
+            for: mealType,
+            requestedSnackIndex: snackIndex
+        )
+        return "\(logDate.shortFormatted) · \(mealType.displayName(snackIndex: normalizedSnackIndex))"
+    }
+
+    private func favoritePlan(for food: FoodItem) -> FavoriteFoodLogPlan {
+        FavoriteFoodLogging.plan(
+            for: food,
+            destinationMeal: mealType,
+            destinationDate: logDate,
+            destinationSnackIndex: snackIndex
+        )
+    }
+
+    private func handleFavoriteFoodAction(_ food: FoodItem) {
+        let plan = favoritePlan(for: food)
+        switch plan.action {
+        case .log:
+            do {
+                try FavoriteFoodLogging.log(
+                    plan: plan,
+                    food: food,
+                    modelContext: modelContext
+                )
+                dismiss()
+            } catch {
+                favoriteErrorMessage = error.localizedDescription
+            }
+        case .confirmQuantity:
+            selectedFoodItem = food
+        case .unavailable:
+            favoriteErrorMessage = FavoriteFoodLogging.LoggingError.unavailable.localizedDescription
+        }
+    }
+
+    private func toggleFavorite(_ food: FoodItem) {
+        do {
+            try FavoriteFoodLogging.setFavorite(
+                !food.isFavorite,
+                for: food,
+                modelContext: modelContext
+            )
+        } catch {
+            favoriteErrorMessage = error.localizedDescription
+        }
+    }
+
+    private func toggleFavoritesDisclosure() {
+        withAnimation {
+            showsAllFavorites.toggle()
+        }
+    }
+
+    private var favoriteErrorIsPresented: Binding<Bool> {
+        Binding(
+            get: { favoriteErrorMessage != nil },
+            set: { isPresented in
+                if !isPresented {
+                    favoriteErrorMessage = nil
+                }
+            }
+        )
     }
 
     private var barcodeScannerSheet: some View {

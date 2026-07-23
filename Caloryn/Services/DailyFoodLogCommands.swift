@@ -11,6 +11,7 @@ enum DailyFoodLogCommands {
         logDate: Date,
         isNewFood: Bool,
         modelContext: ModelContext,
+        snackIndex: Int? = nil,
         now: Date = Date()
     ) -> FoodLogEntry {
         if isNewFood {
@@ -24,7 +25,10 @@ enum DailyFoodLogCommands {
             mealType: mealType,
             foodItem: foodItem,
             portionGrams: portionGrams,
-            snackIndex: normalizedSnackIndex(for: mealType)
+            snackIndex: normalizedSnackIndex(
+                for: mealType,
+                requestedSnackIndex: snackIndex
+            )
         )
         modelContext.insert(entry)
         return entry
@@ -59,6 +63,7 @@ enum DailyFoodLogCommands {
         mealType: MealType,
         foodItem: FoodItem,
         portionGrams: Double,
+        snackIndex: Int? = nil,
         now: Date = Date()
     ) -> FoodLogEntry {
         foodItem.lastUsed = now
@@ -67,7 +72,10 @@ enum DailyFoodLogCommands {
             mealType: mealType,
             foodItem: foodItem,
             portionGrams: portionGrams,
-            snackIndex: normalizedSnackIndex(for: mealType)
+            snackIndex: normalizedSnackIndex(
+                for: mealType,
+                requestedSnackIndex: snackIndex
+            )
         )
         return entry
     }
@@ -80,6 +88,14 @@ enum DailyFoodLogCommands {
     }
 
     static func normalizedSnackIndex(for mealType: MealType) -> Int {
-        mealType == .snack ? 1 : 0
+        normalizedSnackIndex(for: mealType, requestedSnackIndex: nil)
+    }
+
+    static func normalizedSnackIndex(
+        for mealType: MealType,
+        requestedSnackIndex: Int?
+    ) -> Int {
+        guard mealType == .snack else { return 0 }
+        return max(1, requestedSnackIndex ?? 1)
     }
 }

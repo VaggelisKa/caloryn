@@ -21,6 +21,7 @@ struct PortionPickerView: View {
     @State private var selectedServingCount: Int = 1
     @State private var selectedRecipeServingID = RecipeServingOption.one.id
     @State private var showingDeleteConfirmation = false
+    @State private var favoriteErrorMessage: String?
 
     private enum PortionMode: Hashable {
         case grams
@@ -219,6 +220,26 @@ struct PortionPickerView: View {
                     .accessibilityLabel("Delete Log Entry")
                 }
             }
+
+            if !isEditing && !isNewFood && foodItem.isUserCreatedFood {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(action: toggleFavorite) {
+                        Image(systemName: foodItem.isFavorite ? "star.fill" : "star")
+                            .font(CalorynTheme.toolbarIcon)
+                            .foregroundStyle(foodItem.isFavorite ? CalorynTheme.terracotta : CalorynTheme.sage)
+                    }
+                    .accessibilityLabel(
+                        foodItem.isFavorite
+                            ? "Remove \(foodItem.name) from favorites"
+                            : "Add \(foodItem.name) to favorites"
+                    )
+                    .accessibilityHint(
+                        foodItem.isFavorite
+                            ? "Removes this item from quick logging favorites"
+                            : "Adds this item to quick logging favorites"
+                    )
+                }
+            }
         }
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 0) {
@@ -240,6 +261,13 @@ struct PortionPickerView: View {
             Button("Delete", role: .destructive, action: deleteEntry)
         } message: {
             Text("Remove \(foodItem.name) from your log?")
+        }
+        .alert("Couldn’t Update Favorite", isPresented: favoriteErrorIsPresented) {
+            Button("OK", role: .cancel) {
+                favoriteErrorMessage = nil
+            }
+        } message: {
+            Text(favoriteErrorMessage ?? "Please try again.")
         }
     }
 
@@ -473,7 +501,8 @@ struct PortionPickerView: View {
                 date: logDate,
                 mealType: selectedMeal,
                 foodItem: foodItem,
-                portionGrams: portionGrams
+                portionGrams: portionGrams,
+                snackIndex: snackIndex
             )
             try? modelContext.save()
         } else {
@@ -483,7 +512,8 @@ struct PortionPickerView: View {
                 mealType: selectedMeal,
                 logDate: logDate,
                 isNewFood: isNewFood,
-                modelContext: modelContext
+                modelContext: modelContext,
+                snackIndex: snackIndex
             )
             try? modelContext.save()
         }
@@ -506,6 +536,29 @@ struct PortionPickerView: View {
             try? modelContext.save()
         }
         dismiss()
+    }
+
+    private func toggleFavorite() {
+        do {
+            try FavoriteFoodLogging.setFavorite(
+                !foodItem.isFavorite,
+                for: foodItem,
+                modelContext: modelContext
+            )
+        } catch {
+            favoriteErrorMessage = error.localizedDescription
+        }
+    }
+
+    private var favoriteErrorIsPresented: Binding<Bool> {
+        Binding(
+            get: { favoriteErrorMessage != nil },
+            set: { isPresented in
+                if !isPresented {
+                    favoriteErrorMessage = nil
+                }
+            }
+        )
     }
 
     private var selectedRecipeServingOption: RecipeServingOption? {
