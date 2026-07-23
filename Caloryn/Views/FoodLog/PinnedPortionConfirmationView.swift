@@ -125,7 +125,7 @@ struct PinnedPortionConfirmationView: View {
                     }
                 }
             }
-            .alert("Couldn’t Log Favorite", isPresented: errorIsPresented) {
+            .alert("Couldn’t Log Pinned Food", isPresented: errorIsPresented) {
                 Button("OK", role: .cancel) {
                     errorMessage = nil
                 }

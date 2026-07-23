@@ -149,7 +149,7 @@ struct FoodSearchView: View {
                 barcodeScannerSheet
             }
             .alert(
-                "Couldn’t Log Favorite",
+                "Couldn’t Log Pinned Food",
                 isPresented: favoriteErrorIsPresented
             ) {
                 Button("OK", role: .cancel) {
@@ -220,62 +220,40 @@ struct FoodSearchView: View {
     }
 
     private var recentFoodsList: some View {
-        Group {
-            if mode.isIngredientSelection && displayedRecentFoods.isEmpty {
-                ContentUnavailableView(
-                    "No Recent Foods",
-                    systemImage: "clock",
-                    description: Text("Search above or create saved foods from My Foods.")
-                )
-            } else {
-                List {
-                    if !mode.isIngredientSelection {
-                        Section {
-                            if pinnedFoods.isEmpty {
-                                PinnedFoodsEmptyRow()
-                            } else {
-                                ForEach(pinnedFoods) { food in
-                                    PinnedFoodRowView(
-                                        food: food,
-                                        plan: pinnedPlan(for: food),
-                                        destinationDescription: destinationDescription,
-                                        onLog: { handlePinnedFoodAction(food) },
-                                        onUnpin: { togglePinned(food) }
-                                    )
-                                }
-                            }
-                        } header: {
-                            Label("Pinned", systemImage: "star.fill")
-                                .font(CalorynTheme.caption)
-                                .foregroundStyle(CalorynTheme.textSecondary)
-                        }
+        List {
+            if !mode.isIngredientSelection && !pinnedFoods.isEmpty {
+                Section {
+                    ForEach(pinnedFoods) { food in
+                        PinnedFoodRowView(
+                            food: food,
+                            plan: pinnedPlan(for: food),
+                            destinationDescription: destinationDescription,
+                            onLog: { handlePinnedFoodAction(food) },
+                            onUnpin: { togglePinned(food) }
+                        )
                     }
-
-                    if displayedRecentFoods.isEmpty {
-                        if pinnedFoods.isEmpty {
-                            Section {
-                                SearchEmptyRow(
-                                    title: "No Recent Foods",
-                                    message: "Search above or create saved foods from My Foods.",
-                                    systemImage: "clock"
-                                )
-                            } header: {
-                                recentSectionHeader
-                            }
-                        }
-                    } else {
-                        Section {
-                            ForEach(displayedRecentFoods) { food in
-                                savedFoodRow(for: food)
-                            }
-                        } header: {
-                            recentSectionHeader
-                        }
+                } header: {
+                    HStack {
+                        Label("Pinned", systemImage: "pin.fill")
+                        Spacer()
+                        Text(destinationDescription)
                     }
+                    .font(CalorynTheme.caption)
+                    .foregroundStyle(CalorynTheme.textSecondary)
                 }
-                .listStyle(.plain)
+            }
+
+            if !displayedRecentFoods.isEmpty {
+                Section {
+                    ForEach(displayedRecentFoods) { food in
+                        savedFoodRow(for: food)
+                    }
+                } header: {
+                    recentSectionHeader
+                }
             }
         }
+        .listStyle(.plain)
     }
 
     private var matchingCustomFoods: [FoodItem] {
@@ -453,14 +431,14 @@ struct FoodSearchView: View {
         Button {
             togglePinned(food)
         } label: {
-            Image(systemName: food.isPinned ? "star.fill" : "star")
+            Image(systemName: food.isPinned ? "pin.fill" : "pin")
                 .font(CalorynTheme.inlineIcon)
                 .foregroundStyle(food.isPinned ? CalorynTheme.terracotta : CalorynTheme.textSecondary)
                 .frame(width: 44, height: 44)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(food.isPinned ? "Unpin \(food.name)" : "Pin \(food.name)")
-        .accessibilityHint(food.isPinned ? "Removes this item from favorites" : "Adds this item to favorites")
+        .accessibilityHint(food.isPinned ? "Removes this item from pinned foods" : "Adds this item to pinned foods")
     }
 
     private var recentSectionHeader: some View {
@@ -515,7 +493,7 @@ struct FoodSearchView: View {
                 modelContext: modelContext
             )
         } catch {
-            favoriteErrorMessage = "Your favorite couldn’t be updated. Please try again."
+            favoriteErrorMessage = "Your pin couldn’t be updated. Please try again."
         }
     }
 

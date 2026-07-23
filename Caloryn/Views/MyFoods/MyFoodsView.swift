@@ -52,7 +52,7 @@ struct MyFoodsView: View {
                 RecipeFormView(existingRecipe: recipe)
                     .presentationDragIndicator(.visible)
             }
-            .alert("Couldn’t Update Favorite", isPresented: favoriteErrorIsPresented) {
+            .alert("Couldn’t Update Pin", isPresented: favoriteErrorIsPresented) {
                 Button("OK", role: .cancel) {
                     favoriteErrorMessage = nil
                 }
@@ -177,7 +177,7 @@ struct MyFoodsView: View {
         Button {
             togglePinned(food)
         } label: {
-            Label(food.isPinned ? "Unpin" : "Pin", systemImage: food.isPinned ? "star.slash" : "star")
+            Label(food.isPinned ? "Unpin" : "Pin", systemImage: food.isPinned ? "pin.slash" : "pin")
         }
         .tint(food.isPinned ? CalorynTheme.textSecondary : CalorynTheme.terracotta)
     }
@@ -190,7 +190,7 @@ struct MyFoodsView: View {
                 modelContext: modelContext
             )
         } catch {
-            favoriteErrorMessage = "Your favorite couldn’t be updated. Please try again."
+            favoriteErrorMessage = "Your pin couldn’t be updated. Please try again."
         }
     }
 

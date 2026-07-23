@@ -25,11 +25,11 @@ enum PinnedFoodLogging {
         var errorDescription: String? {
             switch self {
             case .stalePlan:
-                "This favorite changed. Please try again."
+                "This pinned food changed. Please try again."
             case .quantityRequired:
                 "Choose a valid quantity before logging."
             case .unavailable:
-                "This favorite is unavailable. Edit or unpin it before logging."
+                "This pinned food is unavailable. Edit or unpin it before logging."
             }
         }
     }

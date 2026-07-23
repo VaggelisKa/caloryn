@@ -224,12 +224,12 @@ struct PortionPickerView: View {
             if !isNewFood {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(action: togglePinned) {
-                        Image(systemName: foodItem.isPinned ? "star.fill" : "star")
+                        Image(systemName: foodItem.isPinned ? "pin.fill" : "pin")
                             .font(CalorynTheme.toolbarIcon)
                             .foregroundStyle(foodItem.isPinned ? CalorynTheme.terracotta : CalorynTheme.sage)
                     }
                     .accessibilityLabel(foodItem.isPinned ? "Unpin \(foodItem.name)" : "Pin \(foodItem.name)")
-                    .accessibilityHint(foodItem.isPinned ? "Removes this item from favorites" : "Adds this item to favorites")
+                    .accessibilityHint(foodItem.isPinned ? "Removes this item from pinned foods" : "Adds this item to pinned foods")
                 }
             }
         }
@@ -254,7 +254,7 @@ struct PortionPickerView: View {
         } message: {
             Text("Remove \(foodItem.name) from your log?")
         }
-        .alert("Couldn’t Update Favorite", isPresented: favoriteErrorIsPresented) {
+        .alert("Couldn’t Update Pin", isPresented: favoriteErrorIsPresented) {
             Button("OK", role: .cancel) {
                 favoriteErrorMessage = nil
             }
@@ -538,7 +538,7 @@ struct PortionPickerView: View {
                 modelContext: modelContext
             )
         } catch {
-            favoriteErrorMessage = "Your favorite couldn’t be updated. Please try again."
+            favoriteErrorMessage = "Your pin couldn’t be updated. Please try again."
         }
     }
 
