@@ -129,8 +129,8 @@ struct CustomFoodFormView: View {
                     }
                     .accessibilityLabel("Close")
                 }
-                ToolbarItemGroup(placement: .confirmationAction) {
-                    if let existingFood {
+                if let existingFood {
+                    ToolbarItem(placement: .topBarTrailing) {
                         Button {
                             toggleFavorite(existingFood)
                         } label: {
@@ -149,6 +149,12 @@ struct CustomFoodFormView: View {
                         )
                     }
 
+                    if #available(iOS 26.0, *) {
+                        ToolbarSpacer(.fixed, placement: .topBarTrailing)
+                    }
+                }
+
+                ToolbarItem(placement: .topBarTrailing) {
                     Button("Save") {
                         saveFood()
                     }

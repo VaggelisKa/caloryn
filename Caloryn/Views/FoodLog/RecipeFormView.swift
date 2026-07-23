@@ -86,8 +86,8 @@ struct RecipeFormView: View {
                     .accessibilityLabel("Close")
                 }
 
-                ToolbarItemGroup(placement: .confirmationAction) {
-                    if let existingRecipe {
+                if let existingRecipe {
+                    ToolbarItem(placement: .topBarTrailing) {
                         Button {
                             toggleFavorite(existingRecipe)
                         } label: {
@@ -106,6 +106,12 @@ struct RecipeFormView: View {
                         )
                     }
 
+                    if #available(iOS 26.0, *) {
+                        ToolbarSpacer(.fixed, placement: .topBarTrailing)
+                    }
+                }
+
+                ToolbarItem(placement: .topBarTrailing) {
                     Button("Save") {
                         saveRecipe()
                     }
