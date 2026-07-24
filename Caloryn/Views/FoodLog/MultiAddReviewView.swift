@@ -40,40 +40,27 @@ struct MultiAddReviewView: View {
     var body: some View {
         NavigationStack {
             Form {
-                destinationSection
-
                 if let recoveryState {
                     recoverySection(recoveryState)
                 }
 
                 itemsSection
-
-                Section {
-                    Button {
-                        commit()
-                    } label: {
-                        if isCommitting {
-                            ProgressView()
-                                .frame(maxWidth: .infinity)
-                        } else {
-                            Label(commitTitle, systemImage: "plus.circle.fill")
-                                .frame(maxWidth: .infinity)
-                        }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
-                    .tint(CalorynTheme.sage)
-                    .disabled(isCommitting || items.isEmpty || recoveryState != nil)
-                    .listRowBackground(Color.clear)
-                    .accessibilityIdentifier("multiAdd.commit")
-                }
+            }
+            .safeAreaInset(edge: .bottom) {
+                commitBar
             }
             .navigationTitle("Review Items")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                        .disabled(isCommitting)
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(CalorynTheme.toolbarIcon)
+                    }
+                    .disabled(isCommitting)
+                    .accessibilityLabel("Close")
                 }
             }
             .interactiveDismissDisabled(isCommitting)
@@ -85,90 +72,112 @@ struct MultiAddReviewView: View {
         }
     }
 
-    private var destinationSection: some View {
-        Section {
-            LabeledContent("Date", value: destinationDate.shortFormatted)
-                .accessibilityIdentifier("multiAdd.destinationDate")
-
-            LabeledContent(
-                "Meal",
-                value: destinationMeal.displayName(snackIndex: destinationSnackIndex)
-            )
-            .accessibilityIdentifier("multiAdd.destinationMeal")
-
-            Text(destinationSummary)
-                .font(.footnote)
-                .foregroundStyle(CalorynTheme.textSecondary)
-                .accessibilityIdentifier("multiAdd.destinationSummary")
-        } header: {
-            Text("Destination")
+    private var commitBar: some View {
+        VStack(spacing: 0) {
+            Button {
+                commit()
+            } label: {
+                Group {
+                    if isCommitting {
+                        ProgressView()
+                    } else {
+                        Text(commitTitle)
+                            .font(CalorynTheme.buttonLabel)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+            }
+            .adaptiveGlassProminentButton()
+            .tint(CalorynTheme.sage)
+            .disabled(isCommitting || items.isEmpty || recoveryState != nil)
+            .padding(.horizontal, CalorynTheme.pagePadding)
+            .padding(.top, 10)
+            .padding(.bottom, 16)
+            .accessibilityIdentifier("multiAdd.commit")
         }
+        .background(.regularMaterial)
     }
 
     private var itemsSection: some View {
         Section {
             ForEach($items) { $item in
-                reviewRow(item: $item)
+                NavigationLink {
+                    MultiAddPortionEditorView(
+                        item: $item,
+                        destinationDescription: destinationDescription
+                    )
+                } label: {
+                    reviewRow(item)
+                }
+                .disabled(recoveryState != nil)
+                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                    Button(role: .destructive) {
+                        remove(item.id)
+                    } label: {
+                        Label("Remove", systemImage: "trash")
+                    }
+                    .accessibilityLabel("Remove \(item.snapshot.foodName)")
+                }
+                .accessibilityIdentifier("multiAdd.item.\(item.id.uuidString)")
             }
         } header: {
             VStack(alignment: .leading, spacing: 3) {
                 Text("Selected Items")
-                Label(destinationDescription, systemImage: "calendar")
+                Text(destinationDescription)
                     .font(CalorynTheme.caption)
+                    .accessibilityIdentifier("multiAdd.destinationSummary")
             }
             .accessibilityElement(children: .combine)
-        } footer: {
-            Text("Review every portion before adding. All items use the destination shown above.")
         }
     }
 
-    private func reviewRow(item: Binding<MultiAddDraftItem>) -> some View {
-        VStack(alignment: .leading, spacing: 9) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(item.wrappedValue.snapshot.foodName)
-                    .font(CalorynTheme.itemTitle)
-                    .foregroundStyle(CalorynTheme.textPrimary)
+    private func reviewRow(_ item: MultiAddDraftItem) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(item.snapshot.foodName)
+                .font(CalorynTheme.itemTitle)
+                .foregroundStyle(CalorynTheme.textPrimary)
 
-                Spacer(minLength: 8)
-
-                Button(role: .destructive) {
-                    remove(item.wrappedValue.id)
-                } label: {
-                    Image(systemName: "trash")
-                        .frame(width: 32, height: 32)
-                }
-                .buttonStyle(.plain)
-                .disabled(recoveryState != nil)
-                .accessibilityLabel("Remove \(item.wrappedValue.snapshot.foodName)")
-            }
-
-            if let mealName = item.wrappedValue.originMealName,
-               isFirstComponentFromMeal(item.wrappedValue) {
-                Label("From Meal: \(mealName)", systemImage: "fork.knife")
+            if let mealName = item.originMealName,
+               isFirstComponentFromMeal(item) {
+                Text("From Meal: \(mealName)")
                     .font(CalorynTheme.caption)
                     .foregroundStyle(CalorynTheme.textSecondary)
                     .accessibilityIdentifier(
-                        "multiAdd.originMeal.\(item.wrappedValue.id.uuidString)"
+                        "multiAdd.originMeal.\(item.id.uuidString)"
                     )
             }
 
-            Stepper(
-                value: portionBinding(for: item),
-                in: 1...100_000,
-                step: 1
-            ) {
-                Text("Portion: \(formattedPortion(item.wrappedValue.snapshot.portionGrams))")
-                    .font(CalorynTheme.bodyText)
-                    .foregroundStyle(CalorynTheme.textPrimary)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 6) {
+                    portionText(for: item)
+
+                    Text("·")
+                        .accessibilityHidden(true)
+
+                    calorieText(for: item)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    portionText(for: item)
+                    calorieText(for: item)
+                }
             }
-            .disabled(recoveryState != nil)
-            .accessibilityLabel("Portion for \(item.wrappedValue.snapshot.foodName)")
-            .accessibilityValue(formattedPortion(item.wrappedValue.snapshot.portionGrams))
-            .accessibilityHint("Adjusts this item in 1 gram steps")
-            .accessibilityIdentifier("multiAdd.portion.\(item.wrappedValue.id.uuidString)")
+            .font(CalorynTheme.caption)
+            .foregroundStyle(CalorynTheme.textSecondary)
         }
         .padding(.vertical, 4)
-        .accessibilityIdentifier("multiAdd.item.\(item.wrappedValue.id.uuidString)")
+        .accessibilityElement(children: .combine)
+        .accessibilityHint("Opens the portion editor")
+    }
+
+    private func portionText(for item: MultiAddDraftItem) -> some View {
+        Text(formattedPortion(item.snapshot.portionGrams))
+            .accessibilityIdentifier("multiAdd.portion.\(item.id.uuidString)")
+    }
+
+    private func calorieText(for item: MultiAddDraftItem) -> some View {
+        Text("\(Int(item.snapshot.nutrition.calories.rounded())) kcal")
     }
 
     private func recoverySection(_ state: MultiAddPartialBatch) -> some View {
@@ -203,11 +212,7 @@ struct MultiAddReviewView: View {
 
     private var commitTitle: String {
         let noun = items.count == 1 ? "Item" : "Items"
-        return "Add \(items.count) \(noun)"
-    }
-
-    private var destinationSummary: String {
-        "Each selected item will be added to \(destinationDescription)."
+        return "Log \(items.count) \(noun)"
     }
 
     private var destinationDescription: String {
@@ -215,19 +220,21 @@ struct MultiAddReviewView: View {
             for: destinationMeal,
             requestedSnackIndex: destinationSnackIndex
         )
-        return "\(destinationMeal.displayName(snackIndex: snackIndex)) on \(destinationDate.shortFormatted)"
-    }
+        let mealName = destinationMeal
+            .displayName(snackIndex: snackIndex)
+            .lowercased()
+        let calendar = Calendar.current
 
-    private func portionBinding(
-        for item: Binding<MultiAddDraftItem>
-    ) -> Binding<Double> {
-        Binding(
-            get: { item.wrappedValue.snapshot.portionGrams },
-            set: { portion in
-                item.wrappedValue.snapshot = item.wrappedValue.snapshot
-                    .scaled(toPortionGrams: portion)
-            }
-        )
+        if calendar.isDateInToday(destinationDate) {
+            return "Today’s \(mealName)"
+        }
+        if calendar.isDateInYesterday(destinationDate) {
+            return "Yesterday’s \(mealName)"
+        }
+        if calendar.isDateInTomorrow(destinationDate) {
+            return "Tomorrow’s \(mealName)"
+        }
+        return "\(destinationDate.shortFormatted) · \(mealName)"
     }
 
     private func remove(_ id: UUID) {

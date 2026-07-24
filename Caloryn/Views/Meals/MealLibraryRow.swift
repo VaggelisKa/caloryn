@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MealTemplateLibraryRow: View {
     let template: MealTemplate
+    var showsIcon = true
 
     private var snapshots: [FoodLogEntrySnapshot] {
         (try? MealTemplateCommands.snapshots(for: template)) ?? []
@@ -9,10 +10,12 @@ struct MealTemplateLibraryRow: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
-            Image(systemName: "fork.knife")
-                .font(CalorynTheme.inlineIcon)
-                .foregroundStyle(CalorynTheme.sage)
-                .frame(width: 28)
+            if showsIcon {
+                Image(systemName: "fork.knife")
+                    .font(CalorynTheme.inlineIcon)
+                    .foregroundStyle(CalorynTheme.sage)
+                    .frame(width: 28)
+            }
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(template.name)
