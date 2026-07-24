@@ -31,8 +31,8 @@ enum FoodSearchMode {
 
     var usesNonStickySectionTitles: Bool {
         switch self {
-        case .mealComponentSelection: true
-        case .logging, .ingredientSelection: false
+        case .logging, .mealComponentSelection: true
+        case .ingredientSelection: false
         }
     }
 
@@ -42,9 +42,28 @@ enum FoodSearchMode {
         case .logging, .mealComponentSelection: false
         }
     }
+
+    var supportsMultiSelection: Bool {
+        switch self {
+        case .logging: true
+        case .ingredientSelection, .mealComponentSelection: false
+        }
+    }
+
+    var isIngredientSelection: Bool {
+        switch self {
+        case .ingredientSelection: true
+        case .logging, .mealComponentSelection: false
+        }
+    }
 }
 
 struct FoodSearchView: View {
+    private struct MultiAddPresentation: Identifiable {
+        let id = UUID()
+        let groups: [MultiAddSelectionGroup]
+    }
+
     let mealType: MealType
     let logDate: Date
     var snackIndex: Int = 0
@@ -53,6 +72,7 @@ struct FoodSearchView: View {
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
     @Query(sort: \FoodItem.lastUsed, order: .reverse) private var recentFoods: [FoodItem]
     @Query(sort: \MealTemplate.updatedAt, order: .reverse) private var mealTemplates: [MealTemplate]
 
@@ -67,6 +87,13 @@ struct FoodSearchView: View {
     @State private var favoriteErrorMessage: String?
     @State private var showsAllFavorites = false
     @State private var mealErrorMessage: String?
+    @State private var isSelectingMultiple = false
+    @State private var multiAddSelection = MultiAddSelectionState()
+    @State private var suggestionSnapshot: [ContextualFoodSuggestion] = []
+    @State private var hasCapturedSuggestions = false
+    @State private var multiAddPresentation: MultiAddPresentation?
+    @ScaledMetric(relativeTo: .body)
+    private var selectionIndicatorWidth: CGFloat = 22
     @FocusState private var isSearchFocused: Bool
 
     private var showingRecent: Bool {
@@ -83,9 +110,13 @@ struct FoodSearchView: View {
     }
 
     private var displayedRecentFoods: [FoodItem] {
-        Array(
+        let suggestedIDs = Set(suggestionSnapshot.map(\.foodID))
+        return Array(
             recentFoods
-                .filter { !$0.isUserCreatedFood }
+                .filter {
+                    !$0.isUserCreatedFood
+                        && !suggestedIDs.contains($0.id)
+                }
                 .prefix(20)
         )
     }
@@ -100,6 +131,20 @@ struct FoodSearchView: View {
             from: favoriteFoods,
             showsAll: showsAllFavorites
         )
+    }
+
+    private var contextualSuggestions: [(FoodItem, ContextualFoodSuggestion)] {
+        guard mode.supportsMultiSelection else { return [] }
+        let foodsByID = recentFoods.reduce(into: [UUID: FoodItem]()) { result, food in
+            result[food.id] = food
+        }
+        return suggestionSnapshot.compactMap { suggestion in
+            foodsByID[suggestion.foodID].map { ($0, suggestion) }
+        }
+    }
+
+    private var selectedItemCount: Int {
+        multiAddSelection.itemCount
     }
 
     var body: some View {
@@ -127,7 +172,25 @@ struct FoodSearchView: View {
                     }
                     .accessibilityLabel("Close")
                 }
-                if mode.allowsManualEntryCreation {
+                if mode.supportsMultiSelection {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button {
+                            toggleMultiSelectionMode()
+                        } label: {
+                            Text(isSelectingMultiple ? "Cancel" : "Select")
+                                .contentTransition(.opacity)
+                                .animation(
+                                    selectionModeAnimation,
+                                    value: isSelectingMultiple
+                                )
+                        }
+                        .accessibilityLabel(
+                            isSelectingMultiple
+                                ? "Cancel multiple selection"
+                                : "Select multiple items"
+                        )
+                    }
+                } else if mode.allowsManualEntryCreation {
                     ToolbarItem(placement: .primaryAction) {
                         Button {
                             showingCustomFoodForm = true
@@ -139,6 +202,37 @@ struct FoodSearchView: View {
                         .accessibilityLabel("Create Manual Entry")
                     }
                 }
+            }
+            .safeAreaInset(edge: .bottom) {
+                Group {
+                    if isSelectingMultiple, selectedItemCount > 0 {
+                        Button {
+                            multiAddPresentation = MultiAddPresentation(
+                                groups: multiAddSelection.groups
+                            )
+                        } label: {
+                            Label {
+                                Text(reviewButtonTitle)
+                                    .contentTransition(.numericText())
+                            } icon: {
+                                Image(systemName: "checkmark.circle.fill")
+                            }
+                            .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
+                        .tint(CalorynTheme.sage)
+                        .padding(.horizontal, CalorynTheme.pagePadding)
+                        .padding(.vertical, 10)
+                        .background(.bar)
+                        .transition(
+                            .move(edge: .bottom)
+                                .combined(with: .opacity)
+                        )
+                        .accessibilityIdentifier("multiAdd.review")
+                    }
+                }
+                .animation(selectionChangeAnimation, value: selectedItemCount)
             }
             .navigationDestination(item: $selectedProduct) { product in
                 let food = searchService.createFoodItem(from: product)
@@ -167,6 +261,16 @@ struct FoodSearchView: View {
                     }
                 })
             }
+            .sheet(item: $multiAddPresentation) { presentation in
+                MultiAddReviewView(
+                    groups: presentation.groups,
+                    initialDate: logDate,
+                    initialMeal: mealType,
+                    initialSnackIndex: snackIndex,
+                    onLogged: dismiss.callAsFunction
+                )
+                .presentationDragIndicator(.visible)
+            }
             .fullScreenCover(isPresented: $showingScanner) {
                 barcodeScannerSheet
             }
@@ -188,6 +292,7 @@ struct FoodSearchView: View {
                 Text(mealErrorMessage ?? "Please try again.")
             }
             .onAppear {
+                captureSuggestionsIfNeeded()
                 if automaticallyFocusSearch {
                     isSearchFocused = true
                 }
@@ -252,9 +357,24 @@ struct FoodSearchView: View {
 
     private var recentFoodsList: some View {
         List {
+            if !contextualSuggestions.isEmpty {
+                nonStickySectionTitle("Suggested for This Meal")
+
+                ForEach(contextualSuggestions, id: \.1.id) { pair in
+                    contextualSuggestionRow(
+                        food: pair.0,
+                        suggestion: pair.1
+                    )
+                }
+            }
+
             if !favoriteFoods.isEmpty {
-                Section {
-                    ForEach(visibleFavoriteFoods) { food in
+                nonStickySectionTitle("Favorites")
+
+                ForEach(visibleFavoriteFoods) { food in
+                    if isSelectingMultiple {
+                        savedFoodRow(for: food)
+                    } else {
                         FavoriteFoodRowView(
                             food: food,
                             plan: favoritePlan(for: food),
@@ -263,47 +383,51 @@ struct FoodSearchView: View {
                             onRemoveFavorite: { toggleFavorite(food) }
                         )
                     }
+                }
 
-                    if favoriteFoods.count > FavoriteFoodLogging.collapsedFavoriteLimit {
-                        Button(action: toggleFavoritesDisclosure) {
-                            HStack {
-                                Text(showsAllFavorites ? "Show less" : "Show all \(favoriteFoods.count)")
-                                Spacer()
-                                Image(systemName: showsAllFavorites ? "chevron.up" : "chevron.down")
-                            }
-                            .font(CalorynTheme.caption)
-                            .foregroundStyle(CalorynTheme.sage)
-                            .contentShape(Rectangle())
+                if favoriteFoods.count > FavoriteFoodLogging.collapsedFavoriteLimit {
+                    Button(action: toggleFavoritesDisclosure) {
+                        HStack {
+                            Text(showsAllFavorites ? "Show less" : "Show all \(favoriteFoods.count)")
+                            Spacer()
+                            Image(systemName: showsAllFavorites ? "chevron.up" : "chevron.down")
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(
-                            showsAllFavorites
-                                ? "Show fewer favorites"
-                                : "Show all \(favoriteFoods.count) favorites"
-                        )
+                        .font(CalorynTheme.caption)
+                        .foregroundStyle(CalorynTheme.sage)
+                        .contentShape(Rectangle())
                     }
-                } header: {
-                    Label("Favorites", systemImage: "star.fill")
-                    .font(CalorynTheme.caption)
-                    .foregroundStyle(CalorynTheme.textSecondary)
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(
+                        showsAllFavorites
+                            ? "Show fewer favorites"
+                            : "Show all \(favoriteFoods.count) favorites"
+                    )
                 }
             }
 
-            if !mode.isSelection, !mealTemplates.isEmpty {
-                Section {
-                    ForEach(mealTemplates) { meal in
-                        Button {
-                            addMeal(meal)
-                        } label: {
-                            MealTemplateLibraryRow(template: meal)
+            if mode.supportsMultiSelection, !mealTemplates.isEmpty {
+                nonStickySectionTitle("Meals")
+
+                ForEach(mealTemplates) { meal in
+                    Button {
+                        handleMealSelection(meal)
+                    } label: {
+                        selectionRow(
+                            isSelected: isSelected(.meal(meal.id))
+                        ) {
+                            MealTemplateLibraryRow(
+                                template: meal,
+                                showsIcon: false
+                            )
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("meal.select.\(meal.id.uuidString)")
                     }
-                } header: {
-                    Label("Meals", systemImage: "fork.knife")
-                        .font(CalorynTheme.caption)
-                        .foregroundStyle(CalorynTheme.textSecondary)
+                    .buttonStyle(.plain)
+                    .accessibilityValue(
+                        isSelectingMultiple
+                            ? selectionAccessibilityValue(for: .meal(meal.id))
+                            : ""
+                    )
+                    .accessibilityIdentifier("meal.select.\(meal.id.uuidString)")
                 }
             }
 
@@ -378,7 +502,7 @@ struct FoodSearchView: View {
     }
 
     private var matchingMeals: [MealTemplate] {
-        guard !mode.isSelection else { return [] }
+        guard mode.supportsMultiSelection else { return [] }
         let query = searchText.lowercased().trimmingCharacters(in: .whitespaces)
         guard !query.isEmpty else { return [] }
         return mealTemplates.filter {
@@ -417,19 +541,27 @@ struct FoodSearchView: View {
             } else {
                 List {
                     if !matchingMeals.isEmpty {
-                        Section {
-                            ForEach(matchingMeals) { meal in
-                                Button {
-                                    addMeal(meal)
-                                } label: {
-                                    MealTemplateLibraryRow(template: meal)
+                        nonStickySectionTitle("Meals")
+
+                        ForEach(matchingMeals) { meal in
+                            Button {
+                                handleMealSelection(meal)
+                            } label: {
+                                selectionRow(
+                                    isSelected: isSelected(.meal(meal.id))
+                                ) {
+                                    MealTemplateLibraryRow(
+                                        template: meal,
+                                        showsIcon: false
+                                    )
                                 }
-                                .buttonStyle(.plain)
                             }
-                        } header: {
-                            Text("Meals")
-                                .font(CalorynTheme.caption)
-                                .foregroundStyle(CalorynTheme.textSecondary)
+                            .buttonStyle(.plain)
+                            .accessibilityValue(
+                                isSelectingMultiple
+                                    ? selectionAccessibilityValue(for: .meal(meal.id))
+                                    : ""
+                            )
                         }
                     }
 
@@ -480,38 +612,12 @@ struct FoodSearchView: View {
                             }
 
                             ForEach(searchService.searchResults) { product in
-                                Button {
-                                    handleProductSelection(product)
-                                } label: {
-                                    FoodRowView(
-                                        name: product.productName ?? "Unknown",
-                                        brand: product.brands,
-                                        caloriesPer100g: product.nutriments?.energyKcal100g ?? 0,
-                                        nutriscoreGrade: product.nutritionGrades.flatMap { g in ["a","b","c","d","e"].contains(g.lowercased()) ? g.lowercased() : nil },
-                                        servingDescription: product.formattedServingDescription,
-                                        caloriesPerServing: product.caloriesPerServing
-                                    )
-                                    .contentShape(Rectangle())
-                                }
-                                .buttonStyle(.plain)
+                                remoteProductRow(product)
                             }
                         } else {
                             Section {
                                 ForEach(searchService.searchResults) { product in
-                                    Button {
-                                        handleProductSelection(product)
-                                    } label: {
-                                        FoodRowView(
-                                            name: product.productName ?? "Unknown",
-                                            brand: product.brands,
-                                            caloriesPer100g: product.nutriments?.energyKcal100g ?? 0,
-                                            nutriscoreGrade: product.nutritionGrades.flatMap { g in ["a","b","c","d","e"].contains(g.lowercased()) ? g.lowercased() : nil },
-                                            servingDescription: product.formattedServingDescription,
-                                            caloriesPerServing: product.caloriesPerServing
-                                        )
-                                        .contentShape(Rectangle())
-                                    }
-                                    .buttonStyle(.plain)
+                                    remoteProductRow(product)
                                 }
                             } header: {
                                 if hasLocalMatches {
@@ -542,20 +648,23 @@ struct FoodSearchView: View {
             Button {
                 handleFoodItemSelection(food)
             } label: {
-                FoodRowView(
-                    name: food.name,
-                    brand: food.brand,
-                    caloriesPer100g: food.caloriesPer100g,
-                    nutriscoreGrade: food.nutriscoreGrade,
-                    servingDescription: food.servingDescription,
-                    isCustom: true,
-                    showsTypeBadge: false
-                )
+                selectionRow(isSelected: isSelected(.food(food.id))) {
+                    FoodRowView(
+                        name: food.name,
+                        brand: food.brand,
+                        caloriesPer100g: food.caloriesPer100g,
+                        nutriscoreGrade: food.nutriscoreGrade,
+                        servingDescription: food.servingDescription,
+                        isCustom: true,
+                        showsTypeBadge: false
+                    )
+                }
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .accessibilityValue(selectionAccessibilityValue(for: .food(food.id)))
 
-            if !mode.isSelection {
+            if !mode.isSelection, !isSelectingMultiple {
                 favoriteButton(for: food)
             }
         }
@@ -566,19 +675,22 @@ struct FoodSearchView: View {
             Button {
                 handleFoodItemSelection(food)
             } label: {
-                FoodRowView(
-                    name: food.name,
-                    brand: food.brand,
-                    caloriesPer100g: food.caloriesPer100g,
-                    caloriesPerServing: food.calories(forGrams: food.defaultServingG ?? 100),
-                    isRecipe: true,
-                    showsTypeBadge: false
-                )
+                selectionRow(isSelected: isSelected(.food(food.id))) {
+                    FoodRowView(
+                        name: food.name,
+                        brand: food.brand,
+                        caloriesPer100g: food.caloriesPer100g,
+                        caloriesPerServing: food.calories(forGrams: food.defaultServingG ?? 100),
+                        isRecipe: true,
+                        showsTypeBadge: false
+                    )
+                }
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .accessibilityValue(selectionAccessibilityValue(for: .food(food.id)))
 
-            if !mode.isSelection {
+            if !mode.isSelection, !isSelectingMultiple {
                 favoriteButton(for: food)
             }
         }
@@ -588,16 +700,283 @@ struct FoodSearchView: View {
         Button {
             handleFoodItemSelection(food)
         } label: {
-            FoodRowView(
-                name: food.name,
-                brand: food.brand,
-                caloriesPer100g: food.caloriesPer100g,
-                nutriscoreGrade: food.nutriscoreGrade,
-                servingDescription: food.servingDescription
-            )
+            selectionRow(isSelected: isSelected(.food(food.id))) {
+                FoodRowView(
+                    name: food.name,
+                    brand: food.brand,
+                    caloriesPer100g: food.caloriesPer100g,
+                    nutriscoreGrade: food.nutriscoreGrade,
+                    servingDescription: food.servingDescription
+                )
+            }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityValue(selectionAccessibilityValue(for: .food(food.id)))
+    }
+
+    private func remoteProductRow(_ product: OpenFoodFactsProduct) -> some View {
+        Button {
+            handleProductSelection(product)
+        } label: {
+            selectionRow(
+                isSelected: isSelected(.remoteProduct(product.id))
+            ) {
+                FoodRowView(
+                    name: product.productName ?? "Unknown",
+                    brand: product.brands,
+                    caloriesPer100g: product.nutriments?.energyKcal100g ?? 0,
+                    nutriscoreGrade: product.nutritionGrades.flatMap { grade in
+                        ["a", "b", "c", "d", "e"].contains(grade.lowercased())
+                            ? grade.lowercased()
+                            : nil
+                    },
+                    servingDescription: product.formattedServingDescription,
+                    caloriesPerServing: product.caloriesPerServing
+                )
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityValue(
+            selectionAccessibilityValue(for: .remoteProduct(product.id))
+        )
+    }
+
+    private func contextualSuggestionRow(
+        food: FoodItem,
+        suggestion: ContextualFoodSuggestion
+    ) -> some View {
+        Button {
+            if isSelectingMultiple {
+                toggleFoodSelection(food)
+            } else {
+                multiAddPresentation = MultiAddPresentation(
+                    groups: [
+                        .savedFood(
+                            food,
+                            portionGrams: suggestion.resolvedPortionGrams,
+                            meal: mealType,
+                            snackIndex: snackIndex
+                        ),
+                    ]
+                )
+            }
+        } label: {
+            selectionRow(
+                isSelected: isSelected(.food(food.id)),
+                spacing: 12
+            ) {
+                Text(food.name)
+                    .font(CalorynTheme.itemTitle)
+                    .foregroundStyle(CalorynTheme.textPrimary)
+
+                Spacer(minLength: 8)
+
+                Text("\(Int(suggestion.resolvedPortionGrams.rounded()))g")
+                    .font(CalorynTheme.numericBody)
+                    .foregroundStyle(CalorynTheme.textPrimary)
+            }
+            .padding(.vertical, 4)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(
+            "\(food.name), suggested \(Int(suggestion.resolvedPortionGrams.rounded())) grams"
+        )
+        .accessibilityValue(selectionAccessibilityValue(for: .food(food.id)))
+        .accessibilityHint(
+            isSelectingMultiple
+                ? "Double tap to \(isSelected(.food(food.id)) ? "remove" : "select") this item"
+                : "Double tap to review its portion"
+        )
+        .accessibilityIdentifier("contextualSuggestions.food.\(food.id.uuidString)")
+    }
+
+    private func selectionRow<Content: View>(
+        isSelected: Bool,
+        spacing: CGFloat = 10,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        HStack(spacing: 0) {
+            selectionIndicator(isSelected: isSelected)
+                .frame(
+                    width: selectionIndicatorWidth,
+                    alignment: .leading
+                )
+                .opacity(isSelectingMultiple ? 1 : 0)
+                .scaleEffect(
+                    isSelectingMultiple ? 1 : 0.82,
+                    anchor: .leading
+                )
+                .frame(
+                    width: isSelectingMultiple
+                        ? selectionIndicatorWidth + spacing
+                        : 0,
+                    alignment: .leading
+                )
+                .clipped()
+
+            content()
+        }
+        .animation(selectionModeAnimation, value: isSelectingMultiple)
+    }
+
+    private func selectionIndicator(isSelected: Bool) -> some View {
+        Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+            .font(CalorynTheme.inlineIcon)
+            .foregroundStyle(
+                isSelected ? CalorynTheme.sage : CalorynTheme.textSecondary
+            )
+            .contentTransition(.symbolEffect(.replace))
+            .scaleEffect(isSelected ? 1 : 0.94)
+            .animation(selectionChangeAnimation, value: isSelected)
+            .accessibilityHidden(true)
+    }
+
+    private var selectionModeAnimation: Animation? {
+        accessibilityReduceMotion
+            ? nil
+            : .smooth(duration: 0.22)
+    }
+
+    private var selectionChangeAnimation: Animation? {
+        accessibilityReduceMotion
+            ? nil
+            : .spring(response: 0.22, dampingFraction: 0.72)
+    }
+
+    private var reviewButtonTitle: String {
+        let noun = selectedItemCount == 1 ? "Item" : "Items"
+        return "Review \(selectedItemCount) \(noun)"
+    }
+
+    private func captureSuggestionsIfNeeded() {
+        guard !hasCapturedSuggestions, mode.supportsMultiSelection else { return }
+        let now = Date()
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: now)
+        guard let historyStart = calendar.date(
+            byAdding: .day,
+            value: -(ContextualFoodSuggestionRanker.historyDayCount - 1),
+            to: today
+        ), let historyEnd = calendar.date(byAdding: .day, value: 1, to: today) else {
+            hasCapturedSuggestions = true
+            return
+        }
+        let entries = (try? modelContext.fetch(
+            FetchDescriptor<FoodLogEntry>(
+                predicate: #Predicate { entry in
+                    entry.date >= historyStart && entry.date < historyEnd
+                }
+            )
+        )) ?? []
+        suggestionSnapshot = ContextualFoodSuggestionAdapter.rank(
+            foods: recentFoods,
+            entries: entries,
+            destinationDate: logDate,
+            destinationMeal: mealType,
+            destinationSnackIndex: snackIndex,
+            now: now,
+            calendar: calendar
+        )
+        hasCapturedSuggestions = true
+    }
+
+    private func toggleMultiSelectionMode() {
+        isSearchFocused = false
+        if isSelectingMultiple {
+            isSelectingMultiple = false
+            multiAddSelection.removeAll()
+        } else {
+            isSelectingMultiple = true
+        }
+    }
+
+    private func isSelected(_ id: MultiAddSelectionGroup.ID) -> Bool {
+        multiAddSelection.contains(id)
+    }
+
+    private func selectionAccessibilityValue(
+        for id: MultiAddSelectionGroup.ID
+    ) -> String {
+        guard isSelectingMultiple else { return "" }
+        return isSelected(id) ? "Selected" : "Not selected"
+    }
+
+    private func toggle(_ group: MultiAddSelectionGroup) {
+        withAnimation(selectionChangeAnimation) {
+            multiAddSelection.toggle(group)
+        }
+    }
+
+    private func toggleFoodSelection(_ food: FoodItem) {
+        let portion = suggestionSnapshot
+            .first { $0.foodID == food.id }?
+            .resolvedPortionGrams
+            ?? ContextualFoodSuggestionAdapter.resolvedPortion(
+                for: food,
+                destinationDate: logDate,
+                destinationMeal: mealType,
+                destinationSnackIndex: snackIndex
+            )
+        toggle(
+            .savedFood(
+                food,
+                portionGrams: portion,
+                meal: mealType,
+                snackIndex: snackIndex
+            )
+        )
+    }
+
+    private func toggleRemoteProductSelection(_ product: OpenFoodFactsProduct) {
+        let id = MultiAddSelectionGroup.ID.remoteProduct(product.id)
+        if multiAddSelection.contains(id) {
+            withAnimation(selectionChangeAnimation) {
+                multiAddSelection.remove(id)
+            }
+        } else {
+            withAnimation(selectionChangeAnimation) {
+                multiAddSelection.toggle(
+                    .remoteProduct(
+                        product,
+                        searchService: searchService,
+                        meal: mealType,
+                        snackIndex: snackIndex
+                    )
+                )
+            }
+        }
+    }
+
+    private func handleMealSelection(_ meal: MealTemplate) {
+        if isSelectingMultiple {
+            toggleMealSelection(meal)
+        } else {
+            addMeal(meal)
+        }
+    }
+
+    private func toggleMealSelection(_ meal: MealTemplate) {
+        let id = MultiAddSelectionGroup.ID.meal(meal.id)
+        if multiAddSelection.contains(id) {
+            withAnimation(selectionChangeAnimation) {
+                multiAddSelection.remove(id)
+            }
+            return
+        }
+
+        do {
+            toggle(
+                .meal(
+                    meal,
+                    snapshots: try MealTemplateCommands.snapshots(for: meal)
+                )
+            )
+        } catch {
+            mealErrorMessage = error.localizedDescription
+        }
     }
 
     private func favoriteButton(for food: FoodItem) -> some View {
@@ -825,7 +1204,11 @@ struct FoodSearchView: View {
     private func handleProductSelection(_ product: OpenFoodFactsProduct) {
         switch mode {
         case .logging:
-            selectedProduct = product
+            if isSelectingMultiple {
+                toggleRemoteProductSelection(product)
+            } else {
+                selectedProduct = product
+            }
         case .ingredientSelection(let handler), .mealComponentSelection(let handler):
             let food = searchService.createFoodItem(from: product)
             handler(food)
@@ -836,7 +1219,11 @@ struct FoodSearchView: View {
     private func handleFoodItemSelection(_ food: FoodItem) {
         switch mode {
         case .logging:
-            selectedFoodItem = food
+            if isSelectingMultiple {
+                toggleFoodSelection(food)
+            } else {
+                selectedFoodItem = food
+            }
         case .ingredientSelection(let handler), .mealComponentSelection(let handler):
             handler(food)
             dismiss()

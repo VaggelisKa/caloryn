@@ -16,8 +16,32 @@ struct MealTemplateLogPlan: Identifiable, Equatable {
     let fingerprint: String
 }
 
+struct MealTemplateReplicationState: Equatable {
+    let expectedCount: Int
+    let entryIDs: [UUID]
+    let persistedIndices: [Int]
+
+    var isEmpty: Bool { entryIDs.isEmpty }
+    var isComplete: Bool {
+        entryIDs.count == expectedCount
+            && Set(persistedIndices) == Set(0..<expectedCount)
+    }
+}
+
 @MainActor
 enum MealTemplateCommands {
+    enum ExistingBatchPolicy {
+        /// The default used by #74: an incomplete prior operation must be
+        /// surfaced for explicit recovery rather than silently changed.
+        case rejectPartial
+        /// Delete the partial operation and recreate the complete batch in
+        /// the same save transaction.
+        case replacePartial
+        /// Preserve valid existing indices and atomically add only the
+        /// missing items from the original plan.
+        case completePartial
+    }
+
     enum CommandError: LocalizedError, Equatable {
         case emptyName
         case emptySelection
@@ -271,8 +295,10 @@ enum MealTemplateCommands {
         plan: MealTemplateLogPlan,
         availableFoods: [FoodItem],
         modelContext: ModelContext,
+        existingBatchPolicy: ExistingBatchPolicy = .rejectPartial,
         now: Date = Date(),
-        save: (ModelContext) throws -> Void = { try $0.save() }
+        save: (ModelContext) throws -> Void = { try $0.save() },
+        transactionFoodResolver: ((ModelContext) throws -> [FoodItem])? = nil
     ) throws -> [FoodLogEntry] {
         let operationID = plan.id
         let transactionContext = makeTransactionContext(from: modelContext)
@@ -289,22 +315,45 @@ enum MealTemplateCommands {
             guard existing.allSatisfy({ $0.replicationPlanFingerprint == plan.fingerprint }) else {
                 throw CommandError.operationConflict
             }
-            let expectedIndices = Set(plan.items.indices)
-            let actualIndices = Set(existing.compactMap(\.replicationItemIndex))
-            guard existing.count == plan.items.count,
-                  actualIndices == expectedIndices else {
-                throw CommandError.partialDuplicate
-            }
+        }
+
+        let expectedIndices = Set(plan.items.indices)
+        let actualIndices = Set(existing.compactMap(\.replicationItemIndex))
+        let isComplete = existing.count == plan.items.count
+            && actualIndices == expectedIndices
+        if isComplete {
             return existing
         }
 
-        let availableFoodIDs = Set(availableFoods.map(\.id))
-        let foodsByID = Dictionary(
-            uniqueKeysWithValues: try transactionContext.fetch(FetchDescriptor<FoodItem>())
+        var indicesToInsert = expectedIndices
+        if !existing.isEmpty {
+            switch existingBatchPolicy {
+            case .rejectPartial:
+                throw CommandError.partialDuplicate
+            case .replacePartial:
+                existing.forEach(transactionContext.delete)
+            case .completePartial:
+                guard actualIndices.count == existing.count,
+                      actualIndices.isSubset(of: expectedIndices) else {
+                    throw CommandError.partialDuplicate
+                }
+                indicesToInsert.subtract(actualIndices)
+            }
+        }
+
+        let resolvedFoods: [FoodItem]
+        if let transactionFoodResolver {
+            resolvedFoods = try transactionFoodResolver(transactionContext)
+        } else {
+            let availableFoodIDs = Set(availableFoods.map(\.id))
+            resolvedFoods = try transactionContext.fetch(FetchDescriptor<FoodItem>())
                 .filter { availableFoodIDs.contains($0.id) }
-                .map { ($0.id, $0) }
-        )
-        let entries = plan.items.enumerated().map { offset, item in
+        }
+        let foodsByID = resolvedFoods.reduce(into: [UUID: FoodItem]()) { result, food in
+            result[food.id] = food
+        }
+        let entries = plan.items.enumerated().compactMap { offset, item -> FoodLogEntry? in
+            guard indicesToInsert.contains(offset) else { return nil }
             let sourceFood = item.snapshot.sourceFoodID.flatMap { foodsByID[$0] }
             let entry = FoodLogEntry(
                 date: plan.destinationDate,
@@ -322,7 +371,35 @@ enum MealTemplateCommands {
         }
 
         try save(transactionContext)
-        return entries
+        return (existingBatchPolicy == .completePartial ? existing + entries : entries)
+            .sorted { lhs, rhs in
+                (lhs.replicationItemIndex ?? -1) < (rhs.replicationItemIndex ?? -1)
+            }
+    }
+
+    static func replicationState(
+        for plan: MealTemplateLogPlan,
+        modelContext: ModelContext
+    ) throws -> MealTemplateReplicationState {
+        let transactionContext = makeTransactionContext(from: modelContext)
+        let operationID = plan.id
+        let existing = try transactionContext.fetch(
+            FetchDescriptor<FoodLogEntry>(
+                predicate: #Predicate { entry in
+                    entry.replicationOperationID == operationID
+                },
+                sortBy: [SortDescriptor(\.replicationItemIndex)]
+            )
+        )
+        if !existing.isEmpty,
+           !existing.allSatisfy({ $0.replicationPlanFingerprint == plan.fingerprint }) {
+            throw CommandError.operationConflict
+        }
+        return MealTemplateReplicationState(
+            expectedCount: plan.items.count,
+            entryIDs: existing.map(\.id),
+            persistedIndices: existing.compactMap(\.replicationItemIndex)
+        )
     }
 
     static func missingSourceCount(
