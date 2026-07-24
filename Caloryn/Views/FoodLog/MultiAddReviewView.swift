@@ -112,12 +112,14 @@ struct MultiAddReviewView: View {
                 }
                 .disabled(recoveryState != nil)
                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                    Button(role: .destructive) {
-                        remove(item.id)
-                    } label: {
-                        Label("Remove", systemImage: "trash")
+                    if recoveryState == nil {
+                        Button(role: .destructive) {
+                            remove(item.id)
+                        } label: {
+                            Label("Remove", systemImage: "trash")
+                        }
+                        .accessibilityLabel("Remove \(item.snapshot.foodName)")
                     }
-                    .accessibilityLabel("Remove \(item.snapshot.foodName)")
                 }
                 .accessibilityIdentifier("multiAdd.item.\(item.id.uuidString)")
             }
