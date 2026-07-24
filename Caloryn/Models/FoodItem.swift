@@ -181,6 +181,14 @@ final class FoodItem {
     var isCustom: Bool = false
     var isRecipe: Bool = false
 
+    // Optional raw fields provide a lightweight SwiftData migration path.
+    // Existing foods retain nil (unknown) rather than being assigned a source
+    // or completeness level that was never recorded.
+    var lookupProviderRaw: String?
+    var dataSourceRaw: String?
+    var nutritionCompletenessRaw: String?
+    var recoveredByFallbackRaw: Bool?
+
     var lastUsed: Date = Date()
 
     // These storage names predate the user-facing "Favorites" terminology.
@@ -235,7 +243,8 @@ final class FoodItem {
         categoryTags: [String] = [],
         produceKind: ProduceKind? = nil,
         isCustom: Bool = false,
-        isRecipe: Bool = false
+        isRecipe: Bool = false,
+        provenance: FoodProvenance = .userEntered
     ) {
         self.id = UUID()
         self.name = name
@@ -278,7 +287,44 @@ final class FoodItem {
         self.produceKindRaw = (produceKind ?? ProduceKind.inferred(fromCategoryTags: categoryTags)).rawValue
         self.isCustom = isCustom
         self.isRecipe = isRecipe
+        self.provenance = provenance
         self.lastUsed = Date()
+    }
+
+    var provenance: FoodProvenance {
+        get {
+            FoodProvenance(
+                provider: lookupProviderRaw.flatMap(FoodSearchProvider.init(rawValue:)),
+                source: dataSourceRaw.flatMap(FoodDataSource.init(rawValue:)) ?? .unknown,
+                completeness: nutritionCompletenessRaw.flatMap(NutritionCompleteness.init(rawValue:)) ?? .unknown,
+                recoveredByFallback: recoveredByFallbackRaw ?? false
+            )
+        }
+        set {
+            lookupProviderRaw = newValue.provider?.rawValue
+            dataSourceRaw = newValue.source.rawValue
+            nutritionCompletenessRaw = newValue.completeness.rawValue
+            recoveredByFallbackRaw = newValue.recoveredByFallback
+        }
+    }
+
+    /// Applying nutrition from the manual editor makes the user the source of
+    /// the current values. Provider and fallback attribution are intentionally
+    /// cleared, while field presence is retained as completeness metadata.
+    func applyUserNutritionEdit(
+        _ nutrition: NutritionValues,
+        suppliedProtein: Double?,
+        suppliedCarbohydrates: Double?,
+        suppliedFat: Double?
+    ) {
+        nutritionPer100g = nutrition
+        provenance = .manuallyEntered(
+            completeness: .assessingCoreNutrition(
+                protein: suppliedProtein,
+                carbohydrates: suppliedCarbohydrates,
+                fat: suppliedFat
+            )
+        )
     }
 
     var categoryTags: [String] {
@@ -393,6 +439,7 @@ final class FoodItem {
             servingDescription = nil
             categoryTagsRaw = nil
             produceKind = .unclassified
+            provenance = .userEntered
             return
         }
 
@@ -407,6 +454,25 @@ final class FoodItem {
         nutriscoreGrade = nil
         categoryTagsRaw = nil
         produceKind = .unclassified
+
+        let ingredientProvenances = ingredients.map(\.provenance)
+        let sources = Set(ingredientProvenances.map(\.source))
+        let providers = Set(ingredientProvenances.compactMap(\.provider))
+        let hasProviderlessIngredient = ingredientProvenances.contains { $0.provider == nil }
+        let completeness: NutritionCompleteness
+        if ingredientProvenances.contains(where: { $0.completeness == .partial }) {
+            completeness = .partial
+        } else if ingredientProvenances.contains(where: { $0.completeness == .unknown }) {
+            completeness = .unknown
+        } else {
+            completeness = .complete
+        }
+        provenance = FoodProvenance(
+            provider: providers.count == 1 && !hasProviderlessIngredient ? providers.first : nil,
+            source: sources.count == 1 ? (sources.first ?? .unknown) : .mixed,
+            completeness: completeness,
+            recoveredByFallback: ingredientProvenances.contains(where: \.recoveredByFallback)
+        )
     }
 
     private static func categoryTags(fromRaw rawValue: String?) -> [String] {

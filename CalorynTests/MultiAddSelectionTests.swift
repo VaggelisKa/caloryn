@@ -13,6 +13,23 @@ final class MultiAddSelectionTests: XCTestCase {
         )
     }
 
+    func testIngredientAndMealComponentModesRemainSingleSelectWithFinalMainBehavior() {
+        let ingredient = FoodSearchMode.ingredientSelection { _ in }
+        let mealComponent = FoodSearchMode.mealComponentSelection { _ in }
+
+        XCTAssertTrue(ingredient.isSelection)
+        XCTAssertTrue(ingredient.isIngredientSelection)
+        XCTAssertFalse(ingredient.includesRecipes)
+        XCTAssertTrue(ingredient.allowsManualEntryCreation)
+
+        XCTAssertTrue(mealComponent.isSelection)
+        XCTAssertFalse(mealComponent.isIngredientSelection)
+        XCTAssertTrue(mealComponent.includesRecipes)
+        XCTAssertFalse(mealComponent.allowsManualEntryCreation)
+        XCTAssertFalse(ingredient.supportsMultiSelection)
+        XCTAssertFalse(mealComponent.supportsMultiSelection)
+    }
+
     func testSavedFoodDraftUsesResolvedPortionAndDestinationSnapshot() throws {
         let food = makeTestFoodItem(
             name: "Oats",
@@ -74,22 +91,32 @@ final class MultiAddSelectionTests: XCTestCase {
 
     func testRemoteDraftKeepsStableFoodIdentityForReviewAndCommit() throws {
         let product = try makeRemoteProduct()
+        let result = makeTestSearchResult(product: product)
         let group = MultiAddSelectionGroup.remoteProduct(
-            product,
+            result,
             searchService: FoodSearchService(),
             meal: .dinner,
             snackIndex: 0
         )
         let item = try XCTUnwrap(group.items.first)
 
-        guard case .remote(let foodID, let storedProduct) = item.source else {
+        guard case .remote(let foodID, let storedResult) = item.source else {
             return XCTFail("Expected remote source")
         }
         XCTAssertEqual(group.id, .remoteProduct(product.id))
-        XCTAssertEqual(storedProduct, product)
+        XCTAssertEqual(storedResult, result)
         XCTAssertEqual(item.snapshot.sourceFoodID, foodID)
         XCTAssertEqual(item.snapshot.portionGrams, 150)
         XCTAssertEqual(item.snapshot.mealType, .dinner)
+        XCTAssertEqual(
+            item.snapshot.dataSourceSnapshotRaw,
+            FoodDataSource.openFoodFactsCommunity.rawValue
+        )
+        XCTAssertEqual(
+            item.snapshot.nutritionCompletenessSnapshotRaw,
+            NutritionCompleteness.complete.rawValue
+        )
+        XCTAssertEqual(item.snapshot.recoveredByFallbackSnapshotRaw, true)
     }
 
     func testReviewPortionScalingPreservesSnapshotIdentityAndScalesNutrition() {

@@ -3,7 +3,7 @@ import Foundation
 struct MultiAddDraftItem: Identifiable, Equatable {
     enum Source: Hashable {
         case local
-        case remote(foodID: UUID, product: OpenFoodFactsProduct)
+        case remote(foodID: UUID, result: FoodSearchResult)
     }
 
     let id: UUID
@@ -64,12 +64,13 @@ struct MultiAddSelectionGroup: Identifiable, Equatable {
 
     @MainActor
     static func remoteProduct(
-        _ product: OpenFoodFactsProduct,
+        _ result: FoodSearchResult,
         searchService: FoodSearchService,
         meal: MealType,
         snackIndex: Int
     ) -> MultiAddSelectionGroup {
-        let food = searchService.createFoodItem(from: product)
+        let product = result.product
+        let food = searchService.createFoodItem(from: result)
         let stableFoodID = UUID()
         food.id = stableFoodID
         let portion = ContextualFoodSuggestionAdapter.fallbackPortion(for: food)
@@ -78,7 +79,7 @@ struct MultiAddSelectionGroup: Identifiable, Equatable {
             title: food.name,
             items: [
                 MultiAddDraftItem(
-                    source: .remote(foodID: stableFoodID, product: product),
+                    source: .remote(foodID: stableFoodID, result: result),
                     snapshot: FoodLogEntrySnapshot(
                         foodItem: food,
                         portionGrams: portion,

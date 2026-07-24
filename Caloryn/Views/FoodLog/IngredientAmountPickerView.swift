@@ -37,6 +37,7 @@ struct RecipeIngredientDraft: Identifiable, Hashable {
     var alcoholPer100g: Double?
     var sortOrder: Int
     var produceKind: ProduceKind
+    var provenance: FoodProvenance
 
     init(
         id: UUID = UUID(),
@@ -74,7 +75,8 @@ struct RecipeIngredientDraft: Identifiable, Hashable {
         serumProteinsPer100g: Double? = nil,
         alcoholPer100g: Double? = nil,
         sortOrder: Int,
-        produceKind: ProduceKind = .unclassified
+        produceKind: ProduceKind = .unclassified,
+        provenance: FoodProvenance = .userEntered
     ) {
         self.id = id
         self.name = name
@@ -112,6 +114,7 @@ struct RecipeIngredientDraft: Identifiable, Hashable {
         self.alcoholPer100g = alcoholPer100g
         self.sortOrder = sortOrder
         self.produceKind = produceKind
+        self.provenance = provenance
     }
 
     init(from foodItem: FoodItem, sortOrder: Int) {
@@ -150,7 +153,8 @@ struct RecipeIngredientDraft: Identifiable, Hashable {
             serumProteinsPer100g: foodItem.serumProteinsPer100g,
             alcoholPer100g: foodItem.alcoholPer100g,
             sortOrder: sortOrder,
-            produceKind: foodItem.produceKind
+            produceKind: foodItem.produceKind,
+            provenance: foodItem.provenance
         )
     }
 
@@ -191,7 +195,8 @@ struct RecipeIngredientDraft: Identifiable, Hashable {
             serumProteinsPer100g: ingredient.serumProteinsPer100g,
             alcoholPer100g: ingredient.alcoholPer100g,
             sortOrder: ingredient.sortOrder,
-            produceKind: ingredient.produceKind
+            produceKind: ingredient.produceKind,
+            provenance: ingredient.provenance
         )
     }
 

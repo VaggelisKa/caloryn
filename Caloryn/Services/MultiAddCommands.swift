@@ -167,11 +167,11 @@ enum MultiAddCommands {
         }
 
         for item in plan.items {
-            guard case .remote(let foodID, let product) = item.source,
+            guard case .remote(let foodID, let result) = item.source,
                   foodsByID[foodID] == nil else {
                 continue
             }
-            let food = FoodSearchService().createFoodItem(from: product)
+            let food = FoodSearchService().createFoodItem(from: result)
             food.id = foodID
             guard FavoriteFoodLogging.isAvailableForLogging(food) else {
                 throw CommandError.unavailableRemoteFood(food.name)

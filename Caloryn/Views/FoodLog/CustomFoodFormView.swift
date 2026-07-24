@@ -450,9 +450,12 @@ struct CustomFoodFormView: View {
     private func saveFood() {
         let serving = servingGrams > 0 ? servingGrams : 100
         let cal = parseDecimal(caloriesPerServing) ?? 0
-        let pro = parseDecimal(proteinPerServing) ?? 0
-        let carb = parseDecimal(carbsPerServing) ?? 0
-        let f = parseDecimal(fatPerServing) ?? 0
+        let suppliedProtein = parseDecimal(proteinPerServing)
+        let suppliedCarbohydrates = parseDecimal(carbsPerServing)
+        let suppliedFat = parseDecimal(fatPerServing)
+        let pro = suppliedProtein ?? 0
+        let carb = suppliedCarbohydrates ?? 0
+        let f = suppliedFat ?? 0
         let fiber = parseDecimal(fiberPerServing) ?? 0
         let nutritionPerServing = NutritionValues(
             calories: cal,
@@ -475,7 +478,12 @@ struct CustomFoodFormView: View {
         if let food = existingFood {
             food.name = name.trimmingCharacters(in: .whitespaces)
             food.brand = brand.isEmpty ? nil : brand.trimmingCharacters(in: .whitespaces)
-            food.nutritionPer100g = nutritionPer100g
+            food.applyUserNutritionEdit(
+                nutritionPer100g,
+                suppliedProtein: suppliedProtein,
+                suppliedCarbohydrates: suppliedCarbohydrates,
+                suppliedFat: suppliedFat
+            )
             food.defaultServingG = serving
             food.servingDescription = nil
             food.categoryTags = []
@@ -500,6 +508,12 @@ struct CustomFoodFormView: View {
                 defaultServingG: serving,
                 produceKind: produceKind,
                 isCustom: true
+            )
+            food.applyUserNutritionEdit(
+                nutritionPer100g,
+                suppliedProtein: suppliedProtein,
+                suppliedCarbohydrates: suppliedCarbohydrates,
+                suppliedFat: suppliedFat
             )
             modelContext.insert(food)
             try? modelContext.save()

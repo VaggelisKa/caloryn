@@ -40,7 +40,8 @@ func makeTestFoodItem(
     categoryTags: [String] = [],
     produceKind: ProduceKind? = nil,
     isCustom: Bool = false,
-    isRecipe: Bool = false
+    isRecipe: Bool = false,
+    provenance: FoodProvenance? = nil
 ) -> FoodItem {
     FoodItem(
         name: name,
@@ -62,7 +63,8 @@ func makeTestFoodItem(
         categoryTags: categoryTags,
         produceKind: produceKind,
         isCustom: isCustom,
-        isRecipe: isRecipe
+        isRecipe: isRecipe,
+        provenance: provenance ?? .userEntered
     )
 }
 
@@ -101,7 +103,29 @@ func makeLegacyTestEntry(
     entry.nutriscoreGradeSnapshot = nil
     entry.produceKindSnapshotRaw = nil
     entry.produceItemsSnapshotRaw = nil
+    entry.lookupProviderSnapshotRaw = nil
+    entry.dataSourceSnapshotRaw = nil
+    entry.nutritionCompletenessSnapshotRaw = nil
+    entry.recoveredByFallbackSnapshotRaw = nil
     return entry
+}
+
+func makeTestSearchResult(
+    product: OpenFoodFactsProduct,
+    provider: FoodSearchProvider = .openFoodFacts,
+    recoveredByFallback: Bool = true
+) -> FoodSearchResult {
+    FoodSearchResult(
+        product: product,
+        provenance: FoodProvenance(
+            provider: provider,
+            source: provider == .calorynAPI
+                ? .calorynCatalog
+                : .openFoodFactsCommunity,
+            completeness: product.nutritionCompleteness,
+            recoveredByFallback: recoveredByFallback
+        )
+    )
 }
 
 @MainActor

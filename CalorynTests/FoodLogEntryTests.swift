@@ -74,12 +74,19 @@ final class FoodLogEntryTests: XCTestCase {
     }
 
     func testReusableSnapshotRoundTripsForFuturePersistence() throws {
+        let provenance = FoodProvenance(
+            provider: .openFoodFacts,
+            source: .openFoodFactsCommunity,
+            completeness: .partial,
+            recoveredByFallback: true
+        )
         let food = makeTestFoodItem(
             name: "Persistent Yogurt",
             caloriesPer100g: 120,
             sugarsPer100g: 3,
             nutriscoreGrade: "a",
-            produceKind: .fruit
+            produceKind: .fruit,
+            provenance: provenance
         )
         let entry = makeTestEntry(
             mealType: .breakfast,
@@ -92,6 +99,39 @@ final class FoodLogEntryTests: XCTestCase {
         let decoded = try JSONDecoder().decode(FoodLogEntrySnapshot.self, from: encoded)
 
         XCTAssertEqual(decoded, snapshot)
+        XCTAssertEqual(decoded.lookupProviderSnapshotRaw, provenance.provider?.rawValue)
+        XCTAssertEqual(decoded.dataSourceSnapshotRaw, provenance.source.rawValue)
+        XCTAssertEqual(
+            decoded.nutritionCompletenessSnapshotRaw,
+            provenance.completeness.rawValue
+        )
+        XCTAssertEqual(decoded.recoveredByFallbackSnapshotRaw, true)
+    }
+
+    func testReusableSnapshotDecodesLegacyPayloadWithoutProvenanceFields() throws {
+        let snapshot = FoodLogEntrySnapshot(
+            foodItem: makeTestFoodItem(name: "Legacy"),
+            portionGrams: 100
+        )
+        let encoded = try JSONEncoder().encode(snapshot)
+        var object = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: encoded) as? [String: Any]
+        )
+        object.removeValue(forKey: "lookupProviderSnapshotRaw")
+        object.removeValue(forKey: "dataSourceSnapshotRaw")
+        object.removeValue(forKey: "nutritionCompletenessSnapshotRaw")
+        object.removeValue(forKey: "recoveredByFallbackSnapshotRaw")
+
+        let legacyData = try JSONSerialization.data(withJSONObject: object)
+        let decoded = try JSONDecoder().decode(
+            FoodLogEntrySnapshot.self,
+            from: legacyData
+        )
+
+        XCTAssertNil(decoded.lookupProviderSnapshotRaw)
+        XCTAssertNil(decoded.dataSourceSnapshotRaw)
+        XCTAssertNil(decoded.nutritionCompletenessSnapshotRaw)
+        XCTAssertNil(decoded.recoveredByFallbackSnapshotRaw)
     }
 
     func testSnackEntriesPreserveSnackIndexForDisplay() {

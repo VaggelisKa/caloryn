@@ -282,8 +282,9 @@ final class MultiAddCommandsTests: XCTestCase {
     func testRemoteProductIsInsertedAtomicallyAndNotDuplicatedOnRetry() throws {
         let container = try makeContainer()
         let product = try makeRemoteProduct()
+        let result = makeTestSearchResult(product: product)
         let group = MultiAddSelectionGroup.remoteProduct(
-            product,
+            result,
             searchService: FoodSearchService(),
             meal: .snack,
             snackIndex: 2
@@ -305,6 +306,12 @@ final class MultiAddCommandsTests: XCTestCase {
         XCTAssertEqual(entry.foodName, "Remote yogurt")
         XCTAssertEqual(entry.snackIndex, 2)
         XCTAssertEqual(entry.foodItem?.id, plan.items.first?.snapshot.sourceFoodID)
+        XCTAssertEqual(entry.foodItem?.provenance, result.provenance)
+        XCTAssertEqual(entry.historicalProvenance, result.provenance)
+
+        entry.foodItem?.provenance = .userEntered
+        XCTAssertEqual(entry.foodItem?.provenance.source, .userEntered)
+        XCTAssertEqual(entry.historicalProvenance, result.provenance)
     }
 
     func testSameOperationIDRejectsEveryDifferentCompletePlan() throws {
@@ -392,8 +399,9 @@ final class MultiAddCommandsTests: XCTestCase {
         viewContext.insert(unrelated)
         try viewContext.save()
         unrelated.name = "Pending view edit"
+        let result = makeTestSearchResult(product: try makeRemoteProduct())
         let group = MultiAddSelectionGroup.remoteProduct(
-            try makeRemoteProduct(),
+            result,
             searchService: FoodSearchService(),
             meal: .lunch,
             snackIndex: 0
