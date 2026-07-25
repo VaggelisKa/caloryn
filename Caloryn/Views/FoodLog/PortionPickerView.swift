@@ -190,9 +190,8 @@ struct PortionPickerView: View {
             VStack(spacing: 24) {
                 foodHeader
 
-                if activeFoodItem.provenance.source != .userEntered
-                    || activeFoodItem.provenance.completeness != .complete {
-                    provenanceCard
+                if activeFoodItem.provenance.completeness != .complete {
+                    nutritionCompletenessCard
                 }
 
                 caloriePreview
@@ -373,20 +372,10 @@ struct PortionPickerView: View {
         .glassCard()
     }
 
-    private var provenanceCard: some View {
+    private var nutritionCompletenessCard: some View {
         let provenance = activeFoodItem.provenance
 
         return VStack(alignment: .leading, spacing: 8) {
-            Label(provenance.source.detailLabel, systemImage: "checkmark.seal")
-                .font(CalorynTheme.caption)
-                .foregroundStyle(CalorynTheme.textSecondary)
-
-            if provenance.recoveredByFallback {
-                Label("Recovered using the backup food database", systemImage: "arrow.trianglehead.2.clockwise.rotate.90")
-                    .font(CalorynTheme.caption)
-                    .foregroundStyle(CalorynTheme.textSecondary)
-            }
-
             if provenance.completeness == .partial {
                 Label(
                     "Some nutrition values were not provided. Check the package and edit your private food if needed.",
