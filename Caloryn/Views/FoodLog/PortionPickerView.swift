@@ -14,22 +14,16 @@ struct PortionPickerView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
-    @State private var portionGrams: Double = 100
+    /// How the portion is being expressed and the grams behind it. Every rule
+    /// that reconciles the three wheels lives there. See `PortionSelection`.
+    @State private var selection: PortionSelection
     @State private var selectedMeal: MealType
-    @State private var portionMode: PortionMode = .grams
-    @State private var selectedGramStep: Int = 100
-    @State private var selectedServingCount: Int = 1
-    @State private var selectedRecipeServingID = RecipeServingOption.one.id
     @State private var showingDeleteConfirmation = false
     @State private var showingFoodEditor = false
     @State private var hasPersistedPersonalFood = false
     @State private var replacementFoodItem: FoodItem?
 
-    private enum PortionMode: Hashable {
-        case grams
-        case serving
-        case recipeServing
-    }
+    private typealias PortionMode = PortionSelection.Mode
 
     private struct PortionNutrient: Identifiable {
         enum Unit {
@@ -52,23 +46,6 @@ struct PortionPickerView: View {
         }
     }
 
-    private struct RecipeServingOption: Identifiable, Hashable {
-        let id: String
-        let label: String
-        let multiplier: Double
-
-        static let one = RecipeServingOption(id: "1", label: "1", multiplier: 1)
-    }
-
-    private static let recipeServingOptions: [RecipeServingOption] = [
-        RecipeServingOption(id: "quarter", label: "1/4", multiplier: 0.25),
-        RecipeServingOption(id: "half", label: "1/2", multiplier: 0.5),
-        .one,
-        RecipeServingOption(id: "2", label: "2", multiplier: 2),
-        RecipeServingOption(id: "3", label: "3", multiplier: 3),
-        RecipeServingOption(id: "4", label: "4", multiplier: 4)
-    ]
-
     init(
         foodItem: FoodItem,
         mealType: MealType,
@@ -90,33 +67,16 @@ struct PortionPickerView: View {
         self._selectedMeal = State(initialValue: existingEntry?.mealType ?? mealType)
 
         let initialPortion = existingEntry?.portionGrams ?? foodItem.defaultServingG ?? 100
-        self._portionGrams = State(initialValue: initialPortion)
-
-        let nearestStep = Self.normalizedGramStep(initialPortion, limit: Self.gramOptionLimit(for: foodItem))
-        self._selectedGramStep = State(initialValue: nearestStep)
-
-        if foodItem.isRecipe {
-            let recipeTotalGrams = foodItem.defaultServingG ?? 100
-            let servingID = Self.nearestRecipeServingOptionID(
-                for: initialPortion,
-                recipeTotalGrams: recipeTotalGrams
+        self._selection = State(
+            initialValue: PortionSelection(
+                shape: PortionSelection.Shape(foodItem: foodItem),
+                initialGrams: initialPortion,
+                isExistingEntry: existingEntry != nil
             )
-            self._selectedRecipeServingID = State(initialValue: servingID)
-            let matchesRecipeServing = Self.recipeServingOption(id: servingID)
-                .map { Self.isApproximatelyEqual(recipeTotalGrams * $0.multiplier, initialPortion) } == true
-            let usesRecipeServingMode = existingEntry == nil || matchesRecipeServing
-            self._portionMode = State(
-                initialValue: usesRecipeServingMode ? .recipeServing : .grams
-            )
-        } else if let info = foodItem.servingInfo {
-            let count = Self.normalizedServingCount(for: initialPortion, foodItem: foodItem)
-            self._selectedServingCount = State(initialValue: count)
-            let usesServingMode = existingEntry == nil || Self.isApproximatelyEqual(Double(count) * info.gramsPerUnit, initialPortion)
-            self._portionMode = State(
-                initialValue: usesServingMode ? .serving : .grams
-            )
-        }
+        )
     }
+
+    private var portionGrams: Double { selection.portionGrams }
 
     private var previewNutrition: NutritionValues {
         activeFoodItem.nutrition(forGrams: portionGrams)
@@ -176,13 +136,7 @@ struct PortionPickerView: View {
         ].compactMap { $0 }
     }
 
-    private var recipeTotalGrams: Double {
-        activeFoodItem.defaultServingG ?? 100
-    }
-
-    private var gramOptions: [Int] {
-        Array(stride(from: 5, through: Self.gramOptionLimit(for: activeFoodItem), by: 5))
-    }
+    private var gramOptions: [Int] { selection.gramOptions }
 
     var body: some View {
         ScrollView {
@@ -287,6 +241,10 @@ struct PortionPickerView: View {
                 existingFood: activeFoodItem,
                 onSaved: { savedFood in
                     replacementFoodItem = savedFood
+                    // Editing the food can remove the serving the portion is
+                    // expressed in, so the picker has to take on the new shape
+                    // rather than keep a mode the food no longer supports.
+                    selection.update(shape: PortionSelection.Shape(foodItem: savedFood))
                     hasPersistedPersonalFood = true
                     showingFoodEditor = false
                 },
@@ -380,9 +338,7 @@ struct PortionPickerView: View {
         .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
     }
 
-    private var maxServingCount: Int {
-        Self.maxServingCount(for: activeFoodItem)
-    }
+    private var maxServingCount: Int { selection.maxServingCount }
 
     private var portionPicker: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -392,22 +348,22 @@ struct PortionPickerView: View {
 
             HStack(spacing: 0) {
                 Group {
-                    switch portionMode {
+                    switch selection.mode {
                     case .grams:
-                        Picker("Amount", selection: $selectedGramStep) {
+                        Picker("Amount", selection: $selection.gramStep) {
                             ForEach(gramOptions, id: \.self) { g in
                                 Text("\(g)").tag(g)
                             }
                         }
                     case .serving:
-                        Picker("Count", selection: $selectedServingCount) {
+                        Picker("Count", selection: $selection.servingCount) {
                             ForEach(1...maxServingCount, id: \.self) { n in
                                 Text("\(n)").tag(n)
                             }
                         }
                     case .recipeServing:
-                        Picker("Recipe serving", selection: $selectedRecipeServingID) {
-                            ForEach(Self.recipeServingOptions) { option in
+                        Picker("Recipe serving", selection: $selection.recipeServingID) {
+                            ForEach(PortionSelection.recipeServingOptions) { option in
                                 Text(option.label).tag(option.id)
                             }
                         }
@@ -418,14 +374,14 @@ struct PortionPickerView: View {
                 .accessibilityIdentifier("portionPicker.amountPicker")
 
                 if activeFoodItem.isRecipe {
-                    Picker("Unit", selection: $portionMode) {
+                    Picker("Unit", selection: $selection.mode) {
                         Text("grams").tag(PortionMode.grams)
                         Text("serving").tag(PortionMode.recipeServing)
                     }
                     .pickerStyle(.wheel)
                     .frame(width: 120)
                 } else if let info = activeFoodItem.servingInfo {
-                    Picker("Unit", selection: $portionMode) {
+                    Picker("Unit", selection: $selection.mode) {
                         Text("grams").tag(PortionMode.grams)
                         Text(info.unitName).tag(PortionMode.serving)
                     }
@@ -440,48 +396,10 @@ struct PortionPickerView: View {
             }
             .frame(height: 150)
             .clipped()
-            .onChange(of: selectedGramStep) {
-                guard portionMode == .grams else { return }
-                portionGrams = Double(selectedGramStep)
-                if activeFoodItem.isRecipe {
-                    selectedRecipeServingID = nearestRecipeServingOptionID(for: portionGrams)
-                }
-            }
-            .onChange(of: selectedServingCount) {
-                guard portionMode == .serving, let info = activeFoodItem.servingInfo else { return }
-                let grams = Double(selectedServingCount) * info.gramsPerUnit
-                portionGrams = grams
-            }
-            .onChange(of: selectedRecipeServingID) {
-                guard portionMode == .recipeServing, let option = selectedRecipeServingOption else { return }
-                portionGrams = recipeTotalGrams * option.multiplier
-                selectedGramStep = Self.normalizedGramStep(
-                    portionGrams,
-                    limit: Self.gramOptionLimit(for: activeFoodItem)
-                )
-            }
-            .onChange(of: portionMode) {
-                switch portionMode {
-                case .grams:
-                    let nearest = Self.normalizedGramStep(
-                        portionGrams,
-                        limit: Self.gramOptionLimit(for: activeFoodItem)
-                    )
-                    selectedGramStep = nearest
-                    portionGrams = Double(nearest)
-                case .serving:
-                    guard let info = activeFoodItem.servingInfo else { return }
-                    let count = max(1, min(maxServingCount, Int(round(portionGrams / info.gramsPerUnit))))
-                    selectedServingCount = count
-                    let grams = Double(count) * info.gramsPerUnit
-                    portionGrams = grams
-                case .recipeServing:
-                    selectedRecipeServingID = nearestRecipeServingOptionID(for: portionGrams)
-                    if let option = selectedRecipeServingOption {
-                        portionGrams = recipeTotalGrams * option.multiplier
-                    }
-                }
-            }
+            .onChange(of: selection.gramStep) { selection.gramStepChanged() }
+            .onChange(of: selection.servingCount) { selection.servingCountChanged() }
+            .onChange(of: selection.recipeServingID) { selection.recipeServingChanged() }
+            .onChange(of: selection.mode) { selection.modeChanged() }
         }
         .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
     }
@@ -607,55 +525,6 @@ struct PortionPickerView: View {
         dismiss()
     }
 
-    private var selectedRecipeServingOption: RecipeServingOption? {
-        Self.recipeServingOptions.first { $0.id == selectedRecipeServingID }
-    }
-
-    private func nearestRecipeServingOptionID(for grams: Double) -> String {
-        Self.nearestRecipeServingOptionID(for: grams, recipeTotalGrams: recipeTotalGrams)
-    }
-
-    private static func nearestRecipeServingOptionID(for grams: Double, recipeTotalGrams: Double) -> String {
-        guard recipeTotalGrams > 0 else { return RecipeServingOption.one.id }
-        let multiplier = grams / recipeTotalGrams
-        return recipeServingOptions.min {
-            abs($0.multiplier - multiplier) < abs($1.multiplier - multiplier)
-        }?.id ?? RecipeServingOption.one.id
-    }
-
-    private static func recipeServingOption(id: String) -> RecipeServingOption? {
-        recipeServingOptions.first { $0.id == id }
-    }
-
-    private static func maxServingCount(for foodItem: FoodItem) -> Int {
-        guard let info = foodItem.servingInfo else { return 1 }
-        return max(2, min(10, Int(500 / info.gramsPerUnit)))
-    }
-
-    private static func normalizedServingCount(for grams: Double, foodItem: FoodItem) -> Int {
-        guard let info = foodItem.servingInfo else { return 1 }
-        let count = Int(round(grams / info.gramsPerUnit))
-        return max(1, min(maxServingCount(for: foodItem), count))
-    }
-
-    private static func gramOptionLimit(for foodItem: FoodItem) -> Int {
-        let defaultServing = foodItem.defaultServingG ?? 100
-        let recipeLimit = Int(ceil(defaultServing / 5) * 5)
-        if foodItem.isRecipe {
-            let maxServingMultiplier = recipeServingOptions.map(\.multiplier).max() ?? 1
-            let servingLimit = Int(ceil(defaultServing * maxServingMultiplier / 5) * 5)
-            return max(500, servingLimit)
-        }
-        return max(500, recipeLimit)
-    }
-
-    private static func normalizedGramStep(_ grams: Double, limit: Int) -> Int {
-        max(5, min(limit, Int(round(grams / 5)) * 5))
-    }
-
-    private static func isApproximatelyEqual(_ lhs: Double, _ rhs: Double) -> Bool {
-        abs(lhs - rhs) < 0.001
-    }
 }
 
 #Preview("Cup serving") {
