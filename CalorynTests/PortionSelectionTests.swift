@@ -265,4 +265,36 @@ struct PortionSelectionTests {
 
         #expect(portion.gramOptions.contains(1_000))
     }
+
+    /// A pre-existing defect, pinned here rather than fixed.
+    ///
+    /// Saving an inline edit clears the food's serving description, so a food
+    /// that had countable servings no longer has them. The mode is not
+    /// reconciled, which leaves the picker showing a count wheel with a single
+    /// entry for a food that can no longer be counted — and the unit picker
+    /// falls back to a plain "grams" label, so there is no way back out.
+    ///
+    /// `main` behaves identically: it also leaves the mode untouched when the
+    /// replacement food arrives, and its serving cap also collapses to one.
+    /// Recorded so the behaviour is visible and cannot drift silently; the fix
+    /// belongs in its own change, not inside a behaviour-preserving refactor.
+    @Test("Losing countable servings to an inline edit strands the picker in serving mode")
+    func inlineEditStrandsServingMode() {
+        var portion = selection(slicedFood, grams: 90)
+        #expect(portion.mode == .serving)
+
+        // What CustomFoodFormView's save produces: the serving description is
+        // cleared, so the food no longer has a countable unit.
+        portion.shape = PortionSelection.Shape(defaultServingGrams: 45)
+
+        #expect(portion.mode == .serving)
+        #expect(!portion.shape.hasCountableServing)
+        // A count wheel with exactly one entry.
+        #expect(portion.maxServingCount == 1)
+
+        // And the grams are frozen: the count wheel can no longer move them.
+        portion.servingCount = 3
+        portion.servingCountChanged()
+        #expect(portion.portionGrams == 90)
+    }
 }
