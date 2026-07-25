@@ -17,7 +17,11 @@ struct MyFoodsView: View {
     @State private var showsAllFavorites = false
 
     private var manualEntries: [FoodItem] {
-        foodItems.filter { $0.isCustom && !$0.isRecipe }
+        foodItems.filter(\.isManualEntry)
+    }
+
+    private var editedProducts: [FoodItem] {
+        foodItems.filter(\.isEditedCatalogProduct)
     }
 
     private var recipes: [FoodItem] {
@@ -61,6 +65,8 @@ struct MyFoodsView: View {
                 } else if !nonFavoriteManualEntries.isEmpty {
                     manualEntriesSection
                 }
+
+                editedProductCatalogSection
             }
             .calorynGroupedListStyle()
             .navigationTitle("My Foods")
@@ -259,6 +265,30 @@ struct MyFoodsView: View {
         }
     }
 
+    private var editedProductCatalogSection: some View {
+        Section {
+            NavigationLink {
+                EditedProductCatalogView()
+            } label: {
+                Text(
+                    editedProducts.count == 1
+                        ? "1 product"
+                        : "\(editedProducts.count) products"
+                )
+                .font(CalorynTheme.bodyText)
+                .foregroundStyle(CalorynTheme.textPrimary)
+            }
+            .accessibilityLabel(
+                "Edited Product Catalog, \(editedProducts.count) "
+                    + (editedProducts.count == 1 ? "product" : "products")
+            )
+        } header: {
+            Text("Edited Product Catalog")
+                .font(CalorynTheme.caption)
+                .foregroundStyle(CalorynTheme.textSecondary)
+        }
+    }
+
     private var emptyManualEntriesSection: some View {
         Section {
             EmptyFoodGroupRow(
@@ -391,6 +421,86 @@ struct MyFoodsView: View {
         )
     }
 
+}
+
+private struct EditedProductCatalogView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Query(sort: \FoodItem.name) private var foodItems: [FoodItem]
+
+    @State private var searchText = ""
+    @State private var editingProduct: FoodItem?
+
+    private var products: [FoodItem] {
+        EditedProductCatalog.products(in: foodItems, matching: searchText)
+    }
+
+    private var hasEditedProducts: Bool {
+        foodItems.contains(where: \.isEditedCatalogProduct)
+    }
+
+    var body: some View {
+        Group {
+            if products.isEmpty {
+                if hasEditedProducts {
+                    ContentUnavailableView.search(text: searchText)
+                } else {
+                    ContentUnavailableView(
+                        "No Edited Products",
+                        systemImage: "square.and.pencil",
+                        description: Text(
+                            "Products you personalize from the catalog will appear here."
+                        )
+                    )
+                }
+            } else {
+                List(products) { product in
+                    Button {
+                        editingProduct = product
+                    } label: {
+                        FoodRowView(
+                            name: product.name,
+                            brand: product.brand,
+                            caloriesPer100g: product.caloriesPer100g,
+                            nutriscoreGrade: product.nutriscoreGrade,
+                            servingDescription: product.servingDescription,
+                            caloriesPerServing: product.calories(
+                                forGrams: product.defaultServingG ?? 100
+                            ),
+                            showsTypeBadge: false
+                        )
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+                .calorynGroupedListStyle()
+            }
+        }
+        .navigationTitle("Edited Product Catalog")
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden()
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .font(CalorynTheme.toolbarIcon)
+                        .foregroundStyle(CalorynTheme.sage)
+                }
+                .accessibilityLabel("Back")
+            }
+        }
+        .searchable(
+            text: $searchText,
+            placement: .navigationBarDrawer(displayMode: .always),
+            prompt: "Search edited products"
+        )
+        .sheet(item: $editingProduct) { product in
+            CustomFoodFormView(existingFood: product)
+                .presentationDragIndicator(.visible)
+        }
+        .calorynPageCanvas()
+    }
 }
 
 private struct EmptyFoodGroupRow: View {

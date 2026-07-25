@@ -50,6 +50,14 @@ enum FoodSearchMode {
         }
     }
 
+    func isMultiSelectionControlEnabled(
+        isSelectingMultiple: Bool,
+        selectableOptionCount: Int
+    ) -> Bool {
+        supportsMultiSelection
+            && (isSelectingMultiple || selectableOptionCount > 0)
+    }
+
     var isIngredientSelection: Bool {
         switch self {
         case .ingredientSelection: true
@@ -85,9 +93,8 @@ struct FoodSearchView: View {
     @State private var isLookingUpBarcode = false
     @State private var barcodeLookupError = FoodSearchService.debugInitialBarcodeFailure
     @State private var pendingBarcode: String?
-    @State private var lastScannedBarcode: String?
-    @State private var favoriteErrorMessage: String?
-    @State private var showsAllFavorites = false
+    @State private var lastScannedBarcode = FoodSearchService.debugInitialBarcode
+    @State private var manualRecoveryBarcode: String?
     @State private var mealErrorMessage: String?
     @State private var isSelectingMultiple = false
     @State private var multiAddSelection = MultiAddSelectionState()
@@ -107,8 +114,12 @@ struct FoodSearchView: View {
         return recentFoods.filter { $0.isRecipe }
     }
 
-    private var customFoods: [FoodItem] {
-        recentFoods.filter { $0.isCustom && !$0.isRecipe }
+    private var manualEntries: [FoodItem] {
+        recentFoods.filter(\.isManualEntry)
+    }
+
+    private var editedProducts: [FoodItem] {
+        recentFoods.filter(\.isEditedCatalogProduct)
     }
 
     private var displayedRecentFoods: [FoodItem] {
@@ -116,22 +127,10 @@ struct FoodSearchView: View {
         return Array(
             recentFoods
                 .filter {
-                    !$0.isUserCreatedFood
+                    (!$0.isUserCreatedFood || $0.isEditedCatalogProduct)
                         && !suggestedIDs.contains($0.id)
                 }
                 .prefix(20)
-        )
-    }
-
-    private var favoriteFoods: [FoodItem] {
-        guard !mode.isSelection else { return [] }
-        return FavoriteFoodLogging.sortedFavorites(from: recentFoods)
-    }
-
-    private var visibleFavoriteFoods: [FoodItem] {
-        FavoriteFoodLogging.visibleFavorites(
-            from: favoriteFoods,
-            showsAll: showsAllFavorites
         )
     }
 
@@ -147,6 +146,22 @@ struct FoodSearchView: View {
 
     private var selectedItemCount: Int {
         multiAddSelection.itemCount
+    }
+
+    private var selectableOptionCount: Int {
+        guard !isLookingUpBarcode, barcodeLookupError == nil else { return 0 }
+
+        if showingRecent {
+            return contextualSuggestions.count
+                + mealTemplates.count
+                + displayedRecentFoods.count
+        }
+
+        return matchingMeals.count
+            + matchingRecipes.count
+            + matchingManualEntries.count
+            + matchingEditedProducts.count
+            + visibleProviderSearchResults.count
     }
 
     var body: some View {
@@ -191,10 +206,17 @@ struct FoodSearchView: View {
                                 ? "Cancel multiple selection"
                                 : "Select multiple items"
                         )
+                        .disabled(
+                            !mode.isMultiSelectionControlEnabled(
+                                isSelectingMultiple: isSelectingMultiple,
+                                selectableOptionCount: selectableOptionCount
+                            )
+                        )
                     }
                 } else if mode.allowsManualEntryCreation {
                     ToolbarItem(placement: .primaryAction) {
                         Button {
+                            manualRecoveryBarcode = nil
                             showingCustomFoodForm = true
                         } label: {
                             Image(systemName: "plus")
@@ -256,12 +278,18 @@ struct FoodSearchView: View {
                 ) { dismiss() }
             }
             .sheet(isPresented: $showingCustomFoodForm) {
-                CustomFoodFormView(onSaved: { food in
-                    showingCustomFoodForm = false
-                    Task { @MainActor in
-                        handleFoodItemSelection(food)
+                CustomFoodFormView(
+                    prefilledBarcode: manualRecoveryBarcode,
+                    onSaved: { food in
+                        showingCustomFoodForm = false
+                        manualRecoveryBarcode = nil
+                        barcodeLookupError = nil
+                        lastScannedBarcode = nil
+                        Task { @MainActor in
+                            handleFoodItemSelection(food)
+                        }
                     }
-                })
+                )
             }
             .sheet(item: $multiAddPresentation) { presentation in
                 MultiAddReviewView(
@@ -275,16 +303,6 @@ struct FoodSearchView: View {
             }
             .fullScreenCover(isPresented: $showingScanner) {
                 barcodeScannerSheet
-            }
-            .alert(
-                "Couldn’t Log Favorite",
-                isPresented: favoriteErrorIsPresented
-            ) {
-                Button("OK", role: .cancel) {
-                    favoriteErrorMessage = nil
-                }
-            } message: {
-                Text(favoriteErrorMessage ?? "Please try again.")
             }
             .alert("Couldn’t Add Meal", isPresented: mealErrorIsPresented) {
                 Button("OK", role: .cancel) {
@@ -350,6 +368,7 @@ struct FoodSearchView: View {
                 isSearchFocused = false
                 barcodeLookupError = nil
                 lastScannedBarcode = nil
+                manualRecoveryBarcode = nil
                 showingScanner = true
             } label: {
                 Image(systemName: "barcode.viewfinder")
@@ -364,8 +383,10 @@ struct FoodSearchView: View {
         .onChange(of: searchText) {
             if !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                barcodeLookupError?.dismissesWhenNameSearchBegins == true {
+                BarcodeRecoveryAnalytics.record(path: .nameSearch, result: .started)
                 barcodeLookupError = nil
                 lastScannedBarcode = nil
+                manualRecoveryBarcode = nil
             }
             searchService.search(query: searchText)
         }
@@ -380,43 +401,6 @@ struct FoodSearchView: View {
                     contextualSuggestionRow(
                         food: pair.0,
                         suggestion: pair.1
-                    )
-                }
-            }
-
-            if !favoriteFoods.isEmpty {
-                nonStickySectionTitle("Favorites")
-
-                ForEach(visibleFavoriteFoods) { food in
-                    if isSelectingMultiple {
-                        savedFoodRow(for: food)
-                    } else {
-                        FavoriteFoodRowView(
-                            food: food,
-                            plan: favoritePlan(for: food),
-                            destinationDescription: destinationDescription,
-                            onLog: { handleFavoriteFoodAction(food) },
-                            onRemoveFavorite: { toggleFavorite(food) }
-                        )
-                    }
-                }
-
-                if favoriteFoods.count > FavoriteFoodLogging.collapsedFavoriteLimit {
-                    Button(action: toggleFavoritesDisclosure) {
-                        HStack {
-                            Text(showsAllFavorites ? "Show less" : "Show all \(favoriteFoods.count)")
-                            Spacer()
-                            Image(systemName: showsAllFavorites ? "chevron.up" : "chevron.down")
-                        }
-                        .font(CalorynTheme.caption)
-                        .foregroundStyle(CalorynTheme.sage)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(
-                        showsAllFavorites
-                            ? "Show fewer favorites"
-                            : "Show all \(favoriteFoods.count) favorites"
                     )
                 }
             }
@@ -463,17 +447,17 @@ struct FoodSearchView: View {
                 }
             }
 
-            if mode.isSelection, !customFoods.isEmpty {
+            if mode.isSelection, !manualEntries.isEmpty {
                 if mode.usesNonStickySectionTitles {
                     nonStickySectionTitle("Manual Entries")
 
-                    ForEach(customFoods) { food in
-                        customFoodRow(for: food)
+                    ForEach(manualEntries) { food in
+                        personalFoodRow(for: food)
                     }
                 } else {
                     Section("Manual Entries") {
-                        ForEach(customFoods) { food in
-                            customFoodRow(for: food)
+                        ForEach(manualEntries) { food in
+                            personalFoodRow(for: food)
                         }
                     }
                 }
@@ -500,13 +484,28 @@ struct FoodSearchView: View {
         .listStyle(.plain)
     }
 
-    private var matchingCustomFoods: [FoodItem] {
+    private var matchingManualEntries: [FoodItem] {
         let query = searchText.lowercased().trimmingCharacters(in: .whitespaces)
         guard !query.isEmpty else { return [] }
-        return customFoods.filter {
+        return manualEntries.filter {
             $0.name.lowercased().contains(query)
             || ($0.brand?.lowercased().contains(query) ?? false)
         }
+    }
+
+    private var matchingEditedProducts: [FoodItem] {
+        EditedProductCatalog.loggingProducts(
+            in: editedProducts,
+            matching: searchText,
+            providerResults: searchService.searchResults
+        )
+    }
+
+    private var visibleProviderSearchResults: [FoodSearchResult] {
+        EditedProductCatalog.providerResults(
+            searchService.searchResults,
+            excludingProductsOverlaidBy: matchingEditedProducts
+        )
     }
 
     private var matchingRecipes: [FoodItem] {
@@ -527,7 +526,17 @@ struct FoodSearchView: View {
     }
 
     private var hasLocalMatches: Bool {
-        !matchingMeals.isEmpty || !matchingCustomFoods.isEmpty || !matchingRecipes.isEmpty
+        hasCategorizedLocalMatches || !matchingEditedProducts.isEmpty
+    }
+
+    private var hasCategorizedLocalMatches: Bool {
+        !matchingMeals.isEmpty
+            || !matchingManualEntries.isEmpty
+            || !matchingRecipes.isEmpty
+    }
+
+    private var hasProductSearchResults: Bool {
+        !matchingEditedProducts.isEmpty || !visibleProviderSearchResults.isEmpty
     }
 
     private var searchResultsList: some View {
@@ -539,7 +548,7 @@ struct FoodSearchView: View {
                 FoodLookupFailureView(presentation: failure.presentation) {
                     searchService.search(query: searchText)
                 }
-            } else if searchService.searchResults.isEmpty && !hasLocalMatches {
+            } else if !hasProductSearchResults && !hasLocalMatches {
                 ContentUnavailableView(
                     "No Results",
                     systemImage: "magnifyingglass",
@@ -592,17 +601,17 @@ struct FoodSearchView: View {
                         }
                     }
 
-                    if !matchingCustomFoods.isEmpty {
+                    if !matchingManualEntries.isEmpty {
                         if mode.usesNonStickySectionTitles {
                             nonStickySectionTitle("Manual Entries")
 
-                            ForEach(matchingCustomFoods) { food in
-                                customFoodRow(for: food)
+                            ForEach(matchingManualEntries) { food in
+                                personalFoodRow(for: food)
                             }
                         } else {
                             Section {
-                                ForEach(matchingCustomFoods) { food in
-                                    customFoodRow(for: food)
+                                ForEach(matchingManualEntries) { food in
+                                    personalFoodRow(for: food)
                                 }
                             } header: {
                                 Text("Manual Entries")
@@ -612,22 +621,30 @@ struct FoodSearchView: View {
                         }
                     }
 
-                    if !searchService.searchResults.isEmpty {
+                    if hasProductSearchResults {
                         if mode.usesNonStickySectionTitles {
-                            if hasLocalMatches {
+                            if hasCategorizedLocalMatches {
                                 nonStickySectionTitle("Search Results")
                             }
 
-                            ForEach(searchService.searchResults) { result in
+                            ForEach(matchingEditedProducts) { food in
+                                savedFoodRow(for: food)
+                            }
+
+                            ForEach(visibleProviderSearchResults) { result in
                                 remoteProductRow(result)
                             }
                         } else {
                             Section {
-                                ForEach(searchService.searchResults) { result in
+                                ForEach(matchingEditedProducts) { food in
+                                    savedFoodRow(for: food)
+                                }
+
+                                ForEach(visibleProviderSearchResults) { result in
                                     remoteProductRow(result)
                                 }
                             } header: {
-                                if hasLocalMatches {
+                                if hasCategorizedLocalMatches {
                                     Text("Search Results")
                                         .font(CalorynTheme.caption)
                                         .foregroundStyle(CalorynTheme.textSecondary)
@@ -650,57 +667,45 @@ struct FoodSearchView: View {
         }
     }
 
-    private func customFoodRow(for food: FoodItem) -> some View {
-        HStack(spacing: 12) {
-            Button {
-                handleFoodItemSelection(food)
-            } label: {
-                selectionRow(isSelected: isSelected(.food(food.id))) {
-                    FoodRowView(
-                        name: food.name,
-                        brand: food.brand,
-                        caloriesPer100g: food.caloriesPer100g,
-                        nutriscoreGrade: food.nutriscoreGrade,
-                        servingDescription: food.servingDescription,
-                        isCustom: true,
-                        showsTypeBadge: false
-                    )
-                }
-                .contentShape(Rectangle())
+    private func personalFoodRow(for food: FoodItem) -> some View {
+        Button {
+            handleFoodItemSelection(food)
+        } label: {
+            selectionRow(isSelected: isSelected(.food(food.id))) {
+                FoodRowView(
+                    name: food.name,
+                    brand: food.brand,
+                    caloriesPer100g: food.caloriesPer100g,
+                    nutriscoreGrade: food.nutriscoreGrade,
+                    servingDescription: food.servingDescription,
+                    isCustom: true,
+                    showsTypeBadge: false
+                )
             }
-            .buttonStyle(.plain)
-            .accessibilityValue(selectionAccessibilityValue(for: .food(food.id)))
-
-            if !mode.isSelection, !isSelectingMultiple {
-                favoriteButton(for: food)
-            }
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .accessibilityValue(selectionAccessibilityValue(for: .food(food.id)))
     }
 
     private func recipeRow(for food: FoodItem) -> some View {
-        HStack(spacing: 12) {
-            Button {
-                handleFoodItemSelection(food)
-            } label: {
-                selectionRow(isSelected: isSelected(.food(food.id))) {
-                    FoodRowView(
-                        name: food.name,
-                        brand: food.brand,
-                        caloriesPer100g: food.caloriesPer100g,
-                        caloriesPerServing: food.calories(forGrams: food.defaultServingG ?? 100),
-                        isRecipe: true,
-                        showsTypeBadge: false
-                    )
-                }
-                .contentShape(Rectangle())
+        Button {
+            handleFoodItemSelection(food)
+        } label: {
+            selectionRow(isSelected: isSelected(.food(food.id))) {
+                FoodRowView(
+                    name: food.name,
+                    brand: food.brand,
+                    caloriesPer100g: food.caloriesPer100g,
+                    caloriesPerServing: food.calories(forGrams: food.defaultServingG ?? 100),
+                    isRecipe: true,
+                    showsTypeBadge: false
+                )
             }
-            .buttonStyle(.plain)
-            .accessibilityValue(selectionAccessibilityValue(for: .food(food.id)))
-
-            if !mode.isSelection, !isSelectingMultiple {
-                favoriteButton(for: food)
-            }
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .accessibilityValue(selectionAccessibilityValue(for: .food(food.id)))
     }
 
     private func savedFoodRow(for food: FoodItem) -> some View {
@@ -990,28 +995,6 @@ struct FoodSearchView: View {
         }
     }
 
-    private func favoriteButton(for food: FoodItem) -> some View {
-        Button {
-            toggleFavorite(food)
-        } label: {
-            Image(systemName: food.isFavorite ? "star.fill" : "star")
-                .font(CalorynTheme.inlineIcon)
-                .foregroundStyle(food.isFavorite ? CalorynTheme.terracotta : CalorynTheme.textSecondary)
-                .frame(width: 44, height: 44)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(
-            food.isFavorite
-                ? "Remove \(food.name) from favorites"
-                : "Add \(food.name) to favorites"
-        )
-        .accessibilityHint(
-            food.isFavorite
-                ? "Removes this item from quick logging favorites"
-                : "Adds this item to quick logging favorites"
-        )
-    }
-
     private var recentSectionHeader: some View {
         Text("Recent")
             .font(CalorynTheme.caption)
@@ -1026,62 +1009,6 @@ struct FoodSearchView: View {
             .listRowSeparator(.hidden)
             .listRowBackground(Color.clear)
             .padding(.top, 8)
-    }
-
-    private var destinationDescription: String {
-        let normalizedSnackIndex = DailyFoodLogCommands.normalizedSnackIndex(
-            for: mealType,
-            requestedSnackIndex: snackIndex
-        )
-        return "\(logDate.shortFormatted) · \(mealType.displayName(snackIndex: normalizedSnackIndex))"
-    }
-
-    private func favoritePlan(for food: FoodItem) -> FavoriteFoodLogPlan {
-        FavoriteFoodLogging.plan(
-            for: food,
-            destinationMeal: mealType,
-            destinationDate: logDate,
-            destinationSnackIndex: snackIndex
-        )
-    }
-
-    private func handleFavoriteFoodAction(_ food: FoodItem) {
-        let plan = favoritePlan(for: food)
-        switch plan.action {
-        case .log:
-            do {
-                try FavoriteFoodLogging.log(
-                    plan: plan,
-                    food: food,
-                    modelContext: modelContext
-                )
-                dismiss()
-            } catch {
-                favoriteErrorMessage = error.localizedDescription
-            }
-        case .confirmQuantity:
-            selectedFoodItem = food
-        case .unavailable:
-            favoriteErrorMessage = FavoriteFoodLogging.LoggingError.unavailable.localizedDescription
-        }
-    }
-
-    private func toggleFavorite(_ food: FoodItem) {
-        do {
-            try FavoriteFoodLogging.setFavorite(
-                !food.isFavorite,
-                for: food,
-                modelContext: modelContext
-            )
-        } catch {
-            favoriteErrorMessage = error.localizedDescription
-        }
-    }
-
-    private func toggleFavoritesDisclosure() {
-        withAnimation {
-            showsAllFavorites.toggle()
-        }
     }
 
     private func addMeal(_ meal: MealTemplate) {
@@ -1102,17 +1029,6 @@ struct FoodSearchView: View {
         } catch {
             mealErrorMessage = error.localizedDescription
         }
-    }
-
-    private var favoriteErrorIsPresented: Binding<Bool> {
-        Binding(
-            get: { favoriteErrorMessage != nil },
-            set: { isPresented in
-                if !isPresented {
-                    favoriteErrorMessage = nil
-                }
-            }
-        )
     }
 
     private var mealErrorIsPresented: Binding<Bool> {
@@ -1151,11 +1067,13 @@ struct FoodSearchView: View {
     private var barcodeLookupOverlay: some View {
         Group {
             if let error = barcodeLookupError {
-                FoodLookupFailureView(
-                    presentation: error.presentation(for: .barcode)
-                ) {
-                    handleRetryableBarcodeFailureAction()
-                }
+                BarcodeLookupFailureView(
+                    presentation: error.presentation(for: .barcode),
+                    normalizedBarcode: lastScannedBarcode,
+                    offersManualCreation: error == .notFound,
+                    onRetry: handleRetryableBarcodeFailureAction,
+                    onCreateManually: openManualBarcodeRecovery
+                )
             } else {
                 VStack(spacing: 16) {
                     Spacer()
@@ -1172,33 +1090,56 @@ struct FoodSearchView: View {
     }
 
     private func handleScannedBarcode(_ code: String) {
+        guard let normalizedBarcode = BarcodeIdentity.normalized(code) else {
+            isLookingUpBarcode = false
+            barcodeLookupError = .invalidRequest
+            lastScannedBarcode = nil
+            return
+        }
         isLookingUpBarcode = true
         barcodeLookupError = nil
-        lastScannedBarcode = code
-        pendingBarcode = code
+        lastScannedBarcode = normalizedBarcode
+        pendingBarcode = normalizedBarcode
     }
 
     private func performBarcodeLookup(_ code: String) async {
-        do {
-            let result = try await searchService.lookupBarcode(code)
-            guard !Task.isCancelled else { return }
+        let outcome = await BarcodeLookupRecoveryCoordinator.resolve(
+            barcode: code,
+            localFoods: recentFoods,
+            providerLookup: searchService.lookupBarcode
+        )
+        guard !Task.isCancelled else { return }
+
+        switch outcome {
+        case .remote(let result):
             isLookingUpBarcode = false
             pendingBarcode = nil
             lastScannedBarcode = nil
             handleProductSelection(result)
-        } catch let error as FoodLookupError {
-            guard !Task.isCancelled, error != .cancelled else { return }
+        case .local(let food, _):
+            isLookingUpBarcode = false
+            pendingBarcode = nil
+            lastScannedBarcode = nil
+            try? modelContext.save()
+            handleFoodItemSelection(food)
+        case .failure(let error):
+            guard error != .cancelled else { return }
             isLookingUpBarcode = false
             pendingBarcode = nil
             barcodeLookupError = error
             triggerBarcodeLookupHaptic(error == .notFound ? .warning : .error)
-        } catch {
-            guard !Task.isCancelled else { return }
-            isLookingUpBarcode = false
-            pendingBarcode = nil
-            barcodeLookupError = .unavailable
-            triggerBarcodeLookupHaptic(.error)
         }
+    }
+
+    private func openManualBarcodeRecovery() {
+        guard let normalizedBarcode = BarcodeIdentity.normalized(lastScannedBarcode) else {
+            return
+        }
+        manualRecoveryBarcode = normalizedBarcode
+        BarcodeRecoveryAnalytics.record(path: .manualCreation, result: .started)
+        barcodeLookupError = nil
+        isSearchFocused = false
+        showingCustomFoodForm = true
     }
 
     private func handleRetryableBarcodeFailureAction() {
@@ -1264,6 +1205,46 @@ private struct FoodLookupFailureView: View {
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
                     .tint(CalorynTheme.sage)
+            }
+        }
+    }
+}
+
+private struct BarcodeLookupFailureView: View {
+    let presentation: FoodLookupFailurePresentation
+    let normalizedBarcode: String?
+    let offersManualCreation: Bool
+    let onRetry: () -> Void
+    let onCreateManually: () -> Void
+
+    var body: some View {
+        ContentUnavailableView {
+            Label(presentation.title, systemImage: presentation.systemImage)
+        } description: {
+            VStack(spacing: 6) {
+                Text(presentation.message)
+                if offersManualCreation, let normalizedBarcode {
+                    Text("Barcode \(normalizedBarcode)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                }
+            }
+        } actions: {
+            VStack(spacing: 10) {
+                if offersManualCreation, normalizedBarcode != nil {
+                    Button("Create Manual Food", action: onCreateManually)
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
+                        .tint(CalorynTheme.sage)
+                        .accessibilityHint("Opens a private food with this barcode already filled in")
+                }
+
+                if let retryTitle = presentation.retryTitle {
+                    Button(retryTitle, action: onRetry)
+                        .buttonStyle(.bordered)
+                        .controlSize(.large)
+                }
             }
         }
     }

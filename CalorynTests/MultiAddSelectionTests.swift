@@ -13,6 +13,27 @@ final class MultiAddSelectionTests: XCTestCase {
         )
     }
 
+    func testMultiSelectControlRequiresAnOptionUnlessSelectionModeIsActive() {
+        XCTAssertFalse(
+            FoodSearchMode.logging.isMultiSelectionControlEnabled(
+                isSelectingMultiple: false,
+                selectableOptionCount: 0
+            )
+        )
+        XCTAssertTrue(
+            FoodSearchMode.logging.isMultiSelectionControlEnabled(
+                isSelectingMultiple: false,
+                selectableOptionCount: 1
+            )
+        )
+        XCTAssertTrue(
+            FoodSearchMode.logging.isMultiSelectionControlEnabled(
+                isSelectingMultiple: true,
+                selectableOptionCount: 0
+            )
+        )
+    }
+
     func testIngredientAndMealComponentModesRemainSingleSelectWithFinalMainBehavior() {
         let ingredient = FoodSearchMode.ingredientSelection { _ in }
         let mealComponent = FoodSearchMode.mealComponentSelection { _ in }
