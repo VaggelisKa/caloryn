@@ -208,6 +208,7 @@ struct PortionPickerView: View {
         }
         .navigationTitle(isEditing ? "Edit Portion" : "Portion")
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(!isEditing)
         .toolbar {
             if isEditing {
                 ToolbarItem(placement: .cancellationAction) {
@@ -230,6 +231,17 @@ struct PortionPickerView: View {
                     }
                     .tint(.red)
                     .accessibilityLabel("Delete Log Entry")
+                }
+            } else {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(CalorynTheme.toolbarIcon)
+                            .foregroundStyle(CalorynTheme.sage)
+                    }
+                    .accessibilityLabel("Back")
                 }
             }
 
