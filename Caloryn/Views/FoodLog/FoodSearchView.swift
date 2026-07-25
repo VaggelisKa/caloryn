@@ -50,6 +50,14 @@ enum FoodSearchMode {
         }
     }
 
+    func isMultiSelectionControlEnabled(
+        isSelectingMultiple: Bool,
+        selectableOptionCount: Int
+    ) -> Bool {
+        supportsMultiSelection
+            && (isSelectingMultiple || selectableOptionCount > 0)
+    }
+
     var isIngredientSelection: Bool {
         switch self {
         case .ingredientSelection: true
@@ -150,6 +158,22 @@ struct FoodSearchView: View {
         multiAddSelection.itemCount
     }
 
+    private var selectableOptionCount: Int {
+        guard !isLookingUpBarcode, barcodeLookupError == nil else { return 0 }
+
+        if showingRecent {
+            return contextualSuggestions.count
+                + favoriteFoods.count
+                + mealTemplates.count
+                + displayedRecentFoods.count
+        }
+
+        return matchingMeals.count
+            + matchingRecipes.count
+            + matchingCustomFoods.count
+            + searchService.searchResults.count
+    }
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
@@ -191,6 +215,12 @@ struct FoodSearchView: View {
                             isSelectingMultiple
                                 ? "Cancel multiple selection"
                                 : "Select multiple items"
+                        )
+                        .disabled(
+                            !mode.isMultiSelectionControlEnabled(
+                                isSelectingMultiple: isSelectingMultiple,
+                                selectableOptionCount: selectableOptionCount
+                            )
                         )
                     }
                 } else if mode.allowsManualEntryCreation {

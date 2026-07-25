@@ -355,6 +355,10 @@ final class FoodItem {
         isCustom || isRecipe
     }
 
+    var isManualEntryOrRecipe: Bool {
+        isUserCreatedFood && providerProductIdentityRaw == nil
+    }
+
     var isFavorite: Bool {
         isUserCreatedFood && (isPinnedRaw ?? false)
     }

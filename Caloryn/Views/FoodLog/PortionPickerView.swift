@@ -246,7 +246,7 @@ struct PortionPickerView: View {
 
             if !isEditing,
                (!isNewFood || hasPersistedPersonalFood),
-               activeFoodItem.isUserCreatedFood {
+               activeFoodItem.isManualEntryOrRecipe {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(action: toggleFavorite) {
                         Image(systemName: activeFoodItem.isFavorite ? "star.fill" : "star")

@@ -3,6 +3,17 @@ import XCTest
 
 @MainActor
 final class FoodItemTests: XCTestCase {
+    func testOnlyManualEntriesAndRecipesUseManualFoodHeaderActions() {
+        let manualEntry = makeTestFoodItem(isCustom: true)
+        let recipe = makeTestFoodItem(isRecipe: true)
+        let providerOverlay = makeTestFoodItem(isCustom: true)
+        providerOverlay.providerProductIdentityRaw = "1234567890123"
+
+        XCTAssertTrue(manualEntry.isManualEntryOrRecipe)
+        XCTAssertTrue(recipe.isManualEntryOrRecipe)
+        XCTAssertFalse(providerOverlay.isManualEntryOrRecipe)
+    }
+
     func testCategoryTagsAreNormalizedAndInferProduceKind() {
         let food = makeTestFoodItem(
             categoryTags: [" EN:Apples ", "", "en:Fresh-Fruits"]
