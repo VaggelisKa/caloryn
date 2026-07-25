@@ -111,11 +111,17 @@ final class JourneyTests: UITestCase {
 
             for label in ["7 Days", "14 Days", "30 Days", "90 Days"] {
                 history.selectRange(label)
-                // Content is asynchronous; require the screen to still be
-                // responsive and showing the range control after each switch.
+
+                // Assert the selection actually moved. Checking that the
+                // range control still exists would pass even if tapping did
+                // nothing, since the control is always on screen.
+                history.awaitRangeSelected(label)
+
+                // And that the screen still renders its trend content for the
+                // newly selected range rather than going blank.
                 XCTAssertTrue(
-                    history.rangePicker.awaitExistence(timeout: 5),
-                    "History should keep rendering after selecting the \(label)-day range"
+                    app.staticTexts.count > 0,
+                    "History should render content for the \(label) range"
                 )
             }
         }

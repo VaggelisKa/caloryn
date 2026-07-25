@@ -147,12 +147,31 @@ struct HistoryScreen: Screen {
 
     /// Range controls are segmented-control buttons labelled "7 Days" and so on.
     func selectRange(_ label: String) {
-        let button = rangePicker.buttons[label]
-        if button.waitForExistence(timeout: 5) {
-            tap(button)
-        } else {
-            tap(app.buttons[label])
+        tap(rangeButton(label))
+    }
+
+    func rangeButton(_ label: String) -> XCUIElement {
+        let scoped = rangePicker.buttons[label]
+        return scoped.exists ? scoped : app.buttons[label]
+    }
+
+    /// Waits for the named range to become the selected segment, so a test can
+    /// assert the selection actually changed rather than that the control
+    /// merely still exists.
+    @discardableResult
+    func awaitRangeSelected(
+        _ label: String,
+        timeout: TimeInterval = UITestCase.defaultTimeout,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> Bool {
+        let selected = NSPredicate(format: "isSelected == true")
+        let expectation = XCTNSPredicateExpectation(predicate: selected, object: rangeButton(label))
+        let result = XCTWaiter().wait(for: [expectation], timeout: timeout)
+        if result != .completed {
+            XCTFail("The \(label) range never became the selected segment", file: file, line: line)
         }
+        return result == .completed
     }
 }
 
