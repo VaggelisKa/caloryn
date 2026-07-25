@@ -355,8 +355,20 @@ final class FoodItem {
         isCustom || isRecipe
     }
 
+    var isCatalogProduct: Bool {
+        !isRecipe && BarcodeIdentity.normalized(providerProductIdentityRaw) != nil
+    }
+
+    var isEditedCatalogProduct: Bool {
+        isCustom && isCatalogProduct
+    }
+
+    var isManualEntry: Bool {
+        isCustom && !isRecipe && !isEditedCatalogProduct
+    }
+
     var isManualEntryOrRecipe: Bool {
-        isUserCreatedFood && providerProductIdentityRaw == nil
+        isManualEntry || isRecipe
     }
 
     var isFavorite: Bool {

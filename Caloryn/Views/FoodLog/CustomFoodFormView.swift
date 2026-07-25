@@ -143,7 +143,7 @@ struct CustomFoodFormView: View {
                     }
                     .accessibilityLabel("Close")
                 }
-                if let existingFood {
+                if let existingFood, existingFood.isManualEntryOrRecipe {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button {
                             toggleFavorite(existingFood)
@@ -624,10 +624,12 @@ struct CustomFoodFormView: View {
     }
 
     private var formTitle: String {
-        if recoveryBarcode != nil {
-            return isEditing ? "Edit Personal Food" : "Create Manual Food"
+        if isEditing {
+            return existingFood?.isCatalogProduct == true
+                ? "Edit Product"
+                : "Edit Manual Entry"
         }
-        return isEditing ? "Edit Manual Entry" : "Create Manual Entry"
+        return recoveryBarcode != nil ? "Create Manual Food" : "Create Manual Entry"
     }
 
     private func editableCoreText(

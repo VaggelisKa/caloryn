@@ -3,15 +3,53 @@ import XCTest
 
 @MainActor
 final class FoodItemTests: XCTestCase {
-    func testOnlyManualEntriesAndRecipesUseManualFoodHeaderActions() {
+    func testManualEntriesRemainDistinctFromEditedProductCatalog() {
         let manualEntry = makeTestFoodItem(isCustom: true)
         let recipe = makeTestFoodItem(isRecipe: true)
         let providerOverlay = makeTestFoodItem(isCustom: true)
         providerOverlay.providerProductIdentityRaw = "1234567890123"
 
+        XCTAssertTrue(manualEntry.isManualEntry)
+        XCTAssertFalse(manualEntry.isEditedCatalogProduct)
+        XCTAssertFalse(recipe.isManualEntry)
+        XCTAssertFalse(recipe.isEditedCatalogProduct)
+        XCTAssertFalse(providerOverlay.isManualEntry)
+        XCTAssertTrue(providerOverlay.isEditedCatalogProduct)
         XCTAssertTrue(manualEntry.isManualEntryOrRecipe)
         XCTAssertTrue(recipe.isManualEntryOrRecipe)
         XCTAssertFalse(providerOverlay.isManualEntryOrRecipe)
+    }
+
+    func testEditedProductCatalogSearchesLocallyByNameBrandAndBarcode() {
+        let manualEntry = makeTestFoodItem(name: "Manual", isCustom: true)
+        let milk = makeTestFoodItem(
+            name: "Milk",
+            brand: "Arla",
+            isCustom: true
+        )
+        milk.barcode = "1234567890123"
+        milk.providerProductIdentityRaw = milk.barcode
+        let yogurt = makeTestFoodItem(
+            name: "Greek Yogurt",
+            brand: "Fage",
+            isCustom: true
+        )
+        yogurt.barcode = "9876543210987"
+        yogurt.providerProductIdentityRaw = yogurt.barcode
+        let foods = [manualEntry, milk, yogurt]
+
+        XCTAssertEqual(
+            EditedProductCatalog.products(in: foods, matching: "arla").map(\.id),
+            [milk.id]
+        )
+        XCTAssertEqual(
+            EditedProductCatalog.products(in: foods, matching: "987654").map(\.id),
+            [yogurt.id]
+        )
+        XCTAssertEqual(
+            EditedProductCatalog.products(in: foods, matching: "").map(\.id),
+            [milk.id, yogurt.id]
+        )
     }
 
     func testCategoryTagsAreNormalizedAndInferProduceKind() {
