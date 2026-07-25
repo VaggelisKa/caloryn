@@ -261,40 +261,82 @@ struct PortionSelectionTests {
         var portion = selection(plainFood, grams: 100)
         #expect(!portion.gramOptions.contains(1_000))
 
-        portion.shape = PortionSelection.Shape(defaultServingGrams: 1_000)
+        portion.update(shape: PortionSelection.Shape(defaultServingGrams: 1_000))
 
         #expect(portion.gramOptions.contains(1_000))
     }
 
-    /// A pre-existing defect, pinned here rather than fixed.
-    ///
     /// Saving an inline edit clears the food's serving description, so a food
-    /// that had countable servings no longer has them. The mode is not
-    /// reconciled, which leaves the picker showing a count wheel with a single
-    /// entry for a food that can no longer be counted — and the unit picker
-    /// falls back to a plain "grams" label, so there is no way back out.
-    ///
-    /// `main` behaves identically: it also leaves the mode untouched when the
-    /// replacement food arrives, and its serving cap also collapses to one.
-    /// Recorded so the behaviour is visible and cannot drift silently; the fix
-    /// belongs in its own change, not inside a behaviour-preserving refactor.
-    @Test("Losing countable servings to an inline edit strands the picker in serving mode")
-    func inlineEditStrandsServingMode() {
+    /// measured in slices stops having slices. Before this was handled the
+    /// picker kept a count wheel with one dead entry and no way back to grams.
+    @Test("Losing countable servings to an inline edit falls back to grams")
+    func losingServingsFallsBackToGrams() {
         var portion = selection(slicedFood, grams: 90)
         #expect(portion.mode == .serving)
 
-        // What CustomFoodFormView's save produces: the serving description is
-        // cleared, so the food no longer has a countable unit.
-        portion.shape = PortionSelection.Shape(defaultServingGrams: 45)
+        portion.update(shape: PortionSelection.Shape(defaultServingGrams: 45))
+
+        #expect(portion.mode == .grams)
+        #expect(portion.gramStep == 90)
+        // And the wheel can move the portion again.
+        portion.gramStep = 120
+        portion.gramStepChanged()
+        #expect(portion.portionGrams == 120)
+    }
+
+    @Test("A recipe that stops being a recipe falls back to grams")
+    func losingRecipeFallsBackToGrams() {
+        var portion = selection(recipe, grams: 400)
+        #expect(portion.mode == .recipeServing)
+
+        portion.update(shape: PortionSelection.Shape(defaultServingGrams: 800))
+
+        #expect(portion.mode == .grams)
+        #expect(portion.gramStep == 400)
+    }
+
+    /// The point of the whole exercise: correcting a food's calories must not
+    /// quietly change how much of it you logged.
+    @Test(
+        "Editing the food never changes the portion",
+        arguments: [
+            PortionSelection.Shape(defaultServingGrams: 45),
+            PortionSelection.Shape(servingGramsPerUnit: 50, defaultServingGrams: 50),
+            PortionSelection.Shape(isRecipe: true, defaultServingGrams: 600),
+            PortionSelection.Shape()
+        ]
+    )
+    func editingNeverMovesThePortion(newShape: PortionSelection.Shape) {
+        var portion = selection(slicedFood, grams: 90)
+
+        portion.update(shape: newShape)
+
+        #expect(portion.portionGrams == 90)
+    }
+
+    @Test("A mode the new food still supports is kept, with its wheel resynced")
+    func supportedModeSurvivesTheEdit() {
+        var portion = selection(slicedFood, grams: 90)
+        #expect(portion.mode == .serving)
+
+        // Still countable, but each slice is now heavier.
+        portion.update(shape: PortionSelection.Shape(servingGramsPerUnit: 30, defaultServingGrams: 30))
 
         #expect(portion.mode == .serving)
-        #expect(!portion.shape.hasCountableServing)
-        // A count wheel with exactly one entry.
-        #expect(portion.maxServingCount == 1)
-
-        // And the grams are frozen: the count wheel can no longer move them.
-        portion.servingCount = 3
-        portion.servingCountChanged()
         #expect(portion.portionGrams == 90)
+        // 90g is now three 30g slices rather than two 45g ones.
+        #expect(portion.servingCount == 3)
+    }
+
+    @Test(
+        "Every mode is only offered by a food that can express it",
+        arguments: [
+            (PortionSelection.Mode.serving, false),
+            (.recipeServing, false),
+            (.grams, true)
+        ]
+    )
+    func plainFoodOnlySupportsGrams(mode: PortionSelection.Mode, supported: Bool) {
+        #expect(selection(plainFood, grams: 100).supports(mode) == supported)
     }
 }

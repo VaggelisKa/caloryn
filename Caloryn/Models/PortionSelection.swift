@@ -71,9 +71,9 @@ struct PortionSelection: Equatable {
     static let maximumServingCountLimit = 10
     static let servingCountGramCeiling: Double = 500
 
-    /// Mutable because editing the food inline can change its serving, and the
-    /// gram wheel's range has to follow.
-    var shape: Shape
+    /// Changed through `update(shape:)` rather than assigned, because a new
+    /// shape can invalidate the current mode.
+    private(set) var shape: Shape
     private(set) var portionGrams: Double
     var mode: Mode
     var gramStep: Int
@@ -177,6 +177,49 @@ struct PortionSelection: Equatable {
             if let option = selectedRecipeServingOption {
                 portionGrams = shape.recipeTotalGrams * option.multiplier
             }
+        }
+    }
+
+    // MARK: - The food changing underneath
+
+    /// Whether a mode can express a portion of this food at all.
+    func supports(_ mode: Mode) -> Bool {
+        switch mode {
+        case .grams: true
+        case .serving: shape.hasCountableServing
+        case .recipeServing: shape.isRecipe
+        }
+    }
+
+    /// Takes on a new shape after the food is edited inline.
+    ///
+    /// Editing a food can remove the thing the current mode is expressed in —
+    /// saving an edit clears the serving description, so a food measured in
+    /// slices stops having slices. Without this the picker would keep showing a
+    /// count wheel for a food that can no longer be counted, with no control to
+    /// switch back and a quantity nothing could move.
+    ///
+    /// The grams are deliberately left alone. They are what the user is
+    /// actually logging, and editing a food's details must not quietly change
+    /// how much of it was logged — so the wheels are re-derived from the grams,
+    /// never the other way round.
+    mutating func update(shape newShape: Shape) {
+        shape = newShape
+
+        if !supports(mode) {
+            mode = .grams
+        }
+
+        switch mode {
+        case .grams:
+            gramStep = Self.normalizedGramStep(portionGrams, limit: Self.gramOptionLimit(for: shape))
+        case .serving:
+            servingCount = Self.normalizedServingCount(for: portionGrams, shape: shape)
+        case .recipeServing:
+            recipeServingID = Self.nearestRecipeServingOptionID(
+                for: portionGrams,
+                recipeTotalGrams: shape.recipeTotalGrams
+            )
         }
     }
 

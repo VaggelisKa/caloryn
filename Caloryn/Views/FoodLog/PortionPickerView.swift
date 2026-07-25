@@ -241,9 +241,10 @@ struct PortionPickerView: View {
                 existingFood: activeFoodItem,
                 onSaved: { savedFood in
                     replacementFoodItem = savedFood
-                    // Editing the food can change its serving, which changes
-                    // the range the gram wheel offers.
-                    selection.shape = PortionSelection.Shape(foodItem: savedFood)
+                    // Editing the food can remove the serving the portion is
+                    // expressed in, so the picker has to take on the new shape
+                    // rather than keep a mode the food no longer supports.
+                    selection.update(shape: PortionSelection.Shape(foodItem: savedFood))
                     hasPersistedPersonalFood = true
                     showingFoodEditor = false
                 },
