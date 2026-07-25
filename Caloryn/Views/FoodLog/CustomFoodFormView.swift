@@ -13,89 +13,26 @@ struct CustomFoodFormView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Query(sort: \FoodItem.lastUsed, order: .reverse) private var savedFoods: [FoodItem]
 
-    @State private var name = ""
-    @State private var brand = ""
-    @State private var caloriesPerServing = ""
-    @State private var proteinPerServing = ""
-    @State private var carbsPerServing = ""
-    @State private var fatPerServing = ""
-    @State private var fiberPerServing = ""
-    @State private var sugarsPerServing = ""
-    @State private var addedSugarsPerServing = ""
-    @State private var saturatedFatPerServing = ""
-    @State private var sodiumPerServing = ""
-    @State private var cholesterolPerServing = ""
-    @State private var alcoholPerServing = ""
-    @State private var servingSizeGrams = "100"
-    @State private var produceKind: ProduceKind = .unclassified
+    /// Every rule this form applies lives in the draft; the view reads it and
+    /// renders. See `CustomFoodDraft`.
+    @State private var draft = CustomFoodDraft()
     @State private var showingDeleteConfirmation = false
     @State private var favoriteErrorMessage: String?
-    @State private var initialTextByField: [Field: String] = [:]
-    @State private var initialProduceKind: ProduceKind?
 
     @FocusState private var focusedField: Field?
 
-    private enum Field: Hashable, CaseIterable {
-        case name, brand, calories, protein, carbs, fat, fiber
-        case sugars, addedSugars, saturatedFat, sodium, cholesterol, alcohol
-        case servingSize
-    }
+    private typealias Field = CustomFoodDraft.Field
 
     private var isEditing: Bool { existingFood != nil }
     private var recoveryBarcode: String? {
         existingFood?.normalizedBarcode ?? BarcodeIdentity.normalized(prefilledBarcode)
     }
 
-    private var canSave: Bool {
-        !name.trimmingCharacters(in: .whitespaces).isEmpty
-        && (parseDecimal(caloriesPerServing) ?? -1) >= 0
-        && !caloriesPerServing.isEmpty
-        && optionalTrackedInputsAreValid
-    }
-
-    private var servingGrams: Double {
-        parseDecimal(servingSizeGrams) ?? 100
-    }
-
-    private var previewCalories: Double {
-        parseDecimal(caloriesPerServing) ?? 0
-    }
-
-    private var previewProtein: Double {
-        parseDecimal(proteinPerServing) ?? 0
-    }
-
-    private var previewCarbs: Double {
-        parseDecimal(carbsPerServing) ?? 0
-    }
-
-    private var previewFat: Double {
-        parseDecimal(fatPerServing) ?? 0
-    }
-
-    private var optionalTrackedInputsAreValid: Bool {
-        [
-            fiberPerServing,
-            sugarsPerServing,
-            addedSugarsPerServing,
-            saturatedFatPerServing,
-            sodiumPerServing,
-            cholesterolPerServing,
-            alcoholPerServing
-        ].allSatisfy(isOptionalNonnegativeDecimal(_:))
-    }
-
-    /// Parses decimal strings, supporting both "." and "," as decimal separators (locale-agnostic).
-    private func parseDecimal(_ string: String) -> Double? {
-        let normalized = string.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".")
-        return Double(normalized)
-    }
-
-    private func isOptionalNonnegativeDecimal(_ string: String) -> Bool {
-        let trimmed = string.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return true }
-        return (parseDecimal(trimmed) ?? -1) >= 0
-    }
+    private var canSave: Bool { draft.canSave }
+    private var previewCalories: Double { draft.previewCalories }
+    private var previewProtein: Double { draft.previewProtein }
+    private var previewCarbs: Double { draft.previewCarbs }
+    private var previewFat: Double { draft.previewFat }
 
     init(
         existingFood: FoodItem? = nil,
@@ -189,7 +126,7 @@ struct CustomFoodFormView: View {
             .confirmationDialog("Delete Manual Entry", isPresented: $showingDeleteConfirmation) {
                 Button("Delete", role: .destructive, action: deleteFood)
             } message: {
-                Text("This will permanently remove \"\(name)\" from your manual entries.")
+                Text("This will permanently remove \"\(draft.name)\" from your manual entries.")
             }
             .alert("Couldn’t Update Favorite", isPresented: favoriteErrorIsPresented) {
                 Button("OK", role: .cancel) {
@@ -208,14 +145,14 @@ struct CustomFoodFormView: View {
                 .font(CalorynTheme.sectionEyebrow)
                 .foregroundStyle(CalorynTheme.textSecondary)
 
-            TextField("Food name (e.g. Nick's Pizza)", text: $name)
+            TextField("Food name (e.g. Nick's Pizza)", text: $draft.name)
                 .font(CalorynTheme.bodyText)
                 .textInputAutocapitalization(.words)
                 .focused($focusedField, equals: .name)
                 .calorynInputField(isFocused: focusedField == .name)
                 .accessibilityIdentifier("customFood.name")
 
-            TextField("Brand (optional)", text: $brand)
+            TextField("Brand (optional)", text: $draft.brand)
                 .font(CalorynTheme.bodyText)
                 .textInputAutocapitalization(.words)
                 .focused($focusedField, equals: .brand)
@@ -265,7 +202,7 @@ struct CustomFoodFormView: View {
                 Spacer()
             }
 
-            Picker("Count as", selection: $produceKind) {
+            Picker("Count as", selection: $draft.produceKind) {
                 ForEach(ProduceKind.manualCases) { kind in
                     Text(kind.displayName)
                         .tag(kind)
@@ -301,7 +238,7 @@ struct CustomFoodFormView: View {
 
             nutritionField(
                 label: "Calories",
-                text: $caloriesPerServing,
+                text: $draft.caloriesPerServing,
                 unit: "kcal",
                 focus: .calories,
                 required: true
@@ -310,21 +247,21 @@ struct CustomFoodFormView: View {
 
             nutritionField(
                 label: "Protein",
-                text: $proteinPerServing,
+                text: $draft.proteinPerServing,
                 unit: "g",
                 focus: .protein
             )
 
             nutritionField(
                 label: "Carbs",
-                text: $carbsPerServing,
+                text: $draft.carbsPerServing,
                 unit: "g",
                 focus: .carbs
             )
 
             nutritionField(
                 label: "Fat",
-                text: $fatPerServing,
+                text: $draft.fatPerServing,
                 unit: "g",
                 focus: .fat
             )
@@ -344,7 +281,7 @@ struct CustomFoodFormView: View {
 
             nutritionField(
                 label: "Fiber",
-                text: $fiberPerServing,
+                text: $draft.fiberPerServing,
                 unit: "g",
                 focus: .fiber,
                 placeholder: ""
@@ -352,7 +289,7 @@ struct CustomFoodFormView: View {
 
             nutritionField(
                 label: "Sugars",
-                text: $sugarsPerServing,
+                text: $draft.sugarsPerServing,
                 unit: "g",
                 focus: .sugars,
                 placeholder: ""
@@ -360,7 +297,7 @@ struct CustomFoodFormView: View {
 
             nutritionField(
                 label: "Added Sugar",
-                text: $addedSugarsPerServing,
+                text: $draft.addedSugarsPerServing,
                 unit: "g",
                 focus: .addedSugars,
                 placeholder: ""
@@ -368,7 +305,7 @@ struct CustomFoodFormView: View {
 
             nutritionField(
                 label: "Sat Fat",
-                text: $saturatedFatPerServing,
+                text: $draft.saturatedFatPerServing,
                 unit: "g",
                 focus: .saturatedFat,
                 placeholder: ""
@@ -376,7 +313,7 @@ struct CustomFoodFormView: View {
 
             nutritionField(
                 label: "Sodium",
-                text: $sodiumPerServing,
+                text: $draft.sodiumPerServing,
                 unit: "mg",
                 focus: .sodium,
                 placeholder: ""
@@ -384,7 +321,7 @@ struct CustomFoodFormView: View {
 
             nutritionField(
                 label: "Cholesterol",
-                text: $cholesterolPerServing,
+                text: $draft.cholesterolPerServing,
                 unit: "mg",
                 focus: .cholesterol,
                 placeholder: ""
@@ -392,7 +329,7 @@ struct CustomFoodFormView: View {
 
             nutritionField(
                 label: "Alcohol",
-                text: $alcoholPerServing,
+                text: $draft.alcoholPerServing,
                 unit: "g",
                 focus: .alcohol,
                 placeholder: ""
@@ -448,7 +385,7 @@ struct CustomFoodFormView: View {
 
                 Spacer()
 
-                TextField("100", text: $servingSizeGrams)
+                TextField("100", text: $draft.servingSizeGrams)
                     .font(CalorynTheme.numericBody)
                     .keyboardType(.decimalPad)
                     .focused($focusedField, equals: .servingSize)
@@ -479,90 +416,17 @@ struct CustomFoodFormView: View {
             focusedField = .name
             return
         }
-        name = food.name
-        brand = food.brand ?? ""
-        let serving = food.defaultServingG ?? 100
-        servingSizeGrams = food.defaultServingG.map(\.manualInputFormatted) ?? ""
-        caloriesPerServing = "\(Int(food.calories(forGrams: serving)))"
-        proteinPerServing = editableCoreText(
-            food.protein(forGrams: serving),
-            origin: food.fieldOrigin(for: .protein)
-        )
-        carbsPerServing = editableCoreText(
-            food.carbs(forGrams: serving),
-            origin: food.fieldOrigin(for: .carbohydrates)
-        )
-        fatPerServing = editableCoreText(
-            food.fat(forGrams: serving),
-            origin: food.fieldOrigin(for: .fat)
-        )
-        fiberPerServing = editableCoreText(
-            food.fiber(forGrams: serving),
-            origin: food.fieldOrigin(for: .fiber)
-        )
-        sugarsPerServing = optionalPerServingText(food.sugarsPer100g, serving: serving)
-        addedSugarsPerServing = optionalPerServingText(food.addedSugarsPer100g, serving: serving)
-        saturatedFatPerServing = optionalPerServingText(food.saturatedFatPer100g, serving: serving)
-        sodiumPerServing = optionalPerServingText(food.sodiumPer100g, serving: serving, unit: .milligramsFromGrams)
-        cholesterolPerServing = optionalPerServingText(food.cholesterolPer100g, serving: serving, unit: .milligramsFromGrams)
-        alcoholPerServing = optionalPerServingText(food.alcoholPer100g, serving: serving)
-        produceKind = food.produceKind
-        initialTextByField = Dictionary(
-            uniqueKeysWithValues: Field.allCases.map { ($0, text(for: $0)) }
-        )
-        initialProduceKind = produceKind
+        draft.populate(from: food)
     }
 
     private func saveFood() {
-        let serving = servingGrams > 0 ? servingGrams : 100
-        let cal = parseDecimal(caloriesPerServing) ?? 0
-        let suppliedProtein = parseDecimal(proteinPerServing)
-        let suppliedCarbohydrates = parseDecimal(carbsPerServing)
-        let suppliedFat = parseDecimal(fatPerServing)
-        let pro = suppliedProtein ?? 0
-        let carb = suppliedCarbohydrates ?? 0
-        let f = suppliedFat ?? 0
-        let fiber = parseDecimal(fiberPerServing) ?? 0
-        let nutritionPerServing = NutritionValues(
-            calories: cal,
-            proteinG: pro,
-            carbsG: carb,
-            fatG: f,
-            fiberG: fiber,
-            sugarsG: optionalServingValue(sugarsPerServing),
-            addedSugarsG: optionalServingValue(addedSugarsPerServing),
-            saturatedFatG: optionalServingValue(saturatedFatPerServing),
-            sodiumG: optionalServingValue(sodiumPerServing, unit: .milligramsFromGrams),
-            cholesterolG: optionalServingValue(cholesterolPerServing, unit: .milligramsFromGrams),
-            alcoholG: optionalServingValue(alcoholPerServing)
-        )
-        let nutritionPer100g = NutritionValues.per100g(
-            fromServing: nutritionPerServing,
-            servingGrams: serving
-        )
+        let serving = draft.effectiveServingGrams
+        let nutritionPer100g = draft.nutritionPer100g
 
         if let recoveryBarcode {
-            let personalEdit = FoodPersonalEdit(
-                name: name.trimmingCharacters(in: .whitespaces),
-                brand: brand.isEmpty ? nil : brand.trimmingCharacters(in: .whitespaces),
-                caloriesPer100g: nutritionPer100g.calories,
-                proteinPer100g: suppliedProtein.map { $0 * 100 / serving },
-                carbohydratesPer100g: suppliedCarbohydrates.map { $0 * 100 / serving },
-                fatPer100g: suppliedFat.map { $0 * 100 / serving },
-                fiberPer100g: parseDecimal(fiberPerServing).map { $0 * 100 / serving },
-                sugarsPer100g: nutritionPer100g.sugarsG,
-                addedSugarsPer100g: nutritionPer100g.addedSugarsG,
-                saturatedFatPer100g: nutritionPer100g.saturatedFatG,
-                sodiumPer100g: nutritionPer100g.sodiumG,
-                cholesterolPer100g: nutritionPer100g.cholesterolG,
-                alcoholPer100g: nutritionPer100g.alcoholG,
-                defaultServingG: parseDecimal(servingSizeGrams).flatMap { $0 > 0 ? $0 : nil },
-                produceKind: produceKind,
-                userEditedFields: userEditedRecoveryFields
-            )
             let materialization = BarcodeRecoveryService.materializePersonalFood(
                 barcode: recoveryBarcode,
-                edit: personalEdit,
+                edit: draft.personalEdit(isEditingExistingFood: existingFood != nil),
                 localFoods: savedFoods,
                 editing: existingFood
             )
@@ -582,24 +446,24 @@ struct CustomFoodFormView: View {
         }
 
         if let food = existingFood {
-            food.name = name.trimmingCharacters(in: .whitespaces)
-            food.brand = brand.isEmpty ? nil : brand.trimmingCharacters(in: .whitespaces)
+            food.name = draft.trimmedName
+            food.brand = draft.trimmedBrand
             food.applyUserNutritionEdit(
                 nutritionPer100g,
-                suppliedProtein: suppliedProtein,
-                suppliedCarbohydrates: suppliedCarbohydrates,
-                suppliedFat: suppliedFat
+                suppliedProtein: draft.suppliedProtein,
+                suppliedCarbohydrates: draft.suppliedCarbohydrates,
+                suppliedFat: draft.suppliedFat
             )
             food.defaultServingG = serving
             food.servingDescription = nil
             food.categoryTags = []
-            food.produceKind = produceKind
+            food.produceKind = draft.produceKind
             try? modelContext.save()
             onSaved?(food)
         } else {
             let food = FoodItem(
-                name: name.trimmingCharacters(in: .whitespaces),
-                brand: brand.isEmpty ? nil : brand.trimmingCharacters(in: .whitespaces),
+                name: draft.trimmedName,
+                brand: draft.trimmedBrand,
                 caloriesPer100g: nutritionPer100g.calories,
                 proteinPer100g: nutritionPer100g.proteinG,
                 carbsPer100g: nutritionPer100g.carbsG,
@@ -612,14 +476,14 @@ struct CustomFoodFormView: View {
                 cholesterolPer100g: nutritionPer100g.cholesterolG,
                 alcoholPer100g: nutritionPer100g.alcoholG,
                 defaultServingG: serving,
-                produceKind: produceKind,
+                produceKind: draft.produceKind,
                 isCustom: true
             )
             food.applyUserNutritionEdit(
                 nutritionPer100g,
-                suppliedProtein: suppliedProtein,
-                suppliedCarbohydrates: suppliedCarbohydrates,
-                suppliedFat: suppliedFat
+                suppliedProtein: draft.suppliedProtein,
+                suppliedCarbohydrates: draft.suppliedCarbohydrates,
+                suppliedFat: draft.suppliedFat
             )
             modelContext.insert(food)
             try? modelContext.save()
@@ -635,103 +499,6 @@ struct CustomFoodFormView: View {
                 : "Edit Manual Entry"
         }
         return recoveryBarcode != nil ? "Create Manual Food" : "Create Manual Entry"
-    }
-
-    private func editableCoreText(
-        _ value: Double,
-        origin: FoodFieldOrigin
-    ) -> String {
-        origin == .missing ? "" : value.manualInputFormatted
-    }
-
-    private var userEditedRecoveryFields: Set<FoodField>? {
-        if existingFood == nil {
-            var suppliedFields = Set(
-                Field.allCases.compactMap { field -> FoodField? in
-                    let value = text(for: field)
-                        .trimmingCharacters(in: .whitespacesAndNewlines)
-                    return value.isEmpty ? nil : recoveryField(for: field)
-                }
-            )
-            if produceKind != .unclassified {
-                suppliedFields.insert(.produceKind)
-            }
-            return suppliedFields
-        }
-
-        var editedFields = Set(
-            Field.allCases.compactMap { field -> FoodField? in
-                guard initialTextByField[field] != text(for: field) else { return nil }
-                return recoveryField(for: field)
-            }
-        )
-        if initialProduceKind != produceKind {
-            editedFields.insert(.produceKind)
-        }
-        return editedFields
-    }
-
-    private func text(for field: Field) -> String {
-        switch field {
-        case .name: name
-        case .brand: brand
-        case .calories: caloriesPerServing
-        case .protein: proteinPerServing
-        case .carbs: carbsPerServing
-        case .fat: fatPerServing
-        case .fiber: fiberPerServing
-        case .sugars: sugarsPerServing
-        case .addedSugars: addedSugarsPerServing
-        case .saturatedFat: saturatedFatPerServing
-        case .sodium: sodiumPerServing
-        case .cholesterol: cholesterolPerServing
-        case .alcohol: alcoholPerServing
-        case .servingSize: servingSizeGrams
-        }
-    }
-
-    private func recoveryField(for field: Field) -> FoodField {
-        switch field {
-        case .name: .name
-        case .brand: .brand
-        case .calories: .calories
-        case .protein: .protein
-        case .carbs: .carbohydrates
-        case .fat: .fat
-        case .fiber: .fiber
-        case .sugars: .sugars
-        case .addedSugars: .addedSugars
-        case .saturatedFat: .saturatedFat
-        case .sodium: .sodium
-        case .cholesterol: .cholesterol
-        case .alcohol: .alcohol
-        case .servingSize: .defaultServing
-        }
-    }
-
-    private func optionalServingValue(
-        _ text: String,
-        unit: TrackedNutrientUnit = .grams
-    ) -> Double? {
-        let trimmed = text.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty, let inputValue = parseDecimal(trimmed) else { return nil }
-        return unit.storedValue(fromInput: inputValue)
-    }
-
-    private func optionalPerServingText(
-        _ valuePer100g: Double?,
-        serving: Double,
-        unit: TrackedNutrientUnit = .grams
-    ) -> String {
-        guard let valuePer100g else { return "" }
-        let storedValue = valuePer100g * serving / 100
-
-        switch unit {
-        case .grams:
-            return storedValue.manualInputFormatted
-        case .milligramsFromGrams:
-            return (storedValue * 1000).manualInputFormatted
-        }
     }
 
     private func deleteFood() {
@@ -762,16 +529,6 @@ struct CustomFoodFormView: View {
                 }
             }
         )
-    }
-}
-
-private extension Double {
-    var manualInputFormatted: String {
-        let rounded = (self * 10).rounded() / 10
-        if rounded == rounded.rounded() {
-            return "\(Int(rounded))"
-        }
-        return String(format: "%.1f", rounded)
     }
 }
 
