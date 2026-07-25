@@ -41,6 +41,9 @@ jobs:
         id: simulator
         uses: ./.github/actions/select-simulator
 
+      # Package.resolved is tracked, so the versions are already decided.
+      # These two flags stop xcodebuild re-resolving over the network on
+      # every run, which was costing about 40s per job even on a cache hit.
       - name: Run unit tests
         run: |
           set -euo pipefail
@@ -54,6 +57,8 @@ jobs:
             -destination "platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}" \
             -resultBundlePath TestResults/Unit.xcresult \
             -clonedSourcePackagesDirPath .spm-cache \
+            -onlyUsePackageVersionsFromResolvedFile \
+            -disableAutomaticPackageResolution \
             -enableCodeCoverage YES \
             CODE_SIGNING_ALLOWED=NO
 
@@ -151,6 +156,7 @@ jobs:
         id: simulator
         uses: ./.github/actions/select-simulator
 
+      # As above: resolution is pinned, so do not go to the network for it.
       - name: Run UI tests
         run: |
           set -euo pipefail
@@ -164,6 +170,8 @@ jobs:
             -destination "platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}" \
             -resultBundlePath TestResults/UI.xcresult \
             -clonedSourcePackagesDirPath .spm-cache \
+            -onlyUsePackageVersionsFromResolvedFile \
+            -disableAutomaticPackageResolution \
             CODE_SIGNING_ALLOWED=NO
 
       - name: Upload results
