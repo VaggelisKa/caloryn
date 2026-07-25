@@ -95,8 +95,6 @@ struct FoodSearchView: View {
     @State private var pendingBarcode: String?
     @State private var lastScannedBarcode = FoodSearchService.debugInitialBarcode
     @State private var manualRecoveryBarcode: String?
-    @State private var favoriteErrorMessage: String?
-    @State private var showsAllFavorites = false
     @State private var mealErrorMessage: String?
     @State private var isSelectingMultiple = false
     @State private var multiAddSelection = MultiAddSelectionState()
@@ -116,8 +114,12 @@ struct FoodSearchView: View {
         return recentFoods.filter { $0.isRecipe }
     }
 
-    private var customFoods: [FoodItem] {
-        recentFoods.filter { $0.isCustom && !$0.isRecipe }
+    private var manualEntries: [FoodItem] {
+        recentFoods.filter(\.isManualEntry)
+    }
+
+    private var editedProducts: [FoodItem] {
+        recentFoods.filter(\.isEditedCatalogProduct)
     }
 
     private var displayedRecentFoods: [FoodItem] {
@@ -129,18 +131,6 @@ struct FoodSearchView: View {
                         && !suggestedIDs.contains($0.id)
                 }
                 .prefix(20)
-        )
-    }
-
-    private var favoriteFoods: [FoodItem] {
-        guard !mode.isSelection else { return [] }
-        return FavoriteFoodLogging.sortedFavorites(from: recentFoods)
-    }
-
-    private var visibleFavoriteFoods: [FoodItem] {
-        FavoriteFoodLogging.visibleFavorites(
-            from: favoriteFoods,
-            showsAll: showsAllFavorites
         )
     }
 
@@ -163,14 +153,14 @@ struct FoodSearchView: View {
 
         if showingRecent {
             return contextualSuggestions.count
-                + favoriteFoods.count
                 + mealTemplates.count
                 + displayedRecentFoods.count
         }
 
         return matchingMeals.count
             + matchingRecipes.count
-            + matchingCustomFoods.count
+            + matchingManualEntries.count
+            + matchingEditedProducts.count
             + searchService.searchResults.count
     }
 
@@ -314,16 +304,6 @@ struct FoodSearchView: View {
             .fullScreenCover(isPresented: $showingScanner) {
                 barcodeScannerSheet
             }
-            .alert(
-                "Couldn’t Log Favorite",
-                isPresented: favoriteErrorIsPresented
-            ) {
-                Button("OK", role: .cancel) {
-                    favoriteErrorMessage = nil
-                }
-            } message: {
-                Text(favoriteErrorMessage ?? "Please try again.")
-            }
             .alert("Couldn’t Add Meal", isPresented: mealErrorIsPresented) {
                 Button("OK", role: .cancel) {
                     mealErrorMessage = nil
@@ -425,43 +405,6 @@ struct FoodSearchView: View {
                 }
             }
 
-            if !favoriteFoods.isEmpty {
-                nonStickySectionTitle("Favorites")
-
-                ForEach(visibleFavoriteFoods) { food in
-                    if isSelectingMultiple {
-                        savedFoodRow(for: food)
-                    } else {
-                        FavoriteFoodRowView(
-                            food: food,
-                            plan: favoritePlan(for: food),
-                            destinationDescription: destinationDescription,
-                            onLog: { handleFavoriteFoodAction(food) },
-                            onRemoveFavorite: { toggleFavorite(food) }
-                        )
-                    }
-                }
-
-                if favoriteFoods.count > FavoriteFoodLogging.collapsedFavoriteLimit {
-                    Button(action: toggleFavoritesDisclosure) {
-                        HStack {
-                            Text(showsAllFavorites ? "Show less" : "Show all \(favoriteFoods.count)")
-                            Spacer()
-                            Image(systemName: showsAllFavorites ? "chevron.up" : "chevron.down")
-                        }
-                        .font(CalorynTheme.caption)
-                        .foregroundStyle(CalorynTheme.sage)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(
-                        showsAllFavorites
-                            ? "Show fewer favorites"
-                            : "Show all \(favoriteFoods.count) favorites"
-                    )
-                }
-            }
-
             if mode.supportsMultiSelection, !mealTemplates.isEmpty {
                 nonStickySectionTitle("Meals")
 
@@ -504,17 +447,33 @@ struct FoodSearchView: View {
                 }
             }
 
-            if mode.isSelection, !customFoods.isEmpty {
+            if mode.isSelection, !manualEntries.isEmpty {
                 if mode.usesNonStickySectionTitles {
                     nonStickySectionTitle("Manual Entries")
 
-                    ForEach(customFoods) { food in
-                        customFoodRow(for: food)
+                    ForEach(manualEntries) { food in
+                        personalFoodRow(for: food)
                     }
                 } else {
                     Section("Manual Entries") {
-                        ForEach(customFoods) { food in
-                            customFoodRow(for: food)
+                        ForEach(manualEntries) { food in
+                            personalFoodRow(for: food)
+                        }
+                    }
+                }
+            }
+
+            if mode.isSelection, !editedProducts.isEmpty {
+                if mode.usesNonStickySectionTitles {
+                    nonStickySectionTitle("Edited Product Catalog")
+
+                    ForEach(editedProducts) { food in
+                        personalFoodRow(for: food)
+                    }
+                } else {
+                    Section("Edited Product Catalog") {
+                        ForEach(editedProducts) { food in
+                            personalFoodRow(for: food)
                         }
                     }
                 }
@@ -541,13 +500,17 @@ struct FoodSearchView: View {
         .listStyle(.plain)
     }
 
-    private var matchingCustomFoods: [FoodItem] {
+    private var matchingManualEntries: [FoodItem] {
         let query = searchText.lowercased().trimmingCharacters(in: .whitespaces)
         guard !query.isEmpty else { return [] }
-        return customFoods.filter {
+        return manualEntries.filter {
             $0.name.lowercased().contains(query)
             || ($0.brand?.lowercased().contains(query) ?? false)
         }
+    }
+
+    private var matchingEditedProducts: [FoodItem] {
+        EditedProductCatalog.products(in: editedProducts, matching: searchText)
     }
 
     private var matchingRecipes: [FoodItem] {
@@ -568,7 +531,10 @@ struct FoodSearchView: View {
     }
 
     private var hasLocalMatches: Bool {
-        !matchingMeals.isEmpty || !matchingCustomFoods.isEmpty || !matchingRecipes.isEmpty
+        !matchingMeals.isEmpty
+            || !matchingManualEntries.isEmpty
+            || !matchingEditedProducts.isEmpty
+            || !matchingRecipes.isEmpty
     }
 
     private var searchResultsList: some View {
@@ -633,20 +599,40 @@ struct FoodSearchView: View {
                         }
                     }
 
-                    if !matchingCustomFoods.isEmpty {
+                    if !matchingManualEntries.isEmpty {
                         if mode.usesNonStickySectionTitles {
                             nonStickySectionTitle("Manual Entries")
 
-                            ForEach(matchingCustomFoods) { food in
-                                customFoodRow(for: food)
+                            ForEach(matchingManualEntries) { food in
+                                personalFoodRow(for: food)
                             }
                         } else {
                             Section {
-                                ForEach(matchingCustomFoods) { food in
-                                    customFoodRow(for: food)
+                                ForEach(matchingManualEntries) { food in
+                                    personalFoodRow(for: food)
                                 }
                             } header: {
                                 Text("Manual Entries")
+                                    .font(CalorynTheme.caption)
+                                    .foregroundStyle(CalorynTheme.textSecondary)
+                            }
+                        }
+                    }
+
+                    if !matchingEditedProducts.isEmpty {
+                        if mode.usesNonStickySectionTitles {
+                            nonStickySectionTitle("Edited Product Catalog")
+
+                            ForEach(matchingEditedProducts) { food in
+                                personalFoodRow(for: food)
+                            }
+                        } else {
+                            Section {
+                                ForEach(matchingEditedProducts) { food in
+                                    personalFoodRow(for: food)
+                                }
+                            } header: {
+                                Text("Edited Product Catalog")
                                     .font(CalorynTheme.caption)
                                     .foregroundStyle(CalorynTheme.textSecondary)
                             }
@@ -691,57 +677,45 @@ struct FoodSearchView: View {
         }
     }
 
-    private func customFoodRow(for food: FoodItem) -> some View {
-        HStack(spacing: 12) {
-            Button {
-                handleFoodItemSelection(food)
-            } label: {
-                selectionRow(isSelected: isSelected(.food(food.id))) {
-                    FoodRowView(
-                        name: food.name,
-                        brand: food.brand,
-                        caloriesPer100g: food.caloriesPer100g,
-                        nutriscoreGrade: food.nutriscoreGrade,
-                        servingDescription: food.servingDescription,
-                        isCustom: true,
-                        showsTypeBadge: false
-                    )
-                }
-                .contentShape(Rectangle())
+    private func personalFoodRow(for food: FoodItem) -> some View {
+        Button {
+            handleFoodItemSelection(food)
+        } label: {
+            selectionRow(isSelected: isSelected(.food(food.id))) {
+                FoodRowView(
+                    name: food.name,
+                    brand: food.brand,
+                    caloriesPer100g: food.caloriesPer100g,
+                    nutriscoreGrade: food.nutriscoreGrade,
+                    servingDescription: food.servingDescription,
+                    isCustom: true,
+                    showsTypeBadge: false
+                )
             }
-            .buttonStyle(.plain)
-            .accessibilityValue(selectionAccessibilityValue(for: .food(food.id)))
-
-            if !mode.isSelection, !isSelectingMultiple {
-                favoriteButton(for: food)
-            }
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .accessibilityValue(selectionAccessibilityValue(for: .food(food.id)))
     }
 
     private func recipeRow(for food: FoodItem) -> some View {
-        HStack(spacing: 12) {
-            Button {
-                handleFoodItemSelection(food)
-            } label: {
-                selectionRow(isSelected: isSelected(.food(food.id))) {
-                    FoodRowView(
-                        name: food.name,
-                        brand: food.brand,
-                        caloriesPer100g: food.caloriesPer100g,
-                        caloriesPerServing: food.calories(forGrams: food.defaultServingG ?? 100),
-                        isRecipe: true,
-                        showsTypeBadge: false
-                    )
-                }
-                .contentShape(Rectangle())
+        Button {
+            handleFoodItemSelection(food)
+        } label: {
+            selectionRow(isSelected: isSelected(.food(food.id))) {
+                FoodRowView(
+                    name: food.name,
+                    brand: food.brand,
+                    caloriesPer100g: food.caloriesPer100g,
+                    caloriesPerServing: food.calories(forGrams: food.defaultServingG ?? 100),
+                    isRecipe: true,
+                    showsTypeBadge: false
+                )
             }
-            .buttonStyle(.plain)
-            .accessibilityValue(selectionAccessibilityValue(for: .food(food.id)))
-
-            if !mode.isSelection, !isSelectingMultiple {
-                favoriteButton(for: food)
-            }
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .accessibilityValue(selectionAccessibilityValue(for: .food(food.id)))
     }
 
     private func savedFoodRow(for food: FoodItem) -> some View {
@@ -1031,28 +1005,6 @@ struct FoodSearchView: View {
         }
     }
 
-    private func favoriteButton(for food: FoodItem) -> some View {
-        Button {
-            toggleFavorite(food)
-        } label: {
-            Image(systemName: food.isFavorite ? "star.fill" : "star")
-                .font(CalorynTheme.inlineIcon)
-                .foregroundStyle(food.isFavorite ? CalorynTheme.terracotta : CalorynTheme.textSecondary)
-                .frame(width: 44, height: 44)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(
-            food.isFavorite
-                ? "Remove \(food.name) from favorites"
-                : "Add \(food.name) to favorites"
-        )
-        .accessibilityHint(
-            food.isFavorite
-                ? "Removes this item from quick logging favorites"
-                : "Adds this item to quick logging favorites"
-        )
-    }
-
     private var recentSectionHeader: some View {
         Text("Recent")
             .font(CalorynTheme.caption)
@@ -1067,62 +1019,6 @@ struct FoodSearchView: View {
             .listRowSeparator(.hidden)
             .listRowBackground(Color.clear)
             .padding(.top, 8)
-    }
-
-    private var destinationDescription: String {
-        let normalizedSnackIndex = DailyFoodLogCommands.normalizedSnackIndex(
-            for: mealType,
-            requestedSnackIndex: snackIndex
-        )
-        return "\(logDate.shortFormatted) · \(mealType.displayName(snackIndex: normalizedSnackIndex))"
-    }
-
-    private func favoritePlan(for food: FoodItem) -> FavoriteFoodLogPlan {
-        FavoriteFoodLogging.plan(
-            for: food,
-            destinationMeal: mealType,
-            destinationDate: logDate,
-            destinationSnackIndex: snackIndex
-        )
-    }
-
-    private func handleFavoriteFoodAction(_ food: FoodItem) {
-        let plan = favoritePlan(for: food)
-        switch plan.action {
-        case .log:
-            do {
-                try FavoriteFoodLogging.log(
-                    plan: plan,
-                    food: food,
-                    modelContext: modelContext
-                )
-                dismiss()
-            } catch {
-                favoriteErrorMessage = error.localizedDescription
-            }
-        case .confirmQuantity:
-            selectedFoodItem = food
-        case .unavailable:
-            favoriteErrorMessage = FavoriteFoodLogging.LoggingError.unavailable.localizedDescription
-        }
-    }
-
-    private func toggleFavorite(_ food: FoodItem) {
-        do {
-            try FavoriteFoodLogging.setFavorite(
-                !food.isFavorite,
-                for: food,
-                modelContext: modelContext
-            )
-        } catch {
-            favoriteErrorMessage = error.localizedDescription
-        }
-    }
-
-    private func toggleFavoritesDisclosure() {
-        withAnimation {
-            showsAllFavorites.toggle()
-        }
     }
 
     private func addMeal(_ meal: MealTemplate) {
@@ -1143,17 +1039,6 @@ struct FoodSearchView: View {
         } catch {
             mealErrorMessage = error.localizedDescription
         }
-    }
-
-    private var favoriteErrorIsPresented: Binding<Bool> {
-        Binding(
-            get: { favoriteErrorMessage != nil },
-            set: { isPresented in
-                if !isPresented {
-                    favoriteErrorMessage = nil
-                }
-            }
-        )
     }
 
     private var mealErrorIsPresented: Binding<Bool> {

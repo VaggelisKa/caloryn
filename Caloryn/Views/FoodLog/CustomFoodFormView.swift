@@ -5,6 +5,7 @@ struct CustomFoodFormView: View {
     var existingFood: FoodItem?
     var onSaved: ((FoodItem) -> Void)?
     var allowsDeletion: Bool
+    var showsFavoriteControl: Bool
     let prefilledBarcode: String?
 
     @Environment(\.modelContext) private var modelContext
@@ -100,12 +101,14 @@ struct CustomFoodFormView: View {
         existingFood: FoodItem? = nil,
         prefilledBarcode: String? = nil,
         onSaved: ((FoodItem) -> Void)? = nil,
-        allowsDeletion: Bool = true
+        allowsDeletion: Bool = true,
+        showsFavoriteControl: Bool = true
     ) {
         self.existingFood = existingFood
         self.prefilledBarcode = BarcodeIdentity.normalized(prefilledBarcode)
         self.onSaved = onSaved
         self.allowsDeletion = allowsDeletion
+        self.showsFavoriteControl = showsFavoriteControl
     }
 
     var body: some View {
@@ -143,7 +146,9 @@ struct CustomFoodFormView: View {
                     }
                     .accessibilityLabel("Close")
                 }
-                if let existingFood, existingFood.isManualEntryOrRecipe {
+                if showsFavoriteControl,
+                   let existingFood,
+                   existingFood.isManualEntryOrRecipe {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button {
                             toggleFavorite(existingFood)
