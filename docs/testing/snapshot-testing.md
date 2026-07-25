@@ -67,9 +67,18 @@ shows up as an unexplained image diff. Three things are pinned:
   re-included by name; without it CI could resolve a different version of the
   rendering library than you did.
 
-Interface style is passed as a `UITraitCollection`, not through SwiftUI's
-`colorScheme`. The theme's colours are dynamic `UIColor`s and resolve from the
-trait collection, so that is the only place pinning it has any effect.
+Two traits are passed as a `UITraitCollection` rather than through the SwiftUI
+environment:
+
+- **Interface style**, because the theme's colours are dynamic `UIColor`s and
+  resolve from the trait collection — SwiftUI's `colorScheme` would not pin
+  them.
+- **Content size category**, because text metrics change with Dynamic Type. A
+  simulator left on a non-default setting would re-flow every label and fail
+  images whose components had not changed at all.
+
+Both were implicitly the default when the references were recorded. Naming them
+is the difference between that being true and it being guaranteed.
 
 ## Working with them
 

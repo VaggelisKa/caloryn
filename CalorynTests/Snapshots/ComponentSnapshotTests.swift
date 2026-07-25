@@ -48,14 +48,14 @@ final class ComponentSnapshotTests: XCTestCase {
                     servingDescription: "40 g"
                 )
             ),
-            as: .image(precision: precision, perceptualPrecision: perceptualPrecision, layout: rowLayout, traits: .lightMode)
+            as: .image(precision: precision, perceptualPrecision: perceptualPrecision, layout: rowLayout, traits: .reference)
         )
     }
 
     func testFoodRowWithoutABrand() {
         assertSnapshot(
             of: row(FoodRowView(name: "Olive Oil", brand: nil, caloriesPer100g: 884)),
-            as: .image(precision: precision, perceptualPrecision: perceptualPrecision, layout: rowLayout, traits: .lightMode)
+            as: .image(precision: precision, perceptualPrecision: perceptualPrecision, layout: rowLayout, traits: .reference)
         )
     }
 
@@ -69,7 +69,7 @@ final class ComponentSnapshotTests: XCTestCase {
                     isCustom: true
                 )
             ),
-            as: .image(precision: precision, perceptualPrecision: perceptualPrecision, layout: rowLayout, traits: .lightMode)
+            as: .image(precision: precision, perceptualPrecision: perceptualPrecision, layout: rowLayout, traits: .reference)
         )
     }
 
@@ -83,7 +83,7 @@ final class ComponentSnapshotTests: XCTestCase {
                     isRecipe: true
                 )
             ),
-            as: .image(precision: precision, perceptualPrecision: perceptualPrecision, layout: rowLayout, traits: .lightMode)
+            as: .image(precision: precision, perceptualPrecision: perceptualPrecision, layout: rowLayout, traits: .reference)
         )
     }
 
@@ -97,7 +97,7 @@ final class ComponentSnapshotTests: XCTestCase {
                     nutriscoreGrade: "b"
                 )
             ),
-            as: .image(precision: precision, perceptualPrecision: perceptualPrecision, layout: rowLayout, traits: .lightMode)
+            as: .image(precision: precision, perceptualPrecision: perceptualPrecision, layout: rowLayout, traits: .reference)
         )
     }
 
@@ -111,7 +111,7 @@ final class ComponentSnapshotTests: XCTestCase {
                     servingDescription: "1 slice (45 g)"
                 )
             ),
-            as: .image(precision: precision, perceptualPrecision: perceptualPrecision, layout: rowLayout, traits: .lightMode)
+            as: .image(precision: precision, perceptualPrecision: perceptualPrecision, layout: rowLayout, traits: .reference)
         )
     }
 
@@ -126,7 +126,7 @@ final class ComponentSnapshotTests: XCTestCase {
                 precision: precision,
                 perceptualPrecision: perceptualPrecision,
                 layout: .fixed(width: 390, height: 140),
-                traits: .lightMode
+                traits: .reference
             )
         )
     }
@@ -138,7 +138,7 @@ final class ComponentSnapshotTests: XCTestCase {
                 precision: precision,
                 perceptualPrecision: perceptualPrecision,
                 layout: .fixed(width: 390, height: 140),
-                traits: .lightMode
+                traits: .reference
             )
         )
     }
@@ -150,7 +150,7 @@ final class ComponentSnapshotTests: XCTestCase {
                 precision: precision,
                 perceptualPrecision: perceptualPrecision,
                 layout: .fixed(width: 390, height: 140),
-                traits: .lightMode
+                traits: .reference
             )
         )
     }
@@ -188,9 +188,20 @@ final class ComponentSnapshotTests: XCTestCase {
 }
 
 private extension UITraitCollection {
-    /// Snapshots are recorded in light mode. The theme's colours are dynamic
-    /// `UIColor`s, which resolve from the trait collection rather than from
-    /// SwiftUI's `colorScheme`, so pinning the style here is what actually
-    /// pins it.
-    static let lightMode = UITraitCollection(userInterfaceStyle: .light)
+    /// The environment every reference image is recorded in.
+    ///
+    /// Both traits have to be named explicitly:
+    ///
+    /// - **Interface style**, because the theme's colours are dynamic
+    ///   `UIColor`s and resolve from the trait collection rather than from
+    ///   SwiftUI's `colorScheme` — so this is the only place setting it has
+    ///   any effect.
+    /// - **Content size category**, because text metrics change with Dynamic
+    ///   Type. A simulator left on a non-default setting would otherwise
+    ///   re-flow every label and fail images whose components had not changed
+    ///   at all.
+    static let reference = UITraitCollection { traits in
+        traits.userInterfaceStyle = .light
+        traits.preferredContentSizeCategory = .large
+    }
 }
