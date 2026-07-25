@@ -76,17 +76,6 @@ enum MealTemplateCommands {
         return entries.first?.mealType ?? .breakfast
     }
 
-    static func suggestedSnackIndex(
-        for entries: [FoodLogEntry],
-        meal: MealType
-    ) -> Int {
-        let requestedIndex = entries.first { $0.mealType == meal }?.snackIndex
-        return DailyFoodLogCommands.normalizedSnackIndex(
-            for: meal,
-            requestedSnackIndex: requestedIndex
-        )
-    }
-
     @discardableResult
     static func saveMeal(
         name: String,
