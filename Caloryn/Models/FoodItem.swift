@@ -189,6 +189,12 @@ final class FoodItem {
     var nutritionCompletenessRaw: String?
     var recoveredByFallbackRaw: Bool?
 
+    // Optional scalar metadata keeps barcode overlays compatible with
+    // SwiftData lightweight migration and CloudKit. Legacy rows leave both
+    // values nil and are interpreted conservatively by computed accessors.
+    var providerProductIdentityRaw: String?
+    var fieldOriginsRaw: String?
+
     var lastUsed: Date = Date()
 
     // These storage names predate the user-facing "Favorites" terminology.

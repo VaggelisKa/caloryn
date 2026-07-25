@@ -22,6 +22,9 @@ struct PortionPickerView: View {
     @State private var selectedRecipeServingID = RecipeServingOption.one.id
     @State private var showingDeleteConfirmation = false
     @State private var favoriteErrorMessage: String?
+    @State private var showingFoodEditor = false
+    @State private var hasPersistedPersonalFood = false
+    @State private var replacementFoodItem: FoodItem?
 
     private enum PortionMode: Hashable {
         case grams
@@ -117,7 +120,7 @@ struct PortionPickerView: View {
     }
 
     private var previewNutrition: NutritionValues {
-        foodItem.nutrition(forGrams: portionGrams)
+        activeFoodItem.nutrition(forGrams: portionGrams)
     }
 
     private var previewCalories: Double { previewNutrition.calories }
@@ -128,7 +131,11 @@ struct PortionPickerView: View {
     private var isEditing: Bool { existingEntry != nil }
     private var saveButtonTitle: String {
         if isEditing { return "Save Changes" }
-        return foodItem.isRecipe ? "Log Recipe" : "Log Food"
+        return activeFoodItem.isRecipe ? "Log Recipe" : "Log Food"
+    }
+
+    private var activeFoodItem: FoodItem {
+        replacementFoodItem ?? foodItem
     }
 
     private var nutritionDetails: [PortionNutrient] {
@@ -171,11 +178,11 @@ struct PortionPickerView: View {
     }
 
     private var recipeTotalGrams: Double {
-        foodItem.defaultServingG ?? 100
+        activeFoodItem.defaultServingG ?? 100
     }
 
     private var gramOptions: [Int] {
-        Array(stride(from: 5, through: Self.gramOptionLimit(for: foodItem), by: 5))
+        Array(stride(from: 5, through: Self.gramOptionLimit(for: activeFoodItem), by: 5))
     }
 
     var body: some View {
@@ -183,7 +190,8 @@ struct PortionPickerView: View {
             VStack(spacing: 24) {
                 foodHeader
 
-                if foodItem.provenance.source != .userEntered || foodItem.provenance.completeness != .complete {
+                if activeFoodItem.provenance.source != .userEntered
+                    || activeFoodItem.provenance.completeness != .complete {
                     provenanceCard
                 }
 
@@ -225,23 +233,41 @@ struct PortionPickerView: View {
                 }
             }
 
-            if !isEditing && !isNewFood && foodItem.isUserCreatedFood {
+            if !isEditing,
+               (!isNewFood || hasPersistedPersonalFood),
+               activeFoodItem.isUserCreatedFood {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(action: toggleFavorite) {
-                        Image(systemName: foodItem.isFavorite ? "star.fill" : "star")
+                        Image(systemName: activeFoodItem.isFavorite ? "star.fill" : "star")
                             .font(CalorynTheme.toolbarIcon)
-                            .foregroundStyle(foodItem.isFavorite ? CalorynTheme.terracotta : CalorynTheme.sage)
+                            .foregroundStyle(activeFoodItem.isFavorite ? CalorynTheme.terracotta : CalorynTheme.sage)
                     }
                     .accessibilityLabel(
-                        foodItem.isFavorite
-                            ? "Remove \(foodItem.name) from favorites"
-                            : "Add \(foodItem.name) to favorites"
+                        activeFoodItem.isFavorite
+                            ? "Remove \(activeFoodItem.name) from favorites"
+                            : "Add \(activeFoodItem.name) to favorites"
                     )
                     .accessibilityHint(
-                        foodItem.isFavorite
+                        activeFoodItem.isFavorite
                             ? "Removes this item from quick logging favorites"
                             : "Adds this item to quick logging favorites"
                     )
+                }
+            }
+
+            if !isEditing,
+               !activeFoodItem.isRecipe,
+               activeFoodItem.normalizedBarcode != nil {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        BarcodeRecoveryAnalytics.record(path: .personalEdit, result: .started)
+                        showingFoodEditor = true
+                    } label: {
+                        Image(systemName: "pencil")
+                            .font(CalorynTheme.toolbarIcon)
+                    }
+                    .accessibilityLabel("Edit Food Details")
+                    .accessibilityHint("Creates or updates your private version of this barcode")
                 }
             }
         }
@@ -264,7 +290,7 @@ struct PortionPickerView: View {
         .confirmationDialog("Delete Log Entry", isPresented: $showingDeleteConfirmation) {
             Button("Delete", role: .destructive, action: deleteEntry)
         } message: {
-            Text("Remove \(foodItem.name) from your log?")
+            Text("Remove \(activeFoodItem.name) from your log?")
         }
         .alert("Couldn’t Update Favorite", isPresented: favoriteErrorIsPresented) {
             Button("OK", role: .cancel) {
@@ -273,6 +299,17 @@ struct PortionPickerView: View {
         } message: {
             Text(favoriteErrorMessage ?? "Please try again.")
         }
+        .sheet(isPresented: $showingFoodEditor) {
+            CustomFoodFormView(
+                existingFood: activeFoodItem,
+                onSaved: { savedFood in
+                    replacementFoodItem = savedFood
+                    hasPersistedPersonalFood = true
+                    showingFoodEditor = false
+                },
+                allowsDeletion: false
+            )
+        }
     }
 
     @AppStorage("showNutriscore") private var showNutriscore = true
@@ -280,23 +317,25 @@ struct PortionPickerView: View {
     private var foodHeader: some View {
         VStack(spacing: 4) {
             HStack(spacing: 8) {
-                Text(foodItem.name)
+                Text(activeFoodItem.name)
                     .font(CalorynTheme.sectionTitle)
                     .foregroundStyle(CalorynTheme.textPrimary)
                     .multilineTextAlignment(.center)
 
-                if showNutriscore, let grade = foodItem.nutriscoreGrade {
+                if showNutriscore, let grade = activeFoodItem.nutriscoreGrade {
                     NutriscoreBadge(grade: grade)
                 }
             }
 
-            if let brand = foodItem.brand, !brand.isEmpty {
+            if let brand = activeFoodItem.brand, !brand.isEmpty {
                 Text(brand)
                     .font(CalorynTheme.caption)
                     .foregroundStyle(CalorynTheme.textSecondary)
             }
 
-            if !foodItem.isRecipe, let serving = foodItem.servingDescription, !serving.isEmpty {
+            if !activeFoodItem.isRecipe,
+               let serving = activeFoodItem.servingDescription,
+               !serving.isEmpty {
                 Text("Serving: \(serving)")
                     .font(CalorynTheme.caption)
                     .foregroundStyle(CalorynTheme.textSecondary)
@@ -323,7 +362,7 @@ struct PortionPickerView: View {
     }
 
     private var provenanceCard: some View {
-        let provenance = foodItem.provenance
+        let provenance = activeFoodItem.provenance
 
         return VStack(alignment: .leading, spacing: 8) {
             Label(provenance.source.detailLabel, systemImage: "checkmark.seal")
@@ -338,7 +377,7 @@ struct PortionPickerView: View {
 
             if provenance.completeness == .partial {
                 Label(
-                    "Some nutrition values were not provided and appear as zero. Compare with the package label before logging.",
+                    "Some nutrition values were not provided. Check the package and edit your private food if needed.",
                     systemImage: "exclamationmark.triangle.fill"
                 )
                 .font(CalorynTheme.caption)
@@ -351,6 +390,15 @@ struct PortionPickerView: View {
                 .font(CalorynTheme.caption)
                 .foregroundStyle(CalorynTheme.textSecondary)
             }
+
+            if activeFoodItem.normalizedBarcode != nil {
+                Button("Edit Food Details") {
+                    BarcodeRecoveryAnalytics.record(path: .personalEdit, result: .started)
+                    showingFoodEditor = true
+                }
+                .font(CalorynTheme.bodyText)
+                .accessibilityHint("Creates or updates your private version without changing the provider record")
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
@@ -358,7 +406,7 @@ struct PortionPickerView: View {
     }
 
     private var maxServingCount: Int {
-        Self.maxServingCount(for: foodItem)
+        Self.maxServingCount(for: activeFoodItem)
     }
 
     private var portionPicker: some View {
@@ -393,14 +441,14 @@ struct PortionPickerView: View {
                 .pickerStyle(.wheel)
                 .frame(maxWidth: .infinity)
 
-                if foodItem.isRecipe {
+                if activeFoodItem.isRecipe {
                     Picker("Unit", selection: $portionMode) {
                         Text("grams").tag(PortionMode.grams)
                         Text("serving").tag(PortionMode.recipeServing)
                     }
                     .pickerStyle(.wheel)
                     .frame(width: 120)
-                } else if let info = foodItem.servingInfo {
+                } else if let info = activeFoodItem.servingInfo {
                     Picker("Unit", selection: $portionMode) {
                         Text("grams").tag(PortionMode.grams)
                         Text(info.unitName).tag(PortionMode.serving)
@@ -419,28 +467,34 @@ struct PortionPickerView: View {
             .onChange(of: selectedGramStep) {
                 guard portionMode == .grams else { return }
                 portionGrams = Double(selectedGramStep)
-                if foodItem.isRecipe {
+                if activeFoodItem.isRecipe {
                     selectedRecipeServingID = nearestRecipeServingOptionID(for: portionGrams)
                 }
             }
             .onChange(of: selectedServingCount) {
-                guard portionMode == .serving, let info = foodItem.servingInfo else { return }
+                guard portionMode == .serving, let info = activeFoodItem.servingInfo else { return }
                 let grams = Double(selectedServingCount) * info.gramsPerUnit
                 portionGrams = grams
             }
             .onChange(of: selectedRecipeServingID) {
                 guard portionMode == .recipeServing, let option = selectedRecipeServingOption else { return }
                 portionGrams = recipeTotalGrams * option.multiplier
-                selectedGramStep = Self.normalizedGramStep(portionGrams, limit: Self.gramOptionLimit(for: foodItem))
+                selectedGramStep = Self.normalizedGramStep(
+                    portionGrams,
+                    limit: Self.gramOptionLimit(for: activeFoodItem)
+                )
             }
             .onChange(of: portionMode) {
                 switch portionMode {
                 case .grams:
-                    let nearest = Self.normalizedGramStep(portionGrams, limit: Self.gramOptionLimit(for: foodItem))
+                    let nearest = Self.normalizedGramStep(
+                        portionGrams,
+                        limit: Self.gramOptionLimit(for: activeFoodItem)
+                    )
                     selectedGramStep = nearest
                     portionGrams = Double(nearest)
                 case .serving:
-                    guard let info = foodItem.servingInfo else { return }
+                    guard let info = activeFoodItem.servingInfo else { return }
                     let count = max(1, min(maxServingCount, Int(round(portionGrams / info.gramsPerUnit))))
                     selectedServingCount = count
                     let grams = Double(count) * info.gramsPerUnit
@@ -539,18 +593,18 @@ struct PortionPickerView: View {
                 existingEntry,
                 date: logDate,
                 mealType: selectedMeal,
-                foodItem: foodItem,
+                foodItem: activeFoodItem,
                 portionGrams: portionGrams,
                 snackIndex: snackIndex
             )
             try? modelContext.save()
         } else {
             DailyFoodLogCommands.logFood(
-                foodItem: foodItem,
+                foodItem: activeFoodItem,
                 portionGrams: portionGrams,
                 mealType: selectedMeal,
                 logDate: logDate,
-                isNewFood: isNewFood,
+                isNewFood: isNewFood && !hasPersistedPersonalFood,
                 modelContext: modelContext,
                 snackIndex: snackIndex
             )
@@ -580,8 +634,8 @@ struct PortionPickerView: View {
     private func toggleFavorite() {
         do {
             try FavoriteFoodLogging.setFavorite(
-                !foodItem.isFavorite,
-                for: foodItem,
+                !activeFoodItem.isFavorite,
+                for: activeFoodItem,
                 modelContext: modelContext
             )
         } catch {

@@ -164,6 +164,37 @@ final class ScannerViewController: UIViewController, AVCaptureMetadataOutputObje
         let overlay = ScannerOverlayView(frame: view.bounds)
         overlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         view.addSubview(overlay)
+
+        let title = UILabel()
+        title.text = "Center the barcode in the frame"
+        title.font = .preferredFont(forTextStyle: .headline)
+        title.textColor = .white
+        title.textAlignment = .center
+        title.numberOfLines = 0
+        title.adjustsFontForContentSizeCategory = true
+
+        let guidance = UILabel()
+        guidance.text = "Hold steady. If it doesn’t scan, adjust the distance or lighting."
+        guidance.font = .preferredFont(forTextStyle: .subheadline)
+        guidance.textColor = UIColor.white.withAlphaComponent(0.86)
+        guidance.textAlignment = .center
+        guidance.numberOfLines = 0
+        guidance.adjustsFontForContentSizeCategory = true
+
+        let instructions = UIStackView(arrangedSubviews: [title, guidance])
+        instructions.axis = .vertical
+        instructions.spacing = 6
+        instructions.alignment = .fill
+        instructions.translatesAutoresizingMaskIntoConstraints = false
+        instructions.isAccessibilityElement = true
+        instructions.accessibilityLabel = "\(title.text ?? ""). \(guidance.text ?? "")"
+        view.addSubview(instructions)
+
+        NSLayoutConstraint.activate([
+            instructions.topAnchor.constraint(equalTo: view.centerYAnchor, constant: 70),
+            instructions.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 28),
+            instructions.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -28),
+        ])
     }
 
     private func showPermissionDeniedOverlay() {
@@ -218,12 +249,18 @@ final class ScannerViewController: UIViewController, AVCaptureMetadataOutputObje
     ) {
         guard !hasScanned,
               let object = metadataObjects.first as? AVMetadataMachineReadableCodeObject,
-              let code = object.stringValue else { return }
+              let code = object.stringValue,
+              let normalizedBarcode = BarcodeIdentity.normalized(code) else {
+            // Metadata that cannot form a supported product identity is not a
+            // completed scan. Keep the live camera running so the persistent
+            // guidance remains immediately actionable.
+            return
+        }
 
         hasScanned = true
         AudioServicesPlaySystemSound(SystemSoundID(kSystemSoundID_Vibrate))
         captureSession.stopRunning()
-        delegate?.didScanBarcode(code)
+        delegate?.didScanBarcode(normalizedBarcode)
     }
 }
 

@@ -5,9 +5,12 @@ struct CustomFoodFormView: View {
     var existingFood: FoodItem?
     var onSaved: ((FoodItem) -> Void)?
     var allowsDeletion: Bool
+    let prefilledBarcode: String?
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Query(sort: \FoodItem.lastUsed, order: .reverse) private var savedFoods: [FoodItem]
 
     @State private var name = ""
     @State private var brand = ""
@@ -26,16 +29,21 @@ struct CustomFoodFormView: View {
     @State private var produceKind: ProduceKind = .unclassified
     @State private var showingDeleteConfirmation = false
     @State private var favoriteErrorMessage: String?
+    @State private var initialTextByField: [Field: String] = [:]
+    @State private var initialProduceKind: ProduceKind?
 
     @FocusState private var focusedField: Field?
 
-    private enum Field: Hashable {
+    private enum Field: Hashable, CaseIterable {
         case name, brand, calories, protein, carbs, fat, fiber
         case sugars, addedSugars, saturatedFat, sodium, cholesterol, alcohol
         case servingSize
     }
 
     private var isEditing: Bool { existingFood != nil }
+    private var recoveryBarcode: String? {
+        existingFood?.normalizedBarcode ?? BarcodeIdentity.normalized(prefilledBarcode)
+    }
 
     private var canSave: Bool {
         !name.trimmingCharacters(in: .whitespaces).isEmpty
@@ -88,8 +96,14 @@ struct CustomFoodFormView: View {
         return (parseDecimal(trimmed) ?? -1) >= 0
     }
 
-    init(existingFood: FoodItem? = nil, onSaved: ((FoodItem) -> Void)? = nil, allowsDeletion: Bool = true) {
+    init(
+        existingFood: FoodItem? = nil,
+        prefilledBarcode: String? = nil,
+        onSaved: ((FoodItem) -> Void)? = nil,
+        allowsDeletion: Bool = true
+    ) {
         self.existingFood = existingFood
+        self.prefilledBarcode = BarcodeIdentity.normalized(prefilledBarcode)
         self.onSaved = onSaved
         self.allowsDeletion = allowsDeletion
     }
@@ -117,7 +131,7 @@ struct CustomFoodFormView: View {
                 .padding(.horizontal, CalorynTheme.pagePadding)
                 .padding(.bottom, 24)
             }
-            .navigationTitle(isEditing ? "Edit Manual Entry" : "Create Manual Entry")
+            .navigationTitle(formTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -199,8 +213,35 @@ struct CustomFoodFormView: View {
                 .textInputAutocapitalization(.words)
                 .focused($focusedField, equals: .brand)
                 .calorynInputField(isFocused: focusedField == .brand)
+
+            if let recoveryBarcode {
+                if dynamicTypeSize.isAccessibilitySize {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Barcode")
+                            .font(CalorynTheme.bodyText)
+
+                        barcodeValue(recoveryBarcode)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                } else {
+                    LabeledContent("Barcode") {
+                        barcodeValue(recoveryBarcode)
+                    }
+                }
+            }
         }
         .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
+    }
+
+    private func barcodeValue(_ barcode: String) -> some View {
+        Text(barcode)
+            .font(CalorynTheme.numericBody)
+            .foregroundStyle(CalorynTheme.textSecondary)
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+            .textSelection(.enabled)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Barcode \(barcode)")
     }
 
     private var produceTrackingSection: some View {
@@ -432,12 +473,24 @@ struct CustomFoodFormView: View {
         name = food.name
         brand = food.brand ?? ""
         let serving = food.defaultServingG ?? 100
-        servingSizeGrams = "\(Int(serving))"
+        servingSizeGrams = food.defaultServingG.map(\.manualInputFormatted) ?? ""
         caloriesPerServing = "\(Int(food.calories(forGrams: serving)))"
-        proteinPerServing = String(format: "%.1f", food.protein(forGrams: serving))
-        carbsPerServing = String(format: "%.1f", food.carbs(forGrams: serving))
-        fatPerServing = String(format: "%.1f", food.fat(forGrams: serving))
-        fiberPerServing = food.fiber(forGrams: serving).manualInputFormatted
+        proteinPerServing = editableCoreText(
+            food.protein(forGrams: serving),
+            origin: food.fieldOrigin(for: .protein)
+        )
+        carbsPerServing = editableCoreText(
+            food.carbs(forGrams: serving),
+            origin: food.fieldOrigin(for: .carbohydrates)
+        )
+        fatPerServing = editableCoreText(
+            food.fat(forGrams: serving),
+            origin: food.fieldOrigin(for: .fat)
+        )
+        fiberPerServing = editableCoreText(
+            food.fiber(forGrams: serving),
+            origin: food.fieldOrigin(for: .fiber)
+        )
         sugarsPerServing = optionalPerServingText(food.sugarsPer100g, serving: serving)
         addedSugarsPerServing = optionalPerServingText(food.addedSugarsPer100g, serving: serving)
         saturatedFatPerServing = optionalPerServingText(food.saturatedFatPer100g, serving: serving)
@@ -445,6 +498,10 @@ struct CustomFoodFormView: View {
         cholesterolPerServing = optionalPerServingText(food.cholesterolPer100g, serving: serving, unit: .milligramsFromGrams)
         alcoholPerServing = optionalPerServingText(food.alcoholPer100g, serving: serving)
         produceKind = food.produceKind
+        initialTextByField = Dictionary(
+            uniqueKeysWithValues: Field.allCases.map { ($0, text(for: $0)) }
+        )
+        initialProduceKind = produceKind
     }
 
     private func saveFood() {
@@ -474,6 +531,50 @@ struct CustomFoodFormView: View {
             fromServing: nutritionPerServing,
             servingGrams: serving
         )
+
+        if let recoveryBarcode {
+            let personalEdit = FoodPersonalEdit(
+                name: name.trimmingCharacters(in: .whitespaces),
+                brand: brand.isEmpty ? nil : brand.trimmingCharacters(in: .whitespaces),
+                caloriesPer100g: nutritionPer100g.calories,
+                proteinPer100g: suppliedProtein.map { $0 * 100 / serving },
+                carbohydratesPer100g: suppliedCarbohydrates.map { $0 * 100 / serving },
+                fatPer100g: suppliedFat.map { $0 * 100 / serving },
+                fiberPer100g: parseDecimal(fiberPerServing).map { $0 * 100 / serving },
+                sugarsPer100g: nutritionPer100g.sugarsG,
+                addedSugarsPer100g: nutritionPer100g.addedSugarsG,
+                saturatedFatPer100g: nutritionPer100g.saturatedFatG,
+                sodiumPer100g: nutritionPer100g.sodiumG,
+                cholesterolPer100g: nutritionPer100g.cholesterolG,
+                alcoholPer100g: nutritionPer100g.alcoholG,
+                defaultServingG: parseDecimal(servingSizeGrams).flatMap { $0 > 0 ? $0 : nil },
+                produceKind: produceKind,
+                userEditedFields: userEditedRecoveryFields
+            )
+            var candidates = savedFoods
+            if let existingFood,
+               !candidates.contains(where: { $0 === existingFood }) {
+                candidates.append(existingFood)
+            }
+            let materialization = BarcodeRecoveryService.materializePersonalFood(
+                barcode: recoveryBarcode,
+                edit: personalEdit,
+                localFoods: candidates
+            )
+            if !savedFoods.contains(where: { $0 === materialization.food }) {
+                modelContext.insert(materialization.food)
+            }
+            try? modelContext.save()
+            BarcodeRecoveryAnalytics.record(
+                path: existingFood == nil ? .manualCreation : .personalEdit,
+                result: existingFood != nil
+                    ? .completed
+                    : (materialization.isNew ? .completed : .reused)
+            )
+            onSaved?(materialization.food)
+            dismiss()
+            return
+        }
 
         if let food = existingFood {
             food.name = name.trimmingCharacters(in: .whitespaces)
@@ -520,6 +621,85 @@ struct CustomFoodFormView: View {
             onSaved?(food)
         }
         dismiss()
+    }
+
+    private var formTitle: String {
+        if recoveryBarcode != nil {
+            return isEditing ? "Edit Personal Food" : "Create Manual Food"
+        }
+        return isEditing ? "Edit Manual Entry" : "Create Manual Entry"
+    }
+
+    private func editableCoreText(
+        _ value: Double,
+        origin: FoodFieldOrigin
+    ) -> String {
+        origin == .missing ? "" : value.manualInputFormatted
+    }
+
+    private var userEditedRecoveryFields: Set<FoodField>? {
+        if existingFood == nil {
+            var suppliedFields = Set(
+                Field.allCases.compactMap { field -> FoodField? in
+                    let value = text(for: field)
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
+                    return value.isEmpty ? nil : recoveryField(for: field)
+                }
+            )
+            if produceKind != .unclassified {
+                suppliedFields.insert(.produceKind)
+            }
+            return suppliedFields
+        }
+
+        var editedFields = Set(
+            Field.allCases.compactMap { field -> FoodField? in
+                guard initialTextByField[field] != text(for: field) else { return nil }
+                return recoveryField(for: field)
+            }
+        )
+        if initialProduceKind != produceKind {
+            editedFields.insert(.produceKind)
+        }
+        return editedFields
+    }
+
+    private func text(for field: Field) -> String {
+        switch field {
+        case .name: name
+        case .brand: brand
+        case .calories: caloriesPerServing
+        case .protein: proteinPerServing
+        case .carbs: carbsPerServing
+        case .fat: fatPerServing
+        case .fiber: fiberPerServing
+        case .sugars: sugarsPerServing
+        case .addedSugars: addedSugarsPerServing
+        case .saturatedFat: saturatedFatPerServing
+        case .sodium: sodiumPerServing
+        case .cholesterol: cholesterolPerServing
+        case .alcohol: alcoholPerServing
+        case .servingSize: servingSizeGrams
+        }
+    }
+
+    private func recoveryField(for field: Field) -> FoodField {
+        switch field {
+        case .name: .name
+        case .brand: .brand
+        case .calories: .calories
+        case .protein: .protein
+        case .carbs: .carbohydrates
+        case .fat: .fat
+        case .fiber: .fiber
+        case .sugars: .sugars
+        case .addedSugars: .addedSugars
+        case .saturatedFat: .saturatedFat
+        case .sodium: .sodium
+        case .cholesterol: .cholesterol
+        case .alcohol: .alcohol
+        case .servingSize: .defaultServing
+        }
     }
 
     private func optionalServingValue(

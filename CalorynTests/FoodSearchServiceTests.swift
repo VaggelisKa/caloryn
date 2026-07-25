@@ -32,7 +32,9 @@ final class FoodSearchServiceTests: XCTestCase {
         XCTAssertNil(invalidBarcodePresentation.retryTitle)
         XCTAssertTrue(FoodLookupError.notFound.dismissesWhenNameSearchBegins)
         XCTAssertTrue(FoodLookupError.invalidRequest.dismissesWhenNameSearchBegins)
-        XCTAssertFalse(FoodLookupError.unavailable.dismissesWhenNameSearchBegins)
+        XCTAssertTrue(FoodLookupError.offline.dismissesWhenNameSearchBegins)
+        XCTAssertTrue(FoodLookupError.unavailable.dismissesWhenNameSearchBegins)
+        XCTAssertTrue(FoodLookupError.invalidData.dismissesWhenNameSearchBegins)
     }
 
     func testContextualSuggestionRankingDoesNotInvokeFoodProviders() {

@@ -212,7 +212,7 @@ enum FoodLookupError: LocalizedError, Equatable, Sendable {
     }
 
     var dismissesWhenNameSearchBegins: Bool {
-        self == .notFound || self == .invalidRequest
+        self != .cancelled
     }
 
     var errorDescription: String? {
@@ -364,7 +364,7 @@ final class FoodSearchService {
         let product = result.product
         let nutriments = product.nutriments
         let (defaultServingG, servingDescription) = product.effectiveServingInfo
-        return FoodItem(
+        let food = FoodItem(
             name: product.productName ?? "Unknown",
             brand: product.brands,
             barcode: product.code,
@@ -404,6 +404,8 @@ final class FoodSearchService {
             categoryTags: product.categoryTags ?? [],
             provenance: result.provenance
         )
+        food.configureProviderMaterialization(from: result)
+        return food
     }
 
     private func performSearch(query: String) async {
@@ -674,8 +676,7 @@ final class FoodSearchService {
     }
 
     private static func isValidBarcode(_ value: String) -> Bool {
-        (4...32).contains(value.utf8.count)
-            && value.utf8.allSatisfy { (48...57).contains($0) }
+        BarcodeIdentity.normalized(value) != nil
     }
 
     private static func validNutriscoreGrade(_ raw: String?) -> String? {
@@ -740,6 +741,11 @@ final class FoodSearchService {
         }
     }
 
+    static var debugInitialBarcode: String? {
+        ProcessInfo.processInfo.environment["CALORYN_LOOKUP_FIXTURE"]?
+            .hasPrefix("barcode-") == true ? "5711953150388" : nil
+    }
+
     private func applyDebugFixtureIfRequested() {
         switch ProcessInfo.processInfo.environment["CALORYN_LOOKUP_FIXTURE"] {
         case "search-results":
@@ -796,6 +802,7 @@ final class FoodSearchService {
     #else
     static let debugInitialSearchText = ""
     static let debugInitialBarcodeFailure: FoodLookupError? = nil
+    static let debugInitialBarcode: String? = nil
     #endif
 }
 
