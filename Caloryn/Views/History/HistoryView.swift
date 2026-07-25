@@ -183,6 +183,7 @@ struct HistoryView: View {
         }
         .pickerStyle(.segmented)
         .padding(.top, 4)
+        .accessibilityIdentifier("history.rangePicker")
     }
 }
 

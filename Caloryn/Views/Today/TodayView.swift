@@ -240,6 +240,7 @@ struct TodayView: View {
                     .foregroundStyle(CalorynTheme.sage)
             }
             .accessibilityLabel("Previous day")
+            .accessibilityIdentifier("today.previousDay")
 
             Spacer()
 
@@ -262,6 +263,7 @@ struct TodayView: View {
             }
             .disabled(selectedDate.isAtFutureLogLimit)
             .accessibilityLabel("Next day")
+            .accessibilityIdentifier("today.nextDay")
         }
         .padding(.vertical, 8)
     }
@@ -277,6 +279,7 @@ struct TodayView: View {
                     showingNutritionDetails = true
                 }
             }
+            .accessibilityIdentifier("today.calorieRing")
             Spacer()
         }
     }
@@ -315,6 +318,7 @@ struct TodayView: View {
         }
         .buttonStyle(.plain)
         .padding(.vertical, 4)
+        .accessibilityIdentifier("today.copyYesterday")
     }
 
     private var actionsSection: some View {

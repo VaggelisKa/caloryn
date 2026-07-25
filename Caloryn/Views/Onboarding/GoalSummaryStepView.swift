@@ -74,6 +74,7 @@ struct GoalSummaryStepView: View {
             .tint(CalorynTheme.sage)
             .padding(.horizontal, CalorynTheme.pagePadding)
             .padding(.bottom, 16)
+            .accessibilityIdentifier("onboarding.goalSummary.continue")
         }
         .onChange(of: calculatedTarget) {
             if !useManualOverride {
@@ -90,6 +91,7 @@ struct GoalSummaryStepView: View {
             Text("\(displayTarget)")
                 .font(CalorynTheme.displayNumber)
                 .foregroundStyle(CalorynTheme.sage)
+                .accessibilityIdentifier("onboarding.goalSummary.target")
             Text("daily calories")
                 .font(CalorynTheme.bodyText)
                 .foregroundStyle(CalorynTheme.textSecondary)

@@ -181,6 +181,7 @@ struct CustomFoodFormView: View {
                             .font(CalorynTheme.toolbarIcon)
                     }
                     .accessibilityLabel("Save")
+                    .accessibilityIdentifier("customFood.save")
                     .disabled(!canSave)
                 }
             }
@@ -212,6 +213,7 @@ struct CustomFoodFormView: View {
                 .textInputAutocapitalization(.words)
                 .focused($focusedField, equals: .name)
                 .calorynInputField(isFocused: focusedField == .name)
+                .accessibilityIdentifier("customFood.name")
 
             TextField("Brand (optional)", text: $brand)
                 .font(CalorynTheme.bodyText)
@@ -304,6 +306,7 @@ struct CustomFoodFormView: View {
                 focus: .calories,
                 required: true
             )
+            .accessibilityIdentifier("customFood.calories")
 
             nutritionField(
                 label: "Protein",
@@ -451,6 +454,7 @@ struct CustomFoodFormView: View {
                     .focused($focusedField, equals: .servingSize)
                     .calorynInputField(isFocused: focusedField == .servingSize)
                     .frame(width: 80)
+                    .accessibilityIdentifier("customFood.servingSize")
 
                 Text("g")
                     .font(CalorynTheme.caption)

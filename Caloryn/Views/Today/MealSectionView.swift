@@ -73,6 +73,7 @@ struct MealSectionView: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Add food or meal to \(sectionTitle)")
             .accessibilityHint("Double tap to add food or a saved meal")
+            .accessibilityIdentifier("today.mealHeader.\(mealType.rawValue)")
         }
     }
 
@@ -243,6 +244,7 @@ private struct MealEntryButtonRow: View {
         }
         .buttonStyle(.plain)
         .accessibilityHint("Double tap to edit")
+        .accessibilityIdentifier("today.entry.\(entry.foodName)")
     }
 }
 

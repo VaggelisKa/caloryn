@@ -46,6 +46,7 @@ struct ActivityLevelStepView: View {
             .tint(CalorynTheme.sage)
             .padding(.horizontal, CalorynTheme.pagePadding)
             .padding(.bottom, 16)
+            .accessibilityIdentifier("onboarding.activityLevel.continue")
         }
     }
 }

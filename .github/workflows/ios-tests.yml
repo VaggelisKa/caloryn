@@ -14,8 +14,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
-    name: XCTest
+  unit-tests:
+    name: Unit tests
     runs-on: macos-26
     timeout-minutes: 30
 
@@ -28,41 +28,9 @@ jobs:
 
       - name: Select simulator
         id: simulator
-        run: |
-          set -euo pipefail
+        uses: ./.github/actions/select-simulator
 
-          xcrun simctl list devices available -j > "$RUNNER_TEMP/simulators.json"
-          simulator_id="$(
-            python3 - "$RUNNER_TEMP/simulators.json" <<'PY'
-          import json
-          import sys
-
-          with open(sys.argv[1], encoding="utf-8") as file:
-              payload = json.load(file)
-
-          devices = [
-              device
-              for runtime_devices in payload["devices"].values()
-              for device in runtime_devices
-              if device.get("isAvailable") and device.get("name", "").startswith("iPhone")
-          ]
-
-          preferred = [device for device in devices if device.get("name") == "iPhone 17"]
-          selected = (preferred or devices)[0] if devices else None
-          if selected:
-              print(selected["udid"])
-          PY
-          )"
-
-          if [ -z "$simulator_id" ]; then
-            echo "No available iPhone simulator found." >&2
-            exit 1
-          fi
-
-          echo "id=$simulator_id" >> "$GITHUB_OUTPUT"
-          xcrun simctl boot "$simulator_id" || true
-
-      - name: Run tests
+      - name: Run unit tests
         run: |
           set -euo pipefail
 
@@ -70,15 +38,114 @@ jobs:
           xcodebuild test \
             -project Caloryn.xcodeproj \
             -scheme Caloryn \
+            -testPlan Caloryn-Unit \
             -configuration Debug \
             -destination "platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}" \
-            -resultBundlePath TestResults/CalorynTests.xcresult \
+            -resultBundlePath TestResults/Unit.xcresult \
+            -enableCodeCoverage YES \
             CODE_SIGNING_ALLOWED=NO
 
-      - name: Upload test result bundle
-        if: failure()
+      - name: Summarize coverage
+        id: coverage
+        run: |
+          set -euo pipefail
+
+          xcrun xccov view --report --json TestResults/Unit.xcresult > TestResults/coverage.json
+          python3 .github/scripts/coverage_report.py TestResults/coverage.json \
+            --output TestResults/coverage-summary.md \
+            --percent-file TestResults/coverage-percent.txt
+
+          echo "percent=$(cat TestResults/coverage-percent.txt)" >> "$GITHUB_OUTPUT"
+          cat TestResults/coverage-summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      # The baseline is the coverage percentage last measured on main. Main
+      # builds write it and pull requests read it, so a PR fails only when it
+      # lowers coverage rather than for missing an arbitrary fixed target.
+      #
+      # The key includes the simulator model. Coverage of code that merely runs
+      # at start-up differs between models, so if a run falls back to a
+      # different device it simply finds no baseline and reports without
+      # gating, rather than comparing two unlike measurements.
+      - name: Restore coverage baseline
+        if: github.event_name == 'pull_request'
+        uses: actions/cache/restore@v4
+        with:
+          path: coverage-baseline.txt
+          key: coverage-baseline-main-${{ steps.simulator.outputs.device }}
+
+      - name: Check coverage ratchet
+        if: github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail
+
+          current="${{ steps.coverage.outputs.percent }}"
+
+          if [ ! -f coverage-baseline.txt ]; then
+            echo "No baseline recorded yet; reporting ${current}% without gating."
+            exit 0
+          fi
+
+          baseline="$(cat coverage-baseline.txt)"
+          echo "Baseline (main): ${baseline}%  Current: ${current}%"
+
+          # Small tolerance so trivial line-count churn does not fail a PR.
+          if awk "BEGIN { exit !(${current} < ${baseline} - 0.5) }"; then
+            echo "::error::Coverage dropped from ${baseline}% to ${current}%."
+            exit 1
+          fi
+
+          echo "Coverage did not regress."
+
+      - name: Save coverage baseline
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: echo "${{ steps.coverage.outputs.percent }}" > coverage-baseline.txt
+
+      - name: Store coverage baseline
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/cache/save@v4
+        with:
+          path: coverage-baseline.txt
+          key: coverage-baseline-main-${{ steps.simulator.outputs.device }}
+
+      - name: Upload results
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ios-test-results
+          name: unit-test-results
+          path: TestResults
+          if-no-files-found: ignore
+
+  ui-tests:
+    name: UI tests
+    runs-on: macos-26
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select simulator
+        id: simulator
+        uses: ./.github/actions/select-simulator
+
+      - name: Run UI tests
+        run: |
+          set -euo pipefail
+
+          mkdir -p TestResults
+          xcodebuild test \
+            -project Caloryn.xcodeproj \
+            -scheme Caloryn \
+            -testPlan Caloryn-UI \
+            -configuration Debug \
+            -destination "platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}" \
+            -resultBundlePath TestResults/UI.xcresult \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-test-results
           path: TestResults
           if-no-files-found: ignore

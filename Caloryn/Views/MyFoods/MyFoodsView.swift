@@ -227,6 +227,7 @@ struct MyFoodsView: View {
                 .foregroundStyle(CalorynTheme.sage)
         }
         .accessibilityLabel("Create Food")
+        .accessibilityIdentifier("myFoods.createMenu")
     }
 
     private var manualEntriesSection: some View {
@@ -332,6 +333,7 @@ struct MyFoodsView: View {
             }
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("myFoods.food.\(food.name)")
     }
 
     private func manualEntryRow(for food: FoodItem) -> some View {

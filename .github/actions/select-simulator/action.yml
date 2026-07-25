@@ -1,0 +1,103 @@
+name: Select simulator
+description: Boots an available iPhone simulator whose runtime satisfies the app's deployment target.
+
+inputs:
+  minimum-ios:
+    description: Lowest acceptable iOS major version.
+    required: false
+    default: "26"
+  preferred-device:
+    description: >
+      Device model to prefer. Coverage of code that merely runs during app
+      start-up (HealthKit, for example) varies between simulator models, so
+      pinning one keeps the coverage ratchet comparing like with like.
+    required: false
+    default: "iPhone 17"
+
+outputs:
+  id:
+    description: UDID of the booted simulator.
+    value: ${{ steps.pick.outputs.id }}
+  device:
+    description: >
+      Model actually selected, slugified. Callers comparing measurements across
+      runs (the coverage ratchet) must include this in their cache key so a
+      fallback to a different model cannot compare unlike runs.
+    value: ${{ steps.pick.outputs.device }}
+
+runs:
+  using: composite
+  steps:
+    - name: Pick and boot simulator
+      id: pick
+      shell: bash
+      env:
+        MINIMUM_IOS: ${{ inputs.minimum-ios }}
+        PREFERRED_DEVICE: ${{ inputs.preferred-device }}
+      run: |
+        set -euo pipefail
+
+        xcrun simctl list devices available -j > "$RUNNER_TEMP/simulators.json"
+
+        selection="$(
+          python3 - "$RUNNER_TEMP/simulators.json" "$MINIMUM_IOS" "$PREFERRED_DEVICE" <<'PY'
+        import json
+        import sys
+
+        path, minimum, preferred = sys.argv[1], int(sys.argv[2]), sys.argv[3]
+
+        with open(path, encoding="utf-8") as file:
+            payload = json.load(file)
+
+        candidates = []
+        for runtime, devices in payload["devices"].items():
+            # Runtime keys look like com.apple.CoreSimulator.SimRuntime.iOS-26-5
+            if "SimRuntime.iOS-" not in runtime:
+                continue
+            version_part = runtime.split("SimRuntime.iOS-", 1)[1]
+            pieces = version_part.split("-")
+            try:
+                major = int(pieces[0])
+                minor = int(pieces[1]) if len(pieces) > 1 else 0
+            except ValueError:
+                continue
+            if major < minimum:
+                continue
+            for device in devices:
+                if device.get("isAvailable") and device.get("name", "").startswith("iPhone"):
+                    candidates.append(((major, minor), device))
+
+        if not candidates:
+            sys.exit("No available iPhone simulator with iOS >= %d." % minimum)
+
+        # Prefer the pinned model, then the newest runtime. Pinning matters
+        # because coverage of code that merely runs at start-up differs
+        # between device models, which would make the ratchet compare unlike
+        # runs. Fall back to any eligible iPhone if the model is unavailable.
+        def rank(item):
+            (major, minor), device = item
+            exact = device.get("name") == preferred
+            return (1 if exact else 0, major, minor)
+
+        candidates.sort(key=rank, reverse=True)
+        selected = candidates[0][1]
+        if selected.get("name") != preferred:
+            print(
+                "Preferred device %r unavailable; using %r."
+                % (preferred, selected.get("name")),
+                file=sys.stderr,
+            )
+        print(selected["udid"])
+        print(selected.get("name", "unknown"))
+        PY
+        )"
+
+        simulator_id="$(echo "$selection" | sed -n 1p)"
+        simulator_name="$(echo "$selection" | sed -n 2p)"
+        # Slugified so it is safe inside a cache key.
+        device_slug="$(echo "$simulator_name" | tr ' ' '-' | tr -cd '[:alnum:]-')"
+
+        echo "Selected simulator $simulator_name ($simulator_id)"
+        echo "id=$simulator_id" >> "$GITHUB_OUTPUT"
+        echo "device=$device_slug" >> "$GITHUB_OUTPUT"
+        xcrun simctl boot "$simulator_id" || true

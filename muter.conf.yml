@@ -1,0 +1,39 @@
+# Mutation testing configuration.
+#
+# Mutation testing answers a question code coverage cannot: do the tests
+# actually assert anything? Muter edits the source (flipping a comparison,
+# removing a side effect) and checks whether the suite notices. A mutant that
+# survives is a line that runs during tests without being verified.
+#
+# This runs on a schedule, never as a pull-request gate. See
+# docs/testing/mutation-testing.md.
+executable: /usr/bin/xcodebuild
+arguments:
+  - -project
+  - Caloryn.xcodeproj
+  - -scheme
+  - Caloryn
+  # The unit plan only. UI tests take minutes per run, and mutation testing
+  # reruns the suite once per mutant.
+  - -testPlan
+  - Caloryn-Unit
+  - -destination
+  - platform=iOS Simulator,name=iPhone 17
+  - CODE_SIGNING_ALLOWED=NO
+  - test
+
+# Scoping is applied on the command line with --files-to-mutate (see the
+# workflow). These exclusions are a second line of defence so an accidental
+# broad run still cannot mutate views, test doubles, or fixtures.
+exclude:
+  - Caloryn/Views
+  - Caloryn/Debug
+  - Caloryn/Theme
+  - Caloryn/Assets.xcassets
+  - CalorynTests
+  - CalorynUITests
+  - CalorynWidgets
+  - .claude
+
+# A mutant that hangs should not stall the whole run.
+testSuiteTimeout: 300

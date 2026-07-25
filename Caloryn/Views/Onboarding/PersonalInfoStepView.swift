@@ -78,6 +78,7 @@ struct PersonalInfoStepView: View {
             .tint(CalorynTheme.sage)
             .padding(.horizontal, CalorynTheme.pagePadding)
             .padding(.bottom, 16)
+            .accessibilityIdentifier("onboarding.personalInfo.continue")
         }
         .toolbarVisibility(.hidden, for: .navigationBar)
     }

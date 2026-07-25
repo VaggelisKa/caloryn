@@ -79,6 +79,7 @@ struct NutrientSelectionStepView: View {
             .disabled(isCompleting)
             .padding(.horizontal, CalorynTheme.pagePadding)
             .padding(.bottom, 16)
+            .accessibilityIdentifier("onboarding.startTracking")
         }
         .onAppear(perform: ensureDefaultMacrosSelected)
     }
