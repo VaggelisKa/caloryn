@@ -8,15 +8,11 @@ struct CalorynApp: App {
 
     init() {
         let iCloudEnabled = UserDefaults.standard.object(forKey: "iCloudSyncEnabled") as? Bool ?? true
-        let screenshotFixtureActive = Issue73ScreenshotScenario.current != nil
-            || Issue74ScreenshotScenario.current != nil
-            || Issue77ScreenshotScenario.current != nil
         #if DEBUG
-        let uiTestActive = UITestConfiguration.isActive
+        let usesEphemeralStore = UITestConfiguration.isActive
         #else
-        let uiTestActive = false
+        let usesEphemeralStore = false
         #endif
-        let usesEphemeralStore = screenshotFixtureActive || uiTestActive
         let schema = Schema([
             UserProfile.self,
             FoodItem.self,
@@ -42,7 +38,7 @@ struct CalorynApp: App {
 
         #if DEBUG
         // Seed synchronously so the first `@Query` already sees the fixture.
-        if uiTestActive, let fixture = UITestConfiguration.fixture {
+        if usesEphemeralStore, let fixture = UITestConfiguration.fixture {
             do {
                 try UITestSeeder.seed(fixture, into: sharedModelContainer.mainContext)
             } catch {
@@ -54,23 +50,9 @@ struct CalorynApp: App {
 
     var body: some Scene {
         WindowGroup {
-            #if DEBUG
-            if let screenshotScenario = Issue73ScreenshotScenario.current {
-                Issue73ScreenshotHost(scenario: screenshotScenario)
-            } else if let screenshotScenario = Issue77ScreenshotScenario.current {
-                Issue77ScreenshotHost(scenario: screenshotScenario)
-            } else if let screenshotScenario = Issue74ScreenshotScenario.current {
-                Issue74ScreenshotHost(scenario: screenshotScenario)
-            } else {
-                ContentView()
-                    .environment(router)
-                    .onOpenURL(perform: router.handle)
-            }
-            #else
             ContentView()
                 .environment(router)
                 .onOpenURL(perform: router.handle)
-            #endif
         }
         .modelContainer(sharedModelContainer)
     }
