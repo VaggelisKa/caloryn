@@ -11,6 +11,12 @@ struct CalorynApp: App {
         let screenshotFixtureActive = Issue73ScreenshotScenario.current != nil
             || Issue74ScreenshotScenario.current != nil
             || Issue77ScreenshotScenario.current != nil
+        #if DEBUG
+        let uiTestActive = UITestConfiguration.isActive
+        #else
+        let uiTestActive = false
+        #endif
+        let usesEphemeralStore = screenshotFixtureActive || uiTestActive
         let schema = Schema([
             UserProfile.self,
             FoodItem.self,
@@ -22,8 +28,8 @@ struct CalorynApp: App {
         ])
         let config = ModelConfiguration(
             schema: schema,
-            isStoredInMemoryOnly: screenshotFixtureActive,
-            cloudKitDatabase: screenshotFixtureActive
+            isStoredInMemoryOnly: usesEphemeralStore,
+            cloudKitDatabase: usesEphemeralStore
                 ? .none
                 : (iCloudEnabled ? .automatic : .none)
         )
@@ -33,6 +39,17 @@ struct CalorynApp: App {
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
         }
+
+        #if DEBUG
+        // Seed synchronously so the first `@Query` already sees the fixture.
+        if uiTestActive, let fixture = UITestConfiguration.fixture {
+            do {
+                try UITestSeeder.seed(fixture, into: sharedModelContainer.mainContext)
+            } catch {
+                fatalError("Could not seed UI test fixture \(fixture.rawValue): \(error)")
+            }
+        }
+        #endif
     }
 
     var body: some Scene {

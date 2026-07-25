@@ -1,0 +1,38 @@
+{
+  "configurations" : [
+    {
+      "id" : "A1B2C3D4-0000-4000-8000-000000000001",
+      "name" : "Default",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "codeCoverage" : {
+      "targets" : [
+        {
+          "containerPath" : "container:Caloryn.xcodeproj",
+          "identifier" : "1C70CDD02F545455007DE238",
+          "name" : "Caloryn"
+        },
+        {
+          "containerPath" : "container:Caloryn.xcodeproj",
+          "identifier" : "4B1000042F80000000A00001",
+          "name" : "CalorynWidgets"
+        }
+      ]
+    },
+    "testTimeoutsEnabled" : true
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:Caloryn.xcodeproj",
+        "identifier" : "2A60E0032F69000100A00001",
+        "name" : "CalorynTests"
+      }
+    }
+  ],
+  "version" : 1
+}
