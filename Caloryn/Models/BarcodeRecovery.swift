@@ -429,10 +429,21 @@ enum BarcodeRecoveryService {
     static func materializePersonalFood(
         barcode: String,
         edit: FoodPersonalEdit,
-        localFoods: [FoodItem]
+        localFoods: [FoodItem],
+        editing selectedFood: FoodItem? = nil
     ) -> FoodPersonalMaterialization {
         guard let normalizedBarcode = BarcodeIdentity.normalized(barcode) else {
             preconditionFailure("Personal barcode recovery requires a normalized barcode")
+        }
+
+        if let selectedFood {
+            precondition(
+                selectedFood.normalizedBarcode == normalizedBarcode,
+                "Personal barcode edits must preserve the selected food identity"
+            )
+            selectedFood.barcode = normalizedBarcode
+            applyPersonalEdit(edit, to: selectedFood)
+            return FoodPersonalMaterialization(food: selectedFood, isNew: false)
         }
 
         if let existing = preferredLocalFood(for: normalizedBarcode, in: localFoods) {

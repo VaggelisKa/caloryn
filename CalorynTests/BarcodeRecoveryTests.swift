@@ -480,6 +480,48 @@ final class BarcodeRecoveryTests: XCTestCase {
         XCTAssertEqual(existing.fieldOrigin(for: .protein), .user)
     }
 
+    func testEditingDuplicateBarcodePreservesTheExplicitlySelectedFood() {
+        let selected = makeTestFoodItem(name: "Selected", isCustom: true)
+        selected.barcode = "5711953150388"
+        selected.lastUsed = makeTestDate(year: 2026, month: 7, day: 20)
+
+        let moreRecentDuplicate = makeTestFoodItem(
+            name: "More Recent Duplicate",
+            isCustom: true
+        )
+        moreRecentDuplicate.barcode = selected.barcode
+        moreRecentDuplicate.lastUsed = makeTestDate(
+            year: 2026,
+            month: 7,
+            day: 21
+        )
+
+        let materialization = BarcodeRecoveryService.materializePersonalFood(
+            barcode: "5711953150388",
+            edit: FoodPersonalEdit(
+                name: "Edited Selected",
+                brand: nil,
+                caloriesPer100g: 123,
+                proteinPer100g: nil,
+                carbohydratesPer100g: nil,
+                fatPer100g: nil,
+                fiberPer100g: nil,
+                defaultServingG: nil,
+                produceKind: .unclassified,
+                userEditedFields: [.name, .calories]
+            ),
+            localFoods: [moreRecentDuplicate, selected],
+            editing: selected
+        )
+
+        XCTAssertTrue(materialization.food === selected)
+        XCTAssertFalse(materialization.isNew)
+        XCTAssertEqual(selected.name, "Edited Selected")
+        XCTAssertEqual(selected.caloriesPer100g, 123)
+        XCTAssertEqual(moreRecentDuplicate.name, "More Recent Duplicate")
+        XCTAssertEqual(moreRecentDuplicate.caloriesPer100g, 100)
+    }
+
     func testOnlineResolutionChecksProviderFirstAndRetryReusesSameFoodIdempotently() async throws {
         let service = FoodSearchService()
         let initial = makeTestSearchResult(

@@ -556,15 +556,11 @@ struct CustomFoodFormView: View {
                 produceKind: produceKind,
                 userEditedFields: userEditedRecoveryFields
             )
-            var candidates = savedFoods
-            if let existingFood,
-               !candidates.contains(where: { $0 === existingFood }) {
-                candidates.append(existingFood)
-            }
             let materialization = BarcodeRecoveryService.materializePersonalFood(
                 barcode: recoveryBarcode,
                 edit: personalEdit,
-                localFoods: candidates
+                localFoods: savedFoods,
+                editing: existingFood
             )
             if !savedFoods.contains(where: { $0 === materialization.food }) {
                 modelContext.insert(materialization.food)
