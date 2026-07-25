@@ -52,6 +52,76 @@ final class FoodItemTests: XCTestCase {
         )
     }
 
+    func testEditedProductOverlaySuppressesOnlyItsMatchingProviderSearchResult() {
+        let editedMilk = makeTestFoodItem(
+            name: "My Milk",
+            brand: "Arla",
+            isCustom: true
+        )
+        editedMilk.providerProductIdentityRaw = "1234567890123"
+
+        let matchingProviderResult = makeTestSearchResult(
+            product: OpenFoodFactsProduct.fixture(
+                code: "1234567890123",
+                name: "Provider Milk",
+                brand: "Arla",
+                energy: 51,
+                protein: 3,
+                carbohydrates: 5,
+                fat: 1,
+                fiber: nil
+            )
+        )
+        let otherProviderResult = makeTestSearchResult(
+            product: OpenFoodFactsProduct.fixture(
+                code: "9876543210987",
+                name: "Provider Cheese",
+                brand: "Arla",
+                energy: 350,
+                protein: 25,
+                carbohydrates: 1,
+                fat: 27,
+                fiber: nil
+            )
+        )
+
+        let visibleProviderResults = EditedProductCatalog.providerResults(
+            [matchingProviderResult, otherProviderResult],
+            excludingProductsOverlaidBy: [editedMilk]
+        )
+
+        XCTAssertEqual(visibleProviderResults.map(\.id), [otherProviderResult.id])
+    }
+
+    func testProviderNameSearchUsesTheEditedOverlayEvenWhenItsLocalNameChanged() {
+        let editedMilk = makeTestFoodItem(
+            name: "My Breakfast Milk",
+            brand: "Personal",
+            isCustom: true
+        )
+        editedMilk.providerProductIdentityRaw = "1234567890123"
+        let matchingProviderResult = makeTestSearchResult(
+            product: OpenFoodFactsProduct.fixture(
+                code: "1234567890123",
+                name: "Provider Milk",
+                brand: "Arla",
+                energy: 51,
+                protein: 3,
+                carbohydrates: 5,
+                fat: 1,
+                fiber: nil
+            )
+        )
+
+        let visibleOverlays = EditedProductCatalog.loggingProducts(
+            in: [editedMilk],
+            matching: "Provider Milk",
+            providerResults: [matchingProviderResult]
+        )
+
+        XCTAssertEqual(visibleOverlays.map(\.id), [editedMilk.id])
+    }
+
     func testCategoryTagsAreNormalizedAndInferProduceKind() {
         let food = makeTestFoodItem(
             categoryTags: [" EN:Apples ", "", "en:Fresh-Fruits"]

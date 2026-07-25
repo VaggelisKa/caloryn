@@ -127,7 +127,7 @@ struct FoodSearchView: View {
         return Array(
             recentFoods
                 .filter {
-                    !$0.isUserCreatedFood
+                    (!$0.isUserCreatedFood || $0.isEditedCatalogProduct)
                         && !suggestedIDs.contains($0.id)
                 }
                 .prefix(20)
@@ -161,7 +161,7 @@ struct FoodSearchView: View {
             + matchingRecipes.count
             + matchingManualEntries.count
             + matchingEditedProducts.count
-            + searchService.searchResults.count
+            + visibleProviderSearchResults.count
     }
 
     var body: some View {
@@ -463,22 +463,6 @@ struct FoodSearchView: View {
                 }
             }
 
-            if mode.isSelection, !editedProducts.isEmpty {
-                if mode.usesNonStickySectionTitles {
-                    nonStickySectionTitle("Edited Product Catalog")
-
-                    ForEach(editedProducts) { food in
-                        personalFoodRow(for: food)
-                    }
-                } else {
-                    Section("Edited Product Catalog") {
-                        ForEach(editedProducts) { food in
-                            personalFoodRow(for: food)
-                        }
-                    }
-                }
-            }
-
             if !displayedRecentFoods.isEmpty {
                 if mode.usesNonStickySectionTitles {
                     nonStickySectionTitle("Recent")
@@ -510,7 +494,18 @@ struct FoodSearchView: View {
     }
 
     private var matchingEditedProducts: [FoodItem] {
-        EditedProductCatalog.products(in: editedProducts, matching: searchText)
+        EditedProductCatalog.loggingProducts(
+            in: editedProducts,
+            matching: searchText,
+            providerResults: searchService.searchResults
+        )
+    }
+
+    private var visibleProviderSearchResults: [FoodSearchResult] {
+        EditedProductCatalog.providerResults(
+            searchService.searchResults,
+            excludingProductsOverlaidBy: matchingEditedProducts
+        )
     }
 
     private var matchingRecipes: [FoodItem] {
@@ -531,10 +526,17 @@ struct FoodSearchView: View {
     }
 
     private var hasLocalMatches: Bool {
+        hasCategorizedLocalMatches || !matchingEditedProducts.isEmpty
+    }
+
+    private var hasCategorizedLocalMatches: Bool {
         !matchingMeals.isEmpty
             || !matchingManualEntries.isEmpty
-            || !matchingEditedProducts.isEmpty
             || !matchingRecipes.isEmpty
+    }
+
+    private var hasProductSearchResults: Bool {
+        !matchingEditedProducts.isEmpty || !visibleProviderSearchResults.isEmpty
     }
 
     private var searchResultsList: some View {
@@ -546,7 +548,7 @@ struct FoodSearchView: View {
                 FoodLookupFailureView(presentation: failure.presentation) {
                     searchService.search(query: searchText)
                 }
-            } else if searchService.searchResults.isEmpty && !hasLocalMatches {
+            } else if !hasProductSearchResults && !hasLocalMatches {
                 ContentUnavailableView(
                     "No Results",
                     systemImage: "magnifyingglass",
@@ -619,42 +621,30 @@ struct FoodSearchView: View {
                         }
                     }
 
-                    if !matchingEditedProducts.isEmpty {
+                    if hasProductSearchResults {
                         if mode.usesNonStickySectionTitles {
-                            nonStickySectionTitle("Edited Product Catalog")
-
-                            ForEach(matchingEditedProducts) { food in
-                                personalFoodRow(for: food)
-                            }
-                        } else {
-                            Section {
-                                ForEach(matchingEditedProducts) { food in
-                                    personalFoodRow(for: food)
-                                }
-                            } header: {
-                                Text("Edited Product Catalog")
-                                    .font(CalorynTheme.caption)
-                                    .foregroundStyle(CalorynTheme.textSecondary)
-                            }
-                        }
-                    }
-
-                    if !searchService.searchResults.isEmpty {
-                        if mode.usesNonStickySectionTitles {
-                            if hasLocalMatches {
+                            if hasCategorizedLocalMatches {
                                 nonStickySectionTitle("Search Results")
                             }
 
-                            ForEach(searchService.searchResults) { result in
+                            ForEach(matchingEditedProducts) { food in
+                                savedFoodRow(for: food)
+                            }
+
+                            ForEach(visibleProviderSearchResults) { result in
                                 remoteProductRow(result)
                             }
                         } else {
                             Section {
-                                ForEach(searchService.searchResults) { result in
+                                ForEach(matchingEditedProducts) { food in
+                                    savedFoodRow(for: food)
+                                }
+
+                                ForEach(visibleProviderSearchResults) { result in
                                     remoteProductRow(result)
                                 }
                             } header: {
-                                if hasLocalMatches {
+                                if hasCategorizedLocalMatches {
                                     Text("Search Results")
                                         .font(CalorynTheme.caption)
                                         .foregroundStyle(CalorynTheme.textSecondary)
