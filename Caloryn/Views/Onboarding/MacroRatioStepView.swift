@@ -82,6 +82,7 @@ struct MacroRatioStepView: View {
             .disabled(!isValid)
             .padding(.horizontal, CalorynTheme.pagePadding)
             .padding(.bottom, 16)
+            .accessibilityIdentifier("onboarding.macroRatios.continue")
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {

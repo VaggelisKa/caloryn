@@ -272,6 +272,7 @@ struct EnergyCalculationModeStepView: View {
             .disabled(isRequestingAuthorization)
             .padding(.horizontal, CalorynTheme.pagePadding)
             .padding(.bottom, 16)
+            .accessibilityIdentifier("onboarding.energyMode.continue")
         }
         .onChange(of: isHealthAvailable, initial: true) {
             if !isHealthAvailable && selectedMode == .dynamicHealth {

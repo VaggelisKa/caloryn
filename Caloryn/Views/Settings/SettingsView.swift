@@ -365,6 +365,7 @@ struct SettingsView: View {
                 Text(profile.dailyCalorieTarget.kcalFormatted)
                     .font(CalorynTheme.numericBody)
                     .foregroundStyle(CalorynTheme.sage)
+                    .accessibilityIdentifier("settings.calorieTarget")
             }
 
             if !profile.manualOverride {
@@ -396,6 +397,7 @@ struct SettingsView: View {
             NavigationLink("Edit Goal") {
                 GoalEditView(profile: profile)
             }
+            .accessibilityIdentifier("settings.editGoal")
         } header: {
             Text("Goal")
         }
@@ -669,6 +671,7 @@ struct GoalEditView: View {
             Section("Daily Calorie Target") {
                 Toggle("Manual Override", isOn: $manualOverride)
                     .tint(CalorynTheme.sage)
+                    .accessibilityIdentifier("goalEdit.manualOverride")
                     .onChange(of: manualOverride) { _, isManual in
                         if isManual {
                             targetText = "\(calculatedTarget)"
@@ -682,6 +685,7 @@ struct GoalEditView: View {
                             .font(CalorynTheme.numericBody)
                             .focused($focusedField, equals: .manualTarget)
                             .calorynInputField(isFocused: focusedField == .manualTarget)
+                            .accessibilityIdentifier("goalEdit.target")
                         Text("kcal")
                             .foregroundStyle(CalorynTheme.textSecondary)
                     }
@@ -785,6 +789,7 @@ struct GoalEditView: View {
                     dismiss()
                 }
                 .font(CalorynTheme.toolbarAction)
+                .accessibilityIdentifier("goalEdit.save")
                 .disabled(!isMacroValid || !isManualTargetValid || !areNutrientGoalsValid)
             }
         }

@@ -339,6 +339,7 @@ struct FoodSearchView: View {
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .onSubmit { searchService.search(query: searchText) }
+                    .accessibilityIdentifier("foodSearch.searchField")
 
                 if !searchText.isEmpty {
                     Button {
@@ -686,6 +687,7 @@ struct FoodSearchView: View {
         }
         .buttonStyle(.plain)
         .accessibilityValue(selectionAccessibilityValue(for: .food(food.id)))
+        .accessibilityIdentifier("foodSearch.result.\(food.name)")
     }
 
     private func recipeRow(for food: FoodItem) -> some View {
@@ -725,6 +727,7 @@ struct FoodSearchView: View {
         }
         .buttonStyle(.plain)
         .accessibilityValue(selectionAccessibilityValue(for: .food(food.id)))
+        .accessibilityIdentifier("foodSearch.result.\(food.name)")
     }
 
     private func remoteProductRow(_ result: FoodSearchResult) -> some View {

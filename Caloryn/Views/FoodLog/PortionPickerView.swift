@@ -229,6 +229,7 @@ struct PortionPickerView: View {
                     }
                     .tint(.red)
                     .accessibilityLabel("Delete Log Entry")
+                    .accessibilityIdentifier("portionPicker.delete")
                 }
             } else {
                 ToolbarItem(placement: .topBarLeading) {
@@ -272,6 +273,7 @@ struct PortionPickerView: View {
                 .padding(.horizontal, CalorynTheme.pagePadding)
                 .padding(.top, 10)
                 .padding(.bottom, 16)
+                .accessibilityIdentifier("portionPicker.save")
             }
             .background(.regularMaterial)
         }
@@ -333,6 +335,7 @@ struct PortionPickerView: View {
                 .foregroundStyle(CalorynTheme.sage)
                 .contentTransition(.numericText())
                 .animation(.smooth(duration: 0.3), value: Int(previewCalories))
+                .accessibilityIdentifier("portionPicker.calories")
 
             Text("calories")
                 .font(CalorynTheme.bodyText)
@@ -412,6 +415,7 @@ struct PortionPickerView: View {
                 }
                 .pickerStyle(.wheel)
                 .frame(maxWidth: .infinity)
+                .accessibilityIdentifier("portionPicker.amountPicker")
 
                 if activeFoodItem.isRecipe {
                     Picker("Unit", selection: $portionMode) {
