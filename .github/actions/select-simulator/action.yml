@@ -18,6 +18,12 @@ outputs:
   id:
     description: UDID of the booted simulator.
     value: ${{ steps.pick.outputs.id }}
+  device:
+    description: >
+      Model actually selected, slugified. Callers comparing measurements across
+      runs (the coverage ratchet) must include this in their cache key so a
+      fallback to a different model cannot compare unlike runs.
+    value: ${{ steps.pick.outputs.device }}
 
 runs:
   using: composite
@@ -33,7 +39,7 @@ runs:
 
         xcrun simctl list devices available -j > "$RUNNER_TEMP/simulators.json"
 
-        simulator_id="$(
+        selection="$(
           python3 - "$RUNNER_TEMP/simulators.json" "$MINIMUM_IOS" "$PREFERRED_DEVICE" <<'PY'
         import json
         import sys
@@ -82,9 +88,16 @@ runs:
                 file=sys.stderr,
             )
         print(selected["udid"])
+        print(selected.get("name", "unknown"))
         PY
         )"
 
-        echo "Selected simulator $simulator_id"
+        simulator_id="$(echo "$selection" | sed -n 1p)"
+        simulator_name="$(echo "$selection" | sed -n 2p)"
+        # Slugified so it is safe inside a cache key.
+        device_slug="$(echo "$simulator_name" | tr ' ' '-' | tr -cd '[:alnum:]-')"
+
+        echo "Selected simulator $simulator_name ($simulator_id)"
         echo "id=$simulator_id" >> "$GITHUB_OUTPUT"
+        echo "device=$device_slug" >> "$GITHUB_OUTPUT"
         xcrun simctl boot "$simulator_id" || true

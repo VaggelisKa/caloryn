@@ -61,12 +61,17 @@ jobs:
       # The baseline is the coverage percentage last measured on main. Main
       # builds write it and pull requests read it, so a PR fails only when it
       # lowers coverage rather than for missing an arbitrary fixed target.
+      #
+      # The key includes the simulator model. Coverage of code that merely runs
+      # at start-up differs between models, so if a run falls back to a
+      # different device it simply finds no baseline and reports without
+      # gating, rather than comparing two unlike measurements.
       - name: Restore coverage baseline
         if: github.event_name == 'pull_request'
         uses: actions/cache/restore@v4
         with:
           path: coverage-baseline.txt
-          key: coverage-baseline-main
+          key: coverage-baseline-main-${{ steps.simulator.outputs.device }}
 
       - name: Check coverage ratchet
         if: github.event_name == 'pull_request'
@@ -100,7 +105,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: coverage-baseline.txt
-          key: coverage-baseline-main
+          key: coverage-baseline-main-${{ steps.simulator.outputs.device }}
 
       - name: Upload results
         if: always()
