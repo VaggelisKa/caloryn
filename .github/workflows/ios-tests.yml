@@ -26,6 +26,17 @@ jobs:
       - name: Show Xcode version
         run: xcodebuild -version
 
+      # Package resolution is a network call on every run. Caching it keeps the
+      # build off the network in the common case, and the key is the resolved
+      # manifest so a dependency change busts it automatically.
+      - name: Cache Swift packages
+        uses: actions/cache@v4
+        with:
+          path: .spm-cache
+          key: spm-${{ runner.os }}-${{ hashFiles('Caloryn.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          restore-keys: |
+            spm-${{ runner.os }}-
+
       - name: Select simulator
         id: simulator
         uses: ./.github/actions/select-simulator
@@ -42,6 +53,7 @@ jobs:
             -configuration Debug \
             -destination "platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}" \
             -resultBundlePath TestResults/Unit.xcresult \
+            -clonedSourcePackagesDirPath .spm-cache \
             -enableCodeCoverage YES \
             CODE_SIGNING_ALLOWED=NO
 
@@ -124,6 +136,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Package resolution is a network call on every run. Caching it keeps the
+      # build off the network in the common case, and the key is the resolved
+      # manifest so a dependency change busts it automatically.
+      - name: Cache Swift packages
+        uses: actions/cache@v4
+        with:
+          path: .spm-cache
+          key: spm-${{ runner.os }}-${{ hashFiles('Caloryn.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          restore-keys: |
+            spm-${{ runner.os }}-
+
       - name: Select simulator
         id: simulator
         uses: ./.github/actions/select-simulator
@@ -140,6 +163,7 @@ jobs:
             -configuration Debug \
             -destination "platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}" \
             -resultBundlePath TestResults/UI.xcresult \
+            -clonedSourcePackagesDirPath .spm-cache \
             CODE_SIGNING_ALLOWED=NO
 
       - name: Upload results

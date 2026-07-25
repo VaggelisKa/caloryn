@@ -28,8 +28,14 @@ extension Screen {
             .firstMatch
     }
 
-    /// Waits until `element` is both present and hittable, so a tap that races
-    /// a presentation animation cannot flake.
+    /// Waits until `element` is ready to be tapped, so a tap that races a
+    /// presentation animation cannot flake.
+    ///
+    /// This is one wait, not two. `isHittable` is already false for an element
+    /// that does not exist, so a separate existence check adds nothing but
+    /// time — and every XCTest wait costs a full polling cycle even when the
+    /// condition already holds, so the second check was charging about a
+    /// second to each interaction in the suite.
     @discardableResult
     func awaitTappable(
         _ element: XCUIElement,
@@ -37,11 +43,22 @@ extension Screen {
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> XCUIElement {
-        element.awaitExistence(timeout: timeout, file: file, line: line)
-        let hittable = NSPredicate(format: "isHittable == true")
-        let expectation = XCTNSPredicateExpectation(predicate: hittable, object: element)
+        guard !element.isHittable else { return element }
+
+        let expectation = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "isHittable == true"),
+            object: element
+        )
         if XCTWaiter().wait(for: [expectation], timeout: timeout) != .completed {
-            XCTFail("Element \(element) never became tappable", file: file, line: line)
+            // Distinguish the two failures the single wait folded together, so
+            // a red test still says which one happened.
+            XCTFail(
+                element.exists
+                    ? "Element \(element) exists but never became tappable"
+                    : "Element \(element) never appeared",
+                file: file,
+                line: line
+            )
         }
         return element
     }
@@ -54,6 +71,27 @@ extension Screen {
         line: UInt = #line
     ) {
         awaitTappable(element, timeout: timeout, file: file, line: line).tap()
+    }
+
+    /// Taps a control that a given build may not present at all, reporting
+    /// whether it was there. One wait covers both the question and the
+    /// readiness check.
+    @discardableResult
+    func tapIfPresent(_ element: XCUIElement, timeout: TimeInterval) -> Bool {
+        if element.isHittable {
+            element.tap()
+            return true
+        }
+
+        let expectation = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "isHittable == true"),
+            object: element
+        )
+        guard XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed else {
+            return false
+        }
+        element.tap()
+        return true
     }
 
     /// Waits for a static text with exactly this label to appear anywhere on

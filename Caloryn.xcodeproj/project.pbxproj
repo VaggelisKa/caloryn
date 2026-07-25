@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		5D1000032FA0000000A00001 /* SnapshotTesting in Frameworks */ = {isa = PBXBuildFile; productRef = 5D1000022FA0000000A00001 /* SnapshotTesting */; };
 		4B1000092F80000000A00001 /* CalorynWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4B1000012F80000000A00001 /* CalorynWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, CodeSignOnCopy, ); }; };
 /* End PBXBuildFile section */
 
@@ -118,6 +119,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5D1000032FA0000000A00001 /* SnapshotTesting in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -207,6 +209,7 @@
 			);
 			name = CalorynTests;
 			packageProductDependencies = (
+				5D1000022FA0000000A00001 /* SnapshotTesting */,
 			);
 			productName = CalorynTests;
 			productReference = 2A60E0012F69000100A00001 /* CalorynTests.xctest */;
@@ -294,6 +297,9 @@
 			mainGroup = 1C70CDC82F545455007DE238;
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
+			packageReferences = (
+				5D1000012FA0000000A00001 /* XCRemoteSwiftPackageReference "swift-snapshot-testing" */,
+			);
 			productRefGroup = 1C70CDD22F545455007DE238 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -806,6 +812,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		5D1000012FA0000000A00001 /* XCRemoteSwiftPackageReference "swift-snapshot-testing" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/pointfreeco/swift-snapshot-testing";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.17.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		5D1000022FA0000000A00001 /* SnapshotTesting */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5D1000012FA0000000A00001 /* XCRemoteSwiftPackageReference "swift-snapshot-testing" */;
+			productName = SnapshotTesting;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 1C70CDC92F545455007DE238 /* Project object */;
 }
