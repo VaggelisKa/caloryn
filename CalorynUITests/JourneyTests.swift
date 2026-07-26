@@ -164,12 +164,12 @@ final class JourneyTests: UITestCase {
         when("the user creates a manual entry") {
             myFoods.tap(myFoods.createMenu)
             myFoods.tap(myFoods.createManualEntry)
-            // Calories first: once the keyboard is up it covers the lower half
-            // of the form, and the name field stays reachable above it.
-            form.tap(form.calories)
-            form.calories.typeText("180")
             form.tap(form.name)
             form.name.typeText("Desk Almonds")
+            // Calories sits far enough down the form that the keyboard can put
+            // it below the fold, so scroll to it rather than waiting on it.
+            form.tap(form.revealed(form.calories))
+            form.calories.typeText("180")
             form.tap(form.save)
         }
 
