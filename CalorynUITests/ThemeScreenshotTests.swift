@@ -128,18 +128,21 @@ final class ThemeScreenshotTests: UITestCase {
     private enum Appearance: String {
         case light, dark
 
-        /// Overriding the style through a launch argument keeps each capture
-        /// self-contained, rather than depending on `simctl ui` having been run first
-        /// and leaving the device in whatever state the last test left it.
-        var launchArguments: [String] {
-            ["-AppleInterfaceStyle", rawValue == "dark" ? "Dark" : "Light"]
+        /// `XCUIDevice.appearance` is the only thing that actually switches the simulator.
+        ///
+        /// A `-AppleInterfaceStyle Dark` launch argument does **not** work here: the first
+        /// version of this harness used it, and every "dark" reference image it produced
+        /// was pixel-identical to its light counterpart. Nothing failed — the images were
+        /// simply wrong, which is the failure mode this whole file exists to prevent.
+        var device: XCUIDevice.Appearance {
+            self == .dark ? .dark : .light
         }
     }
 
     private func launch(fixture: Fixture, appearance: Appearance) -> XCUIApplication {
+        XCUIDevice.shared.appearance = appearance.device
         let app = XCUIApplication()
         app.launchArguments += ["-uitest-reset", "-uitest-seed", fixture.rawValue]
-        app.launchArguments += appearance.launchArguments
         app.launch()
         self.app = app
         return app

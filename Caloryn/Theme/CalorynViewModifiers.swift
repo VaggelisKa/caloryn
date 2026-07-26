@@ -33,21 +33,48 @@ private struct CalorynGroupedListStyleModifier: ViewModifier {
     }
 }
 
+private struct CalorynSheetCanvasModifier: ViewModifier {
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            sheetCanvas(content)
+        } else {
+            sheetCanvas(content)
+                .toolbarBackground(CalorynTheme.cardBackground, for: .navigationBar)
+                .toolbarBackground(.visible, for: .navigationBar)
+        }
+    }
+
+    private func sheetCanvas(_ content: Content) -> some View {
+        content.background {
+            CalorynTheme.cardBackground
+                .ignoresSafeArea()
+        }
+    }
+}
+
 private struct CalorynPlainListStyleModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
-            .background {
-                CalorynTheme.pageBackground
-                    .ignoresSafeArea()
-            }
+        // Deliberately paints no background of its own: the surrounding canvas supplies
+        // the colour, so the same list reads correctly on a page (#F3F1EC) and in a sheet
+        // (#FAFAF7). Rows still need `.listRowBackground(Color.clear)` — hiding the scroll
+        // background does not stop a row drawing its own.
     }
 }
 
 extension View {
+    /// Canvas for a tab page: the warm page background.
     func calorynPageCanvas() -> some View {
         modifier(CalorynPageCanvasModifier())
+    }
+
+    /// Canvas for a modal sheet: the lighter card surface, so a sheet reads as floating
+    /// above the page rather than continuing it. Pages stay `pageBackground`.
+    func calorynSheetCanvas() -> some View {
+        modifier(CalorynSheetCanvasModifier())
     }
 
     /// Inset-grouped list on the page canvas — the card-like look.

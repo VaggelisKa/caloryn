@@ -129,7 +129,7 @@ struct MealFormView: View {
                 .padding(.horizontal, CalorynTheme.pagePadding)
                 .padding(.bottom, 24)
             }
-            .calorynPageCanvas()
+            .calorynSheetCanvas()
             .navigationTitle(isEditing ? "Edit Meal" : "Create Meal")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

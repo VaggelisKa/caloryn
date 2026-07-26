@@ -226,7 +226,7 @@ private struct NutrientCustomizationView: View {
                     .foregroundStyle(CalorynTheme.sage)
                 }
             }
-            .calorynPageCanvas()
+            .calorynSheetCanvas()
             .navigationTitle("Displayed Nutrients")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

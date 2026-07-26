@@ -71,7 +71,7 @@ struct CustomFoodFormView: View {
                 .padding(.horizontal, CalorynTheme.pagePadding)
                 .padding(.bottom, 24)
             }
-            .calorynPageCanvas()
+            .calorynSheetCanvas()
             .navigationTitle(formTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

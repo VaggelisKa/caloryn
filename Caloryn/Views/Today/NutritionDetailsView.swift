@@ -105,7 +105,7 @@ struct NutritionDetailsView: View {
                 .padding(.horizontal, CalorynTheme.pagePadding)
                 .padding(.vertical, CalorynTheme.cardSpacing)
             }
-            .calorynPageCanvas()
+            .calorynSheetCanvas()
             .navigationTitle("Nutrition Details")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

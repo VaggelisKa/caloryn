@@ -49,7 +49,7 @@ struct MultiAddReviewView: View {
             .safeAreaInset(edge: .bottom) {
                 commitBar
             }
-            .calorynPageCanvas()
+            .calorynSheetCanvas()
             .navigationTitle("Review Items")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

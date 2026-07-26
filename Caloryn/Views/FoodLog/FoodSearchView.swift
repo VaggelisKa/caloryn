@@ -179,7 +179,7 @@ struct FoodSearchView: View {
                     searchResultsList
                 }
             }
-            .calorynPageCanvas()
+            .calorynSheetCanvas()
             .navigationTitle(mode.title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

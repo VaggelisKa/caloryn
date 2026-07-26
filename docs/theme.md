@@ -109,6 +109,16 @@ button is an ordinary chevron that *does* honour `tintColor`, and `ThemeScreensh
 cannot run there: the UI test target's own deployment target is iOS 26.0. So the modifier
 is proven inert on the SDK and unverifiable on the floor. It stays.
 
+## Page canvas vs sheet canvas
+
+`calorynPageCanvas()` paints `pageBackground`; `calorynSheetCanvas()` paints
+`cardBackground`. Tab pages and pushed detail views use the first, modal sheets the
+second, so a sheet reads as floating above the page rather than continuing it.
+
+The list modifiers therefore paint no background of their own — the canvas supplies the
+colour, so the same list is correct on a page and in a sheet. Rows still need
+`.listRowBackground(...)`.
+
 ## Why the snapshots were extended
 
 The suite rendered only `traits: .reference` — light, `.large`. Every token the migration

@@ -302,7 +302,7 @@ struct TodayView: View {
                 .presentationBackground(.regularMaterial)
         } else {
             content
-                .presentationBackground(CalorynTheme.pageBackground)
+                .presentationBackground(CalorynTheme.cardBackground)
         }
     }
 

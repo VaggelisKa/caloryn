@@ -73,7 +73,7 @@ struct RecipeFormView: View {
                 .padding(.horizontal, CalorynTheme.pagePadding)
                 .padding(.bottom, 24)
             }
-            .calorynPageCanvas()
+            .calorynSheetCanvas()
             .navigationTitle(isEditing ? "Edit Recipe" : "Create Recipe")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
