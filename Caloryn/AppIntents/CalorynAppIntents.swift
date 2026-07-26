@@ -54,16 +54,31 @@ struct CalorynIntentDataStore: Sendable {
         calendar: Calendar = .current,
         locale: Locale = .current
     ) throws -> TodayCaloriesIntentResponse {
-        guard try FavoriteIntentLogging.hasAuthenticatedUser(
-            in: modelContainer.mainContext
-        ) else {
+        let context = modelContainer.mainContext
+        let profiles = try context.fetch(
+            FetchDescriptor<UserProfile>(
+                sortBy: [SortDescriptor(\.updatedAt, order: .reverse)]
+            )
+        )
+        guard let profile = profiles.first else {
             return .unavailable(
                 "Open Caloryn and finish setup before checking today’s calories."
             )
         }
 
+        let entries = try context.fetch(FetchDescriptor<FoodLogEntry>())
+        let currentConsumed = entries
+            .filter { calendar.isDate($0.date, inSameDayAs: now) }
+            .reduce(0) { $0 + $1.calories }
+        let expectsDynamicTarget = profile.effectiveEnergyCalculationMode == .dynamicHealth
+
         return TodayCaloriesIntentResponse.make(
             snapshot: try? widgetSnapshotStore.load(),
+            currentConsumed: currentConsumed,
+            expectedBaseTarget: profile.calorieBaseTarget(
+                usesActiveEnergy: expectsDynamicTarget
+            ),
+            expectsDynamicTarget: expectsDynamicTarget,
             now: now,
             calendar: calendar,
             locale: locale
@@ -329,5 +344,15 @@ struct CalorynAppShortcuts: AppShortcutsProvider {
 enum CalorynAppShortcutRefresh {
     static func favoritesChanged() {
         CalorynAppShortcuts.updateAppShortcutParameters()
+    }
+
+    static func favoriteWasEdited(
+        isFavorite: Bool,
+        updateParameters: () -> Void = {
+            CalorynAppShortcuts.updateAppShortcutParameters()
+        }
+    ) {
+        guard isFavorite else { return }
+        updateParameters()
     }
 }

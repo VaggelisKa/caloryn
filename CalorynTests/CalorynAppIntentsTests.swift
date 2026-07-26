@@ -321,6 +321,19 @@ final class CalorynAppIntentsTests: XCTestCase {
         }
     }
 
+    func testFavoriteEditRefreshesParametersOnlyForFavoriteEntities() {
+        var refreshCount = 0
+
+        CalorynAppShortcutRefresh.favoriteWasEdited(isFavorite: true) {
+            refreshCount += 1
+        }
+        CalorynAppShortcutRefresh.favoriteWasEdited(isFavorite: false) {
+            refreshCount += 1
+        }
+
+        XCTAssertEqual(refreshCount, 1)
+    }
+
     func testCalorieResponsesCoverUnderOverAndMissingTarget() {
         XCTAssertEqual(
             TodayCaloriesIntentResponse.make(
@@ -357,11 +370,43 @@ final class CalorynAppIntentsTests: XCTestCase {
         )
 
         XCTAssertEqual(
-            TodayCaloriesIntentResponse.make(snapshot: nil, now: now),
+            TodayCaloriesIntentResponse.make(
+                snapshot: nil,
+                currentConsumed: 0,
+                expectedBaseTarget: 1_700,
+                expectsDynamicTarget: false,
+                now: now
+            ),
             .unavailable("Open Caloryn to refresh today’s calorie snapshot.")
         )
         XCTAssertEqual(
-            TodayCaloriesIntentResponse.make(snapshot: stale, now: now),
+            TodayCaloriesIntentResponse.make(
+                snapshot: stale,
+                currentConsumed: 1_200,
+                expectedBaseTarget: 1_700,
+                expectsDynamicTarget: false,
+                now: now
+            ),
+            .unavailable("Open Caloryn to refresh today’s calorie snapshot.")
+        )
+    }
+
+    func testCalorieResponseRejectsSameDaySnapshotThatDoesNotMatchLocalState() {
+        let now = makeTestDate(year: 2026, month: 7, day: 25)
+        let snapshot = makeSnapshot(
+            consumed: 1_200,
+            target: 1_700,
+            at: now
+        )
+
+        XCTAssertEqual(
+            TodayCaloriesIntentResponse.make(
+                snapshot: snapshot,
+                currentConsumed: 1_350,
+                expectedBaseTarget: 1_700,
+                expectsDynamicTarget: false,
+                now: now
+            ),
             .unavailable("Open Caloryn to refresh today’s calorie snapshot.")
         )
     }
@@ -369,14 +414,26 @@ final class CalorynAppIntentsTests: XCTestCase {
     func testCalorieCheckUsesCurrentLocalSnapshotWithoutNetwork() throws {
         let container = try makeContainer()
         let context = ModelContext(container)
+        let now = makeTestDate(year: 2026, month: 7, day: 25)
         context.insert(makeProfile())
+        let food = makeTestFoodItem(
+            name: "Local entry",
+            caloriesPer100g: 100
+        )
+        context.insert(food)
+        context.insert(
+            makeTestEntry(
+                date: now,
+                foodItem: food,
+                portionGrams: 1_200
+            )
+        )
         try context.save()
 
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
         defer { try? FileManager.default.removeItem(at: directory) }
         let snapshotStore = WidgetSnapshotStore(directoryURL: directory)
-        let now = makeTestDate(year: 2026, month: 7, day: 25)
         try snapshotStore.save(
             makeSnapshot(consumed: 1_200, target: 1_700, at: now)
         )

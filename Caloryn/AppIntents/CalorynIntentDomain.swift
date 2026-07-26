@@ -209,13 +209,19 @@ enum TodayCaloriesIntentResponse: Equatable, Sendable {
 
     static func make(
         snapshot: DailyWidgetSnapshot?,
+        currentConsumed: Double,
+        expectedBaseTarget: Int,
+        expectsDynamicTarget: Bool,
         now: Date = .now,
         calendar: Calendar = .current,
         locale: Locale = .current
     ) -> TodayCaloriesIntentResponse {
         guard let snapshot,
               snapshot.state == .ready,
-              calendar.isDate(snapshot.dayStart, inSameDayAs: now) else {
+              calendar.isDate(snapshot.dayStart, inSameDayAs: now),
+              snapshot.calories.consumed == max(0, Int(currentConsumed.rounded())),
+              snapshot.calories.baseTarget == max(1, expectedBaseTarget),
+              snapshot.usesDynamicTarget == expectsDynamicTarget else {
             return .unavailable("Open Caloryn to refresh today’s calorie snapshot.")
         }
 

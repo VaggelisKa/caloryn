@@ -413,7 +413,16 @@ struct RecipeFormView: View {
 
         recipe.recipeIngredients = newIngredients
         recipe.updateRecipeNutritionFromIngredients()
-        try? modelContext.save()
+        do {
+            try modelContext.save()
+            if existingRecipe != nil {
+                CalorynAppShortcutRefresh.favoriteWasEdited(
+                    isFavorite: recipe.isFavorite
+                )
+            }
+        } catch {
+            // Keep the existing silent save behavior.
+        }
         onSaved?(recipe)
         dismiss()
     }
