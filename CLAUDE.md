@@ -1,6 +1,8 @@
 # Caloryn — agent instructions
 
-SwiftUI + SwiftData iOS app, deployment target iOS 26.
+SwiftUI + SwiftData iOS app. Deployment target **iOS 18.6**, built against the iOS 26 SDK —
+so `#available(iOS 26.0, *)` checks are live and their `else` branches ship. Do not delete
+them as dead code.
 
 ## Tests
 
@@ -37,7 +39,16 @@ exit code and looks green.
    these tests may make.
 6. **Mutation testing reports, never gates.** Add new pure-logic models to its scope in
    `.github/workflows/mutation-audit.yml`.
-7. **Measure, don't assume.** Already tried and dead: parallelising the UI target
+7. **Theme comes from the asset catalog, never literals.** Colours: `CalorynTheme.*`,
+   backed by Color Sets in `CalorynShared/SharedColors.xcassets` that declare light and
+   dark together — never `Color.white`, `Color(.system*)` or `Color(red:)`. Lists:
+   `calorynGroupedListStyle()` / `calorynPlainListStyle()`, never a bare `.listStyle(...)`
+   — a `List` paints a system background *over* yours unless `scrollContentBackground` is
+   hidden, which is why this drift is invisible in review. Screens: `calorynPageCanvas()`
+   inside the `NavigationStack`, above `.navigationTitle`. Tint comes from the
+   `AccentColor` asset; add `.tint()` only for a deliberate non-accent colour.
+   `.swiftlint.yml` enforces the bans.
+8. **Measure, don't assume.** Already tried and dead: parallelising the UI target
    (141s vs 140s), and letting xcodebuild re-resolve packages (+112s). CI wall-clock is
    noisy — the same commit ran 137s/206s/268s, so never claim a CI speed-up from one
    sample.
@@ -61,5 +72,5 @@ bug, not noise.
 
 ## Further reading
 
-`docs/testing/snapshot-testing.md` · `docs/testing/mutation-testing.md` · issue #90
+`docs/testing/snapshot-testing.md` · `docs/testing/mutation-testing.md` · `docs/theme.md` · issue #90
 (open defects the suite surfaced).

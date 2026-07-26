@@ -49,6 +49,7 @@ struct MultiAddReviewView: View {
             .safeAreaInset(edge: .bottom) {
                 commitBar
             }
+            .calorynPageCanvas()
             .navigationTitle("Review Items")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -89,7 +90,6 @@ struct MultiAddReviewView: View {
                 .padding(.vertical, 16)
             }
             .adaptiveGlassProminentButton()
-            .tint(CalorynTheme.sage)
             .disabled(isCommitting || items.isEmpty || recoveryState != nil)
             .padding(.horizontal, CalorynTheme.pagePadding)
             .padding(.top, 10)

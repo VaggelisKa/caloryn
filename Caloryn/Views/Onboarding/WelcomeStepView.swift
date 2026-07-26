@@ -124,7 +124,6 @@ struct WelcomeStepView: View {
                         .padding(.vertical, 16)
                 }
                 .adaptiveGlassProminentButton()
-                .tint(CalorynTheme.sage)
                 .accessibilityIdentifier("onboarding.getStarted")
 
                 Text("No account needed. Your data stays on-device.")

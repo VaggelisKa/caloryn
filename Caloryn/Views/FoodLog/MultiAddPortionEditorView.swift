@@ -65,7 +65,6 @@ struct MultiAddPortionEditorView: View {
                         .padding(.vertical, 16)
                 }
                 .adaptiveGlassProminentButton()
-                .tint(CalorynTheme.sage)
                 .padding(.horizontal, CalorynTheme.pagePadding)
                 .padding(.top, 10)
                 .padding(.bottom, 16)

@@ -21,7 +21,6 @@ struct DailyReminderSettingsSection: View {
                 Label("Daily Reminder", systemImage: "bell.badge")
                     .foregroundStyle(CalorynTheme.textPrimary)
             }
-            .tint(CalorynTheme.sage)
 
             if isEnabled {
                 DatePicker(
@@ -30,7 +29,6 @@ struct DailyReminderSettingsSection: View {
                     displayedComponents: .hourAndMinute
                 )
                 .foregroundStyle(CalorynTheme.textPrimary)
-                .tint(CalorynTheme.sage)
             }
 
             if isPermissionDenied {
@@ -53,7 +51,6 @@ struct DailyReminderSettingsSection: View {
                     }
                     .font(CalorynTheme.caption)
                     .buttonStyle(.borderless)
-                    .tint(CalorynTheme.sage)
                     .accessibilityLabel("Open app settings")
                 }
             }

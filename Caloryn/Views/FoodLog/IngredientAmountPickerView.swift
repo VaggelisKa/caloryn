@@ -286,6 +286,7 @@ struct IngredientAmountPickerView: View {
                 .padding(.horizontal, CalorynTheme.pagePadding)
                 .padding(.bottom, 24)
             }
+            .calorynPageCanvas()
             .navigationTitle("Ingredient Amount")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

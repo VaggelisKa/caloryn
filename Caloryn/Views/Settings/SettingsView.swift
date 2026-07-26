@@ -95,13 +95,11 @@ struct SettingsView: View {
                 Toggle(isOn: .constant(false)) {
                     calorieEstimateModeToggleLabel(for: profile)
                 }
-                .tint(CalorynTheme.sage)
                 .disabled(true)
             } else {
                 Toggle(isOn: dynamicEnergyBinding(for: profile)) {
                     calorieEstimateModeToggleLabel(for: profile)
                 }
-                .tint(CalorynTheme.sage)
                 .disabled(isRequestingHealthAuthorization || (profile.energyCalculationMode != .dynamicHealth && !isHealthAvailable))
             }
 
@@ -160,7 +158,6 @@ struct SettingsView: View {
                     }
                     .font(CalorynTheme.caption)
                     .buttonStyle(.borderless)
-                    .tint(CalorynTheme.sage)
                     .accessibilityLabel("Open app settings")
                 }
             } else if let dynamicStatus = budget.dynamicStatusText {
@@ -343,12 +340,10 @@ struct SettingsView: View {
                         .tag(preference.rawValue)
                 }
             }
-            .tint(CalorynTheme.sage)
 
             Toggle(isOn: $showNutriscore) {
                 Label("Show Nutri-Score", systemImage: "leaf")
             }
-            .tint(CalorynTheme.sage)
         } header: {
             Text("Appearance")
         } footer: {
@@ -451,7 +446,6 @@ struct SettingsView: View {
             Toggle(isOn: $iCloudSyncEnabled) {
                 Label("iCloud Sync", systemImage: "icloud")
             }
-            .tint(CalorynTheme.sage)
             .onChange(of: iCloudSyncEnabled) {
                 showRestartAlert = true
             }
@@ -625,7 +619,6 @@ struct GoalEditView: View {
         Form {
             Section("Daily Calorie Target") {
                 Toggle("Manual Override", isOn: $draft.manualOverride)
-                    .tint(CalorynTheme.sage)
                     .accessibilityIdentifier("goalEdit.manualOverride")
                     .onChange(of: draft.manualOverride) { _, isManual in
                         draft.manualOverrideChanged(to: isManual, tdee: profile.tdee)
@@ -656,7 +649,6 @@ struct GoalEditView: View {
                                 .font(CalorynTheme.microCaption)
                                 .foregroundStyle(CalorynTheme.textSecondary)
                             Slider(value: $draft.calorieDeficit, in: -500...1000, step: 50)
-                                .tint(CalorynTheme.sage)
                             Text("Deficit")
                                 .font(CalorynTheme.microCaption)
                                 .foregroundStyle(CalorynTheme.textSecondary)
@@ -874,13 +866,11 @@ struct ProfileEditView: View {
                 VStack(alignment: .leading) {
                     Text("Height: \(Int(profile.heightCm)) cm")
                     Slider(value: $profile.heightCm, in: 120...220, step: 1)
-                        .tint(CalorynTheme.sage)
                 }
 
                 VStack(alignment: .leading) {
                     Text("Weight: \(String(format: "%.1f", profile.weightKg)) kg")
                     Slider(value: $profile.weightKg, in: 40...200, step: 0.5)
-                        .tint(CalorynTheme.sage)
                 }
             }
 

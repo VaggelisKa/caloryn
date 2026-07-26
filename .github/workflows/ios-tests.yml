@@ -14,6 +14,28 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Theme enforcement. Deliberately its own job rather than a build phase: it is fast,
+  # it has nothing to do with the simulator, and a lint failure should be readable
+  # without scrolling through an xcodebuild log. See docs/theme.md.
+  lint:
+    name: SwiftLint
+    runs-on: macos-26
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Lint
+        run: |
+          set -euo pipefail
+          # Preinstalled on the macOS runner image; install only if that changes.
+          if ! command -v swiftlint >/dev/null 2>&1; then
+            brew install swiftlint
+          fi
+          swiftlint --version
+          swiftlint lint --strict --reporter github-actions-logging
+
   unit-tests:
     name: Unit tests
     runs-on: macos-26

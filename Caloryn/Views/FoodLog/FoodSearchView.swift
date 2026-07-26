@@ -179,6 +179,7 @@ struct FoodSearchView: View {
                     searchResultsList
                 }
             }
+            .calorynPageCanvas()
             .navigationTitle(mode.title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -247,7 +248,6 @@ struct FoodSearchView: View {
                         }
                         .buttonStyle(.borderedProminent)
                         .controlSize(.large)
-                        .tint(CalorynTheme.sage)
                         .padding(.horizontal, CalorynTheme.pagePadding)
                         .padding(.vertical, 10)
                         .background(.bar)
@@ -488,7 +488,7 @@ struct FoodSearchView: View {
                 }
             }
         }
-        .listStyle(.plain)
+        .calorynPlainListStyle()
     }
 
     private var matchingManualEntries: [FoodItem] {
@@ -669,7 +669,7 @@ struct FoodSearchView: View {
                         .listRowSeparator(.hidden)
                     }
                 }
-                .listStyle(.plain)
+                .calorynPlainListStyle()
             }
         }
     }
@@ -1213,7 +1213,6 @@ private struct FoodLookupFailureView: View {
                 Button(retryTitle, action: onRetry)
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
-                    .tint(CalorynTheme.sage)
             }
         }
     }
@@ -1245,7 +1244,6 @@ private struct BarcodeLookupFailureView: View {
                     Button("Create Manual Food", action: onCreateManually)
                         .buttonStyle(.borderedProminent)
                         .controlSize(.large)
-                        .tint(CalorynTheme.sage)
                         .accessibilityHint("Opens a private food with this barcode already filled in")
                 }
 

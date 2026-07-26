@@ -73,6 +73,7 @@ struct RecipeFormView: View {
                 .padding(.horizontal, CalorynTheme.pagePadding)
                 .padding(.bottom, 24)
             }
+            .calorynPageCanvas()
             .navigationTitle(isEditing ? "Edit Recipe" : "Create Recipe")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -227,7 +228,6 @@ struct RecipeFormView: View {
                     Label("Add Ingredient", systemImage: "plus.circle")
                         .font(CalorynTheme.buttonLabel)
                 }
-                .tint(CalorynTheme.sage)
             }
 
             if sortedIngredients.isEmpty {

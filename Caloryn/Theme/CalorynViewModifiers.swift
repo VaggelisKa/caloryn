@@ -33,12 +33,36 @@ private struct CalorynGroupedListStyleModifier: ViewModifier {
     }
 }
 
+private struct CalorynPlainListStyleModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .background {
+                CalorynTheme.pageBackground
+                    .ignoresSafeArea()
+            }
+    }
+}
+
 extension View {
     func calorynPageCanvas() -> some View {
         modifier(CalorynPageCanvasModifier())
     }
 
+    /// Inset-grouped list on the page canvas — the card-like look.
     func calorynGroupedListStyle() -> some View {
         modifier(CalorynGroupedListStyleModifier())
+    }
+
+    /// Flat list on the page canvas, for content that should not read as cards
+    /// (search results, pickers).
+    ///
+    /// `scrollContentBackground(.hidden)` is the load-bearing part of all three of
+    /// these: a `List` paints its own system background *over* anything behind it,
+    /// so setting `.background` alone silently does nothing. That is why bare
+    /// `.listStyle(...)` is banned — see CLAUDE.md rule 8.
+    func calorynPlainListStyle() -> some View {
+        modifier(CalorynPlainListStyleModifier())
     }
 }

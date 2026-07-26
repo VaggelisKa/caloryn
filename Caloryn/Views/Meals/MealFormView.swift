@@ -129,6 +129,7 @@ struct MealFormView: View {
                 .padding(.horizontal, CalorynTheme.pagePadding)
                 .padding(.bottom, 24)
             }
+            .calorynPageCanvas()
             .navigationTitle(isEditing ? "Edit Meal" : "Create Meal")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -260,7 +261,6 @@ struct MealFormView: View {
                     Label("Add Item", systemImage: "plus.circle")
                         .font(CalorynTheme.buttonLabel)
                 }
-                .tint(CalorynTheme.sage)
             }
 
             if components.isEmpty {

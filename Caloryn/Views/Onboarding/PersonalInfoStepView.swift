@@ -49,7 +49,6 @@ struct PersonalInfoStepView: View {
                                 .font(CalorynTheme.numericBody)
                                 .foregroundStyle(CalorynTheme.textPrimary)
                             Slider(value: $heightCm, in: 120...220, step: 1)
-                                .tint(CalorynTheme.sage)
                         }
                     }
 
@@ -59,7 +58,6 @@ struct PersonalInfoStepView: View {
                                 .font(CalorynTheme.numericBody)
                                 .foregroundStyle(CalorynTheme.textPrimary)
                             Slider(value: $weightKg, in: 40...200, step: 0.5)
-                                .tint(CalorynTheme.sage)
                         }
                     }
                 }
@@ -75,7 +73,6 @@ struct PersonalInfoStepView: View {
                     .padding(.vertical, 16)
             }
             .adaptiveGlassProminentButton()
-            .tint(CalorynTheme.sage)
             .padding(.horizontal, CalorynTheme.pagePadding)
             .padding(.bottom, 16)
             .accessibilityIdentifier("onboarding.personalInfo.continue")
