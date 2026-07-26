@@ -35,6 +35,64 @@ struct ActiveEnergyDataSource {
 }
 
 @MainActor
+enum CurrentActivityCalorieBudget {
+    static func load(
+        profile: UserProfile,
+        consumed: Double,
+        now: Date = .now,
+        calendar: Calendar = .current
+    ) async -> ActivityCalorieBudget? {
+        await load(
+            profile: profile,
+            consumed: consumed,
+            now: now,
+            calendar: calendar,
+            dataSource: .healthKit
+        )
+    }
+
+    static func load(
+        profile: UserProfile,
+        consumed: Double,
+        now: Date,
+        calendar: Calendar,
+        dataSource: ActiveEnergyDataSource
+    ) async -> ActivityCalorieBudget? {
+        guard dataSource.isHealthAvailable() else { return nil }
+
+        let dayStart = calendar.startOfDay(for: now)
+        let historyStart = calendar.date(
+            byAdding: .day,
+            value: -ActivityCalorieBudget.historyLookbackDays,
+            to: dayStart
+        ) ?? dayStart
+
+        do {
+            async let activeEnergy = dataSource.activeEnergyBurnedKcal(dayStart)
+            async let recentSamples = dataSource.dailyActiveEnergyBurnedKcal(
+                historyStart,
+                dayStart
+            )
+            let (activeEnergyKcal, recentActiveEnergySamples) = try await (
+                activeEnergy,
+                recentSamples
+            )
+
+            return profile.activityBudget(
+                consumed: consumed,
+                activeEnergyKcal: activeEnergyKcal,
+                recentActiveEnergySamples: recentActiveEnergySamples,
+                isActivityLoading: false,
+                activityMessage: nil,
+                date: dayStart
+            )
+        } catch {
+            return nil
+        }
+    }
+}
+
+@MainActor
 @Observable
 final class ActiveEnergyDayTracker {
     private(set) var activeEnergyKcal: Double = 0

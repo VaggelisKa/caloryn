@@ -211,6 +211,7 @@ enum TodayCaloriesIntentResponse: Equatable, Sendable {
         snapshot: DailyWidgetSnapshot?,
         currentConsumed: Double,
         expectedBaseTarget: Int,
+        expectedTarget: Int,
         expectsDynamicTarget: Bool,
         now: Date = .now,
         calendar: Calendar = .current,
@@ -221,6 +222,7 @@ enum TodayCaloriesIntentResponse: Equatable, Sendable {
               calendar.isDate(snapshot.dayStart, inSameDayAs: now),
               snapshot.calories.consumed == max(0, Int(currentConsumed.rounded())),
               snapshot.calories.baseTarget == max(1, expectedBaseTarget),
+              snapshot.calories.target == max(1, expectedTarget),
               snapshot.usesDynamicTarget == expectsDynamicTarget else {
             return .unavailable("Open Caloryn to refresh today’s calorie snapshot.")
         }

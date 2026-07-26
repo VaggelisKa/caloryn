@@ -53,7 +53,7 @@ struct CalorynIntentDataStore: Sendable {
         now: Date = .now,
         calendar: Calendar = .current,
         locale: Locale = .current
-    ) throws -> TodayCaloriesIntentResponse {
+    ) async throws -> TodayCaloriesIntentResponse {
         let context = modelContainer.mainContext
         let profiles = try context.fetch(
             FetchDescriptor<UserProfile>(
@@ -71,13 +71,36 @@ struct CalorynIntentDataStore: Sendable {
             .filter { calendar.isDate($0.date, inSameDayAs: now) }
             .reduce(0) { $0 + $1.calories }
         let expectsDynamicTarget = profile.effectiveEnergyCalculationMode == .dynamicHealth
+        let snapshot = try? widgetSnapshotStore.load()
+        guard let snapshot,
+              snapshot.state == .ready,
+              calendar.isDate(snapshot.dayStart, inSameDayAs: now) else {
+            return .unavailable("Open Caloryn to refresh today’s calorie snapshot.")
+        }
+
+        let expectedBaseTarget: Int
+        let expectedTarget: Int
+        if expectsDynamicTarget {
+            guard let budget = await CurrentActivityCalorieBudget.load(
+                profile: profile,
+                consumed: currentConsumed,
+                now: now,
+                calendar: calendar
+            ) else {
+                return .unavailable("Open Caloryn to refresh today’s calorie snapshot.")
+            }
+            expectedBaseTarget = budget.baseTarget
+            expectedTarget = budget.adjustedTarget
+        } else {
+            expectedBaseTarget = profile.calorieBaseTarget(usesActiveEnergy: false)
+            expectedTarget = expectedBaseTarget
+        }
 
         return TodayCaloriesIntentResponse.make(
-            snapshot: try? widgetSnapshotStore.load(),
+            snapshot: snapshot,
             currentConsumed: currentConsumed,
-            expectedBaseTarget: profile.calorieBaseTarget(
-                usesActiveEnergy: expectsDynamicTarget
-            ),
+            expectedBaseTarget: expectedBaseTarget,
+            expectedTarget: expectedTarget,
             expectsDynamicTarget: expectsDynamicTarget,
             now: now,
             calendar: calendar,

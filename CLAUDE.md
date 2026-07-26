@@ -6,7 +6,7 @@ SwiftUI + SwiftData iOS app, deployment target iOS 26.
 
 `xcodebuild test -project Caloryn.xcodeproj -scheme Caloryn -testPlan <plan> -destination "platform=iOS Simulator,name=iPhone 17" CODE_SIGNING_ALLOWED=NO`
 
-Plans: `Caloryn-Unit` (639 tests, ~1.4s) · `Caloryn-UI` (9 journeys, ~88s) · `Caloryn-All`.
+Plans: `Caloryn-Unit` (641 tests, ~1.4s) · `Caloryn-UI` (9 journeys, ~88s) · `Caloryn-All`.
 
 Use `set -o pipefail` when piping xcodebuild — otherwise a failed build reports `grep`'s
 exit code and looks green.

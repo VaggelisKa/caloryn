@@ -374,6 +374,7 @@ final class CalorynAppIntentsTests: XCTestCase {
                 snapshot: nil,
                 currentConsumed: 0,
                 expectedBaseTarget: 1_700,
+                expectedTarget: 1_700,
                 expectsDynamicTarget: false,
                 now: now
             ),
@@ -384,6 +385,7 @@ final class CalorynAppIntentsTests: XCTestCase {
                 snapshot: stale,
                 currentConsumed: 1_200,
                 expectedBaseTarget: 1_700,
+                expectedTarget: 1_700,
                 expectsDynamicTarget: false,
                 now: now
             ),
@@ -404,6 +406,7 @@ final class CalorynAppIntentsTests: XCTestCase {
                 snapshot: snapshot,
                 currentConsumed: 1_350,
                 expectedBaseTarget: 1_700,
+                expectedTarget: 1_700,
                 expectsDynamicTarget: false,
                 now: now
             ),
@@ -411,7 +414,79 @@ final class CalorynAppIntentsTests: XCTestCase {
         )
     }
 
-    func testCalorieCheckUsesCurrentLocalSnapshotWithoutNetwork() throws {
+    func testCalorieResponseRejectsDynamicSnapshotWhenCurrentHealthTargetDiffers() {
+        let now = makeTestDate(year: 2026, month: 7, day: 25)
+        let snapshot = DailyWidgetSnapshot(
+            generatedAt: now,
+            dayStart: Calendar.current.startOfDay(for: now),
+            state: .ready,
+            calories: WidgetCalorieSummary(
+                consumed: 1_200,
+                baseTarget: 1_700,
+                target: 1_900,
+                dynamicAdjustment: 200
+            ),
+            usesDynamicTarget: true,
+            activityRefreshedAt: now
+        )
+
+        XCTAssertEqual(
+            TodayCaloriesIntentResponse.make(
+                snapshot: snapshot,
+                currentConsumed: 1_200,
+                expectedBaseTarget: 1_700,
+                expectedTarget: 2_000,
+                expectsDynamicTarget: true,
+                now: now
+            ),
+            .unavailable("Open Caloryn to refresh today’s calorie snapshot.")
+        )
+    }
+
+    func testCurrentDynamicBudgetUsesLocalHealthData() async {
+        let now = makeTestDate(year: 2026, month: 7, day: 25)
+        let profile = UserProfile(
+            age: 30,
+            sex: .male,
+            heightCm: 180,
+            weightKg: 75,
+            activityLevel: .moderatelyActive,
+            dailyCalorieTarget: 1_700,
+            manualOverride: false,
+            calorieDeficit: 0,
+            energyCalculationMode: .dynamicHealth
+        )
+        let samples = (1...7).map { offset in
+            DailyActiveEnergySample(
+                date: Calendar.current.date(
+                    byAdding: .day,
+                    value: -offset,
+                    to: now
+                )!,
+                activeEnergyKcal: 300
+            )
+        }
+        let dataSource = ActiveEnergyDataSource(
+            isHealthAvailable: { true },
+            activeEnergyBurnedKcal: { _ in 500 },
+            dailyActiveEnergyBurnedKcal: { _, _ in samples },
+            observeActiveEnergyChanges: { _ in nil }
+        )
+
+        let budget = await CurrentActivityCalorieBudget.load(
+            profile: profile,
+            consumed: 1_200,
+            now: now,
+            calendar: .current,
+            dataSource: dataSource
+        )
+
+        XCTAssertEqual(budget?.activeEnergyKcal, 500)
+        XCTAssertEqual(budget?.recentActiveEnergySamples, samples)
+        XCTAssertEqual(budget?.adjustedTarget, (budget?.baseTarget ?? 0) + 200)
+    }
+
+    func testCalorieCheckUsesCurrentLocalSnapshotWithoutNetwork() async throws {
         let container = try makeContainer()
         let context = ModelContext(container)
         let now = makeTestDate(year: 2026, month: 7, day: 25)
@@ -442,16 +517,18 @@ final class CalorynAppIntentsTests: XCTestCase {
             widgetSnapshotStore: snapshotStore
         )
 
+        let response = try await store.todayCaloriesResponse(
+            now: now,
+            locale: englishLocale
+        )
+
         XCTAssertEqual(
-            try store.todayCaloriesResponse(
-                now: now,
-                locale: englishLocale
-            ),
+            response,
             .available("1,200 of 1,700 calories logged today. 500 remaining.")
         )
     }
 
-    func testCalorieCheckRequiresAuthenticatedLocalProfile() throws {
+    func testCalorieCheckRequiresAuthenticatedLocalProfile() async throws {
         let container = try makeContainer()
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -466,8 +543,10 @@ final class CalorynAppIntentsTests: XCTestCase {
             widgetSnapshotStore: snapshotStore
         )
 
+        let response = try await store.todayCaloriesResponse(now: now)
+
         XCTAssertEqual(
-            try store.todayCaloriesResponse(now: now),
+            response,
             .unavailable(
                 "Open Caloryn and finish setup before checking today’s calories."
             )
