@@ -410,6 +410,7 @@ struct FoodSearchView: View {
                         suggestion: pair.1
                     )
                 }
+                .listRowBackground(Color.clear)
             }
 
             if mode.supportsMultiSelection, !mealTemplates.isEmpty {
@@ -436,6 +437,7 @@ struct FoodSearchView: View {
                     )
                     .accessibilityIdentifier("meal.select.\(meal.id.uuidString)")
                 }
+                .listRowBackground(Color.clear)
             }
 
             if mode.isSelection, !recipes.isEmpty {
@@ -445,11 +447,13 @@ struct FoodSearchView: View {
                     ForEach(recipes) { recipe in
                         recipeRow(for: recipe)
                     }
+                    .listRowBackground(Color.clear)
                 } else {
                     Section("Recipes") {
                         ForEach(recipes) { recipe in
                             recipeRow(for: recipe)
                         }
+                        .listRowBackground(Color.clear)
                     }
                 }
             }
@@ -461,11 +465,13 @@ struct FoodSearchView: View {
                     ForEach(manualEntries) { food in
                         personalFoodRow(for: food)
                     }
+                    .listRowBackground(Color.clear)
                 } else {
                     Section("Manual Entries") {
                         ForEach(manualEntries) { food in
                             personalFoodRow(for: food)
                         }
+                        .listRowBackground(Color.clear)
                     }
                 }
             }
@@ -477,11 +483,13 @@ struct FoodSearchView: View {
                     ForEach(displayedRecentFoods) { food in
                         savedFoodRow(for: food)
                     }
+                    .listRowBackground(Color.clear)
                 } else {
                     Section {
                         ForEach(displayedRecentFoods) { food in
                             savedFoodRow(for: food)
                         }
+                        .listRowBackground(Color.clear)
                     } header: {
                         recentSectionHeader
                     }
@@ -586,6 +594,7 @@ struct FoodSearchView: View {
                                     : ""
                             )
                         }
+                        .listRowBackground(Color.clear)
                     }
 
                     if !matchingRecipes.isEmpty {
@@ -595,11 +604,13 @@ struct FoodSearchView: View {
                             ForEach(matchingRecipes) { food in
                                 recipeRow(for: food)
                             }
+                            .listRowBackground(Color.clear)
                         } else {
                             Section {
                                 ForEach(matchingRecipes) { food in
                                     recipeRow(for: food)
                                 }
+                                .listRowBackground(Color.clear)
                             } header: {
                                 Text("Recipes")
                                     .font(CalorynTheme.caption)
@@ -615,11 +626,13 @@ struct FoodSearchView: View {
                             ForEach(matchingManualEntries) { food in
                                 personalFoodRow(for: food)
                             }
+                            .listRowBackground(Color.clear)
                         } else {
                             Section {
                                 ForEach(matchingManualEntries) { food in
                                     personalFoodRow(for: food)
                                 }
+                                .listRowBackground(Color.clear)
                             } header: {
                                 Text("Manual Entries")
                                     .font(CalorynTheme.caption)
@@ -637,19 +650,23 @@ struct FoodSearchView: View {
                             ForEach(matchingEditedProducts) { food in
                                 savedFoodRow(for: food)
                             }
+                            .listRowBackground(Color.clear)
 
                             ForEach(visibleProviderSearchResults) { result in
                                 remoteProductRow(result)
                             }
+                            .listRowBackground(Color.clear)
                         } else {
                             Section {
                                 ForEach(matchingEditedProducts) { food in
                                     savedFoodRow(for: food)
                                 }
+                                .listRowBackground(Color.clear)
 
                                 ForEach(visibleProviderSearchResults) { result in
                                     remoteProductRow(result)
                                 }
+                                .listRowBackground(Color.clear)
                             } header: {
                                 if hasCategorizedLocalMatches {
                                     Text("Search Results")

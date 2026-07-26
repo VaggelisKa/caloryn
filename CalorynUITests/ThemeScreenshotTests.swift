@@ -2,11 +2,15 @@ import XCTest
 
 /// Captures the app's main surfaces in both appearances, as attachments.
 ///
-/// This is a **verification harness, not an assertion suite**. It navigates and
-/// screenshots; it deliberately asserts almost nothing. Theme regressions are colour
-/// problems, and no XCTAssert reads a colour — a human (or a model) has to look at the
-/// image. Snapshot tests cover components; this covers whole screens, which snapshot
-/// tests cannot, because they need a running store, navigation and modal presentation.
+/// This is a **verification harness, not an assertion suite** — for colour. No XCTAssert
+/// reads a colour, so a human (or a model) has to look at the image. Snapshot tests cover
+/// components; this covers whole screens, which they cannot, because whole screens need a
+/// running store, navigation and modal presentation.
+///
+/// It *does* assert that it reached every screen. A harness that silently photographs the
+/// wrong thing is worse than one that fails: the first capture of the search sheet missed
+/// it entirely because the identifier uses `MealType.rawValue` (lowercase) rather than
+/// `displayName`, and the run still passed.
 ///
 /// It exists because the screens that drift are the ones nothing renders in CI. The
 /// `cardBackground` token was wrong in every grouped list for as long as it had existed
@@ -50,29 +54,30 @@ final class ThemeScreenshotTests: UITestCase {
         XCTAssertTrue(today.isVisible, "Today should render")
         attach(app, "01-today", appearance)
 
-        // The meal header doubles as the add-food button.
-        let addBreakfast = today.mealHeader("Breakfast")
-        if addBreakfast.waitForExistence(timeout: Self.defaultTimeout) {
-            addBreakfast.tap()
-            // The sheet lands on recent foods before anything is typed. Both that list
-            // and the results list used a bare .listStyle(.plain).
-            sleep(2)
-            attach(app, "02-food-search-sheet", appearance)
+        // The meal header doubles as the add-food button. The identifier uses
+        // `MealType.rawValue`, which is lowercase — `displayName` is the capitalised one.
+        let addBreakfast = today.mealHeader("breakfast")
+        XCTAssertTrue(
+            addBreakfast.awaitExistence(),
+            "Could not find the breakfast add button, so the food search sheet — the screen "
+                + "this harness exists to photograph — was never opened."
+        )
+        addBreakfast.tap()
 
-            let field = app.searchFields.firstMatch.exists
-                ? app.searchFields.firstMatch
-                : app.textFields.firstMatch
-            if field.waitForExistence(timeout: 4) {
-                field.tap()
-                field.typeText("oat")
-                sleep(3)
-                attach(app, "03-food-search-results", appearance)
-            } else {
-                attach(app, "03-food-search-results-UNREACHED", appearance)
-            }
-        } else {
-            attach(app, "02-food-search-sheet-UNREACHED", appearance)
-        }
+        // The sheet lands on recent foods before anything is typed. That list and the
+        // results list are separate `List`s and were separately unthemed.
+        let searchField = app.searchFields.firstMatch.waitForExistence(timeout: 4)
+            ? app.searchFields.firstMatch
+            : app.textFields.firstMatch
+        XCTAssertTrue(searchField.awaitExistence(), "Food search sheet did not present")
+        attach(app, "02-food-search-sheet", appearance)
+
+        searchField.tap()
+        searchField.typeText("oat")
+        // Results are filtered locally for seeded foods, so this settles quickly; the wait
+        // is for the list to re-render rather than for a network call.
+        sleep(3)
+        attach(app, "03-food-search-results", appearance)
     }
 
     /// The History drill-down. Its navigation bar was tinted by a UIKit bridge that has
@@ -88,17 +93,17 @@ final class ThemeScreenshotTests: UITestCase {
         sleep(1)
         attach(app, "04-history", appearance)
 
-        if history.recurringPatternCard.waitForExistence(timeout: Self.defaultTimeout) {
-            history.recurringPatternCard.tap()
-            if history.recurringPatternDetails.waitForExistence(timeout: Self.defaultTimeout) {
-                sleep(1)
-                attach(app, "05-history-drilldown", appearance)
-            } else {
-                attach(app, "05-history-drilldown-UNREACHED", appearance)
-            }
-        } else {
-            attach(app, "05-history-drilldown-UNREACHED", appearance)
-        }
+        XCTAssertTrue(
+            history.recurringPatternCard.awaitExistence(),
+            "The historyPattern fixture should surface a recurring pattern card to drill into"
+        )
+        history.recurringPatternCard.tap()
+        XCTAssertTrue(
+            history.recurringPatternDetails.awaitExistence(),
+            "Pattern Details did not open, so the drill-down navigation bar was not captured"
+        )
+        sleep(1)
+        attach(app, "05-history-drilldown", appearance)
     }
 
     /// Settings and My Foods are the other two grouped lists, so they carry the same
