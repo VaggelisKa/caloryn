@@ -77,6 +77,7 @@ struct FoodSearchView: View {
     var snackIndex: Int = 0
     var mode: FoodSearchMode = .logging
     var automaticallyFocusSearch = true
+    var startsWithScanner = false
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -89,6 +90,7 @@ struct FoodSearchView: View {
     @State private var selectedResult: FoodSearchResult?
     @State private var selectedFoodItem: FoodItem?
     @State private var showingScanner = false
+    @State private var hasPresentedInitialScanner = false
     @State private var showingCustomFoodForm = false
     @State private var isLookingUpBarcode = false
     @State private var barcodeLookupError = FoodSearchService.debugInitialBarcodeFailure
@@ -313,6 +315,10 @@ struct FoodSearchView: View {
             }
             .onAppear {
                 captureSuggestionsIfNeeded()
+                if startsWithScanner, !hasPresentedInitialScanner {
+                    hasPresentedInitialScanner = true
+                    showingScanner = true
+                }
                 if automaticallyFocusSearch {
                     // Keep focus away from a covered search field while a barcode
                     // result is presented so its navigation title settles cleanly.

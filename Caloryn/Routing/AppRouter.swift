@@ -11,6 +11,8 @@ enum AppTab: Hashable {
 @MainActor
 @Observable
 final class AppRouter {
+    static let shared = AppRouter()
+
     var selectedTab: AppTab = .today
     private(set) var pendingRoute: AppRoute?
 

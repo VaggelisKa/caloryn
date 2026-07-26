@@ -58,6 +58,7 @@ The audit only mutates pure domain logic that already has real tests:
 | Nutrition math | `NutritionCalculator`, `ActivityCalorieBudget` |
 | History | `HistoryAnalytics`, `HistoryPatternDiscovery` |
 | Logging | `FavoriteFoodLogging`, `DailyReminderPlanner` |
+| App Intents | `CalorynIntentDomain` |
 | Domain models | `ProduceVarietySummary`, `NutritionValues`, `DailyGoalSnapshot`, `GoalEditSeed`, `OnboardingProfileSave`, `SelectedDayRollover` |
 
 Views are excluded: they are covered by journey tests, which are far too slow to

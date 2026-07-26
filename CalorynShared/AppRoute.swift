@@ -41,6 +41,7 @@ enum AppRoute: Hashable, Sendable {
     case today
     case nutritionDetails
     case addFood(meal: WidgetMeal)
+    case scanFood(meal: WidgetMeal)
 
     var url: URL {
         var components = URLComponents()
@@ -53,6 +54,11 @@ enum AppRoute: Hashable, Sendable {
             components.host = "nutrition-details"
         case .addFood(let meal):
             components.host = "add-food"
+            components.queryItems = [
+                URLQueryItem(name: "meal", value: meal.rawValue)
+            ]
+        case .scanFood(let meal):
+            components.host = "scan-food"
             components.queryItems = [
                 URLQueryItem(name: "meal", value: meal.rawValue)
             ]
@@ -79,6 +85,13 @@ enum AppRoute: Hashable, Sendable {
                 return nil
             }
             self = .addFood(meal: meal)
+        case "scan-food":
+            guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+                  let mealValue = components.queryItems?.first(where: { $0.name == "meal" })?.value,
+                  let meal = WidgetMeal(rawValue: mealValue) else {
+                return nil
+            }
+            self = .scanFood(meal: meal)
         default:
             return nil
         }

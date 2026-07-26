@@ -12,8 +12,10 @@ final class AppRouteTests: XCTestCase {
     func testEveryMealRouteRoundTrips() {
         for meal in WidgetMeal.allCases {
             let route = AppRoute.addFood(meal: meal)
+            let scannerRoute = AppRoute.scanFood(meal: meal)
 
             XCTAssertEqual(AppRoute(url: route.url), route)
+            XCTAssertEqual(AppRoute(url: scannerRoute.url), scannerRoute)
         }
     }
 

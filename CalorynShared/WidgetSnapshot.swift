@@ -1,11 +1,11 @@
 import Foundation
 
 enum WidgetConstants {
-    static let appGroupIdentifier = "group.www.caloryn"
-    static let dailyProgressKind = "CalorynDailyProgress"
-    static let quickLogKind = "CalorynQuickLog"
-    static let snapshotFileName = "daily-widget-snapshot.json"
-    static let currentSchemaVersion = 1
+    nonisolated static let appGroupIdentifier = "group.www.caloryn"
+    nonisolated static let dailyProgressKind = "CalorynDailyProgress"
+    nonisolated static let quickLogKind = "CalorynQuickLog"
+    nonisolated static let snapshotFileName = "daily-widget-snapshot.json"
+    nonisolated static let currentSchemaVersion = 1
 }
 
 enum DailyWidgetState: String, Codable, Hashable, Sendable {

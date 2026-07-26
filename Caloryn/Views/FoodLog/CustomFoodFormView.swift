@@ -433,7 +433,16 @@ struct CustomFoodFormView: View {
             if !savedFoods.contains(where: { $0 === materialization.food }) {
                 modelContext.insert(materialization.food)
             }
-            try? modelContext.save()
+            do {
+                try modelContext.save()
+                if existingFood != nil {
+                    CalorynAppShortcutRefresh.favoriteWasEdited(
+                        isFavorite: materialization.food.isFavorite
+                    )
+                }
+            } catch {
+                // Keep the existing silent save behavior.
+            }
             BarcodeRecoveryAnalytics.record(
                 path: existingFood == nil ? .manualCreation : .personalEdit,
                 result: existingFood != nil
@@ -458,7 +467,14 @@ struct CustomFoodFormView: View {
             food.servingDescription = nil
             food.categoryTags = []
             food.produceKind = draft.produceKind
-            try? modelContext.save()
+            do {
+                try modelContext.save()
+                CalorynAppShortcutRefresh.favoriteWasEdited(
+                    isFavorite: food.isFavorite
+                )
+            } catch {
+                // Keep the existing silent save behavior.
+            }
             onSaved?(food)
         } else {
             let food = FoodItem(
@@ -504,6 +520,12 @@ struct CustomFoodFormView: View {
     private func deleteFood() {
         if let food = existingFood {
             food.deletePreservingLogEntrySnapshots(from: modelContext)
+            do {
+                try modelContext.save()
+                CalorynAppShortcutRefresh.favoritesChanged()
+            } catch {
+                // Keep the existing silent deletion behavior.
+            }
         }
         dismiss()
     }
