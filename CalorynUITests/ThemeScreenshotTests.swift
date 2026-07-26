@@ -41,8 +41,10 @@ final class ThemeScreenshotTests: UITestCase {
 
     private func captureAllSurfaces(appearance: Appearance) {
         captureTodayAndSearch(appearance)
+        captureMultiAddReview(appearance)
         captureHistoryDrillDown(appearance)
         captureSettingsAndMyFoods(appearance)
+        captureCreationSheets(appearance)
     }
 
     /// Today, plus the food search sheet — the sheet whose plain list used to paint a
@@ -66,9 +68,7 @@ final class ThemeScreenshotTests: UITestCase {
 
         // The sheet lands on recent foods before anything is typed. That list and the
         // results list are separate `List`s and were separately unthemed.
-        let searchField = app.searchFields.firstMatch.waitForExistence(timeout: 4)
-            ? app.searchFields.firstMatch
-            : app.textFields.firstMatch
+        let searchField = self.searchField(in: app)
         XCTAssertTrue(searchField.awaitExistence(), "Food search sheet did not present")
         attach(app, "02-food-search-sheet", appearance)
 
@@ -106,6 +106,106 @@ final class ThemeScreenshotTests: UITestCase {
         attach(app, "05-history-drilldown", appearance)
     }
 
+    /// The multi-add review sheet, reached by selecting a result in multi-select mode.
+    private func captureMultiAddReview(_ appearance: Appearance) {
+        let app = launch(fixture: .customFoods, appearance: appearance)
+        let today = TodayScreen(app: app)
+
+        XCTAssertTrue(today.isVisible, "Today should render")
+        let addBreakfast = today.mealHeader("breakfast")
+        XCTAssertTrue(addBreakfast.awaitExistence(), "Breakfast add button missing")
+        addBreakfast.tap()
+
+        // Query first, then enter selection mode: `foodSearch.result.*` identifiers exist on
+        // search results rather than on the recent list. "House Salad" comes from the
+        // customFoods fixture, so this needs no network provider.
+        let field = searchField(in: app)
+        XCTAssertTrue(field.awaitExistence(), "Search field missing")
+        field.tap()
+        field.typeText("Salad")
+
+        let firstResult = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH %@", "foodSearch.result."))
+            .firstMatch
+        XCTAssertTrue(firstResult.awaitExistence(), "No selectable search result")
+
+        let select = app.buttons["Select multiple items"]
+        XCTAssertTrue(select.awaitExistence(), "Multi-select toggle missing")
+        select.tap()
+
+        firstResult.tap()
+
+        let review = app.descendants(matching: .any).matching(identifier: "multiAdd.review").firstMatch
+        XCTAssertTrue(review.awaitExistence(), "Review button missing")
+        review.tap()
+
+        let commit = app.descendants(matching: .any).matching(identifier: "multiAdd.commit").firstMatch
+        XCTAssertTrue(commit.awaitExistence(), "Multi-add review sheet did not present")
+        attach(app, "08-multi-add-review", appearance)
+    }
+
+    /// The three creation sheets behind My Foods' + menu, plus the ingredient amount
+    /// picker, which is only reachable from inside the recipe form.
+    private func captureCreationSheets(_ appearance: Appearance) {
+        let app = launch(fixture: .customFoods, appearance: appearance)
+        let tabs = TabBar(app: app)
+        let myFoods = MyFoodsScreen(app: app)
+
+        XCTAssertTrue(tabs.isVisible, "Tab bar should render")
+        tabs.go(to: .myFoods)
+
+        capture(app, sheet: "Create Manual Entry", named: "09-custom-food-form",
+                appearance: appearance, menu: myFoods.createMenu)
+        capture(app, sheet: "Create Meal", named: "10-meal-form",
+                appearance: appearance, menu: myFoods.createMenu)
+        capture(app, sheet: "Create Recipe", named: "11-recipe-form",
+                appearance: appearance, menu: myFoods.createMenu, dismiss: false)
+
+        // Still inside the recipe form: add an ingredient to reach the amount picker.
+        let addIngredient = app.descendants(matching: .any)
+            .matching(identifier: "recipe.addIngredient").firstMatch
+        XCTAssertTrue(addIngredient.awaitExistence(), "Add Ingredient button missing")
+        addIngredient.tap()
+
+        let ingredientField = searchField(in: app)
+        XCTAssertTrue(ingredientField.awaitExistence(), "Ingredient search field missing")
+        ingredientField.tap()
+        ingredientField.typeText("Salad")
+
+        let ingredient = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH %@", "foodSearch.result."))
+            .firstMatch
+        XCTAssertTrue(ingredient.awaitExistence(), "No food to add as an ingredient")
+        ingredient.tap()
+        sleep(1)
+        attach(app, "12-ingredient-amount", appearance)
+    }
+
+    /// Opens one sheet from My Foods' create menu, photographs it, and closes it again.
+    private func capture(
+        _ app: XCUIApplication,
+        sheet menuItem: String,
+        named name: String,
+        appearance: Appearance,
+        menu: XCUIElement,
+        dismiss shouldDismiss: Bool = true
+    ) {
+        XCTAssertTrue(menu.awaitExistence(), "My Foods create menu missing")
+        menu.tap()
+        let item = app.buttons[menuItem]
+        XCTAssertTrue(item.awaitExistence(), "Menu item '\(menuItem)' missing")
+        item.tap()
+        sleep(1)
+        attach(app, name, appearance)
+
+        if shouldDismiss {
+            let close = app.buttons["Close"].exists
+                ? app.buttons["Close"]
+                : app.buttons["Cancel"]
+            if close.waitForExistence(timeout: 3) { close.tap(); sleep(1) }
+        }
+    }
+
     /// Settings and My Foods are the other two grouped lists, so they carry the same
     /// row-background behaviour as Today.
     private func captureSettingsAndMyFoods(_ appearance: Appearance) {
@@ -140,12 +240,28 @@ final class ThemeScreenshotTests: UITestCase {
     }
 
     private func launch(fixture: Fixture, appearance: Appearance) -> XCUIApplication {
-        XCUIDevice.shared.appearance = appearance.device
+        // Setting this immediately before `launch()` is a race: on a simulator that was in
+        // the other appearance, the app can come up before the change lands, and the whole
+        // run then photographs light images under dark filenames. It is set once per launch
+        // and given a moment to settle, and the captured images are checked for the
+        // appearance's own tokens afterwards (scripts/theme-screenshots.sh).
+        if XCUIDevice.shared.appearance != appearance.device {
+            XCUIDevice.shared.appearance = appearance.device
+            sleep(2)
+        }
         let app = XCUIApplication()
         app.launchArguments += ["-uitest-reset", "-uitest-seed", fixture.rawValue]
         app.launch()
         self.app = app
         return app
+    }
+
+    /// SwiftUI reports this control as a text field rather than a search field, so it is
+    /// found by identifier — the element type is not part of the contract (CLAUDE.md rule 5).
+    private func searchField(in app: XCUIApplication) -> XCUIElement {
+        app.descendants(matching: .any)
+            .matching(identifier: "foodSearch.searchField")
+            .firstMatch
     }
 
     private func attach(_ app: XCUIApplication, _ name: String, _ appearance: Appearance) {

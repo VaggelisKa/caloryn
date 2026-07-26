@@ -494,6 +494,7 @@ private struct MissingFoodEntryView: View {
                     }
                 }
             }
+            .calorynFormStyle()
             .navigationTitle("Edit Portion")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

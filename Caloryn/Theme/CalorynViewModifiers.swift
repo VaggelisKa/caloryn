@@ -53,6 +53,17 @@ private struct CalorynSheetCanvasModifier: ViewModifier {
     }
 }
 
+private struct CalorynFormStyleModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .scrollContentBackground(.hidden)
+        // A `Form` paints `systemGroupedBackground` over its canvas exactly as a `List`
+        // does — cool grey-blue, not the warm palette. Sections still need
+        // `.listRowBackground(CalorynTheme.cardBackground)`; this only clears the scroll
+        // background so the canvas shows through.
+    }
+}
+
 private struct CalorynPlainListStyleModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
@@ -80,6 +91,12 @@ extension View {
     /// Inset-grouped list on the page canvas — the card-like look.
     func calorynGroupedListStyle() -> some View {
         modifier(CalorynGroupedListStyleModifier())
+    }
+
+    /// `Form` on whichever canvas surrounds it. Sections still need
+    /// `.listRowBackground(CalorynTheme.cardBackground)`.
+    func calorynFormStyle() -> some View {
+        modifier(CalorynFormStyleModifier())
     }
 
     /// Flat list on the page canvas, for content that should not read as cards

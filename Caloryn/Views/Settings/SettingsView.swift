@@ -722,6 +722,7 @@ struct GoalEditView: View {
                 Text("These goals appear anywhere the nutrient is shown. Sodium and cholesterol are entered in milligrams.")
             }
         }
+        .calorynFormStyle()
         .navigationTitle("Edit Goal")
         .navigationBarTitleDisplayMode(.inline)
         .scrollDismissesKeyboard(.interactively)
@@ -896,6 +897,7 @@ struct ProfileEditView: View {
                 }
             }
         }
+        .calorynFormStyle()
         .navigationTitle("Edit Profile")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

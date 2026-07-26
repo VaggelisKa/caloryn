@@ -230,6 +230,7 @@ struct RecipeFormView: View {
                     Label("Add Ingredient", systemImage: "plus.circle")
                         .font(CalorynTheme.buttonLabel)
                 }
+                .accessibilityIdentifier("recipe.addIngredient")
             }
 
             if sortedIngredients.isEmpty {

@@ -134,6 +134,25 @@ A measurement note, since this cost a cycle: sampling "the darkest pixel in the 
 box" finds the glyph in light mode and the *container* in dark mode. Count pixels matching
 the expected colour instead.
 
+## Looking at the app
+
+```
+./scripts/theme-screenshots.sh [output-dir]     # default /tmp/caloryn-theme-shots
+```
+
+Captures 12 surfaces in both appearances — Today, the food search sheet and its results,
+History and its drill-down, Settings, My Foods, multi-add review, the three creation
+sheets, and the ingredient amount picker — then prints how much of each screen is
+`pageBackground`, `cardBackground`, sage, and pure white.
+
+Read the census before opening images: drift shows up as a number. Pure white above ~2% on
+a screen without a keyboard means a `List` or `Form` row is painting its own background.
+A dark capture whose page/card percentages are 0.0% means the appearance never switched —
+that happened twice, and both times the images were silently light.
+
+`ThemeScreenshotTests` asserts it reached every screen but nothing about colour, because no
+XCTAssert reads a colour. The reaching is machine-checked; the looking is not.
+
 ## Why the snapshots were extended
 
 The suite rendered only `traits: .reference` — light, `.large`. Every token the migration

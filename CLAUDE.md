@@ -50,7 +50,8 @@ exit code and looks green.
    and nothing lints this. Screens: `calorynPageCanvas()` inside the `NavigationStack`,
    above `.navigationTitle`. Tint comes from the `AccentColor` asset; add `.tint()` only
    for a deliberate non-accent colour. `.swiftlint.yml` enforces the bans; colour itself
-   is only ever verified by looking — see `ThemeScreenshotTests`.
+   is only ever verified by looking: run `./scripts/theme-screenshots.sh`, which captures
+   all 12 surfaces in both appearances and prints a per-screen colour census.
 8. **Measure, don't assume.** Already tried and dead: parallelising the UI target
    (141s vs 140s), and letting xcodebuild re-resolve packages (+112s). CI wall-clock is
    noisy — the same commit ran 137s/206s/268s, so never claim a CI speed-up from one

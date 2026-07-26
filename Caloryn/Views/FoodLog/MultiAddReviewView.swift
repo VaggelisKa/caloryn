@@ -42,10 +42,13 @@ struct MultiAddReviewView: View {
             Form {
                 if let recoveryState {
                     recoverySection(recoveryState)
+                        .listRowBackground(CalorynTheme.cardBackground)
                 }
 
                 itemsSection
+                    .listRowBackground(CalorynTheme.cardBackground)
             }
+            .calorynFormStyle()
             .safeAreaInset(edge: .bottom) {
                 commitBar
             }
