@@ -71,6 +71,7 @@ struct CustomFoodFormView: View {
                 .padding(.horizontal, CalorynTheme.pagePadding)
                 .padding(.bottom, 24)
             }
+            .calorynSheetCanvas()
             .navigationTitle(formTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -80,6 +81,7 @@ struct CustomFoodFormView: View {
                     } label: {
                         Image(systemName: "xmark")
                             .font(CalorynTheme.toolbarIcon)
+                            .foregroundStyle(CalorynTheme.sage)
                     }
                     .accessibilityLabel("Close")
                 }
@@ -116,6 +118,7 @@ struct CustomFoodFormView: View {
                     } label: {
                         Image(systemName: "checkmark")
                             .font(CalorynTheme.toolbarIcon)
+                            .foregroundStyle(CalorynTheme.sage)
                     }
                     .accessibilityLabel("Save")
                     .accessibilityIdentifier("customFood.save")

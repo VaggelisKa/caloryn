@@ -71,7 +71,6 @@ struct GoalSummaryStepView: View {
                     .padding(.vertical, 16)
             }
             .adaptiveGlassProminentButton()
-            .tint(CalorynTheme.sage)
             .padding(.horizontal, CalorynTheme.pagePadding)
             .padding(.bottom, 16)
             .accessibilityIdentifier("onboarding.goalSummary.continue")
@@ -137,7 +136,6 @@ struct GoalSummaryStepView: View {
                     .font(CalorynTheme.microCaption)
                     .foregroundStyle(CalorynTheme.textSecondary)
                 Slider(value: $calorieDeficit, in: -500...1000, step: 50)
-                    .tint(CalorynTheme.sage)
                     .disabled(useManualOverride)
                 Text("Deficit")
                     .font(CalorynTheme.microCaption)
@@ -168,7 +166,6 @@ struct GoalSummaryStepView: View {
                     .font(CalorynTheme.bodyText)
                     .foregroundStyle(CalorynTheme.textPrimary)
             }
-            .tint(CalorynTheme.sage)
 
             if useManualOverride {
                 HStack {

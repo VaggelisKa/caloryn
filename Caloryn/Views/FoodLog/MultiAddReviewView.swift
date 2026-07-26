@@ -42,13 +42,17 @@ struct MultiAddReviewView: View {
             Form {
                 if let recoveryState {
                     recoverySection(recoveryState)
+                        .listRowBackground(CalorynTheme.cardBackground)
                 }
 
                 itemsSection
+                    .listRowBackground(CalorynTheme.cardBackground)
             }
+            .calorynFormStyle()
             .safeAreaInset(edge: .bottom) {
                 commitBar
             }
+            .calorynSheetCanvas()
             .navigationTitle("Review Items")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -58,6 +62,7 @@ struct MultiAddReviewView: View {
                     } label: {
                         Image(systemName: "xmark")
                             .font(CalorynTheme.toolbarIcon)
+                            .foregroundStyle(CalorynTheme.sage)
                     }
                     .disabled(isCommitting)
                     .accessibilityLabel("Close")
@@ -89,7 +94,6 @@ struct MultiAddReviewView: View {
                 .padding(.vertical, 16)
             }
             .adaptiveGlassProminentButton()
-            .tint(CalorynTheme.sage)
             .disabled(isCommitting || items.isEmpty || recoveryState != nil)
             .padding(.horizontal, CalorynTheme.pagePadding)
             .padding(.top, 10)

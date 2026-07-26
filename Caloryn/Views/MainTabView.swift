@@ -24,7 +24,6 @@ struct MainTabView: View {
                 SettingsView()
             }
         }
-        .tint(CalorynTheme.sage)
         .calorynPageCanvas()
     }
 }

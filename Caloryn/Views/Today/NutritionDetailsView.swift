@@ -105,13 +105,7 @@ struct NutritionDetailsView: View {
                 .padding(.horizontal, CalorynTheme.pagePadding)
                 .padding(.vertical, CalorynTheme.cardSpacing)
             }
-            .background {
-                if #available(iOS 26.0, *) {
-                    Color.clear
-                } else {
-                    CalorynTheme.pageBackground.ignoresSafeArea()
-                }
-            }
+            .calorynSheetCanvas()
             .navigationTitle("Nutrition Details")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -121,6 +115,7 @@ struct NutritionDetailsView: View {
                     } label: {
                         Image(systemName: "xmark")
                             .font(CalorynTheme.toolbarIcon)
+                            .foregroundStyle(CalorynTheme.sage)
                     }
                     .accessibilityLabel("Close")
                 }

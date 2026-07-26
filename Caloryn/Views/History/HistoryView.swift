@@ -143,7 +143,6 @@ struct HistoryView: View {
                 destination(for: route)
             }
         }
-        .tint(CalorynTheme.sage)
         .calorynPageCanvas()
         .task(id: analyticsRefreshID) {
             // Range changes refresh synchronously through selectRange; data/profile

@@ -1,82 +1,38 @@
 import SwiftUI
-import UIKit
 
+/// Every colour below resolves to a Color Set in `CalorynShared/SharedColors.xcassets`, which declares its
+/// light and dark appearance together. Add colours there, never as literals here — a Color Set
+/// makes a missing dark variant visible in Xcode, whereas a `UIColor { traits in … }` closure
+/// silently falls back. See CLAUDE.md rule 7.
 enum CalorynTheme {
     // MARK: - Colors
 
-    static let sage = Color(UIColor { traits in
-        traits.userInterfaceStyle == .dark
-            ? UIColor(red: 0.588, green: 0.671, blue: 0.514, alpha: 1)   // #96AB83
-            : UIColor(red: 0.486, green: 0.557, blue: 0.420, alpha: 1)   // #7C8E6B
-    })
-
-    static let stone = Color(UIColor { traits in
-        traits.userInterfaceStyle == .dark
-            ? UIColor(red: 0.784, green: 0.733, blue: 0.686, alpha: 1)   // #C8BBAF
-            : UIColor(red: 0.710, green: 0.659, blue: 0.596, alpha: 1)   // #B5A898
-    })
-
-    static let terracotta = Color(UIColor { traits in
-        traits.userInterfaceStyle == .dark
-            ? UIColor(red: 0.831, green: 0.565, blue: 0.435, alpha: 1)   // #D4906F
-            : UIColor(red: 0.757, green: 0.471, blue: 0.337, alpha: 1)   // #C17856
-    })
-
-    static let warmWhite = Color(red: 0.980, green: 0.980, blue: 0.969)  // #FAFAF7
-
-    static let surface = Color(UIColor { traits in
-        traits.userInterfaceStyle == .dark
-            ? UIColor(red: 0.153, green: 0.149, blue: 0.141, alpha: 1)   // #272624
-            : UIColor(red: 0.953, green: 0.945, blue: 0.925, alpha: 1)   // #F3F1EC
-    })
-
-    static let pageBackground = Color(UIColor { traits in
-        traits.userInterfaceStyle == .dark
-            ? .systemGroupedBackground
-            : UIColor(red: 0.953, green: 0.945, blue: 0.925, alpha: 1)   // #F3F1EC
-    })
-
-    static let cardBackground = Color(UIColor { traits in
-        traits.userInterfaceStyle == .dark
-            ? .secondarySystemGroupedBackground
-            : .white
-    })
+    static let sage = Color(.sage)
+    static let stone = Color(.stone)
+    static let terracotta = Color(.terracotta)
+    static let warmWhite = Color(.warmWhite)
+    static let surface = Color(.surface)
+    static let pageBackground = Color(.pageBackground)
+    static let cardBackground = Color(.cardBackground)
     static let cardSeparator = stone.opacity(0.3)
 
-    static let textPrimary = Color(UIColor { traits in
-        traits.userInterfaceStyle == .dark
-            ? UIColor(red: 0.925, green: 0.922, blue: 0.910, alpha: 1)   // #ECEBE8
-            : UIColor(red: 0.173, green: 0.173, blue: 0.165, alpha: 1)   // #2C2C2A
-    })
+    static let textPrimary = Color(.textPrimary)
+    static let textSecondary = Color(.textSecondary)
 
-    static let textSecondary = Color(UIColor { traits in
-        traits.userInterfaceStyle == .dark
-            ? UIColor(red: 0.678, green: 0.675, blue: 0.659, alpha: 1)   // #ADACA8
-            : UIColor(red: 0.541, green: 0.541, blue: 0.522, alpha: 1)   // #8A8A85
-    })
-
+    // Asset names omit a `Color` suffix: Xcode strips it when generating symbols
+    // (`CarbColor` would yield `.carb`), so the asset is named `Carb` to match.
     static let proteinColor = sage
-
-    static let carbColor = Color(UIColor { traits in
-        traits.userInterfaceStyle == .dark
-            ? UIColor(red: 0.659, green: 0.769, blue: 0.851, alpha: 1)   // #A8C4D9
-            : UIColor(red: 0.588, green: 0.694, blue: 0.776, alpha: 1)   // #96B1C6
-    })
-
+    static let carbColor = Color(.carb)
     static let fatColor = terracotta
+    static let fiberColor = Color(.fiber)
 
-    static let fiberColor = Color(UIColor { traits in
-        traits.userInterfaceStyle == .dark
-            ? UIColor(red: 0.612, green: 0.702, blue: 0.655, alpha: 1)   // #9CB3A7
-            : UIColor(red: 0.361, green: 0.498, blue: 0.435, alpha: 1)   // #5C7F6F
-    })
-
-    // Nutri-Score (A = best, E = worst)
-    static let nutriscoreA = Color(red: 0.012, green: 0.506, blue: 0.255)   // #038141
-    static let nutriscoreB = Color(red: 0.522, green: 0.733, blue: 0.184)   // #85BB2F
-    static let nutriscoreC = Color(red: 0.996, green: 0.796, blue: 0.008)   // #FECB02
-    static let nutriscoreD = Color(red: 0.933, green: 0.506, blue: 0)       // #EE8100
-    static let nutriscoreE = Color(red: 0.902, green: 0.243, blue: 0.067)   // #E63E11
+    // Nutri-Score (A = best, E = worst). Appearance-independent by design: these are
+    // the official Nutri-Score brand colours and must not shift with the interface style.
+    static let nutriscoreA = Color(.nutriscoreA)
+    static let nutriscoreB = Color(.nutriscoreB)
+    static let nutriscoreC = Color(.nutriscoreC)
+    static let nutriscoreD = Color(.nutriscoreD)
+    static let nutriscoreE = Color(.nutriscoreE)
 
     static func nutriscoreColor(for grade: String) -> Color? {
         switch grade.lowercased() {

@@ -24,9 +24,9 @@ struct HistoryRecurringCaloriePatternDetailView: View {
             .padding(.bottom, 20)
         }
         .calorynPageCanvas()
+        .calorynDrillDownNavigation()
         .navigationTitle("Pattern Details")
         .navigationBarTitleDisplayMode(.inline)
-        .historyDrillDownNavigation()
         .accessibilityIdentifier("history.recurringPattern.details")
     }
 

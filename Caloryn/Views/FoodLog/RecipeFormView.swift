@@ -73,6 +73,7 @@ struct RecipeFormView: View {
                 .padding(.horizontal, CalorynTheme.pagePadding)
                 .padding(.bottom, 24)
             }
+            .calorynSheetCanvas()
             .navigationTitle(isEditing ? "Edit Recipe" : "Create Recipe")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -82,6 +83,7 @@ struct RecipeFormView: View {
                     } label: {
                         Image(systemName: "xmark")
                             .font(CalorynTheme.toolbarIcon)
+                            .foregroundStyle(CalorynTheme.sage)
                     }
                     .accessibilityLabel("Close")
                 }
@@ -117,6 +119,7 @@ struct RecipeFormView: View {
                     } label: {
                         Image(systemName: "checkmark")
                             .font(CalorynTheme.toolbarIcon)
+                            .foregroundStyle(CalorynTheme.sage)
                     }
                     .accessibilityLabel("Save")
                     .disabled(!canSave)
@@ -227,7 +230,7 @@ struct RecipeFormView: View {
                     Label("Add Ingredient", systemImage: "plus.circle")
                         .font(CalorynTheme.buttonLabel)
                 }
-                .tint(CalorynTheme.sage)
+                .accessibilityIdentifier("recipe.addIngredient")
             }
 
             if sortedIngredients.isEmpty {

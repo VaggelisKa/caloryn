@@ -1,12 +1,7 @@
 import SwiftUI
-import UIKit
 
 enum HistoryTheme {
-    static let under = Color(UIColor { traits in
-        traits.userInterfaceStyle == .dark
-            ? UIColor(red: 0.784, green: 0.635, blue: 0.314, alpha: 1)
-            : UIColor(red: 0.678, green: 0.506, blue: 0.180, alpha: 1)
-    })
+    static let under = Color(.historyUnder)
 
     static func color(for status: HistoryGoalStatus) -> Color {
         switch status {

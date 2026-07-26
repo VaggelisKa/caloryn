@@ -49,16 +49,23 @@ struct SettingsView: View {
         NavigationStack {
             List {
                 appearanceSection
+                    .listRowBackground(CalorynTheme.cardBackground)
 
                 if let profile {
                     goalSection(profile)
+                        .listRowBackground(CalorynTheme.cardBackground)
                     calorieEstimateSection(profile)
+                        .listRowBackground(CalorynTheme.cardBackground)
                     profileSection(profile)
+                        .listRowBackground(CalorynTheme.cardBackground)
                 }
 
                 DailyReminderSettingsSection()
+                    .listRowBackground(CalorynTheme.cardBackground)
                 dataSection
+                    .listRowBackground(CalorynTheme.cardBackground)
                 aboutSection
+                    .listRowBackground(CalorynTheme.cardBackground)
             }
             .calorynGroupedListStyle()
             .navigationTitle("Settings")
@@ -95,13 +102,11 @@ struct SettingsView: View {
                 Toggle(isOn: .constant(false)) {
                     calorieEstimateModeToggleLabel(for: profile)
                 }
-                .tint(CalorynTheme.sage)
                 .disabled(true)
             } else {
                 Toggle(isOn: dynamicEnergyBinding(for: profile)) {
                     calorieEstimateModeToggleLabel(for: profile)
                 }
-                .tint(CalorynTheme.sage)
                 .disabled(isRequestingHealthAuthorization || (profile.energyCalculationMode != .dynamicHealth && !isHealthAvailable))
             }
 
@@ -160,7 +165,6 @@ struct SettingsView: View {
                     }
                     .font(CalorynTheme.caption)
                     .buttonStyle(.borderless)
-                    .tint(CalorynTheme.sage)
                     .accessibilityLabel("Open app settings")
                 }
             } else if let dynamicStatus = budget.dynamicStatusText {
@@ -343,12 +347,10 @@ struct SettingsView: View {
                         .tag(preference.rawValue)
                 }
             }
-            .tint(CalorynTheme.sage)
 
             Toggle(isOn: $showNutriscore) {
                 Label("Show Nutri-Score", systemImage: "leaf")
             }
-            .tint(CalorynTheme.sage)
         } header: {
             Text("Appearance")
         } footer: {
@@ -441,6 +443,7 @@ struct SettingsView: View {
             NavigationLink("Edit Profile") {
                 ProfileEditView(profile: profile)
             }
+            .accessibilityIdentifier("settings.editProfile")
         } header: {
             Text("Profile")
         }
@@ -451,7 +454,6 @@ struct SettingsView: View {
             Toggle(isOn: $iCloudSyncEnabled) {
                 Label("iCloud Sync", systemImage: "icloud")
             }
-            .tint(CalorynTheme.sage)
             .onChange(of: iCloudSyncEnabled) {
                 showRestartAlert = true
             }
@@ -625,7 +627,6 @@ struct GoalEditView: View {
         Form {
             Section("Daily Calorie Target") {
                 Toggle("Manual Override", isOn: $draft.manualOverride)
-                    .tint(CalorynTheme.sage)
                     .accessibilityIdentifier("goalEdit.manualOverride")
                     .onChange(of: draft.manualOverride) { _, isManual in
                         draft.manualOverrideChanged(to: isManual, tdee: profile.tdee)
@@ -647,6 +648,7 @@ struct GoalEditView: View {
                     LabeledContent("Target", value: "\(calculatedTarget) kcal")
                 }
             }
+            .listRowBackground(CalorynTheme.cardBackground)
 
             if !draft.manualOverride {
                 Section {
@@ -656,7 +658,6 @@ struct GoalEditView: View {
                                 .font(CalorynTheme.microCaption)
                                 .foregroundStyle(CalorynTheme.textSecondary)
                             Slider(value: $draft.calorieDeficit, in: -500...1000, step: 50)
-                                .tint(CalorynTheme.sage)
                             Text("Deficit")
                                 .font(CalorynTheme.microCaption)
                                 .foregroundStyle(CalorynTheme.textSecondary)
@@ -672,6 +673,7 @@ struct GoalEditView: View {
                 } footer: {
                     Text("Positive values create a deficit for weight loss, negative values create a surplus for weight gain.")
                 }
+                .listRowBackground(CalorynTheme.cardBackground)
             }
 
             Section("Macro Goals") {
@@ -700,6 +702,7 @@ struct GoalEditView: View {
                         .foregroundStyle(CalorynTheme.terracotta)
                 }
             }
+            .listRowBackground(CalorynTheme.cardBackground)
 
             Section {
                 ForEach(TrackedNutrient.editableGoalNutrients) { nutrient in
@@ -722,20 +725,27 @@ struct GoalEditView: View {
             } footer: {
                 Text("These goals appear anywhere the nutrient is shown. Sodium and cholesterol are entered in milligrams.")
             }
+            .listRowBackground(CalorynTheme.cardBackground)
         }
+        .calorynFormStyle()
+        .calorynPageCanvas()
+        .calorynDrillDownNavigation()
         .navigationTitle("Edit Goal")
         .navigationBarTitleDisplayMode(.inline)
         .scrollDismissesKeyboard(.interactively)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                Button("Save") {
+                Button {
                     if draft.disablesAppleHealthAdjustment {
                         AppleHealthAdjustmentSettings.disable()
                     }
                     draft.apply(to: profile)
                     dismiss()
+                } label: {
+                    Text("Save")
+                        .font(CalorynTheme.toolbarAction)
+                        .foregroundStyle(draft.canSave ? CalorynTheme.sage : CalorynTheme.textSecondary)
                 }
-                .font(CalorynTheme.toolbarAction)
                 .accessibilityIdentifier("goalEdit.save")
                 .disabled(!draft.canSave)
             }
@@ -874,15 +884,14 @@ struct ProfileEditView: View {
                 VStack(alignment: .leading) {
                     Text("Height: \(Int(profile.heightCm)) cm")
                     Slider(value: $profile.heightCm, in: 120...220, step: 1)
-                        .tint(CalorynTheme.sage)
                 }
 
                 VStack(alignment: .leading) {
                     Text("Weight: \(String(format: "%.1f", profile.weightKg)) kg")
                     Slider(value: $profile.weightKg, in: 40...200, step: 0.5)
-                        .tint(CalorynTheme.sage)
                 }
             }
+            .listRowBackground(CalorynTheme.cardBackground)
 
             Section {
                 Picker("Activity", selection: $profile.activityLevel) {
@@ -898,20 +907,27 @@ struct ProfileEditView: View {
                     Text(ProfileEditActivityLevelPolicy.lockedExplanation)
                 }
             }
+            .listRowBackground(CalorynTheme.cardBackground)
         }
+        .calorynFormStyle()
+        .calorynPageCanvas()
+        .calorynDrillDownNavigation()
         .navigationTitle("Edit Profile")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                Button("Save") {
+                Button {
                     let cal = Double(profile.dailyCalorieTarget)
                     let proteinRatio = cal > 0 ? (profile.proteinTargetG * 4.0) / cal : 0.30
                     let carbRatio    = cal > 0 ? (profile.carbTargetG    * 4.0) / cal : 0.40
                     let fatRatio     = cal > 0 ? (profile.fatTargetG     * 9.0) / cal : 0.30
                     profile.recalculate(proteinRatio: proteinRatio, carbRatio: carbRatio, fatRatio: fatRatio)
                     dismiss()
+                } label: {
+                    Text("Save")
+                        .font(CalorynTheme.toolbarAction)
+                        .foregroundStyle(CalorynTheme.sage)
                 }
-                .font(CalorynTheme.toolbarAction)
             }
         }
     }

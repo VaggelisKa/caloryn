@@ -1,0 +1,54 @@
+# Theme enforcement only.
+#
+# This config deliberately disables every default rule. It exists to stop one class of
+# regression — screens drifting off the theme — not to impose a general Swift style on a
+# codebase that has done without a linter until now. Adding stylistic rules here is a
+# separate decision, and a noisy one: it would flag hundreds of pre-existing lines.
+#
+# The rules below ban the *primitive* rather than requiring the abstraction. SwiftLint's
+# custom rules are per-match regexes with no whole-file logic, so "this file uses List but
+# not calorynGroupedListStyle" is not expressible. Banning `.listStyle(...)` outright is
+# both expressible and stronger: the unthemed state becomes unreachable rather than merely
+# discouraged.
+
+# `custom_rules` is itself a rule identifier, so listing it alone runs the rules below
+# and nothing else.
+only_rules:
+  - custom_rules
+
+included:
+  - Caloryn
+  - CalorynWidgets
+
+excluded:
+  - Caloryn/Theme          # defines the abstractions these rules point at
+  - Caloryn/GlassCompatibility.swift  # owns the material/glass surfaces
+
+custom_rules:
+  raw_list_style:
+    name: "Raw list style"
+    regex: '\.listStyle\('
+    message: "Use calorynGroupedListStyle() or calorynPlainListStyle(). A bare .listStyle lets the List paint a system background over the theme — see CLAUDE.md rule 7."
+    severity: error
+
+  raw_system_background_color:
+    name: "System background colour"
+    regex: '(Color\(\.system|UIColor\.system|\.systemGroupedBackground|\.secondarySystemGroupedBackground|\.systemBackground)'
+    message: "Use a CalorynTheme colour. System backgrounds ignore the app palette and differ per appearance in ways the theme does not control."
+    severity: error
+
+  raw_white_color:
+    name: "Raw white"
+    regex: 'Color\.white|Color\(\.white\)|UIColor\.white'
+    # The barcode scanner draws a UIKit overlay on top of a live camera feed. That text and
+    # its reticle are white against video, not against the theme, so they are correctly
+    # appearance-independent.
+    excluded: ".*BarcodeScannerView\\.swift"
+    message: "Use CalorynTheme.warmWhite or CalorynTheme.cardBackground. Pure white reads as a stark block against the warm page background."
+    severity: error
+
+  raw_color_literal:
+    name: "Colour literal"
+    regex: 'Color\(red:\s*[0-9]'
+    message: "Define the colour as a Color Set in CalorynShared/SharedColors.xcassets and expose it through CalorynTheme, so its dark appearance is declared alongside its light one."
+    severity: error

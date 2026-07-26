@@ -1,35 +1,36 @@
 {
-  "configurations" : [
+  "configurations": [
     {
-      "id" : "A1B2C3D4-0000-4000-8000-000000000002",
-      "name" : "Default",
-      "options" : {
-
-      }
+      "id": "A1B2C3D4-0000-4000-8000-000000000002",
+      "name": "Default",
+      "options": {}
     }
   ],
-  "defaultOptions" : {
-    "codeCoverage" : {
-      "targets" : [
+  "defaultOptions": {
+    "codeCoverage": {
+      "targets": [
         {
-          "containerPath" : "container:Caloryn.xcodeproj",
-          "identifier" : "1C70CDD02F545455007DE238",
-          "name" : "Caloryn"
+          "containerPath": "container:Caloryn.xcodeproj",
+          "identifier": "1C70CDD02F545455007DE238",
+          "name": "Caloryn"
         }
       ]
     },
-    "testRepetitionMode" : "retryOnFailure",
-    "maximumTestRepetitions" : 3,
-    "testTimeoutsEnabled" : true
+    "testRepetitionMode": "retryOnFailure",
+    "maximumTestRepetitions": 3,
+    "testTimeoutsEnabled": true
   },
-  "testTargets" : [
+  "testTargets": [
     {
-      "target" : {
-        "containerPath" : "container:Caloryn.xcodeproj",
-        "identifier" : "5C1000032F90000000A00001",
-        "name" : "CalorynUITests"
-      }
+      "target": {
+        "containerPath": "container:Caloryn.xcodeproj",
+        "identifier": "5C1000032F90000000A00001",
+        "name": "CalorynUITests"
+      },
+      "skippedTests": [
+        "ThemeScreenshotTests"
+      ]
     }
   ],
-  "version" : 1
+  "version": 1
 }

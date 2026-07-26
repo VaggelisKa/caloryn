@@ -114,6 +114,7 @@ struct TodayView: View {
                         Section {
                             nutriscoreSection
                         }
+                        .listRowBackground(CalorynTheme.cardBackground)
                     }
 
                     ForEach(coreMeals) { meal in
@@ -301,7 +302,7 @@ struct TodayView: View {
                 .presentationBackground(.regularMaterial)
         } else {
             content
-                .presentationBackground(CalorynTheme.pageBackground)
+                .presentationBackground(CalorynTheme.cardBackground)
         }
     }
 
@@ -456,6 +457,7 @@ private struct MissingFoodEntryView: View {
                             .foregroundStyle(CalorynTheme.terracotta)
                     }
                 }
+                .listRowBackground(CalorynTheme.cardBackground)
 
                 Section("Entry") {
                     LabeledContent("Food", value: entry.foodName)
@@ -483,6 +485,7 @@ private struct MissingFoodEntryView: View {
                             .accessibilityIdentifier("missingEntry.snackSlot")
                     }
                 }
+                .listRowBackground(CalorynTheme.cardBackground)
 
                 Section {
                     Button(role: .destructive) {
@@ -492,7 +495,10 @@ private struct MissingFoodEntryView: View {
                             .frame(maxWidth: .infinity)
                     }
                 }
+                .listRowBackground(CalorynTheme.cardBackground)
             }
+            .calorynFormStyle()
+            .calorynSheetCanvas()
             .navigationTitle("Edit Portion")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -502,13 +508,22 @@ private struct MissingFoodEntryView: View {
                     } label: {
                         Image(systemName: "xmark")
                             .font(CalorynTheme.toolbarIcon)
+                            .foregroundStyle(CalorynTheme.sage)
                     }
                     .accessibilityLabel("Close")
                 }
 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
+                    Button {
                         save()
+                    } label: {
+                        Text("Save")
+                            .font(CalorynTheme.toolbarAction)
+                            .foregroundStyle(
+                                FavoriteFoodLogging.isSafePortion(portionGrams)
+                                    ? CalorynTheme.sage
+                                    : CalorynTheme.textSecondary
+                            )
                     }
                     .disabled(!FavoriteFoodLogging.isSafePortion(portionGrams))
                     .accessibilityIdentifier("missingEntry.save")

@@ -268,7 +268,6 @@ struct EnergyCalculationModeStepView: View {
                 .padding(.vertical, 16)
             }
             .adaptiveGlassProminentButton()
-            .tint(CalorynTheme.sage)
             .disabled(isRequestingAuthorization)
             .padding(.horizontal, CalorynTheme.pagePadding)
             .padding(.bottom, 16)

@@ -51,22 +51,29 @@ struct MyFoodsView: View {
         NavigationStack {
             List {
                 favoritesSection
+                    .listRowBackground(CalorynTheme.cardBackground)
 
                 if recipes.isEmpty {
                     emptyRecipesSection
+                        .listRowBackground(CalorynTheme.cardBackground)
                 } else if !nonFavoriteRecipes.isEmpty {
                     recipesSection
+                        .listRowBackground(CalorynTheme.cardBackground)
                 }
 
                 mealsSection
+                    .listRowBackground(CalorynTheme.cardBackground)
 
                 if manualEntries.isEmpty {
                     emptyManualEntriesSection
+                        .listRowBackground(CalorynTheme.cardBackground)
                 } else if !nonFavoriteManualEntries.isEmpty {
                     manualEntriesSection
+                        .listRowBackground(CalorynTheme.cardBackground)
                 }
 
                 editedProductCatalogSection
+                    .listRowBackground(CalorynTheme.cardBackground)
             }
             .calorynGroupedListStyle()
             .navigationTitle("My Foods")

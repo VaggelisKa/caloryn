@@ -1,6 +1,8 @@
 # Caloryn — agent instructions
 
-SwiftUI + SwiftData iOS app, deployment target iOS 26.
+SwiftUI + SwiftData iOS app. Deployment target **iOS 18.6**, built against the iOS 26 SDK —
+so `#available(iOS 26.0, *)` checks are live and their `else` branches ship. Do not delete
+them as dead code.
 
 ## Tests
 
@@ -37,7 +39,29 @@ exit code and looks green.
    these tests may make.
 6. **Mutation testing reports, never gates.** Add new pure-logic models to its scope in
    `.github/workflows/mutation-audit.yml`.
-7. **Measure, don't assume.** Already tried and dead: parallelising the UI target
+7. **Theme comes from the asset catalog, never literals.** Colours: `CalorynTheme.*`,
+   backed by Color Sets in `CalorynShared/SharedColors.xcassets` that declare light and
+   dark together — never `Color.white`, `Color(.system*)` or `Color(red:)`. Lists:
+   `calorynGroupedListStyle()` / `calorynPlainListStyle()`, never a bare `.listStyle(...)`
+   — a `List` paints a system background *over* yours unless `scrollContentBackground` is
+   hidden, which is why this drift is invisible in review. **Grouped-list rows need
+   `.listRowBackground(CalorynTheme.cardBackground)` on each `Section` as well** — the
+   list modifier cannot do it, rows paint their own `secondarySystemGroupedBackground`,
+   and nothing lints this. `Form` needs `calorynFormStyle()` *and* the same row
+   backgrounds. Screens: `calorynPageCanvas()` (page) or `calorynSheetCanvas()` (sheet)
+   inside the `NavigationStack`, above `.navigationTitle` — **every** screen, including
+   ones nested in a file whose outer view already has one. Pushed details also need
+   `calorynDrillDownNavigation()`: a system back button ignores `AccentColor`, `.tint()`
+   *and* a UIKit `tintColor` bridge, so it is replaced, not tinted. Same for toolbar
+   buttons — `Button("Save")` has no label to colour, so use the explicit `label:` form
+   with `.foregroundStyle`, and keep the disabled state in a ternary.
+   `.swiftlint.yml` enforces the bans, but **a lint rule is a per-match regex and can
+   never catch a *missing* modifier** — that is the whole class of bug here. Colour is
+   only ever verified by looking: run `./scripts/theme-screenshots.sh`, which captures
+   all 17 surfaces in both appearances and prints a per-screen colour census. When
+   auditing for a missing modifier, scan **per struct, not per file** — a file-scoped
+   grep hid three unthemed screens because their outer view in the same file was fine.
+8. **Measure, don't assume.** Already tried and dead: parallelising the UI target
    (141s vs 140s), and letting xcodebuild re-resolve packages (+112s). CI wall-clock is
    noisy — the same commit ran 137s/206s/268s, so never claim a CI speed-up from one
    sample.
@@ -61,5 +85,5 @@ bug, not noise.
 
 ## Further reading
 
-`docs/testing/snapshot-testing.md` · `docs/testing/mutation-testing.md` · issue #90
+`docs/testing/snapshot-testing.md` · `docs/testing/mutation-testing.md` · `docs/theme.md` · issue #90
 (open defects the suite surfaced).

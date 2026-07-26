@@ -32,7 +32,6 @@ struct AppleHealthOptInCard: View {
                     Spacer(minLength: 0)
                 }
             }
-            .tint(CalorynTheme.sage)
             .disabled(!isHealthAvailable)
             .onChange(of: isHealthAvailable, initial: true) {
                 if !isHealthAvailable {

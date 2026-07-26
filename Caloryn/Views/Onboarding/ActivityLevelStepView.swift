@@ -43,7 +43,6 @@ struct ActivityLevelStepView: View {
                     .padding(.vertical, 16)
             }
             .adaptiveGlassProminentButton()
-            .tint(CalorynTheme.sage)
             .padding(.horizontal, CalorynTheme.pagePadding)
             .padding(.bottom, 16)
             .accessibilityIdentifier("onboarding.activityLevel.continue")

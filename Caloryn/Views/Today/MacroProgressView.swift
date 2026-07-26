@@ -226,14 +226,18 @@ private struct NutrientCustomizationView: View {
                     .foregroundStyle(CalorynTheme.sage)
                 }
             }
+            .calorynSheetCanvas()
             .navigationTitle("Displayed Nutrients")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
+                    Button {
                         dismiss()
+                    } label: {
+                        Text("Done")
+                            .font(CalorynTheme.toolbarAction)
+                            .foregroundStyle(CalorynTheme.sage)
                     }
-                    .font(CalorynTheme.toolbarAction)
                 }
             }
             .environment(\.editMode, $editMode)

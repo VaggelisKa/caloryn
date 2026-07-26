@@ -57,6 +57,7 @@ struct MealSectionView: View {
                     onEdit: onEdit,
                     onDelete: onDelete
                 )
+                .listRowBackground(CalorynTheme.cardBackground)
             } else {
                 ForEach(entries) { entry in
                     MealEntryActionRow(
@@ -64,6 +65,7 @@ struct MealSectionView: View {
                         onEdit: onEdit,
                         onDelete: onDelete
                     )
+                    .listRowBackground(CalorynTheme.cardBackground)
                 }
             }
         } header: {
@@ -175,7 +177,6 @@ private struct SingleMealTransitionRow: View {
                 } label: {
                     Label("Edit", systemImage: "pencil")
                 }
-                .tint(CalorynTheme.sage)
             }
         }
         .swipeActions(edge: .trailing) {
@@ -220,7 +221,6 @@ private struct MealEntryActionRow: View {
                 } label: {
                     Label("Edit", systemImage: "pencil")
                 }
-                .tint(CalorynTheme.sage)
             }
             .swipeActions(edge: .trailing) {
                 Button(role: .destructive) {
@@ -328,7 +328,7 @@ private struct MealEntryRow: View {
             onDelete: { _ in }
         )
     }
-    .listStyle(.insetGrouped)
+    .calorynGroupedListStyle()
 }
 
 #Preview("Empty") {
@@ -341,7 +341,7 @@ private struct MealEntryRow: View {
             onDelete: { _ in }
         )
     }
-    .listStyle(.insetGrouped)
+    .calorynGroupedListStyle()
 }
 
 #Preview("Snack") {
@@ -366,7 +366,7 @@ private struct MealEntryRow: View {
             onDelete: { _ in }
         )
     }
-    .listStyle(.insetGrouped)
+    .calorynGroupedListStyle()
 }
 
 #Preview("Snack with Nutriscore") {
@@ -398,5 +398,5 @@ private struct MealEntryRow: View {
             onDelete: { _ in }
         )
     }
-    .listStyle(.insetGrouped)
+    .calorynGroupedListStyle()
 }

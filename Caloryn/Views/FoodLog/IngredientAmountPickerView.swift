@@ -286,6 +286,7 @@ struct IngredientAmountPickerView: View {
                 .padding(.horizontal, CalorynTheme.pagePadding)
                 .padding(.bottom, 24)
             }
+            .calorynSheetCanvas()
             .navigationTitle("Ingredient Amount")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -295,15 +296,24 @@ struct IngredientAmountPickerView: View {
                     } label: {
                         Image(systemName: "xmark")
                             .font(CalorynTheme.toolbarIcon)
+                            .foregroundStyle(CalorynTheme.sage)
                     }
                     .accessibilityLabel("Close")
                 }
 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
+                    Button {
                         save()
+                    } label: {
+                        // A `Button("Save")` has no label view to colour, and a toolbar
+                        // button takes neither the AccentColor asset nor `.tint()` under
+                        // Liquid Glass — only `.foregroundStyle` on the label works. The
+                        // ternary keeps the disabled state visible, which a flat sage
+                        // would silently throw away.
+                        Text("Save")
+                            .font(CalorynTheme.toolbarAction)
+                            .foregroundStyle(canSave ? CalorynTheme.sage : CalorynTheme.textSecondary)
                     }
-                    .font(CalorynTheme.toolbarAction)
                     .disabled(!canSave)
                 }
             }

@@ -53,6 +53,7 @@ struct HistoryCalorieTrendCard: View {
             .buttonStyle(.plain)
             .accessibilityLabel("View calorie trend details")
             .accessibilityValue(accessibilityLabel)
+            .accessibilityIdentifier("history.calorieTrend.card")
         } else {
             content
         }

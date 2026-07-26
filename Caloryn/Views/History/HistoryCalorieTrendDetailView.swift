@@ -35,9 +35,11 @@ struct HistoryCalorieTrendDetailView: View {
             .padding(.horizontal, CalorynTheme.pagePadding)
             .padding(.bottom, 20)
         }
+        .calorynPageCanvas()
+        .calorynDrillDownNavigation()
         .navigationTitle("Calorie Trend")
         .navigationBarTitleDisplayMode(.inline)
-        .historyDrillDownNavigation()
+        .accessibilityIdentifier("history.calorieTrend.details")
     }
 }
 

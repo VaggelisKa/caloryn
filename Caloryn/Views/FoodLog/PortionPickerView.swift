@@ -158,6 +158,7 @@ struct PortionPickerView: View {
             .padding(.horizontal, CalorynTheme.pagePadding)
             .padding(.bottom, 100)
         }
+        .calorynSheetCanvas()
         .navigationTitle(isEditing ? "Edit Portion" : "Portion")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(!isEditing)
@@ -169,6 +170,7 @@ struct PortionPickerView: View {
                     } label: {
                         Image(systemName: "xmark")
                             .font(CalorynTheme.toolbarIcon)
+                            .foregroundStyle(CalorynTheme.sage)
                     }
                     .accessibilityLabel("Close")
                 }
@@ -208,6 +210,7 @@ struct PortionPickerView: View {
                     } label: {
                         Image(systemName: "pencil")
                             .font(CalorynTheme.toolbarIcon)
+                            .foregroundStyle(CalorynTheme.sage)
                     }
                     .accessibilityLabel("Edit Food Details")
                     .accessibilityHint("Creates or updates your private version of this barcode")
@@ -223,7 +226,6 @@ struct PortionPickerView: View {
                         .padding(.vertical, 16)
                 }
                 .adaptiveGlassProminentButton()
-                .tint(CalorynTheme.sage)
                 .padding(.horizontal, CalorynTheme.pagePadding)
                 .padding(.top, 10)
                 .padding(.bottom, 16)
