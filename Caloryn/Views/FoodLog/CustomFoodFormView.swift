@@ -370,7 +370,7 @@ struct CustomFoodFormView: View {
                 .calorynInputField(isFocused: focusedField == focus)
                 // On the field itself, not the row: an identifier on the row
                 // resolves to the label, which a test can see but not type in.
-                .accessibilityIdentifier(identifier ?? "")
+                .accessibilityIdentifier(ifPresent: identifier)
 
             Text(unit)
                 .font(CalorynTheme.caption)
@@ -558,6 +558,20 @@ struct CustomFoodFormView: View {
                 }
             }
         )
+    }
+}
+
+private extension View {
+    /// Applies an identifier only when there is one, so the fields that do not
+    /// need naming keep the identifier they would have had rather than an
+    /// explicit empty one.
+    @ViewBuilder
+    func accessibilityIdentifier(ifPresent identifier: String?) -> some View {
+        if let identifier {
+            accessibilityIdentifier(identifier)
+        } else {
+            self
+        }
     }
 }
 
