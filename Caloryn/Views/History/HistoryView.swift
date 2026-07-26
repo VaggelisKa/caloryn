@@ -1,7 +1,10 @@
+import Combine
 import SwiftUI
 import SwiftData
 
 struct HistoryView: View {
+    @Environment(\.scenePhase) private var scenePhase
+
     // Keep newest-first ordering in sync with relevantEntries(startingAt:);
     // that helper early-exits when it reaches entries older than its window.
     @Query(sort: \FoodLogEntry.date, order: .reverse) private var allEntries: [FoodLogEntry]
@@ -10,12 +13,14 @@ struct HistoryView: View {
 
     @State private var historyState: HistoryViewState
     @State private var navigationPath: [HistoryDrillDownRoute] = []
+    @State private var analyticsDayStart = Calendar.current.startOfDay(for: .now)
 
     init(initialRange: HistoryRange = .week) {
         _historyState = State(
             initialValue: HistoryViewState(
                 range: initialRange,
-                analytics: HistoryAnalytics(entries: [], profile: nil, range: initialRange)
+                analytics: HistoryAnalytics(entries: [], profile: nil, range: initialRange),
+                recurringPattern: nil
             )
         )
     }
@@ -57,6 +62,12 @@ struct HistoryView: View {
         analyticsStartDate(for: .quarter)
     }
 
+    private var recurringPatternStartDate: Date {
+        HistoryRecurringCaloriePatternEngine()
+            .evidenceWindow(now: .now, calendar: .current)
+            .lowerBound
+    }
+
     private func analyticsStartDate(for range: HistoryRange) -> Date {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: .now)
@@ -69,6 +80,7 @@ struct HistoryView: View {
 
     private var analyticsRefreshID: HistoryAnalyticsRefreshID {
         HistoryAnalyticsRefreshID(
+            dayStart: analyticsDayStart,
             profile: profile.map { HistoryProfileSignature(profile: $0) },
             entries: relevantEntries(startingAt: widestAnalyticsStartDate)
                 .map { HistoryEntrySignature(entry: $0) },
@@ -92,6 +104,13 @@ struct HistoryView: View {
                 let patternDiscovery = HistoryPatternDiscovery(analytics: history)
 
                 VStack(spacing: CalorynTheme.cardSpacing) {
+                    if let recurringPattern = state.recurringPattern {
+                        HistoryRecurringCaloriePatternCard(
+                            pattern: recurringPattern,
+                            action: { openPatternDetails(recurringPattern) }
+                        )
+                    }
+
                     rangePicker
 
                     HistoryCalorieTrendCard(
@@ -124,22 +143,47 @@ struct HistoryView: View {
                 destination(for: route)
             }
         }
+        .tint(CalorynTheme.sage)
         .calorynPageCanvas()
         .task(id: analyticsRefreshID) {
             // Range changes refresh synchronously through selectRange; data/profile
             // changes should recalculate for the range current when this task runs.
             refreshAnalytics(for: historyState.range)
         }
+        .onChange(of: scenePhase) { _, newPhase in
+            guard newPhase == .active else { return }
+            followCalendarRollover()
+        }
+        // Covers local midnight passing while History remains visible and the
+        // app stays active, so the fixed evidence window advances immediately.
+        .onReceive(
+            NotificationCenter.default
+                .publisher(for: .NSCalendarDayChanged)
+                .receive(on: RunLoop.main)
+        ) { _ in
+            followCalendarRollover()
+        }
+    }
+
+    private func followCalendarRollover() {
+        let dayStart = Calendar.current.startOfDay(for: .now)
+        guard dayStart != analyticsDayStart else { return }
+        analyticsDayStart = dayStart
     }
 
     private func refreshAnalytics(for range: HistoryRange) {
+        let resolver = targetResolver
         historyState = HistoryViewState(
             range: range,
             analytics: HistoryAnalytics(
                 entries: relevantEntries(for: range),
                 profile: profile,
                 range: range,
-                targetResolver: targetResolver
+                targetResolver: resolver
+            ),
+            recurringPattern: HistoryRecurringCaloriePatternEngine().discover(
+                entries: relevantEntries(startingAt: recurringPatternStartDate),
+                targetResolver: resolver
             )
         )
     }
@@ -164,6 +208,14 @@ struct HistoryView: View {
         navigationPath.append(.calorieTrend(snapshot))
     }
 
+    private func openPatternDetails(_ pattern: HistoryRecurringCaloriePattern) {
+        navigationPath.append(
+            .recurringPattern(
+                HistoryRecurringCaloriePatternSnapshot(pattern: pattern)
+            )
+        )
+    }
+
     @ViewBuilder
     private func destination(for route: HistoryDrillDownRoute) -> some View {
         switch route {
@@ -171,6 +223,10 @@ struct HistoryView: View {
             HistoryCalorieTrendDetailView(
                 range: snapshot.range,
                 summary: snapshot.summary
+            )
+        case .recurringPattern(let snapshot):
+            HistoryRecurringCaloriePatternDetailView(
+                pattern: snapshot.pattern
             )
         }
     }
@@ -190,10 +246,12 @@ struct HistoryView: View {
 private struct HistoryViewState {
     let range: HistoryRange
     let analytics: HistoryAnalytics
+    let recurringPattern: HistoryRecurringCaloriePattern?
 }
 
 private enum HistoryDrillDownRoute: Hashable {
     case calorieTrend(HistoryCalorieTrendSnapshot)
+    case recurringPattern(HistoryRecurringCaloriePatternSnapshot)
 }
 
 private struct HistoryCalorieTrendSnapshot: Hashable {
@@ -210,7 +268,24 @@ private struct HistoryCalorieTrendSnapshot: Hashable {
     }
 }
 
+private struct HistoryRecurringCaloriePatternSnapshot: Hashable {
+    let id = UUID()
+    let pattern: HistoryRecurringCaloriePattern
+
+    static func == (
+        lhs: HistoryRecurringCaloriePatternSnapshot,
+        rhs: HistoryRecurringCaloriePatternSnapshot
+    ) -> Bool {
+        lhs.id == rhs.id
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+}
+
 private struct HistoryAnalyticsRefreshID: Equatable {
+    let dayStart: Date
     let profile: HistoryProfileSignature?
     let entries: [HistoryEntrySignature]
     let goalSnapshots: [HistoryGoalSnapshotSignature]
@@ -325,5 +400,13 @@ private struct HistoryEntrySignature: Equatable {
 
 #Preview("History - 90-Day Weekly") {
     HistoryPreviewFixtures.preview(for: .quarterWeekly)
+}
+
+#Preview("History - Recurring Insight") {
+    HistoryPreviewFixtures.preview(for: .recurringInsight)
+}
+
+#Preview("History - No Recurring Insight") {
+    HistoryPreviewFixtures.preview(for: .noRecurringInsight)
 }
 #endif

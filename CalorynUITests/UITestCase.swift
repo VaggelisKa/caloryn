@@ -38,6 +38,8 @@ class UITestCase: XCTestCase {
         case loggedDay
         case customFoods
         case history
+        case historyPattern
+        case historyNoPattern
     }
 }
 
