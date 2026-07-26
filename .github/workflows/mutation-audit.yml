@@ -11,6 +11,11 @@ name: Mutation Audit
 permissions:
   contents: read
 
+env:
+  # Pinned so a weekly audit cannot change tool underneath a score comparison.
+  # Bump deliberately, and expect the score to move when you do.
+  MUTER_COMMIT: 7f1f2584e0a27fc05c952a5c8cdd52b10cc9513f
+
 concurrency:
   group: mutation-audit
   cancel-in-progress: true
@@ -28,8 +33,34 @@ jobs:
       - name: Select simulator
         uses: ./.github/actions/select-simulator
 
-      - name: Install muter
-        run: brew install muter-mutation-testing/formulae/muter
+      # The published formula is muter 16, released September 2023. It cannot
+      # parse Xcode 26's build-request.json, and it predates muter's ability to
+      # recognise Swift Testing failures at all — most of this suite is
+      # `@Test` / `#expect`, so it would have scored those mutants as survivors
+      # whatever the tests actually did. The source is maintained; only the
+      # release is stale, so build a pinned commit of it.
+      - name: Cache muter
+        id: muter-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/muter/.build/release/muter
+          key: muter-${{ runner.os }}-${{ env.MUTER_COMMIT }}
+
+      - name: Build muter
+        if: steps.muter-cache.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+
+          git clone --filter=blob:none https://github.com/muter-mutation-testing/muter.git \
+            "$RUNNER_TEMP/muter"
+          git -C "$RUNNER_TEMP/muter" checkout "$MUTER_COMMIT"
+          swift build --package-path "$RUNNER_TEMP/muter" \
+            --configuration release --product muter --disable-sandbox
+
+      - name: Put muter on PATH
+        run: |
+          set -euo pipefail
+          echo "$RUNNER_TEMP/muter/.build/release" >> "$GITHUB_PATH"
 
       - name: Run mutation audit
         id: mutate
