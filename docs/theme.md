@@ -119,6 +119,21 @@ The list modifiers therefore paint no background of their own — the canvas sup
 colour, so the same list is correct on a page and in a sheet. Rows still need
 `.listRowBackground(...)`.
 
+## Toolbar buttons need an explicit foreground style
+
+iOS 26 renders navigation-bar and toolbar buttons inside a glass container that honours
+**neither** the `AccentColor` asset **nor** `.tint()`. Both were measured: with `.tint()`
+applied to the sheet canvas the close glyph still rendered `#000000`. Only
+`.foregroundStyle(CalorynTheme.sage)` on the label itself works, which is why a couple of
+buttons in the codebase already had it while their neighbours did not.
+
+This is the same root cause as `HistoryDrillDownNavigationModifier` above, and it means the
+`AccentColor` asset does *less* than it appears: it covers controls in content, not chrome.
+
+A measurement note, since this cost a cycle: sampling "the darkest pixel in the button's
+box" finds the glyph in light mode and the *container* in dark mode. Count pixels matching
+the expected colour instead.
+
 ## Why the snapshots were extended
 
 The suite rendered only `traits: .reference` — light, `.large`. Every token the migration

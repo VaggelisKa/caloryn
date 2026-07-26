@@ -139,6 +139,7 @@ struct MealFormView: View {
                     } label: {
                         Image(systemName: "xmark")
                             .font(CalorynTheme.toolbarIcon)
+                            .foregroundStyle(CalorynTheme.sage)
                     }
                     .accessibilityLabel("Close")
                 }
@@ -152,6 +153,7 @@ struct MealFormView: View {
                         } else {
                             Image(systemName: "checkmark")
                                 .font(CalorynTheme.toolbarIcon)
+                                .foregroundStyle(CalorynTheme.sage)
                         }
                     }
                     .accessibilityLabel("Save Meal")

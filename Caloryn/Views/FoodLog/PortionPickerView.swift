@@ -169,6 +169,7 @@ struct PortionPickerView: View {
                     } label: {
                         Image(systemName: "xmark")
                             .font(CalorynTheme.toolbarIcon)
+                            .foregroundStyle(CalorynTheme.sage)
                     }
                     .accessibilityLabel("Close")
                 }
@@ -208,6 +209,7 @@ struct PortionPickerView: View {
                     } label: {
                         Image(systemName: "pencil")
                             .font(CalorynTheme.toolbarIcon)
+                            .foregroundStyle(CalorynTheme.sage)
                     }
                     .accessibilityLabel("Edit Food Details")
                     .accessibilityHint("Creates or updates your private version of this barcode")

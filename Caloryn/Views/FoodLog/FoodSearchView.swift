@@ -189,6 +189,7 @@ struct FoodSearchView: View {
                     } label: {
                         Image(systemName: "xmark")
                             .font(CalorynTheme.toolbarIcon)
+                            .foregroundStyle(CalorynTheme.sage)
                     }
                     .accessibilityLabel("Close")
                 }
@@ -199,6 +200,7 @@ struct FoodSearchView: View {
                         } label: {
                             Text(isSelectingMultiple ? "Cancel" : "Select")
                                 .contentTransition(.opacity)
+                                .foregroundStyle(CalorynTheme.sage)
                                 .animation(
                                     selectionModeAnimation,
                                     value: isSelectingMultiple

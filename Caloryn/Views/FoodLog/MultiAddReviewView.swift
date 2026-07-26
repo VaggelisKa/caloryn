@@ -59,6 +59,7 @@ struct MultiAddReviewView: View {
                     } label: {
                         Image(systemName: "xmark")
                             .font(CalorynTheme.toolbarIcon)
+                            .foregroundStyle(CalorynTheme.sage)
                     }
                     .disabled(isCommitting)
                     .accessibilityLabel("Close")

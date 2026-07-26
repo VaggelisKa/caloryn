@@ -83,6 +83,7 @@ struct RecipeFormView: View {
                     } label: {
                         Image(systemName: "xmark")
                             .font(CalorynTheme.toolbarIcon)
+                            .foregroundStyle(CalorynTheme.sage)
                     }
                     .accessibilityLabel("Close")
                 }
@@ -118,6 +119,7 @@ struct RecipeFormView: View {
                     } label: {
                         Image(systemName: "checkmark")
                             .font(CalorynTheme.toolbarIcon)
+                            .foregroundStyle(CalorynTheme.sage)
                     }
                     .accessibilityLabel("Save")
                     .disabled(!canSave)
