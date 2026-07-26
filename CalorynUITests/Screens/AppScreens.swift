@@ -56,18 +56,12 @@ struct OnboardingScreen: Screen {
         ]
 
         for identifier in continueIdentifiers {
-            let button = element(identifier)
             // Not every build presents every step; skip any that is absent
             // rather than failing, but require that at least the flow ends.
-            if button.waitForExistence(timeout: 5) {
-                tap(button)
-            }
+            tapIfPresent(element(identifier), timeout: 5)
         }
 
-        let finish = startTracking
-        if finish.waitForExistence(timeout: 5) {
-            tap(finish)
-        }
+        tapIfPresent(startTracking, timeout: 5)
     }
 }
 

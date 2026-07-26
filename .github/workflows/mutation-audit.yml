@@ -55,6 +55,9 @@ jobs:
               "Caloryn/Models/NutritionValues.swift" \
               "Caloryn/Models/DailyGoalSnapshot.swift" \
               "Caloryn/Models/GoalEditSeed.swift" \
+              "Caloryn/Models/GoalEditDraft.swift" \
+              "Caloryn/Models/CustomFoodDraft.swift" \
+              "Caloryn/Models/PortionSelection.swift" \
               "Caloryn/Models/OnboardingProfileSave.swift" \
               "Caloryn/Models/SelectedDayRollover.swift" \
             | tee mutation-output.txt

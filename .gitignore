@@ -25,11 +25,22 @@ xcuserdata/
 # Swift Package Manager
 .build/
 .swiftpm/
+# Checked-out package sources. Pinned to a fixed path so CI can cache them.
+.spm-cache/
 
 # CocoaPods
 Pods/
 *.xcworkspace
 !default.xcworkspace
+
+# ...but the resolved package versions must be tracked. Snapshot tests compare
+# rendered pixels, so CI resolving a different version of a dependency than a
+# developer did would show up as an unexplained image diff. Git will not look
+# inside an ignored directory, so each level has to be re-included by name.
+!Caloryn.xcodeproj/project.xcworkspace/
+!Caloryn.xcodeproj/project.xcworkspace/xcshareddata/
+!Caloryn.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+!Caloryn.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
 
 # macOS
 .DS_Store
