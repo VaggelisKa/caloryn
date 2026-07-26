@@ -155,7 +155,164 @@ final class ComponentSnapshotTests: XCTestCase {
         )
     }
 
+    // MARK: - Dark mode
+
+    // The palette declares a light and a dark appearance for every colour, but until
+    // these existed only the light one was ever rendered — which is exactly where
+    // `pageBackground` and `cardBackground` had been silently falling back to system
+    // greys. A dark reference image is the only thing that would have caught that.
+
+    func testFoodRowAcrossAppearances() {
+        assertAppearances(
+            of: row(
+                FoodRowView(
+                    name: "Rolled Oats",
+                    brand: "Quaker",
+                    caloriesPer100g: 380,
+                    servingDescription: "40 g"
+                )
+            ),
+            layout: rowLayout
+        )
+    }
+
+    func testFoodRowWithANutriScoreAcrossAppearances() {
+        assertAppearances(
+            of: row(
+                FoodRowView(
+                    name: "Greek Yogurt",
+                    brand: "Fage",
+                    caloriesPer100g: 97,
+                    nutriscoreGrade: "b"
+                )
+            ),
+            layout: rowLayout
+        )
+    }
+
+    func testNutriScoreSummaryAcrossAppearances() {
+        assertAppearances(
+            of: summary(
+                NutriscoreDaySummary(distribution: [("a", 3), ("b", 2), ("c", 1), ("e", 1)])
+            ),
+            layout: .fixed(width: 390, height: 140)
+        )
+    }
+
+    // MARK: - Card surface
+
+    // `solidCardSurface` fills with `cardBackground` and strokes with `cardSeparator`.
+    // Nothing else in this suite renders either, so before this test the card surface
+    // could change colour — as it just did, from pure white to #FAFAF7 — without a
+    // single reference image moving.
+
+    func testCardSurfaceOnPageBackgroundAcrossAppearances() {
+        let card = VStack(alignment: .leading, spacing: 6) {
+            Text("Today")
+                .font(CalorynTheme.sectionTitle)
+                .foregroundStyle(CalorynTheme.textPrimary)
+            Text("1,840 kcal remaining")
+                .font(CalorynTheme.numericBody)
+                .foregroundStyle(CalorynTheme.textSecondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(CalorynTheme.cardPadding)
+        .solidCardSurface(cornerRadius: CalorynTheme.cornerRadius)
+
+        assertAppearances(
+            of: card
+                .padding(CalorynTheme.pagePadding)
+                .frame(width: 390, height: 160)
+                .background(CalorynTheme.pageBackground),
+            layout: .fixed(width: 390, height: 160)
+        )
+    }
+
+    // MARK: - Nutri-Score badge
+
+    // The Nutri-Score colours are appearance-independent by design: they are the
+    // official brand values and must render identically in both modes. Asserting both
+    // is what makes that a checked property rather than an intention.
+
+    func testNutriscoreBadgeForEveryGradeAcrossAppearances() {
+        let badges = HStack(spacing: 8) {
+            ForEach(["a", "b", "c", "d", "e"], id: \.self) { grade in
+                NutriscoreBadge(grade: grade)
+            }
+        }
+        .padding(16)
+        .frame(width: 390, height: 72)
+        .background(CalorynTheme.pageBackground)
+
+        assertAppearances(of: badges, layout: .fixed(width: 390, height: 72))
+    }
+
+    // MARK: - Dynamic Type
+
+    // Text metrics drive row height and truncation. At the largest accessibility size
+    // a row that looks fine at .large can clip or collide, and no other test here would
+    // notice: every one of them pins `.large`.
+
+    func testFoodRowAtLargestAccessibilitySize() {
+        assertSnapshot(
+            of: FoodRowView(
+                name: "Greek Yogurt",
+                brand: "Fage",
+                caloriesPer100g: 97,
+                nutriscoreGrade: "b",
+                servingDescription: "170 g"
+            )
+            .padding(.horizontal, 16)
+            .frame(width: 390, height: 220)
+            .background(CalorynTheme.pageBackground),
+            as: .image(
+                precision: precision,
+                perceptualPrecision: perceptualPrecision,
+                layout: .fixed(width: 390, height: 220),
+                traits: .referenceAccessibility
+            )
+        )
+    }
+
     // MARK: - Helpers
+
+    /// Renders `view` in both appearances as two separately-named reference images.
+    ///
+    /// The existing single-appearance tests above are deliberately left alone: their
+    /// images are the recorded proof that light mode did not move when the palette
+    /// migrated to the asset catalog, and re-recording them would have thrown that away.
+    private func assertAppearances(
+        of view: some View,
+        layout: SwiftUISnapshotLayout,
+        fileID: StaticString = #fileID,
+        file filePath: StaticString = #filePath,
+        testName: String = #function,
+        line: UInt = #line,
+        column: UInt = #column
+    ) {
+        assertSnapshots(
+            of: view,
+            as: [
+                "light": .image(
+                    precision: precision,
+                    perceptualPrecision: perceptualPrecision,
+                    layout: layout,
+                    traits: .reference
+                ),
+                "dark": .image(
+                    precision: precision,
+                    perceptualPrecision: perceptualPrecision,
+                    layout: layout,
+                    traits: .referenceDark
+                ),
+            ],
+            fileID: fileID,
+            file: filePath,
+            testName: testName,
+            line: line,
+            column: column
+        )
+    }
 
     /// Every pixel must match. The two knobs are not interchangeable and
     /// getting them the wrong way round makes the whole suite decorative:
@@ -192,10 +349,9 @@ private extension UITraitCollection {
     ///
     /// Both traits have to be named explicitly:
     ///
-    /// - **Interface style**, because the theme's colours are dynamic
-    ///   `UIColor`s and resolve from the trait collection rather than from
-    ///   SwiftUI's `colorScheme` — so this is the only place setting it has
-    ///   any effect.
+    /// - **Interface style**, because the theme's colours are Color Sets that
+    ///   resolve from the trait collection rather than from SwiftUI's
+    ///   `colorScheme` — so this is the only place setting it has any effect.
     /// - **Content size category**, because text metrics change with Dynamic
     ///   Type. A simulator left on a non-default setting would otherwise
     ///   re-flow every label and fail images whose components had not changed
@@ -203,5 +359,19 @@ private extension UITraitCollection {
     static let reference = UITraitCollection { traits in
         traits.userInterfaceStyle = .light
         traits.preferredContentSizeCategory = .large
+    }
+
+    /// `reference` in dark mode. Same content size, so a diff between the two
+    /// images is purely a colour difference.
+    static let referenceDark = UITraitCollection { traits in
+        traits.userInterfaceStyle = .dark
+        traits.preferredContentSizeCategory = .large
+    }
+
+    /// `reference` at the largest accessibility text size, for layout that has
+    /// to survive re-flow rather than for colour.
+    static let referenceAccessibility = UITraitCollection { traits in
+        traits.userInterfaceStyle = .light
+        traits.preferredContentSizeCategory = .accessibilityExtraExtraExtraLarge
     }
 }
