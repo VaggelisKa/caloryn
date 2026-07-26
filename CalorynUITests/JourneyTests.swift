@@ -70,6 +70,58 @@ final class JourneyTests: UITestCase {
         }
     }
 
+    func testGivenASavedFoodWhenItIsSearchedAndPortionedThenItJoinsTheDay() {
+        let app = launch(fixture: .customFoods)
+        let today = TodayScreen(app: app)
+        let search = FoodSearchScreen(app: app)
+        let portion = PortionPickerScreen(app: app)
+
+        given("a day with saved foods but nothing logged to breakfast") {
+            XCTAssertTrue(today.isVisible)
+            XCTAssertFalse(today.entry(named: "Morning Smoothie").exists)
+        }
+
+        when("the user searches breakfast for a saved food and accepts the portion") {
+            today.tap(today.mealHeader("breakfast"))
+            search.awaitTappable(search.searchField)
+            search.searchField.typeText("Smoothie")
+            search.tap(search.result(named: "Morning Smoothie"))
+            portion.tap(portion.save)
+        }
+
+        then("the food is logged to the day") {
+            XCTAssertTrue(
+                today.entry(named: "Morning Smoothie").awaitExistence(),
+                "The chosen food should appear under breakfast"
+            )
+        }
+    }
+
+    func testGivenALoggedDayWhenTheRingIsOpenedThenNutritionDetailsAreShown() {
+        let app = launch(fixture: .loggedDay)
+        let today = TodayScreen(app: app)
+        let details = NutritionDetailsScreen(app: app)
+
+        given("a day with one logged entry") {
+            XCTAssertTrue(today.entry(named: "Rolled Oats").awaitExistence())
+        }
+
+        when("the user taps the calorie ring") {
+            today.tap(today.calorieRing)
+        }
+
+        then("the nutrition breakdown for the day is presented") {
+            XCTAssertTrue(
+                details.title.awaitExistence(),
+                "Tapping the ring should open the day's nutrition details"
+            )
+            XCTAssertTrue(
+                details.consumedCalories.awaitExistence(),
+                "The details should report what has been consumed"
+            )
+        }
+    }
+
     // MARK: My Foods
 
     func testGivenSavedCustomFoodsWhenMyFoodsOpensThenTheyAreListed() {
@@ -90,6 +142,55 @@ final class JourneyTests: UITestCase {
             XCTAssertTrue(
                 myFoods.food(named: "House Salad").awaitExistence(),
                 "The second custom food should be listed"
+            )
+        }
+    }
+
+    func testGivenAnEmptyLibraryWhenAFoodIsCreatedThenItBecomesLoggable() {
+        let app = launch(fixture: .profileOnly)
+        let tabs = TabBar(app: app)
+        let myFoods = MyFoodsScreen(app: app)
+        let form = CustomFoodFormScreen(app: app)
+        let today = TodayScreen(app: app)
+        let search = FoodSearchScreen(app: app)
+        let portion = PortionPickerScreen(app: app)
+
+        given("a profile with no saved foods") {
+            XCTAssertTrue(tabs.isVisible)
+            tabs.go(to: .myFoods)
+            XCTAssertFalse(myFoods.food(named: "Desk Almonds").exists)
+        }
+
+        when("the user creates a manual entry") {
+            myFoods.tap(myFoods.createMenu)
+            myFoods.tap(myFoods.createManualEntry)
+            // Calories first: once the keyboard is up it covers the lower half
+            // of the form, and the name field stays reachable above it.
+            form.tap(form.calories)
+            form.calories.typeText("180")
+            form.tap(form.name)
+            form.name.typeText("Desk Almonds")
+            form.tap(form.save)
+        }
+
+        then("it is saved to the library") {
+            XCTAssertTrue(
+                myFoods.food(named: "Desk Almonds").awaitExistence(),
+                "The created food should appear in My Foods"
+            )
+        }
+
+        then("it can be logged from search like any other food") {
+            tabs.go(to: .today)
+            today.tap(today.mealHeader("snack"))
+            search.awaitTappable(search.searchField)
+            search.searchField.typeText("Almonds")
+            search.tap(search.result(named: "Desk Almonds"))
+            portion.tap(portion.save)
+
+            XCTAssertTrue(
+                today.entry(named: "Desk Almonds").awaitExistence(),
+                "The newly created food should be loggable straight away"
             )
         }
     }
@@ -201,6 +302,34 @@ final class JourneyTests: UITestCase {
                 settings.calorieTarget.awaitExistence(),
                 "Settings should display the daily calorie target"
             )
+        }
+    }
+
+    func testGivenACalculatedTargetWhenItIsOverriddenManuallyThenSettingsShowsTheNewTarget() {
+        let app = launch(fixture: .profileOnly)
+        let tabs = TabBar(app: app)
+        let settings = SettingsScreen(app: app)
+
+        given("Settings showing a calculated calorie target") {
+            XCTAssertTrue(tabs.isVisible)
+            tabs.go(to: .settings)
+            XCTAssertTrue(settings.calorieTarget.awaitExistence())
+            XCTAssertNotEqual(
+                settings.calorieTarget.label,
+                "2400 kcal",
+                "The fixture should not already sit on the target this test types"
+            )
+        }
+
+        when("the user overrides the target by hand and saves") {
+            settings.tap(settings.editGoal)
+            settings.tap(settings.manualOverride)
+            settings.awaitTappable(settings.goalTargetField).replaceText("2400")
+            settings.tap(settings.saveGoal)
+        }
+
+        then("Settings reports the target the user typed") {
+            XCTAssertTrue(settings.calorieTarget.awaitLabel(containing: "2400"))
         }
     }
 

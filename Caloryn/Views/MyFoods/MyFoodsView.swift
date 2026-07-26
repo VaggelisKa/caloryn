@@ -216,6 +216,7 @@ struct MyFoodsView: View {
             } label: {
                 Label("Create Manual Entry", systemImage: "plus")
             }
+            .accessibilityIdentifier("myFoods.createManualEntry")
 
             Button {
                 showingRecipeForm = true

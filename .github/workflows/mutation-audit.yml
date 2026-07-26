@@ -60,6 +60,7 @@ jobs:
               "Caloryn/Models/GoalEditDraft.swift" \
               "Caloryn/Models/CustomFoodDraft.swift" \
               "Caloryn/Models/PortionSelection.swift" \
+              "Caloryn/Models/FoodSearchListing.swift" \
               "Caloryn/Models/OnboardingProfileSave.swift" \
               "Caloryn/Models/SelectedDayRollover.swift" \
             | tee mutation-output.txt

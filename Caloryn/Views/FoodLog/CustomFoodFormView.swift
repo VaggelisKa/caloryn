@@ -244,9 +244,9 @@ struct CustomFoodFormView: View {
                 text: $draft.caloriesPerServing,
                 unit: "kcal",
                 focus: .calories,
-                required: true
+                required: true,
+                identifier: "customFood.calories"
             )
-            .accessibilityIdentifier("customFood.calories")
 
             nutritionField(
                 label: "Protein",
@@ -347,7 +347,8 @@ struct CustomFoodFormView: View {
         unit: String,
         focus: Field,
         required: Bool = false,
-        placeholder: String = "0"
+        placeholder: String = "0",
+        identifier: String? = nil
     ) -> some View {
         HStack {
             HStack(spacing: 4) {
@@ -367,6 +368,9 @@ struct CustomFoodFormView: View {
                 .keyboardType(.decimalPad)
                 .focused($focusedField, equals: focus)
                 .calorynInputField(isFocused: focusedField == focus)
+                // On the field itself, not the row: an identifier on the row
+                // resolves to the label, which a test can see but not type in.
+                .accessibilityIdentifier(identifier ?? "")
 
             Text(unit)
                 .font(CalorynTheme.caption)

@@ -94,6 +94,7 @@ struct MyFoodsScreen: Screen {
     let app: XCUIApplication
 
     var createMenu: XCUIElement { element("myFoods.createMenu") }
+    var createManualEntry: XCUIElement { element("myFoods.createManualEntry") }
 
     func food(named name: String) -> XCUIElement {
         element("myFoods.food.\(name)")
@@ -130,6 +131,15 @@ struct PortionPickerScreen: Screen {
     var calories: XCUIElement { element("portionPicker.calories") }
     var save: XCUIElement { element("portionPicker.save") }
     var delete: XCUIElement { element("portionPicker.delete") }
+}
+
+// MARK: - Nutrition details
+
+struct NutritionDetailsScreen: Screen {
+    let app: XCUIApplication
+
+    var title: XCUIElement { element("nutritionDetails.title") }
+    var consumedCalories: XCUIElement { element("nutritionDetails.consumedCalories") }
 }
 
 // MARK: - History
