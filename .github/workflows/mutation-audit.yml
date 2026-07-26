@@ -41,28 +41,37 @@ jobs:
           # and where a surviving mutant means a genuinely weak assertion.
           # Views are excluded because they are covered by journey tests, which
           # are far too slow to rerun once per mutant.
+          files=(
+            "Caloryn/Services/NutritionCalculator.swift"
+            "Caloryn/Services/ActivityCalorieBudget.swift"
+            "Caloryn/Services/HistoryAnalytics.swift"
+            "Caloryn/Services/HistoryPatternDiscovery.swift"
+            "Caloryn/Services/FavoriteFoodLogging.swift"
+            "Caloryn/Services/DailyReminderPlanner.swift"
+            "Caloryn/AppIntents/CalorynIntentDomain.swift"
+            "Caloryn/Models/HistoryRecurringCaloriePattern.swift"
+            "Caloryn/Models/ProduceVarietySummary.swift"
+            "Caloryn/Models/NutritionValues.swift"
+            "Caloryn/Models/DailyGoalSnapshot.swift"
+            "Caloryn/Models/GoalEditSeed.swift"
+            "Caloryn/Models/GoalEditDraft.swift"
+            "Caloryn/Models/CustomFoodDraft.swift"
+            "Caloryn/Models/PortionSelection.swift"
+            "Caloryn/Models/FoodSearchListing.swift"
+            "Caloryn/Models/OnboardingProfileSave.swift"
+            "Caloryn/Models/SelectedDayRollover.swift"
+          )
+
+          # muter takes ONE comma-separated argument here. Passing the paths as
+          # separate arguments makes it accept the first and reject every other
+          # one as an unexpected argument — which is exactly what happened on
+          # this workflow's first scheduled run.
+          printf -v joined '%s,' "${files[@]}"
+
           muter run \
             --format json \
             --output mutation-report.json \
-            --files-to-mutate \
-              "Caloryn/Services/NutritionCalculator.swift" \
-              "Caloryn/Services/ActivityCalorieBudget.swift" \
-              "Caloryn/Services/HistoryAnalytics.swift" \
-              "Caloryn/Services/HistoryPatternDiscovery.swift" \
-              "Caloryn/Services/FavoriteFoodLogging.swift" \
-              "Caloryn/Services/DailyReminderPlanner.swift" \
-              "Caloryn/AppIntents/CalorynIntentDomain.swift" \
-              "Caloryn/Models/HistoryRecurringCaloriePattern.swift" \
-              "Caloryn/Models/ProduceVarietySummary.swift" \
-              "Caloryn/Models/NutritionValues.swift" \
-              "Caloryn/Models/DailyGoalSnapshot.swift" \
-              "Caloryn/Models/GoalEditSeed.swift" \
-              "Caloryn/Models/GoalEditDraft.swift" \
-              "Caloryn/Models/CustomFoodDraft.swift" \
-              "Caloryn/Models/PortionSelection.swift" \
-              "Caloryn/Models/FoodSearchListing.swift" \
-              "Caloryn/Models/OnboardingProfileSave.swift" \
-              "Caloryn/Models/SelectedDayRollover.swift" \
+            --files-to-mutate "${joined%,}" \
             | tee mutation-output.txt
 
       - name: Summarize
@@ -70,15 +79,26 @@ jobs:
         run: |
           set -uo pipefail
 
+          # A low score never fails this job — that is the whole point of the
+          # audit being informational. A *missing report* is different: it means
+          # the tool did not run, and a green tick for that taught us nothing
+          # for as long as it went unnoticed. This job runs only on a schedule
+          # or by hand, so failing it here gates no pull request.
+          if [ ! -f mutation-report.json ]; then
+            {
+              echo "## Mutation audit"
+              echo
+              echo "muter produced no report, so nothing was measured. This is a"
+              echo "broken audit rather than a weak one — check the job log for"
+              echo "the invocation error."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
           {
             echo "## Mutation audit"
             echo
-            if [ -f mutation-report.json ]; then
-              python3 .github/scripts/mutation_summary.py mutation-report.json
-            else
-              echo "No report was produced. Check the job log; muter may have"
-              echo "failed to build the project or the CLI may have changed."
-            fi
+            python3 .github/scripts/mutation_summary.py mutation-report.json
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload report

@@ -31,6 +31,14 @@ Then, from the repo root:
 muter run --files-to-mutate "Caloryn/Services/NutritionCalculator.swift"
 ```
 
+`--files-to-mutate` takes **one comma-separated argument**, not a list of
+arguments. Space-separated paths make muter accept the first and reject the rest
+with `unexpected arguments`:
+
+```sh
+muter run --files-to-mutate "Caloryn/Models/GoalEditDraft.swift,Caloryn/Models/PortionSelection.swift"
+```
+
 Mutation testing reruns the whole test suite **once per mutant**, so it is slow —
 minutes for one file, hours for the whole domain core. Run it against one file at
 a time while working on that file.
@@ -68,8 +76,8 @@ already know from the coverage report.
 
 ## Why it is not a CI gate
 
-It runs weekly and on demand (`.github/workflows/mutation-audit.yml`), and it
-never fails the build. Three reasons:
+It runs weekly and on demand (`.github/workflows/mutation-audit.yml`), and **the
+score** never fails the build. Three reasons:
 
 1. It is far too slow for pull-request feedback.
 2. Mutation scores are noisy — equivalent mutants can never be killed, so a
@@ -79,14 +87,33 @@ never fails the build. Three reasons:
 
 Treat it as a periodic audit that tells you where the assertions are thin.
 
+A **missing report** is the one thing that does fail the job, and it is not the
+same event as a low score: it means muter never ran, so nothing was measured.
+That distinction was learned the hard way — see below.
+
 ## Status
 
-The configuration and workflow are in place but **have not yet been executed** —
-muter was deliberately not installed on a developer machine as part of this
-change. The first real run will happen on the next scheduled trigger or the
-first manual `workflow_dispatch`. Expect to adjust `muter.conf.yml` once there is
-real output; muter's report format has changed between releases, and
-`.github/scripts/mutation_summary.py` reads it defensively for that reason.
+The first scheduled run (26 July 2026) **failed and reported green.** The step
+passed each scoped path as a separate argument, so muter took the first and
+rejected the other seventeen:
+
+```
+Error: 11 unexpected arguments: 'Caloryn/Services/ActivityCalorieBudget.swift', ...
+```
+
+Because the step carries `continue-on-error: true` — so a low score can never
+block anything — the job still exited successfully and the summary said only
+that no report was produced. Nobody was watching that line.
+
+Two changes came out of it. The paths are now joined into the single
+comma-separated argument muter expects, and the summarize step exits non-zero
+when there is no report at all. The audit still cannot gate a pull request: it
+runs on a schedule and by hand, never on a PR.
+
+Expect to adjust `muter.conf.yml` once there is real output. Muter's report
+format has changed between releases, and `.github/scripts/mutation_summary.py`
+reads it defensively for that reason — that path has still never seen a real
+report.
 
 Muter is the only meaningful mutation-testing tool for Swift, and its maintenance
 is thin. If it breaks against a future Xcode, dropping this workflow costs
