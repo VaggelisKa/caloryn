@@ -1,24 +1,35 @@
 import SwiftUI
+import UIKit
 
 private struct HistoryDrillDownNavigationModifier: ViewModifier {
-    @Environment(\.dismiss) private var dismiss
-
     func body(content: Content) -> some View {
         content
-            .navigationBarBackButtonHidden()
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: "chevron.left")
-                            .font(CalorynTheme.toolbarIcon)
-                            .foregroundStyle(CalorynTheme.sage)
-                    }
-                    .tint(CalorynTheme.sage)
-                    .accessibilityLabel("Back")
-                }
-            }
+            .tint(CalorynTheme.sage)
+            .background(HistoryNavigationBarTintView())
+    }
+}
+
+private struct HistoryNavigationBarTintView: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> HistoryNavigationBarTintViewController {
+        HistoryNavigationBarTintViewController()
+    }
+
+    func updateUIViewController(
+        _ viewController: HistoryNavigationBarTintViewController,
+        context: Context
+    ) {
+        viewController.applyTint()
+    }
+}
+
+private final class HistoryNavigationBarTintViewController: UIViewController {
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        applyTint()
+    }
+
+    func applyTint() {
+        navigationController?.navigationBar.tintColor = UIColor(CalorynTheme.sage)
     }
 }
 

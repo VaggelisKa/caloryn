@@ -1,7 +1,10 @@
+import Combine
 import SwiftUI
 import SwiftData
 
 struct HistoryView: View {
+    @Environment(\.scenePhase) private var scenePhase
+
     // Keep newest-first ordering in sync with relevantEntries(startingAt:);
     // that helper early-exits when it reaches entries older than its window.
     @Query(sort: \FoodLogEntry.date, order: .reverse) private var allEntries: [FoodLogEntry]
@@ -10,6 +13,7 @@ struct HistoryView: View {
 
     @State private var historyState: HistoryViewState
     @State private var navigationPath: [HistoryDrillDownRoute] = []
+    @State private var analyticsDayStart = Calendar.current.startOfDay(for: .now)
 
     init(initialRange: HistoryRange = .week) {
         _historyState = State(
@@ -76,6 +80,7 @@ struct HistoryView: View {
 
     private var analyticsRefreshID: HistoryAnalyticsRefreshID {
         HistoryAnalyticsRefreshID(
+            dayStart: analyticsDayStart,
             profile: profile.map { HistoryProfileSignature(profile: $0) },
             entries: relevantEntries(startingAt: widestAnalyticsStartDate)
                 .map { HistoryEntrySignature(entry: $0) },
@@ -145,6 +150,25 @@ struct HistoryView: View {
             // changes should recalculate for the range current when this task runs.
             refreshAnalytics(for: historyState.range)
         }
+        .onChange(of: scenePhase) { _, newPhase in
+            guard newPhase == .active else { return }
+            followCalendarRollover()
+        }
+        // Covers local midnight passing while History remains visible and the
+        // app stays active, so the fixed evidence window advances immediately.
+        .onReceive(
+            NotificationCenter.default
+                .publisher(for: .NSCalendarDayChanged)
+                .receive(on: RunLoop.main)
+        ) { _ in
+            followCalendarRollover()
+        }
+    }
+
+    private func followCalendarRollover() {
+        let dayStart = Calendar.current.startOfDay(for: .now)
+        guard dayStart != analyticsDayStart else { return }
+        analyticsDayStart = dayStart
     }
 
     private func refreshAnalytics(for range: HistoryRange) {
@@ -261,6 +285,7 @@ private struct HistoryRecurringCaloriePatternSnapshot: Hashable {
 }
 
 private struct HistoryAnalyticsRefreshID: Equatable {
+    let dayStart: Date
     let profile: HistoryProfileSignature?
     let entries: [HistoryEntrySignature]
     let goalSnapshots: [HistoryGoalSnapshotSignature]
