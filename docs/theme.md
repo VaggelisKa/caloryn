@@ -93,21 +93,45 @@ Two things were learned the hard way, both by measuring pixels rather than reaso
 - Every `Section` in a grouped list therefore needs the modifier. Settings went from
   **28% of the screen being pure white to 0.2%**.
 
+A `Form` behaves the same way and needs `calorynFormStyle()` plus the same row
+backgrounds. This was found third, after the two list cases, on the multi-add review
+sheet — 64% of that screen was `#F2F2F7`.
+
 This is a genuine hole in the abstraction and it has no automated guard: SwiftLint's
 custom rules can ban a primitive but cannot detect a *missing* modifier. It is covered by
 convention (CLAUDE.md rule 7) and by looking at screenshots, nothing stronger.
 
-## Why the UIKit navigation tint survives
+### Audit per struct, not per file
 
-`HistoryDrillDownNavigationModifier` looks redundant now that `AccentColor` is set, and it
-was deleted at one point. Measured on iOS 26, the drill-down back chevron is `#1B1914`
-**with or without it** — identical pixels — because Liquid Glass renders the back button in
-a glass container that ignores `navigationBar.tintColor`.
+Three unthemed screens — `GoalEditView`, `ProfileEditView`, `MissingFoodEntryView` — hid
+from a file-scoped grep for "has a `navigationTitle` but no canvas", because each lives in
+a file whose *outer* view (`SettingsView`, `TodayView`) is correctly themed. They were
+found only by splitting each file into top-level `struct …: View` bodies first and asking
+the question of each one separately. Any future sweep for a missing modifier must do the
+same, and must drop `#if DEBUG` preview blocks, which otherwise produce false hits.
 
-That is not sufficient reason to delete it. The app deploys to **iOS 18.6**, where the back
-button is an ordinary chevron that *does* honour `tintColor`, and `ThemeScreenshotTests`
-cannot run there: the UI test target's own deployment target is iOS 26.0. So the modifier
-is proven inert on the SDK and unverifiable on the floor. It stays.
+## Back buttons are replaced, not tinted
+
+A pushed detail screen gets `calorynDrillDownNavigation()`, which hides the system back
+button and supplies one the app owns.
+
+Tinting was tried three ways at once. `HistoryDrillDownNavigationModifier` carried the
+`AccentColor` asset, a `.tint(sage)`, **and** a UIKit `navigationBar.tintColor` bridge —
+and the chevron still measured 0 sage pixels and 523 near-black ones. Liquid Glass renders
+the back button in a container that ignores all three.
+
+An earlier revision of this document argued the UIKit bridge should stay anyway, on the
+grounds that the app deploys to iOS 18.6 where `tintColor` *does* apply, and the UI test
+target (iOS 26.0) cannot verify that. That reasoning was sound but is now moot: a custom
+back button works on both versions, so the bridge is gone.
+
+The cost is real and worth knowing: hiding the system back button is the one place a
+swipe-back regression could appear, and no test covers that gesture.
+
+Screens that already build their own leading toolbar item — `PortionPickerView`,
+`MyFoodsView` — must *not* also take this modifier, or they get two back buttons. Those two
+are also the reason the bug was visible at all: their chevrons were correctly sage while
+every other pushed screen's was black.
 
 ## Page canvas vs sheet canvas
 
@@ -127,8 +151,14 @@ applied to the sheet canvas the close glyph still rendered `#000000`. Only
 `.foregroundStyle(CalorynTheme.sage)` on the label itself works, which is why a couple of
 buttons in the codebase already had it while their neighbours did not.
 
-This is the same root cause as `HistoryDrillDownNavigationModifier` above, and it means the
-`AccentColor` asset does *less* than it appears: it covers controls in content, not chrome.
+This is the same root cause as the back button above, and it means the `AccentColor` asset
+does *less* than it appears: it covers controls in content, not chrome.
+
+`Button("Save") { … }` is a special case with no fix available at the call site: the string
+initializer builds its own label, so there is no view to attach `.foregroundStyle` to. Use
+the explicit `label:` form. Where the button has a `.disabled(…)` condition, put that
+condition in a ternary on the colour too — a flat sage silently throws the disabled
+affordance away, which is a behaviour change smuggled inside a colour fix.
 
 A measurement note, since this cost a cycle: sampling "the darkest pixel in the button's
 box" finds the glyph in light mode and the *container* in dark mode. Count pixels matching
@@ -140,10 +170,17 @@ the expected colour instead.
 ./scripts/theme-screenshots.sh [output-dir]     # default /tmp/caloryn-theme-shots
 ```
 
-Captures 12 surfaces in both appearances — Today, the food search sheet and its results,
-History and its drill-down, Settings, My Foods, multi-add review, the three creation
-sheets, and the ingredient amount picker — then prints how much of each screen is
-`pageBackground`, `cardBackground`, sage, and pure white.
+Captures 17 surfaces in both appearances — Today, the food search sheet, its results and
+the portion picker, History with both drill-downs, Settings with both editors, My Foods,
+multi-add review and its portion editor, the three creation sheets, and the ingredient
+amount picker — then prints how much of each screen is `pageBackground`, `cardBackground`,
+sage, and pure white.
+
+Every extension of this harness so far has found a bug on the screen it was extended to
+reach. That is the argument for adding a capture whenever a screen is touched.
+
+It prefers an already-booted simulator, so running it does not boot a second one alongside
+whichever device you are testing on by hand.
 
 Read the census before opening images: drift shows up as a number. Pure white above ~2% on
 a screen without a keyboard means a `List` or `Form` row is painting its own background.

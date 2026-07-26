@@ -283,15 +283,37 @@ final class ThemeScreenshotTests: UITestCase {
 
     /// Settings and My Foods are the other two grouped lists, so they carry the same
     /// row-background behaviour as Today.
+    ///
+    /// The two Settings editors are included because they are `Form`s on a pushed page, a
+    /// combination nothing else in the app has — and both shipped with no canvas at all.
     private func captureSettingsAndMyFoods(_ appearance: Appearance) {
         let app = launch(fixture: .customFoods, appearance: appearance)
         let tabs = TabBar(app: app)
+        let settings = SettingsScreen(app: app)
 
         XCTAssertTrue(tabs.isVisible, "Tab bar should render")
 
         tabs.go(to: .settings)
         sleep(1)
         attach(app, "06-settings", appearance)
+
+        XCTAssertTrue(settings.editGoal.awaitExistence(), "Edit Goal link missing")
+        settings.editGoal.tap()
+        XCTAssertTrue(settings.saveGoal.awaitExistence(), "Edit Goal did not open")
+        sleep(1)
+        attach(app, "06b-settings-edit-goal", appearance)
+        back(in: app)
+
+        // Settings is a lazy `List`: the Profile section is below the fold and simply is not
+        // in the accessibility tree until it is scrolled into view, so waiting for it times
+        // out rather than failing fast.
+        scrollTo(settings.editProfile, in: app)
+        settings.editProfile.tap()
+        let activity = app.descendants(matching: .any).matching(identifier: "Activity").firstMatch
+        XCTAssertTrue(activity.awaitExistence(), "Edit Profile did not open")
+        sleep(1)
+        attach(app, "06c-settings-edit-profile", appearance)
+        back(in: app)
 
         tabs.go(to: .myFoods)
         sleep(1)
@@ -329,6 +351,31 @@ final class ThemeScreenshotTests: UITestCase {
         app.launch()
         self.app = app
         return app
+    }
+
+    /// Scrolls until `element` is hittable, for rows a lazy `List` has not built yet.
+    private func scrollTo(
+        _ element: XCUIElement,
+        in app: XCUIApplication,
+        maxSwipes: Int = 6
+    ) {
+        for _ in 0 ..< maxSwipes {
+            if element.exists && element.isHittable { return }
+            app.swipeUp()
+        }
+        XCTAssertTrue(element.exists && element.isHittable, "Never scrolled to \(element)")
+    }
+
+    /// Pops a pushed detail screen.
+    ///
+    /// `calorynDrillDownNavigation()` replaces the system back button with one the app owns —
+    /// the only way to colour it under Liquid Glass — and gives it the accessibility label
+    /// "Back", which is what this matches.
+    private func back(in app: XCUIApplication) {
+        let button = app.buttons["Back"]
+        XCTAssertTrue(button.awaitExistence(), "Themed back button missing")
+        button.tap()
+        sleep(1)
     }
 
     /// SwiftUI reports this control as a text field rather than a search field, so it is

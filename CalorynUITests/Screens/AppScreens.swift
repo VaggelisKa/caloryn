@@ -184,6 +184,7 @@ struct SettingsScreen: Screen {
 
     var calorieTarget: XCUIElement { element("settings.calorieTarget") }
     var editGoal: XCUIElement { element("settings.editGoal") }
+    var editProfile: XCUIElement { element("settings.editProfile") }
     var goalTargetField: XCUIElement { element("goalEdit.target") }
     var manualOverride: XCUIElement { element("goalEdit.manualOverride") }
     var saveGoal: XCUIElement { element("goalEdit.save") }

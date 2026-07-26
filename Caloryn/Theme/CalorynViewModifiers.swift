@@ -64,6 +64,28 @@ private struct CalorynFormStyleModifier: ViewModifier {
     }
 }
 
+private struct CalorynDrillDownNavigationModifier: ViewModifier {
+    @Environment(\.dismiss) private var dismiss
+
+    func body(content: Content) -> some View {
+        content
+            .tint(CalorynTheme.sage)
+            .navigationBarBackButtonHidden()
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(CalorynTheme.toolbarIcon)
+                            .foregroundStyle(CalorynTheme.sage)
+                    }
+                    .accessibilityLabel("Back")
+                }
+            }
+    }
+}
+
 private struct CalorynPlainListStyleModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
@@ -97,6 +119,21 @@ extension View {
     /// `.listRowBackground(CalorynTheme.cardBackground)`.
     func calorynFormStyle() -> some View {
         modifier(CalorynFormStyleModifier())
+    }
+
+    /// Navigation chrome for a pushed detail screen: a themed back button.
+    ///
+    /// The system back button is replaced rather than tinted, because under Liquid Glass it
+    /// honours neither the `AccentColor` asset, nor `.tint()`, nor a UIKit
+    /// `navigationBar.tintColor` bridge. History carried all three at once and its chevron
+    /// still measured near-black in a screenshot. Only `.foregroundStyle` on a label the app
+    /// owns works.
+    ///
+    /// Apply to anything reached by `NavigationLink` or `navigationDestination`. Screens that
+    /// already build their own leading toolbar item — `PortionPickerView`, `MyFoodsView` —
+    /// do not need it and must not have two.
+    func calorynDrillDownNavigation() -> some View {
+        modifier(CalorynDrillDownNavigationModifier())
     }
 
     /// Flat list on the page canvas, for content that should not read as cards

@@ -443,6 +443,7 @@ struct SettingsView: View {
             NavigationLink("Edit Profile") {
                 ProfileEditView(profile: profile)
             }
+            .accessibilityIdentifier("settings.editProfile")
         } header: {
             Text("Profile")
         }
@@ -647,6 +648,7 @@ struct GoalEditView: View {
                     LabeledContent("Target", value: "\(calculatedTarget) kcal")
                 }
             }
+            .listRowBackground(CalorynTheme.cardBackground)
 
             if !draft.manualOverride {
                 Section {
@@ -671,6 +673,7 @@ struct GoalEditView: View {
                 } footer: {
                     Text("Positive values create a deficit for weight loss, negative values create a surplus for weight gain.")
                 }
+                .listRowBackground(CalorynTheme.cardBackground)
             }
 
             Section("Macro Goals") {
@@ -699,6 +702,7 @@ struct GoalEditView: View {
                         .foregroundStyle(CalorynTheme.terracotta)
                 }
             }
+            .listRowBackground(CalorynTheme.cardBackground)
 
             Section {
                 ForEach(TrackedNutrient.editableGoalNutrients) { nutrient in
@@ -721,8 +725,11 @@ struct GoalEditView: View {
             } footer: {
                 Text("These goals appear anywhere the nutrient is shown. Sodium and cholesterol are entered in milligrams.")
             }
+            .listRowBackground(CalorynTheme.cardBackground)
         }
         .calorynFormStyle()
+        .calorynPageCanvas()
+        .calorynDrillDownNavigation()
         .navigationTitle("Edit Goal")
         .navigationBarTitleDisplayMode(.inline)
         .scrollDismissesKeyboard(.interactively)
@@ -884,6 +891,7 @@ struct ProfileEditView: View {
                     Slider(value: $profile.weightKg, in: 40...200, step: 0.5)
                 }
             }
+            .listRowBackground(CalorynTheme.cardBackground)
 
             Section {
                 Picker("Activity", selection: $profile.activityLevel) {
@@ -899,8 +907,11 @@ struct ProfileEditView: View {
                     Text(ProfileEditActivityLevelPolicy.lockedExplanation)
                 }
             }
+            .listRowBackground(CalorynTheme.cardBackground)
         }
         .calorynFormStyle()
+        .calorynPageCanvas()
+        .calorynDrillDownNavigation()
         .navigationTitle("Edit Profile")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

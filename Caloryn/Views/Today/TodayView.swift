@@ -457,6 +457,7 @@ private struct MissingFoodEntryView: View {
                             .foregroundStyle(CalorynTheme.terracotta)
                     }
                 }
+                .listRowBackground(CalorynTheme.cardBackground)
 
                 Section("Entry") {
                     LabeledContent("Food", value: entry.foodName)
@@ -484,6 +485,7 @@ private struct MissingFoodEntryView: View {
                             .accessibilityIdentifier("missingEntry.snackSlot")
                     }
                 }
+                .listRowBackground(CalorynTheme.cardBackground)
 
                 Section {
                     Button(role: .destructive) {
@@ -493,8 +495,10 @@ private struct MissingFoodEntryView: View {
                             .frame(maxWidth: .infinity)
                     }
                 }
+                .listRowBackground(CalorynTheme.cardBackground)
             }
             .calorynFormStyle()
+            .calorynSheetCanvas()
             .navigationTitle("Edit Portion")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

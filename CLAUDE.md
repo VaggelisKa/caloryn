@@ -47,11 +47,20 @@ exit code and looks green.
    hidden, which is why this drift is invisible in review. **Grouped-list rows need
    `.listRowBackground(CalorynTheme.cardBackground)` on each `Section` as well** — the
    list modifier cannot do it, rows paint their own `secondarySystemGroupedBackground`,
-   and nothing lints this. Screens: `calorynPageCanvas()` inside the `NavigationStack`,
-   above `.navigationTitle`. Tint comes from the `AccentColor` asset; add `.tint()` only
-   for a deliberate non-accent colour. `.swiftlint.yml` enforces the bans; colour itself
-   is only ever verified by looking: run `./scripts/theme-screenshots.sh`, which captures
-   all 12 surfaces in both appearances and prints a per-screen colour census.
+   and nothing lints this. `Form` needs `calorynFormStyle()` *and* the same row
+   backgrounds. Screens: `calorynPageCanvas()` (page) or `calorynSheetCanvas()` (sheet)
+   inside the `NavigationStack`, above `.navigationTitle` — **every** screen, including
+   ones nested in a file whose outer view already has one. Pushed details also need
+   `calorynDrillDownNavigation()`: a system back button ignores `AccentColor`, `.tint()`
+   *and* a UIKit `tintColor` bridge, so it is replaced, not tinted. Same for toolbar
+   buttons — `Button("Save")` has no label to colour, so use the explicit `label:` form
+   with `.foregroundStyle`, and keep the disabled state in a ternary.
+   `.swiftlint.yml` enforces the bans, but **a lint rule is a per-match regex and can
+   never catch a *missing* modifier** — that is the whole class of bug here. Colour is
+   only ever verified by looking: run `./scripts/theme-screenshots.sh`, which captures
+   all 17 surfaces in both appearances and prints a per-screen colour census. When
+   auditing for a missing modifier, scan **per struct, not per file** — a file-scoped
+   grep hid three unthemed screens because their outer view in the same file was fine.
 8. **Measure, don't assume.** Already tried and dead: parallelising the UI target
    (141s vs 140s), and letting xcodebuild re-resolve packages (+112s). CI wall-clock is
    noisy — the same commit ran 137s/206s/268s, so never claim a CI speed-up from one
