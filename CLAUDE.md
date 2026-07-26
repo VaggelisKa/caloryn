@@ -44,10 +44,13 @@ exit code and looks green.
    dark together — never `Color.white`, `Color(.system*)` or `Color(red:)`. Lists:
    `calorynGroupedListStyle()` / `calorynPlainListStyle()`, never a bare `.listStyle(...)`
    — a `List` paints a system background *over* yours unless `scrollContentBackground` is
-   hidden, which is why this drift is invisible in review. Screens: `calorynPageCanvas()`
-   inside the `NavigationStack`, above `.navigationTitle`. Tint comes from the
-   `AccentColor` asset; add `.tint()` only for a deliberate non-accent colour.
-   `.swiftlint.yml` enforces the bans.
+   hidden, which is why this drift is invisible in review. **Grouped-list rows need
+   `.listRowBackground(CalorynTheme.cardBackground)` on each `Section` as well** — the
+   list modifier cannot do it, rows paint their own `secondarySystemGroupedBackground`,
+   and nothing lints this. Screens: `calorynPageCanvas()` inside the `NavigationStack`,
+   above `.navigationTitle`. Tint comes from the `AccentColor` asset; add `.tint()` only
+   for a deliberate non-accent colour. `.swiftlint.yml` enforces the bans; colour itself
+   is only ever verified by looking — see `ThemeScreenshotTests`.
 8. **Measure, don't assume.** Already tried and dead: parallelising the UI target
    (141s vs 140s), and letting xcodebuild re-resolve packages (+112s). CI wall-clock is
    noisy — the same commit ran 137s/206s/268s, so never claim a CI speed-up from one

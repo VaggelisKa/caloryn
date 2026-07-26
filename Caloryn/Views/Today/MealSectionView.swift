@@ -57,6 +57,7 @@ struct MealSectionView: View {
                     onEdit: onEdit,
                     onDelete: onDelete
                 )
+                .listRowBackground(CalorynTheme.cardBackground)
             } else {
                 ForEach(entries) { entry in
                     MealEntryActionRow(
@@ -64,6 +65,7 @@ struct MealSectionView: View {
                         onEdit: onEdit,
                         onDelete: onDelete
                     )
+                    .listRowBackground(CalorynTheme.cardBackground)
                 }
             }
         } header: {

@@ -49,16 +49,23 @@ struct SettingsView: View {
         NavigationStack {
             List {
                 appearanceSection
+                    .listRowBackground(CalorynTheme.cardBackground)
 
                 if let profile {
                     goalSection(profile)
+                        .listRowBackground(CalorynTheme.cardBackground)
                     calorieEstimateSection(profile)
+                        .listRowBackground(CalorynTheme.cardBackground)
                     profileSection(profile)
+                        .listRowBackground(CalorynTheme.cardBackground)
                 }
 
                 DailyReminderSettingsSection()
+                    .listRowBackground(CalorynTheme.cardBackground)
                 dataSection
+                    .listRowBackground(CalorynTheme.cardBackground)
                 aboutSection
+                    .listRowBackground(CalorynTheme.cardBackground)
             }
             .calorynGroupedListStyle()
             .navigationTitle("Settings")

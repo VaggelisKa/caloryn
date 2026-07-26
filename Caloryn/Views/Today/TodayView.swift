@@ -114,6 +114,7 @@ struct TodayView: View {
                         Section {
                             nutriscoreSection
                         }
+                        .listRowBackground(CalorynTheme.cardBackground)
                     }
 
                     ForEach(coreMeals) { meal in

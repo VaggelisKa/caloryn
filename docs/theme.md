@@ -77,6 +77,38 @@ One gap remains and is accepted: "every screen adopts `calorynPageCanvas()`" is 
 enforceable this way. With the primitives banned the failure is mild — a screen that
 forgets inherits its parent's background rather than painting a system colour over it.
 
+## Row backgrounds, and the limit of the abstraction
+
+`calorynGroupedListStyle()` hides the *scroll* background. It cannot set the *row*
+background, and an inset-grouped row paints its own `secondarySystemGroupedBackground` —
+pure white in light mode. So `cardBackground` never rendered in any grouped list, and the
+symptom that started this work ("some screens are whiter") survived the first pass at
+fixing it.
+
+Two things were learned the hard way, both by measuring pixels rather than reasoning:
+
+- `.listRowBackground` applied to the **List** does nothing. Applied to a **Section** it
+  propagates to that section's rows. The first fix was the former and changed not a single
+  pixel.
+- Every `Section` in a grouped list therefore needs the modifier. Settings went from
+  **28% of the screen being pure white to 0.2%**.
+
+This is a genuine hole in the abstraction and it has no automated guard: SwiftLint's
+custom rules can ban a primitive but cannot detect a *missing* modifier. It is covered by
+convention (CLAUDE.md rule 7) and by looking at screenshots, nothing stronger.
+
+## Why the UIKit navigation tint survives
+
+`HistoryDrillDownNavigationModifier` looks redundant now that `AccentColor` is set, and it
+was deleted at one point. Measured on iOS 26, the drill-down back chevron is `#1B1914`
+**with or without it** — identical pixels — because Liquid Glass renders the back button in
+a glass container that ignores `navigationBar.tintColor`.
+
+That is not sufficient reason to delete it. The app deploys to **iOS 18.6**, where the back
+button is an ordinary chevron that *does* honour `tintColor`, and `ThemeScreenshotTests`
+cannot run there: the UI test target's own deployment target is iOS 26.0. So the modifier
+is proven inert on the SDK and unverifiable on the floor. It stays.
+
 ## Why the snapshots were extended
 
 The suite rendered only `traits: .reference` — light, `.large`. Every token the migration
