@@ -37,6 +37,7 @@ struct HistoryCalorieTrendDetailView: View {
         }
         .navigationTitle("Calorie Trend")
         .navigationBarTitleDisplayMode(.inline)
+        .historyDrillDownNavigation()
     }
 }
 

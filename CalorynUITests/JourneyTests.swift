@@ -127,6 +127,63 @@ final class JourneyTests: UITestCase {
         }
     }
 
+    func testGivenAQualifyingPatternWhenADayIsExpandedThenEvidenceStaysInPatternDetails() {
+        let app = launch(fixture: .historyPattern)
+        let tabs = TabBar(app: app)
+        let history = HistoryScreen(app: app)
+
+        when("the user opens History") {
+            XCTAssertTrue(tabs.isVisible)
+            tabs.go(to: .history)
+        }
+
+        then("one evidence-backed recurring pattern is available") {
+            XCTAssertTrue(
+                history.recurringPatternCard.awaitExistence(),
+                "History should surface the qualifying recurring pattern"
+            )
+        }
+
+        when("the user opens the pattern and expands one supporting logged day") {
+            history.tap(history.recurringPatternCard)
+            XCTAssertTrue(
+                history.recurringPatternDetails.awaitExistence(),
+                "Pattern Details should explain the observation"
+            )
+            history.tap(history.supportingPatternDay)
+        }
+
+        then("the contributing foods appear without another drilldown") {
+            XCTAssertTrue(
+                history.expandedSupportingPatternDay.awaitExistence(),
+                "A supporting logged day should expand inside Pattern Details"
+            )
+            XCTAssertTrue(
+                history.recurringPatternDetails.exists,
+                "Expanded day evidence should remain inside Pattern Details"
+            )
+        }
+    }
+
+    func testGivenNoQualifyingPatternWhenHistoryOpensThenNoInsightCardIsShown() {
+        let app = launch(fixture: .historyNoPattern)
+        let tabs = TabBar(app: app)
+        let history = HistoryScreen(app: app)
+
+        when("the user opens History") {
+            XCTAssertTrue(tabs.isVisible)
+            tabs.go(to: .history)
+        }
+
+        then("the fixed-range History content renders without an empty pattern state") {
+            XCTAssertTrue(history.rangePicker.awaitExistence())
+            XCTAssertFalse(
+                history.recurringPatternCard.exists,
+                "History should omit the insight UI when no candidate qualifies"
+            )
+        }
+    }
+
     // MARK: Settings
 
     func testGivenAProfileWhenTheCalorieTargetIsViewedThenSettingsShowsIt() {

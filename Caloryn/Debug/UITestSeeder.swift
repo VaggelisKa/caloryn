@@ -62,6 +62,10 @@ enum UITestSeeder {
                     FoodLogEntry(date: date, mealType: .breakfast, foodItem: oats, portionGrams: portion)
                 )
             }
+        case .historyPattern:
+            HistoryPreviewFixtures.seedRecurringInsight(in: context)
+        case .historyNoPattern:
+            HistoryPreviewFixtures.seedNoRecurringInsight(in: context)
         }
 
         try context.save()

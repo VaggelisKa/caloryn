@@ -138,6 +138,12 @@ struct HistoryScreen: Screen {
     let app: XCUIApplication
 
     var rangePicker: XCUIElement { element("history.rangePicker") }
+    var recurringPatternCard: XCUIElement { element("history.recurringPattern.card") }
+    var recurringPatternDetails: XCUIElement { element("history.recurringPattern.details") }
+    var supportingPatternDay: XCUIElement { element("history.recurringPattern.supportingDay") }
+    var expandedSupportingPatternDay: XCUIElement {
+        element("history.recurringPattern.supportingDay.details")
+    }
 
     /// Range controls are segmented-control buttons labelled "7 Days" and so on.
     func selectRange(_ label: String) {

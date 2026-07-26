@@ -10,6 +10,8 @@ enum HistoryPreviewScenario: String, CaseIterable, Identifiable {
     case mostlyOver
     case macroMisses
     case quarterWeekly
+    case recurringInsight
+    case noRecurringInsight
 
     var id: String { rawValue }
 
@@ -19,7 +21,7 @@ enum HistoryPreviewScenario: String, CaseIterable, Identifiable {
             .week
         case .lowCoverage:
             .twoWeeks
-        case .macroMisses:
+        case .macroMisses, .recurringInsight, .noRecurringInsight:
             .month
         case .quarterWeekly:
             .quarter
@@ -42,6 +44,10 @@ enum HistoryPreviewScenario: String, CaseIterable, Identifiable {
             "Macro Misses"
         case .quarterWeekly:
             "90-Day Weekly"
+        case .recurringInsight:
+            "Recurring Insight"
+        case .noRecurringInsight:
+            "No Recurring Insight"
         }
     }
 }
@@ -131,6 +137,16 @@ enum HistoryPreviewFixtures {
     }
 
     @MainActor
+    static func patternDetailPreview() -> some View {
+        let pattern = recurringPatternFixture()!
+        return NavigationStack {
+            HistoryRecurringCaloriePatternDetailView(
+                pattern: pattern
+            )
+        }
+    }
+
+    @MainActor
     static func container(for scenario: HistoryPreviewScenario) throws -> ModelContainer {
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
         let container = try ModelContainer(
@@ -138,11 +154,24 @@ enum HistoryPreviewFixtures {
             FoodItem.self,
             FoodLogEntry.self,
             RecipeIngredient.self,
+            DailyGoalSnapshot.self,
             configurations: config
         )
         let context = ModelContext(container)
         let profile = previewProfile()
         context.insert(profile)
+
+        if scenario == .recurringInsight {
+            seedRecurringInsight(in: context, profile: profile)
+            try context.save()
+            return container
+        }
+
+        if scenario == .noRecurringInsight {
+            seedNoRecurringInsight(in: context, profile: profile)
+            try context.save()
+            return container
+        }
 
         for datedPlan in datedPlans(for: scenario) {
             guard let plan = datedPlan.plan else { continue }
@@ -168,6 +197,20 @@ enum HistoryPreviewFixtures {
 
         try context.save()
         return container
+    }
+
+    @MainActor
+    static func seedRecurringInsight(in context: ModelContext) {
+        let profile = previewProfile()
+        context.insert(profile)
+        seedRecurringInsight(in: context, profile: profile)
+    }
+
+    @MainActor
+    static func seedNoRecurringInsight(in context: ModelContext) {
+        let profile = previewProfile()
+        context.insert(profile)
+        seedNoRecurringInsight(in: context, profile: profile)
     }
 }
 
@@ -241,6 +284,12 @@ private extension HistoryPreviewFixtures {
             }
         case .quarterWeekly:
             return quarterPlans()
+        case .recurringInsight:
+            return (0..<HistoryRange.month.days).map { _ in .onTrack }
+        case .noRecurringInsight:
+            return (0..<HistoryRange.month.days).map { offset in
+                offset < 18 ? .onTrack : nil
+            }
         }
     }
 
@@ -262,6 +311,8 @@ private extension HistoryPreviewFixtures {
             }
         case .quarterWeekly:
             return quarterPlans(seed: 2)
+        case .recurringInsight, .noRecurringInsight:
+            return Array(repeating: nil, count: HistoryRange.month.days)
         }
     }
 
@@ -286,6 +337,124 @@ private extension HistoryPreviewFixtures {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: .now)
         return calendar.date(byAdding: .day, value: -dayOffset, to: today) ?? today
+    }
+
+    @MainActor
+    static func recurringPatternFixture() -> HistoryRecurringCaloriePattern? {
+        let profile = previewProfile()
+        var entries: [FoodLogEntry] = []
+        var targets: [String: DailyGoalSnapshotValues] = [:]
+
+        for offset in 1...30 {
+            let day = date(dayOffset: offset)
+            let isFriday = Calendar.current.component(.weekday, from: day) == 6
+            entries += patternEntries(
+                on: day,
+                isSupportingFriday: isFriday
+            )
+            targets[DailyGoalSnapshot.dayKey(for: day)] = exactTargetValues
+        }
+
+        return HistoryRecurringCaloriePatternEngine().discover(
+            entries: entries,
+            targetResolver: HistoryDayTargetResolver(
+                fallbackTarget: profile.dailyCalorieTarget,
+                valuesByDayKey: targets
+            )
+        )
+    }
+
+    @MainActor
+    static func seedRecurringInsight(
+        in context: ModelContext,
+        profile: UserProfile
+    ) {
+        for offset in 1...30 {
+            let day = date(dayOffset: offset)
+            let isFriday = Calendar.current.component(.weekday, from: day) == 6
+            for entry in patternEntries(on: day, isSupportingFriday: isFriday) {
+                if let food = entry.foodItem {
+                    context.insert(food)
+                }
+                context.insert(entry)
+            }
+            context.insert(exactSnapshot(for: day, profile: profile))
+        }
+    }
+
+    @MainActor
+    static func seedNoRecurringInsight(
+        in context: ModelContext,
+        profile: UserProfile
+    ) {
+        for offset in 1...18 {
+            let day = date(dayOffset: offset)
+            for entry in patternEntries(on: day, isSupportingFriday: false) {
+                if let food = entry.foodItem {
+                    context.insert(food)
+                }
+                context.insert(entry)
+            }
+            context.insert(exactSnapshot(for: day, profile: profile))
+        }
+    }
+
+    @MainActor
+    static func patternEntries(
+        on date: Date,
+        isSupportingFriday: Bool
+    ) -> [FoodLogEntry] {
+        let calories: [(MealType, String, Double)] = isSupportingFriday
+            ? [
+                (.breakfast, "Yogurt bowl", 950),
+                (.lunch, "Grain bowl", 950),
+                (.dinner, "Friday dinner", 800),
+                (.snack, "Afternoon snack", 100),
+            ]
+            : [
+                (.breakfast, "Yogurt bowl", 700),
+                (.lunch, "Grain bowl", 700),
+                (.dinner, "Evening meal", 500),
+                (.snack, "Afternoon snack", 100),
+            ]
+
+        return calories.map { meal, name, calories in
+            entry(
+                name: name,
+                caloriesPer100g: calories,
+                proteinPer100g: 20,
+                carbsPer100g: 25,
+                fatPer100g: 10,
+                fiberPer100g: 5,
+                nutriscoreGrade: nil,
+                mealType: meal,
+                portionGrams: 100,
+                date: date
+            )
+        }
+    }
+
+    static var exactTargetValues: DailyGoalSnapshotValues {
+        DailyGoalSnapshotValues(
+            baseCalorieTarget: 2_000,
+            healthAdjustment: 0,
+            effectiveCalorieTarget: 2_000,
+            calculationMode: .lifestyleEstimate,
+            isManualTarget: true
+        )
+    }
+
+    @MainActor
+    static func exactSnapshot(
+        for date: Date,
+        profile: UserProfile
+    ) -> DailyGoalSnapshot {
+        DailyGoalSnapshot(
+            dayKey: DailyGoalSnapshot.dayKey(for: date),
+            values: exactTargetValues,
+            profile: profile,
+            recordedAt: date
+        )
     }
 
     @MainActor

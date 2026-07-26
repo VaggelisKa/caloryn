@@ -26,6 +26,10 @@ enum UITestConfiguration {
         case customFoods
         /// A profile plus thirty days of entries, for History assertions.
         case history
+        /// Exact historical targets and entries that produce one recurring History pattern.
+        case historyPattern
+        /// Exact historical targets and entries that intentionally produce no recurring pattern.
+        case historyNoPattern
     }
 
     static var isActive: Bool {
