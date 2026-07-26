@@ -128,12 +128,14 @@ struct NutritionDetailsView: View {
             Text("Daily Nutrition")
                 .font(CalorynTheme.sectionTitle)
                 .foregroundStyle(CalorynTheme.textPrimary)
+                .accessibilityIdentifier("nutritionDetails.title")
 
             HStack(alignment: .firstTextBaseline) {
                 Text("\(roundedCalories)")
                     .font(CalorynTheme.displayNumber)
                     .foregroundStyle(calorieAccentColor)
                     .contentTransition(.numericText())
+                    .accessibilityIdentifier("nutritionDetails.consumedCalories")
 
                 Text("/ \(calorieBudget.adjustedTarget) kcal")
                     .font(CalorynTheme.numericBody)

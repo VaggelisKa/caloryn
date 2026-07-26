@@ -107,43 +107,29 @@ struct FoodSearchView: View {
     private var selectionIndicatorWidth: CGFloat = 22
     @FocusState private var isSearchFocused: Bool
 
-    private var showingRecent: Bool {
-        searchText.trimmingCharacters(in: .whitespaces).isEmpty
-    }
-
-    private var recipes: [FoodItem] {
-        guard mode.includesRecipes else { return [] }
-        return recentFoods.filter { $0.isRecipe }
-    }
-
-    private var manualEntries: [FoodItem] {
-        recentFoods.filter(\.isManualEntry)
-    }
-
-    private var editedProducts: [FoodItem] {
-        recentFoods.filter(\.isEditedCatalogProduct)
-    }
-
-    private var displayedRecentFoods: [FoodItem] {
-        let suggestedIDs = Set(suggestionSnapshot.map(\.foodID))
-        return Array(
-            recentFoods
-                .filter {
-                    (!$0.isUserCreatedFood || $0.isEditedCatalogProduct)
-                        && !suggestedIDs.contains($0.id)
-                }
-                .prefix(20)
+    /// Every rule about what this screen lists lives in `FoodSearchListing`.
+    /// The view reads it; it does not decide anything itself.
+    private var listing: FoodSearchListing {
+        FoodSearchListing(
+            mode: FoodSearchListing.Mode(mode),
+            searchText: searchText,
+            recentFoods: recentFoods,
+            mealTemplates: mealTemplates,
+            providerResults: searchService.searchResults,
+            suggestions: suggestionSnapshot
         )
     }
 
+    private var showingRecent: Bool { listing.showingRecent }
+
+    private var recipes: [FoodItem] { listing.recipes }
+
+    private var manualEntries: [FoodItem] { listing.manualEntries }
+
+    private var displayedRecentFoods: [FoodItem] { listing.displayedRecentFoods }
+
     private var contextualSuggestions: [(FoodItem, ContextualFoodSuggestion)] {
-        guard mode.supportsMultiSelection else { return [] }
-        let foodsByID = recentFoods.reduce(into: [UUID: FoodItem]()) { result, food in
-            result[food.id] = food
-        }
-        return suggestionSnapshot.compactMap { suggestion in
-            foodsByID[suggestion.foodID].map { ($0, suggestion) }
-        }
+        listing.contextualSuggestions
     }
 
     private var selectedItemCount: Int {
@@ -151,19 +137,10 @@ struct FoodSearchView: View {
     }
 
     private var selectableOptionCount: Int {
-        guard !isLookingUpBarcode, barcodeLookupError == nil else { return 0 }
-
-        if showingRecent {
-            return contextualSuggestions.count
-                + mealTemplates.count
-                + displayedRecentFoods.count
-        }
-
-        return matchingMeals.count
-            + matchingRecipes.count
-            + matchingManualEntries.count
-            + matchingEditedProducts.count
-            + visibleProviderSearchResults.count
+        listing.selectableOptionCount(
+            isLookingUpBarcode: isLookingUpBarcode,
+            hasBarcodeLookupError: barcodeLookupError != nil
+        )
     }
 
     var body: some View {
@@ -501,60 +478,23 @@ struct FoodSearchView: View {
         .calorynPlainListStyle()
     }
 
-    private var matchingManualEntries: [FoodItem] {
-        let query = searchText.lowercased().trimmingCharacters(in: .whitespaces)
-        guard !query.isEmpty else { return [] }
-        return manualEntries.filter {
-            $0.name.lowercased().contains(query)
-            || ($0.brand?.lowercased().contains(query) ?? false)
-        }
-    }
+    private var matchingManualEntries: [FoodItem] { listing.matchingManualEntries }
 
-    private var matchingEditedProducts: [FoodItem] {
-        EditedProductCatalog.loggingProducts(
-            in: editedProducts,
-            matching: searchText,
-            providerResults: searchService.searchResults
-        )
-    }
+    private var matchingEditedProducts: [FoodItem] { listing.matchingEditedProducts }
 
     private var visibleProviderSearchResults: [FoodSearchResult] {
-        EditedProductCatalog.providerResults(
-            searchService.searchResults,
-            excludingProductsOverlaidBy: matchingEditedProducts
-        )
+        listing.visibleProviderSearchResults
     }
 
-    private var matchingRecipes: [FoodItem] {
-        let query = searchText.lowercased().trimmingCharacters(in: .whitespaces)
-        guard !query.isEmpty else { return [] }
-        return recipes.filter {
-            $0.name.lowercased().contains(query)
-        }
-    }
+    private var matchingRecipes: [FoodItem] { listing.matchingRecipes }
 
-    private var matchingMeals: [MealTemplate] {
-        guard mode.supportsMultiSelection else { return [] }
-        let query = searchText.lowercased().trimmingCharacters(in: .whitespaces)
-        guard !query.isEmpty else { return [] }
-        return mealTemplates.filter {
-            $0.name.lowercased().contains(query)
-        }
-    }
+    private var matchingMeals: [MealTemplate] { listing.matchingMeals }
 
-    private var hasLocalMatches: Bool {
-        hasCategorizedLocalMatches || !matchingEditedProducts.isEmpty
-    }
+    private var hasLocalMatches: Bool { listing.hasLocalMatches }
 
-    private var hasCategorizedLocalMatches: Bool {
-        !matchingMeals.isEmpty
-            || !matchingManualEntries.isEmpty
-            || !matchingRecipes.isEmpty
-    }
+    private var hasCategorizedLocalMatches: Bool { listing.hasCategorizedLocalMatches }
 
-    private var hasProductSearchResults: Bool {
-        !matchingEditedProducts.isEmpty || !visibleProviderSearchResults.isEmpty
-    }
+    private var hasProductSearchResults: Bool { listing.hasProductSearchResults }
 
     private var searchResultsList: some View {
         Group {

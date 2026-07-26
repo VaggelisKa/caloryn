@@ -63,6 +63,49 @@ extension Screen {
         return element
     }
 
+    /// Scrolls until `element` can actually be tapped, then returns it.
+    ///
+    /// A control that exists but sits behind the keyboard reports
+    /// `isHittable == false` for as long as the keyboard is up, so waiting on
+    /// it can only ever time out. Where the fold falls depends on whether a
+    /// field was focused first, which is why a long form can be reachable on
+    /// one run and not the next.
+    ///
+    /// The drag is deliberate rather than `swipeUp()`: swipe starts near the
+    /// bottom of the element, which on a focused form is inside the keyboard,
+    /// so the keyboard swallows it and nothing scrolls.
+    @discardableResult
+    func revealed(
+        _ element: XCUIElement,
+        maximumScrolls: Int = 4,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        guard element.awaitExistence(file: file, line: line) else { return element }
+
+        // The tallest scroll view is the content; the short one is the
+        // keyboard's own accessory strip.
+        guard let content = (0..<app.scrollViews.count)
+            .map({ app.scrollViews.element(boundBy: $0) })
+            .max(by: { $0.frame.height < $1.frame.height }) else {
+            return element
+        }
+
+        var scrolls = 0
+        while !element.isHittable, scrolls < maximumScrolls {
+            content
+                .coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4))
+                .press(
+                    forDuration: 0.05,
+                    thenDragTo: content.coordinate(
+                        withNormalizedOffset: CGVector(dx: 0.5, dy: 0.1)
+                    )
+                )
+            scrolls += 1
+        }
+        return element
+    }
+
     /// Taps once the control is ready to receive it.
     func tap(
         _ element: XCUIElement,
@@ -131,6 +174,31 @@ extension XCUIElement {
             XCTFail(
                 "Timed out waiting for a value containing \"\(substring)\"; last value was "
                     + "\"\(String(describing: value))\"",
+                file: file,
+                line: line
+            )
+        }
+        return result == .completed
+    }
+
+    /// Waits until the element's label contains `substring`.
+    ///
+    /// Used for values a user reads out of a label rather than a control's
+    /// accessibility value, such as the calorie target in Settings.
+    @discardableResult
+    func awaitLabel(
+        containing substring: String,
+        timeout: TimeInterval = UITestCase.defaultTimeout,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> Bool {
+        let predicate = NSPredicate(format: "label CONTAINS %@", substring)
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: self)
+        let result = XCTWaiter().wait(for: [expectation], timeout: timeout)
+        if result != .completed {
+            XCTFail(
+                "Timed out waiting for a label containing \"\(substring)\"; last label was "
+                    + "\"\(label)\"",
                 file: file,
                 line: line
             )
