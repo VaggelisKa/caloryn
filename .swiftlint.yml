@@ -28,7 +28,7 @@ custom_rules:
   raw_list_style:
     name: "Raw list style"
     regex: '\.listStyle\('
-    message: "Use calorynGroupedListStyle() or calorynPlainListStyle(). A bare .listStyle lets the List paint a system background over the theme — see CLAUDE.md rule 8."
+    message: "Use calorynGroupedListStyle() or calorynPlainListStyle(). A bare .listStyle lets the List paint a system background over the theme — see CLAUDE.md rule 7."
     severity: error
 
   raw_system_background_color:

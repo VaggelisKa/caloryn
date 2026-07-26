@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// Every colour below resolves to a Color Set in `Assets.xcassets/Colors`, which declares its
+/// Every colour below resolves to a Color Set in `CalorynShared/SharedColors.xcassets`, which declares its
 /// light and dark appearance together. Add colours there, never as literals here — a Color Set
 /// makes a missing dark variant visible in Xcode, whereas a `UIColor { traits in … }` closure
-/// silently falls back. See CLAUDE.md rule 8.
+/// silently falls back. See CLAUDE.md rule 7.
 enum CalorynTheme {
     // MARK: - Colors
 

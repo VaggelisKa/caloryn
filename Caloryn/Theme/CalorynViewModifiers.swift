@@ -61,7 +61,7 @@ extension View {
     /// `scrollContentBackground(.hidden)` is the load-bearing part of all three of
     /// these: a `List` paints its own system background *over* anything behind it,
     /// so setting `.background` alone silently does nothing. That is why bare
-    /// `.listStyle(...)` is banned — see CLAUDE.md rule 8.
+    /// `.listStyle(...)` is banned — see CLAUDE.md rule 7.
     func calorynPlainListStyle() -> some View {
         modifier(CalorynPlainListStyleModifier())
     }
