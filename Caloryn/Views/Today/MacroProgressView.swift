@@ -231,10 +231,13 @@ private struct NutrientCustomizationView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
+                    Button {
                         dismiss()
+                    } label: {
+                        Text("Done")
+                            .font(CalorynTheme.toolbarAction)
+                            .foregroundStyle(CalorynTheme.sage)
                     }
-                    .font(CalorynTheme.toolbarAction)
                 }
             }
             .environment(\.editMode, $editMode)

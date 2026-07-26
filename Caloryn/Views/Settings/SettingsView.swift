@@ -728,14 +728,17 @@ struct GoalEditView: View {
         .scrollDismissesKeyboard(.interactively)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                Button("Save") {
+                Button {
                     if draft.disablesAppleHealthAdjustment {
                         AppleHealthAdjustmentSettings.disable()
                     }
                     draft.apply(to: profile)
                     dismiss()
+                } label: {
+                    Text("Save")
+                        .font(CalorynTheme.toolbarAction)
+                        .foregroundStyle(draft.canSave ? CalorynTheme.sage : CalorynTheme.textSecondary)
                 }
-                .font(CalorynTheme.toolbarAction)
                 .accessibilityIdentifier("goalEdit.save")
                 .disabled(!draft.canSave)
             }
@@ -902,15 +905,18 @@ struct ProfileEditView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                Button("Save") {
+                Button {
                     let cal = Double(profile.dailyCalorieTarget)
                     let proteinRatio = cal > 0 ? (profile.proteinTargetG * 4.0) / cal : 0.30
                     let carbRatio    = cal > 0 ? (profile.carbTargetG    * 4.0) / cal : 0.40
                     let fatRatio     = cal > 0 ? (profile.fatTargetG     * 9.0) / cal : 0.30
                     profile.recalculate(proteinRatio: proteinRatio, carbRatio: carbRatio, fatRatio: fatRatio)
                     dismiss()
+                } label: {
+                    Text("Save")
+                        .font(CalorynTheme.toolbarAction)
+                        .foregroundStyle(CalorynTheme.sage)
                 }
-                .font(CalorynTheme.toolbarAction)
             }
         }
     }

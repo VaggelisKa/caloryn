@@ -510,8 +510,16 @@ private struct MissingFoodEntryView: View {
                 }
 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
+                    Button {
                         save()
+                    } label: {
+                        Text("Save")
+                            .font(CalorynTheme.toolbarAction)
+                            .foregroundStyle(
+                                FavoriteFoodLogging.isSafePortion(portionGrams)
+                                    ? CalorynTheme.sage
+                                    : CalorynTheme.textSecondary
+                            )
                     }
                     .disabled(!FavoriteFoodLogging.isSafePortion(portionGrams))
                     .accessibilityIdentifier("missingEntry.save")
