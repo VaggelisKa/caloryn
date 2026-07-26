@@ -42,6 +42,9 @@ enum DailyFoodLogCommands {
             )
         )
         modelContext.insert(entry)
+        if foodItem.isFavorite {
+            CalorynAppShortcutRefresh.favoritesChanged()
+        }
         return entry
     }
 
@@ -52,7 +55,7 @@ enum DailyFoodLogCommands {
         modelContext: ModelContext,
         now: Date = Date()
     ) -> [FoodLogEntry] {
-        entries.enumerated().map { offset, entry in
+        let copiedEntries = entries.enumerated().map { offset, entry in
             let snapshot = FoodLogEntrySnapshot(entry: entry)
             let copiedEntry = FoodLogEntry(
                 date: date,
@@ -65,6 +68,10 @@ enum DailyFoodLogCommands {
             modelContext.insert(copiedEntry)
             return copiedEntry
         }
+        if copiedEntries.contains(where: { $0.foodItem?.isFavorite == true }) {
+            CalorynAppShortcutRefresh.favoritesChanged()
+        }
+        return copiedEntries
     }
 
     /// Updates an existing log entry in memory. Callers remain responsible for saving the model context.
@@ -89,6 +96,9 @@ enum DailyFoodLogCommands {
                 requestedSnackIndex: snackIndex
             )
         )
+        if foodItem.isFavorite {
+            CalorynAppShortcutRefresh.favoritesChanged()
+        }
         return entry
     }
 
@@ -96,7 +106,11 @@ enum DailyFoodLogCommands {
         _ entry: FoodLogEntry,
         modelContext: ModelContext
     ) {
+        let refreshFavoriteShortcuts = entry.foodItem?.isFavorite == true
         modelContext.delete(entry)
+        if refreshFavoriteShortcuts {
+            CalorynAppShortcutRefresh.favoritesChanged()
+        }
     }
 
     @discardableResult

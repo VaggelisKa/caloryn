@@ -504,6 +504,12 @@ struct CustomFoodFormView: View {
     private func deleteFood() {
         if let food = existingFood {
             food.deletePreservingLogEntrySnapshots(from: modelContext)
+            do {
+                try modelContext.save()
+                CalorynAppShortcutRefresh.favoritesChanged()
+            } catch {
+                // Keep the existing silent deletion behavior.
+            }
         }
         dismiss()
     }

@@ -8,13 +8,13 @@ enum WidgetSnapshotStoreError: Error, Equatable {
 struct WidgetSnapshotStore: Sendable {
     private let directoryURL: URL?
 
-    init(appGroupIdentifier: String = WidgetConstants.appGroupIdentifier) {
+    nonisolated init(appGroupIdentifier: String = WidgetConstants.appGroupIdentifier) {
         self.directoryURL = FileManager.default.containerURL(
             forSecurityApplicationGroupIdentifier: appGroupIdentifier
         )
     }
 
-    init(directoryURL: URL) {
+    nonisolated init(directoryURL: URL) {
         self.directoryURL = directoryURL
     }
 

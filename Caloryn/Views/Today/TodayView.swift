@@ -14,6 +14,7 @@ struct TodayView: View {
         let mealType: MealType
         let logDate: Date
         let snackIndex: Int
+        let startsWithScanner: Bool
     }
 
     @State private var selectedDate: Date = Date().startOfDay
@@ -157,7 +158,8 @@ struct TodayView: View {
                 FoodSearchView(
                     mealType: presentation.mealType,
                     logDate: presentation.logDate,
-                    snackIndex: presentation.snackIndex
+                    snackIndex: presentation.snackIndex,
+                    startsWithScanner: presentation.startsWithScanner
                 )
                     .presentationDragIndicator(.visible)
             }
@@ -330,11 +332,16 @@ struct TodayView: View {
         }
     }
 
-    private func presentFoodSearch(mealType: MealType, snackIndex: Int) {
+    private func presentFoodSearch(
+        mealType: MealType,
+        snackIndex: Int,
+        startsWithScanner: Bool = false
+    ) {
         foodSearchPresentation = FoodSearchPresentation(
             mealType: mealType,
             logDate: selectedDate,
-            snackIndex: snackIndex
+            snackIndex: snackIndex,
+            startsWithScanner: startsWithScanner
         )
     }
 
@@ -367,6 +374,13 @@ struct TodayView: View {
             presentFoodSearch(
                 mealType: mealType,
                 snackIndex: mealType == .snack ? 1 : 0
+            )
+        case .scanFood(let widgetMeal):
+            let mealType = MealType(widgetMeal: widgetMeal)
+            presentFoodSearch(
+                mealType: mealType,
+                snackIndex: mealType == .snack ? 1 : 0,
+                startsWithScanner: true
             )
         }
     }

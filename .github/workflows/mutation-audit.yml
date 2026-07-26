@@ -51,6 +51,7 @@ jobs:
               "Caloryn/Services/HistoryPatternDiscovery.swift" \
               "Caloryn/Services/FavoriteFoodLogging.swift" \
               "Caloryn/Services/DailyReminderPlanner.swift" \
+              "Caloryn/AppIntents/CalorynIntentDomain.swift" \
               "Caloryn/Models/ProduceVarietySummary.swift" \
               "Caloryn/Models/NutritionValues.swift" \
               "Caloryn/Models/DailyGoalSnapshot.swift" \

@@ -352,7 +352,12 @@ struct MyFoodsView: View {
 
     private func delete(_ food: FoodItem) {
         food.deletePreservingLogEntrySnapshots(from: modelContext)
-        try? modelContext.save()
+        do {
+            try modelContext.save()
+            CalorynAppShortcutRefresh.favoritesChanged()
+        } catch {
+            // Keep the existing silent deletion behavior.
+        }
     }
 
     private func delete(_ meal: MealTemplate) {

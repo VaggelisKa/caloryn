@@ -178,6 +178,7 @@ enum FavoriteFoodLogging {
 
         do {
             try modelContext.save()
+            CalorynAppShortcutRefresh.favoritesChanged()
         } catch {
             food.isPinnedRaw = previousRawValue
             food.pinnedAt = previousPinnedAt
@@ -216,6 +217,25 @@ enum FavoriteFoodLogging {
         return true
     }
 
+    /// Returns the literal portion from the favorite's most recently created
+    /// live log entry, regardless of meal. Ambiguous or unsafe latest entries
+    /// are intentionally not replaced with an older value.
+    static func mostRecentlyLoggedSafePortion(for food: FoodItem) -> Double? {
+        reusablePortion(
+            from: food.logEntries ?? [],
+            where: { _ in true },
+            sortedBy: { lhs, rhs in
+                if lhs.createdAt != rhs.createdAt {
+                    return lhs.createdAt > rhs.createdAt
+                }
+                return lhs.id.uuidString > rhs.id.uuidString
+            },
+            hasSameRecency: { lhs, rhs in
+                lhs.createdAt == rhs.createdAt
+            }
+        )
+    }
+
     private static func lastPortionAction(
         for food: FoodItem,
         onOrBefore destinationDate: Date,
@@ -226,9 +246,10 @@ enum FavoriteFoodLogging {
             return .confirmQuantity
         }
 
-        let entries = (food.logEntries ?? [])
-            .filter { $0.date < end }
-            .sorted { lhs, rhs in
+        guard let portion = reusablePortion(
+            from: food.logEntries ?? [],
+            where: { $0.date < end },
+            sortedBy: { lhs, rhs in
                 if lhs.date != rhs.date {
                     return lhs.date > rhs.date
                 }
@@ -236,24 +257,37 @@ enum FavoriteFoodLogging {
                     return lhs.createdAt > rhs.createdAt
                 }
                 return lhs.id.uuidString > rhs.id.uuidString
+            },
+            hasSameRecency: { lhs, rhs in
+                lhs.date == rhs.date && lhs.createdAt == rhs.createdAt
             }
-
-        guard let latest = entries.first else {
+        ) else {
             return .confirmQuantity
         }
+        return .log(portionGrams: portion)
+    }
 
-        let equallyRecentPortions = entries
-            .prefix {
-                $0.date == latest.date && $0.createdAt == latest.createdAt
-            }
+    private static func reusablePortion(
+        from entries: [FoodLogEntry],
+        where isIncluded: (FoodLogEntry) -> Bool,
+        sortedBy areInIncreasingOrder: (FoodLogEntry, FoodLogEntry) -> Bool,
+        hasSameRecency: (FoodLogEntry, FoodLogEntry) -> Bool
+    ) -> Double? {
+        let orderedEntries = entries
+            .filter(isIncluded)
+            .sorted(by: areInIncreasingOrder)
+
+        guard let latest = orderedEntries.first else {
+            return nil
+        }
+
+        let equallyRecentPortions = orderedEntries
+            .prefix { hasSameRecency($0, latest) }
             .map(\.portionGrams)
-
-        guard equallyRecentPortions.allSatisfy({ $0 == latest.portionGrams }) else {
-            return .confirmQuantity
+        guard equallyRecentPortions.allSatisfy({ $0 == latest.portionGrams }),
+              isSafePortion(latest.portionGrams) else {
+            return nil
         }
-
-        return isSafePortion(latest.portionGrams)
-            ? .log(portionGrams: latest.portionGrams)
-            : .confirmQuantity
+        return latest.portionGrams
     }
 }
