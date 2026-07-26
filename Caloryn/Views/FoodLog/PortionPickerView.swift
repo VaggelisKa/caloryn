@@ -158,6 +158,7 @@ struct PortionPickerView: View {
             .padding(.horizontal, CalorynTheme.pagePadding)
             .padding(.bottom, 100)
         }
+        .calorynSheetCanvas()
         .navigationTitle(isEditing ? "Edit Portion" : "Portion")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(!isEditing)

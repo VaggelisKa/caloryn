@@ -41,8 +41,10 @@ final class ThemeScreenshotTests: UITestCase {
 
     private func captureAllSurfaces(appearance: Appearance) {
         captureTodayAndSearch(appearance)
+        capturePortionPicker(appearance)
         captureMultiAddReview(appearance)
         captureHistoryDrillDown(appearance)
+        captureCalorieTrendDrillDown(appearance)
         captureSettingsAndMyFoods(appearance)
         captureCreationSheets(appearance)
     }
@@ -80,6 +82,40 @@ final class ThemeScreenshotTests: UITestCase {
         attach(app, "03-food-search-results", appearance)
     }
 
+    /// The portion picker, pushed from a search result and so still inside the search sheet —
+    /// it takes the sheet canvas, not the page canvas.
+    ///
+    /// This uses the `customFoods` fixture and searches "House Salad" rather than reusing the
+    /// `loggedDay` app above: `foodSearch.result.*` identifiers are only on search results, and
+    /// "oat" there matches a logged entry that surfaces in the recent list, which carries no
+    /// such identifier. The first version of this capture timed out for exactly that reason.
+    private func capturePortionPicker(_ appearance: Appearance) {
+        let app = launch(fixture: .customFoods, appearance: appearance)
+        let today = TodayScreen(app: app)
+
+        XCTAssertTrue(today.isVisible, "Today should render")
+        let addBreakfast = today.mealHeader("breakfast")
+        XCTAssertTrue(addBreakfast.awaitExistence(), "Breakfast add button missing")
+        addBreakfast.tap()
+
+        let field = searchField(in: app)
+        XCTAssertTrue(field.awaitExistence(), "Search field missing")
+        field.tap()
+        field.typeText("Salad")
+
+        let firstResult = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH %@", "foodSearch.result."))
+            .firstMatch
+        XCTAssertTrue(firstResult.awaitExistence(), "No search result to open a portion for")
+        firstResult.tap()
+
+        let calories = app.descendants(matching: .any)
+            .matching(identifier: "portionPicker.calories").firstMatch
+        XCTAssertTrue(calories.awaitExistence(), "Portion picker did not open")
+        sleep(1)
+        attach(app, "03b-portion-picker", appearance)
+    }
+
     /// The History drill-down. Its navigation bar was tinted by a UIKit bridge that has
     /// been deleted in favour of the AccentColor asset, so this is where a regression to
     /// system blue would show.
@@ -104,6 +140,32 @@ final class ThemeScreenshotTests: UITestCase {
         )
         sleep(1)
         attach(app, "05-history-drilldown", appearance)
+    }
+
+    /// The Calorie Trend drill-down, the History tab's other pushed detail.
+    ///
+    /// It is captured separately rather than by navigating back from Pattern Details: a back
+    /// button carries no accessibility identifier, and CLAUDE.md rule 5 bans finding elements
+    /// by type. Relaunching is also what every other group here does.
+    ///
+    /// This screen shipped with no canvas at all while its sibling had one — the whole suite
+    /// stayed green because nothing had ever rendered it.
+    private func captureCalorieTrendDrillDown(_ appearance: Appearance) {
+        let app = launch(fixture: .historyPattern, appearance: appearance)
+        let tabs = TabBar(app: app)
+        let history = HistoryScreen(app: app)
+
+        XCTAssertTrue(tabs.isVisible, "Tab bar should render")
+        tabs.go(to: .history)
+
+        XCTAssertTrue(history.calorieTrendCard.awaitExistence(), "Calorie trend card missing")
+        history.calorieTrendCard.tap()
+        XCTAssertTrue(
+            history.calorieTrendDetails.awaitExistence(),
+            "Calorie Trend detail did not open, so its canvas was not captured"
+        )
+        sleep(1)
+        attach(app, "04b-history-calorie-trend", appearance)
     }
 
     /// The multi-add review sheet, reached by selecting a result in multi-select mode.
@@ -142,6 +204,19 @@ final class ThemeScreenshotTests: UITestCase {
         let commit = app.descendants(matching: .any).matching(identifier: "multiAdd.commit").firstMatch
         XCTAssertTrue(commit.awaitExistence(), "Multi-add review sheet did not present")
         attach(app, "08-multi-add-review", appearance)
+
+        // Each review row pushes a portion editor, two levels deep inside the sheet.
+        let item = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH %@", "multiAdd.item."))
+            .firstMatch
+        XCTAssertTrue(item.awaitExistence(), "No review row to open the portion editor from")
+        item.tap()
+
+        let save = app.descendants(matching: .any)
+            .matching(identifier: "multiAdd.editor.save").firstMatch
+        XCTAssertTrue(save.awaitExistence(), "Multi-add portion editor did not open")
+        sleep(1)
+        attach(app, "08b-multi-add-portion-editor", appearance)
     }
 
     /// The three creation sheets behind My Foods' + menu, plus the ingredient amount

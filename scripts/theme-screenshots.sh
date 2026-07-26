@@ -20,17 +20,24 @@ OUT="${1:-/tmp/caloryn-theme-shots}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RESULT="$(mktemp -d)/theme.xcresult"
 
-# Any booted iOS 26 simulator; the UI test target cannot run below 26.0.
+# An iOS 26 iPhone simulator; the UI test target cannot run below 26.0. A already-booted one
+# wins, so running this does not boot a second simulator alongside whichever one you are
+# testing on by hand — an earlier version picked the first *available* device and did exactly
+# that.
 UDID="$(xcrun simctl list devices available -j \
   | python3 -c '
 import json,sys
 d=json.load(sys.stdin)["devices"]
+fallback=None
 for runtime, devices in d.items():
     if "iOS-26" not in runtime: continue
     for dev in devices:
-        if dev.get("isAvailable") and "iPhone" in dev["name"]:
+        if not (dev.get("isAvailable") and "iPhone" in dev["name"]): continue
+        if dev.get("state") == "Booted":
             print(dev["udid"]); raise SystemExit
-raise SystemExit("no available iOS 26 iPhone simulator")
+        if fallback is None: fallback = dev["udid"]
+if fallback is None: raise SystemExit("no available iOS 26 iPhone simulator")
+print(fallback)
 ')"
 
 echo "==> simulator $UDID"

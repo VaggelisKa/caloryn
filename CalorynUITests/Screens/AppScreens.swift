@@ -138,6 +138,8 @@ struct HistoryScreen: Screen {
     let app: XCUIApplication
 
     var rangePicker: XCUIElement { element("history.rangePicker") }
+    var calorieTrendCard: XCUIElement { element("history.calorieTrend.card") }
+    var calorieTrendDetails: XCUIElement { element("history.calorieTrend.details") }
     var recurringPatternCard: XCUIElement { element("history.recurringPattern.card") }
     var recurringPatternDetails: XCUIElement { element("history.recurringPattern.details") }
     var supportingPatternDay: XCUIElement { element("history.recurringPattern.supportingDay") }

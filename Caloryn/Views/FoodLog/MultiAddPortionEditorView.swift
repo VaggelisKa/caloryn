@@ -54,6 +54,7 @@ struct MultiAddPortionEditorView: View {
             .padding(.horizontal, CalorynTheme.pagePadding)
             .padding(.bottom, 100)
         }
+        .calorynSheetCanvas()
         .navigationTitle("Edit Portion")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) {
