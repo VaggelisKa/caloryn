@@ -393,6 +393,7 @@ struct SettingsView: View {
                         .foregroundStyle(nutrient.color)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
+                        .accessibilityLabel(goalSummarySpokenText(for: nutrient, in: profile))
                 }
             }
 
@@ -410,8 +411,22 @@ struct SettingsView: View {
     }
 
     private func goalSummaryText(for nutrient: TrackedNutrient, in profile: UserProfile) -> String {
+        goalSummary(for: nutrient, in: profile, formatter: nutrient.unit.formatted)
+    }
+
+    /// VoiceOver reads the bare "66.7g" as an unpronounceable glyph, so the spoken
+    /// label spells the unit out.
+    private func goalSummarySpokenText(for nutrient: TrackedNutrient, in profile: UserProfile) -> String {
+        goalSummary(for: nutrient, in: profile, formatter: nutrient.unit.spokenFormatted)
+    }
+
+    private func goalSummary(
+        for nutrient: TrackedNutrient,
+        in profile: UserProfile,
+        formatter: (Double) -> String
+    ) -> String {
         guard let target = profile.target(for: nutrient) else { return "Not set" }
-        let formattedTarget = nutrient.unit.formatted(target)
+        let formattedTarget = formatter(target)
 
         switch profile.goalKind(for: nutrient) {
         case .minimum:
