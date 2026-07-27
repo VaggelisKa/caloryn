@@ -55,7 +55,18 @@ struct RecipeDraft: Equatable {
     /// The caption under the calorie figure. The yield is only stated once
     /// there is one, so an empty form reads "calories" rather than "in 0g".
     var totalCaloriesCaption: String {
-        totalGrams > 0 ? "calories in \(Int(totalGrams.rounded()))g" : "calories"
+        totalGrams > 0 ? "calories in \(Self.yieldText(forGrams: totalGrams))g" : "calories"
+    }
+
+    /// How a yield is written. Whole grams from a gram upwards, because that is
+    /// the precision a recipe is cooked at; below that the figure keeps a
+    /// decimal, because a savable recipe must never claim to weigh nothing —
+    /// rounding 0.4g to "0g" contradicted the form that had just accepted it.
+    static func yieldText(forGrams grams: Double) -> String {
+        guard grams.isFinite else { return "0" }
+        if grams.rounded() >= 1 { return "\(grams.rounded().truncatedSafely)" }
+        if grams >= 0.05 { return String(format: "%.1f", grams) }
+        return "<0.1"
     }
 
     // MARK: - Validation
