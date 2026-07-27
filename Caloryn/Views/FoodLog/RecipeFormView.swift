@@ -147,11 +147,11 @@ struct RecipeFormView: View {
     private var summaryCard: some View {
         VStack(spacing: 14) {
             VStack(spacing: 4) {
-                Text("\(Int(draft.totalCalories))")
+                Text("\(draft.totalCalories.truncatedSafely)")
                     .font(CalorynTheme.displayNumber)
                     .foregroundStyle(CalorynTheme.sage)
                     .contentTransition(.numericText())
-                    .animation(.smooth(duration: 0.3), value: Int(draft.totalCalories))
+                    .animation(.smooth(duration: 0.3), value: draft.totalCalories.truncatedSafely)
 
                 Text(draft.totalCaloriesCaption)
                     .font(CalorynTheme.bodyText)
@@ -235,7 +235,7 @@ struct RecipeFormView: View {
                             .foregroundStyle(CalorynTheme.textPrimary)
                             .lineLimit(1)
 
-                        Text("\(Int(ingredient.portionGrams.rounded()))g")
+                        Text("\(ingredient.portionGrams.rounded().truncatedSafely)g")
                             .font(CalorynTheme.caption)
                             .foregroundStyle(CalorynTheme.textSecondary)
                     }

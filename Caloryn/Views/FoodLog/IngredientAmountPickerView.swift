@@ -87,11 +87,11 @@ struct IngredientAmountPickerView: View {
 
     private var caloriePreview: some View {
         VStack(spacing: 4) {
-            Text("\(Int(amount.previewCalories))")
+            Text("\(amount.previewCalories.truncatedSafely)")
                 .font(CalorynTheme.displayNumber)
                 .foregroundStyle(CalorynTheme.sage)
                 .contentTransition(.numericText())
-                .animation(.smooth(duration: 0.3), value: Int(amount.previewCalories))
+                .animation(.smooth(duration: 0.3), value: amount.previewCalories.truncatedSafely)
 
             Text("calories")
                 .font(CalorynTheme.bodyText)

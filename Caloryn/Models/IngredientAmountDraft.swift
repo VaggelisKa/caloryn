@@ -67,7 +67,13 @@ struct IngredientAmountDraft: Equatable {
 
     /// How a stored weight is shown when the sheet opens: whole grams stay
     /// whole, so a 100g portion is not presented as "100.0" to type around.
+    ///
+    /// `Int(_:)` is a trap, not a conversion — a value past `Int64` range
+    /// terminates the process — and the weight this renders came from a text
+    /// field, so it goes through `truncatedSafely`. A non-finite weight is not
+    /// a weight at all and opens the field empty.
     static func fieldText(forGrams value: Double) -> String {
-        value.rounded() == value ? "\(Int(value))" : String(format: "%.1f", value)
+        guard value.isFinite else { return "" }
+        return value.rounded() == value ? "\(value.truncatedSafely)" : String(format: "%.1f", value)
     }
 }

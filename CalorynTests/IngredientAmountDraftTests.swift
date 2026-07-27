@@ -45,6 +45,26 @@ struct IngredientAmountDraftTests {
         #expect(opened.grams == 100)
     }
 
+    /// `Int(_:)` on a `Double` terminates the process rather than throwing, so
+    /// a weight no `Int` can hold has to come back as text. This cannot assert
+    /// the absence of a trap — a trap takes the runner with it — so it asserts
+    /// the result is text the field can hold instead.
+    @Test("A weight beyond Int range opens the field with a number, not a crash")
+    func unconvertibleWeightOpensAsText() {
+        #expect(IngredientAmountDraft.fieldText(forGrams: 1e300) == "\(Int.max)")
+        #expect(IngredientAmountDraft.fieldText(forGrams: -1e300) == "\(Int.min)")
+    }
+
+    @Test("A non-finite weight opens the field empty", arguments: [
+        Double.infinity, -.infinity, .nan
+    ])
+    func nonFiniteWeightOpensEmpty(value: Double) {
+        let opened = draft(grams: value)
+
+        #expect(opened.gramsText == "")
+        #expect(opened.canSave == false)
+    }
+
     // MARK: - The typed amount
 
     @Test("A typed whole number is the amount")
