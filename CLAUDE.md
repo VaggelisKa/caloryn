@@ -37,9 +37,7 @@ exit code and looks green.
    not two — `isHittable` already implies existence, and each extra wait costs a full
    poll cycle. Adding `.accessibilityIdentifier(...)` is the only production change
    these tests may make.
-6. **Mutation testing reports, never gates.** Add new pure-logic models to its scope in
-   `.github/workflows/mutation-audit.yml`.
-7. **Theme comes from the asset catalog, never literals.** Colours: `CalorynTheme.*`,
+6. **Theme comes from the asset catalog, never literals.** Colours: `CalorynTheme.*`,
    backed by Color Sets in `CalorynShared/SharedColors.xcassets` that declare light and
    dark together — never `Color.white`, `Color(.system*)` or `Color(red:)`. Lists:
    `calorynGroupedListStyle()` / `calorynPlainListStyle()`, never a bare `.listStyle(...)`
@@ -61,10 +59,11 @@ exit code and looks green.
    all 17 surfaces in both appearances and prints a per-screen colour census. When
    auditing for a missing modifier, scan **per struct, not per file** — a file-scoped
    grep hid three unthemed screens because their outer view in the same file was fine.
-8. **Measure, don't assume.** Already tried and dead: parallelising the UI target
-   (141s vs 140s), and letting xcodebuild re-resolve packages (+112s). CI wall-clock is
-   noisy — the same commit ran 137s/206s/268s, so never claim a CI speed-up from one
-   sample.
+7. **Measure, don't assume.** Already tried and dead: parallelising the UI target
+   (141s vs 140s), letting xcodebuild re-resolve packages (+112s), and mutation testing
+   (muter cannot see this suite's failures — `docs/testing/mutation-testing.md`). CI
+   wall-clock is noisy — the same commit ran 137s/206s/268s, so never claim a CI
+   speed-up from one sample.
 
 ## CI
 
