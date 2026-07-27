@@ -106,6 +106,20 @@ final class ThemeScreenshotTests: UITestCase {
 
         // The fixture pre-fills the query, so the sheet opens straight onto the results list.
         XCTAssertTrue(searchField(in: app).awaitExistence(), "Food search sheet did not present")
+
+        // Waiting for the search field alone would photograph any state of this sheet, and
+        // the two states this capture is *not* about — the full-screen spinner and recent
+        // foods — both photograph clean. The trailing spinner row only exists on the list
+        // that carries a local match and a provider result at once, so assert on one of
+        // each: the seeded manual entry, and a product only the pinned fixture supplies.
+        XCTAssertTrue(
+            result(named: "House Salad", in: app).awaitExistence(),
+            "No local match, so this is the full-screen spinner rather than the results list"
+        )
+        XCTAssertTrue(
+            result(named: "Caloryn Greek Yogurt", in: app).exists,
+            "No provider result, so the list has no trailing spinner row to photograph"
+        )
         sleep(2)
         attach(app, "03c-food-search-in-flight", appearance)
     }
@@ -418,6 +432,14 @@ final class ThemeScreenshotTests: UITestCase {
     private func searchField(in app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any)
             .matching(identifier: "foodSearch.searchField")
+            .firstMatch
+    }
+
+    /// A row in the search results list. Every row type carries the same identifier prefix,
+    /// so this says "this food is listed" without saying which branch built the row.
+    private func result(named name: String, in app: XCUIApplication) -> XCUIElement {
+        app.descendants(matching: .any)
+            .matching(identifier: "foodSearch.result.\(name)")
             .firstMatch
     }
 

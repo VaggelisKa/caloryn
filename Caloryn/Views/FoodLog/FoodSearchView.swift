@@ -725,6 +725,7 @@ struct FoodSearchView: View {
         .accessibilityValue(
             selectionAccessibilityValue(for: .remoteProduct(product.id))
         )
+        .accessibilityIdentifier("foodSearch.result.\(productName)")
     }
 
     private func contextualSuggestionRow(
