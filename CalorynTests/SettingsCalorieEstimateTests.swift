@@ -162,6 +162,34 @@ final class SettingsCalorieEstimateTests: XCTestCase {
         XCTAssertEqual(SettingsCalorieEstimate.baselineText(activityBaselineKcal: 512.4), "512 kcal")
     }
 
+    func testTodayIsRoundedToWholeKilocalories() {
+        XCTAssertEqual(SettingsCalorieEstimate.todayText(activeEnergyKcal: 512.6), "513 kcal")
+        XCTAssertEqual(SettingsCalorieEstimate.todayText(activeEnergyKcal: 512.4), "512 kcal")
+    }
+
+    /// Both rows render Health-derived values, which `Int(_:)` would trap on
+    /// rather than throw. A test cannot assert the absence of a trap — it would
+    /// take the runner down with it — so these assert that the value that used
+    /// to trap now comes out as text.
+    func testANonFiniteHealthValueStillRendersAsText() {
+        XCTAssertEqual(SettingsCalorieEstimate.baselineText(activityBaselineKcal: .nan), "0 kcal")
+        XCTAssertEqual(SettingsCalorieEstimate.todayText(activeEnergyKcal: .nan), "0 kcal")
+    }
+
+    func testAnInfiniteHealthValueStillRendersAsText() {
+        XCTAssertEqual(SettingsCalorieEstimate.baselineText(activityBaselineKcal: .infinity), "0 kcal")
+        XCTAssertEqual(SettingsCalorieEstimate.todayText(activeEnergyKcal: -.infinity), "0 kcal")
+    }
+
+    /// A value past what an `Int` can hold is clamped, not trapped on.
+    func testAHealthValueBeyondIntRangeStillRendersAsText() {
+        XCTAssertEqual(
+            SettingsCalorieEstimate.baselineText(activityBaselineKcal: 1e30),
+            "\(Int.max) kcal"
+        )
+        XCTAssertEqual(SettingsCalorieEstimate.todayText(activeEnergyKcal: -1e30), "\(Int.min) kcal")
+    }
+
     // MARK: - Tracker fallback
 
     func testTrackerProblemDropsAutoAdjustBackToTheLifestyleEstimate() {

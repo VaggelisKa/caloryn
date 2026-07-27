@@ -110,12 +110,22 @@ struct SettingsCalorieEstimate: Equatable {
     }
 
     /// A dash until there are enough valid days to have a baseline at all.
+    ///
+    /// Both this and `todayText` come from Apple Health, so `Int(_:)` cannot be
+    /// used to round them: it terminates the process on a NaN, an infinity or
+    /// anything past `Int.max` rather than throwing. `truncatedSafely`, via
+    /// `Double.kcalFormatted`, renders those as text instead.
     static func baselineText(activityBaselineKcal: Double?) -> String {
         guard let activityBaselineKcal else {
             return "-"
         }
 
-        return Int(activityBaselineKcal.rounded()).kcalFormatted
+        return activityBaselineKcal.rounded().kcalFormatted
+    }
+
+    /// Today's Active Energy as read from Apple Health.
+    static func todayText(activeEnergyKcal: Double) -> String {
+        activeEnergyKcal.rounded().kcalFormatted
     }
 
     // MARK: - Tracker fallback
