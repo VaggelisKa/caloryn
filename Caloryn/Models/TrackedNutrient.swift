@@ -59,7 +59,7 @@ enum TrackedNutrientUnit {
         case .grams:
             value.macroFormatted
         case .milligramsFromGrams:
-            "\(Int((value * 1000).rounded()))mg"
+            "\((value * 1000).rounded().truncatedSafely)mg"
         }
     }
 
@@ -297,7 +297,7 @@ private extension Double {
     var goalInputFormatted: String {
         let rounded = (self * 10).rounded() / 10
         if rounded == rounded.rounded() {
-            return "\(Int(rounded))"
+            return "\(rounded.truncatedSafely)"
         }
         return String(format: "%.1f", rounded)
     }

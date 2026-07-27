@@ -7,7 +7,7 @@ extension Double {
     /// past `Int.max` terminates the process. These formatters render values
     /// derived from user-entered nutrition data, so a bad number has to come
     /// out as text, not as a crash.
-    private var truncatedSafely: Int {
+    var truncatedSafely: Int {
         guard isFinite else { return 0 }
         if self >= Double(Int.max) { return .max }
         if self <= Double(Int.min) { return .min }

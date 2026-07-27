@@ -75,4 +75,14 @@ final class TrackedNutrientTests: XCTestCase {
         XCTAssertEqual(metric.progress, 1.0, accuracy: 0.001)
         XCTAssertEqual(metric.accessibilityLabel, "Sodium: 2mg, at most 2mg")
     }
+
+    /// A nutrient goal is parsed with `Double(_:)` and only checked for being
+    /// positive, so "1" followed by thirty zeroes is a target a user can type
+    /// and save. Both of these formatters then converted it with a bare
+    /// `Int(_:)`, which traps rather than rendering.
+    func testUnboundedGoalTargetsFormatWithoutTrapping() {
+        XCTAssertEqual(TrackedNutrientUnit.milligramsFromGrams.formatted(1e30), "\(Int.max)mg")
+        XCTAssertEqual(TrackedNutrientUnit.grams.inputFormatted(1e30), "\(Int.max)")
+        XCTAssertEqual(TrackedNutrientUnit.milligramsFromGrams.inputFormatted(1e30), "\(Int.max)")
+    }
 }
