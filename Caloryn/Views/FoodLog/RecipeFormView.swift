@@ -9,8 +9,7 @@ struct RecipeFormView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
-    @State private var name = ""
-    @State private var ingredients: [RecipeIngredientDraft] = []
+    @State private var draft = RecipeDraft()
     @State private var showingIngredientSearch = false
     @State private var ingredientForAmount: RecipeIngredientDraft?
     @State private var showingDeleteConfirmation = false
@@ -19,38 +18,6 @@ struct RecipeFormView: View {
     @FocusState private var isNameFocused: Bool
 
     private var isEditing: Bool { existingRecipe != nil }
-
-    private var sortedIngredients: [RecipeIngredientDraft] {
-        ingredients.sorted { $0.sortOrder < $1.sortOrder }
-    }
-
-    private var totalGrams: Double {
-        ingredients.reduce(0) { $0 + $1.portionGrams }
-    }
-
-    private var totalCalories: Double {
-        ingredients.reduce(0) { $0 + $1.calories }
-    }
-
-    private var totalProtein: Double {
-        ingredients.reduce(0) { $0 + $1.proteinG }
-    }
-
-    private var totalCarbs: Double {
-        ingredients.reduce(0) { $0 + $1.carbsG }
-    }
-
-    private var totalFat: Double {
-        ingredients.reduce(0) { $0 + $1.fatG }
-    }
-
-    private var totalFiber: Double {
-        ingredients.reduce(0) { $0 + $1.fiberG }
-    }
-
-    private var canSave: Bool {
-        !name.trimmingCharacters(in: .whitespaces).isEmpty && totalGrams > 0 && !ingredients.isEmpty
-    }
 
     init(existingRecipe: FoodItem? = nil, onSaved: ((FoodItem) -> Void)? = nil, allowsDeletion: Bool = true) {
         self.existingRecipe = existingRecipe
@@ -122,16 +89,16 @@ struct RecipeFormView: View {
                             .foregroundStyle(CalorynTheme.sage)
                     }
                     .accessibilityLabel("Save")
-                    .disabled(!canSave)
+                    .disabled(!draft.canSave)
                 }
             }
-            .onAppear(perform: populateFromExisting)
+            .onAppear(perform: seedFromExisting)
             .sheet(isPresented: $showingIngredientSearch) {
                 FoodSearchView(
                     mealType: .breakfast,
                     logDate: .now,
                     mode: .ingredientSelection { food in
-                        let ingredient = RecipeIngredientDraft(from: food, sortOrder: ingredients.count)
+                        let ingredient = RecipeIngredientDraft(from: food, sortOrder: draft.ingredients.count)
                         showingIngredientSearch = false
                         Task { @MainActor in
                             try? await Task.sleep(for: .milliseconds(250))
@@ -143,13 +110,13 @@ struct RecipeFormView: View {
             }
             .sheet(item: $ingredientForAmount) { ingredient in
                 IngredientAmountPickerView(ingredient: ingredient) { updated in
-                    upsertIngredient(updated)
+                    draft.upsert(updated)
                 }
             }
             .confirmationDialog("Delete Recipe", isPresented: $showingDeleteConfirmation) {
                 Button("Delete", role: .destructive, action: deleteRecipe)
             } message: {
-                Text("This will permanently remove \"\(name)\" from your recipes.")
+                Text("This will permanently remove \"\(draft.name)\" from your recipes.")
             }
             .alert("Couldn’t Update Favorite", isPresented: favoriteErrorIsPresented) {
                 Button("OK", role: .cancel) {
@@ -168,7 +135,7 @@ struct RecipeFormView: View {
                 .font(CalorynTheme.sectionEyebrow)
                 .foregroundStyle(CalorynTheme.textSecondary)
 
-            TextField("Recipe name (e.g. Greek Salad)", text: $name)
+            TextField("Recipe name (e.g. Greek Salad)", text: $draft.name)
                 .font(CalorynTheme.bodyText)
                 .textInputAutocapitalization(.words)
                 .focused($isNameFocused)
@@ -180,22 +147,22 @@ struct RecipeFormView: View {
     private var summaryCard: some View {
         VStack(spacing: 14) {
             VStack(spacing: 4) {
-                Text("\(Int(totalCalories))")
+                Text("\(Int(draft.totalCalories))")
                     .font(CalorynTheme.displayNumber)
                     .foregroundStyle(CalorynTheme.sage)
                     .contentTransition(.numericText())
-                    .animation(.smooth(duration: 0.3), value: Int(totalCalories))
+                    .animation(.smooth(duration: 0.3), value: Int(draft.totalCalories))
 
-                Text(totalGrams > 0 ? "calories in \(Int(totalGrams.rounded()))g" : "calories")
+                Text(draft.totalCaloriesCaption)
                     .font(CalorynTheme.bodyText)
                     .foregroundStyle(CalorynTheme.textSecondary)
             }
 
             HStack(spacing: CalorynTheme.cardSpacing) {
-                summaryMetric("Protein", value: totalProtein, color: CalorynTheme.proteinColor)
-                summaryMetric("Carbs", value: totalCarbs, color: CalorynTheme.carbColor)
-                summaryMetric("Fat", value: totalFat, color: CalorynTheme.fatColor)
-                summaryMetric("Fiber", value: totalFiber, color: CalorynTheme.fiberColor)
+                summaryMetric("Protein", value: draft.totalProtein, color: CalorynTheme.proteinColor)
+                summaryMetric("Carbs", value: draft.totalCarbs, color: CalorynTheme.carbColor)
+                summaryMetric("Fat", value: draft.totalFat, color: CalorynTheme.fatColor)
+                summaryMetric("Fiber", value: draft.totalFiber, color: CalorynTheme.fiberColor)
             }
         }
         .frame(maxWidth: .infinity)
@@ -233,7 +200,7 @@ struct RecipeFormView: View {
                 .accessibilityIdentifier("recipe.addIngredient")
             }
 
-            if sortedIngredients.isEmpty {
+            if draft.sortedIngredients.isEmpty {
                 ContentUnavailableView(
                     "No Ingredients",
                     systemImage: "list.bullet",
@@ -242,10 +209,10 @@ struct RecipeFormView: View {
                 .frame(minHeight: 160)
             } else {
                 VStack(spacing: 0) {
-                    ForEach(sortedIngredients) { ingredient in
+                    ForEach(draft.sortedIngredients) { ingredient in
                         ingredientRow(ingredient)
 
-                        if ingredient.id != sortedIngredients.last?.id {
+                        if ingredient.id != draft.sortedIngredients.last?.id {
                             Divider()
                                 .foregroundStyle(CalorynTheme.stone.opacity(0.3))
                         }
@@ -289,7 +256,7 @@ struct RecipeFormView: View {
             .buttonStyle(.plain)
 
             Button(role: .destructive) {
-                deleteIngredient(ingredient)
+                draft.remove(ingredient)
             } label: {
                 Image(systemName: "minus.circle")
                     .font(CalorynTheme.compactIcon)
@@ -308,38 +275,9 @@ struct RecipeFormView: View {
     }
 
     @MainActor
-    private func populateFromExisting() {
-        guard ingredients.isEmpty else { return }
-        guard let existingRecipe else {
+    private func seedFromExisting() {
+        if draft.seed(from: existingRecipe) == .startedEmpty {
             isNameFocused = true
-            return
-        }
-
-        name = existingRecipe.name
-        ingredients = (existingRecipe.recipeIngredients ?? [])
-            .sorted { $0.sortOrder < $1.sortOrder }
-            .map(RecipeIngredientDraft.init(from:))
-    }
-
-    private func upsertIngredient(_ ingredient: RecipeIngredientDraft) {
-        if let index = ingredients.firstIndex(where: { $0.id == ingredient.id }) {
-            ingredients[index] = ingredient
-        } else {
-            var newIngredient = ingredient
-            newIngredient.sortOrder = ingredients.count
-            ingredients.append(newIngredient)
-        }
-        normalizeSortOrder()
-    }
-
-    private func deleteIngredient(_ ingredient: RecipeIngredientDraft) {
-        ingredients.removeAll { $0.id == ingredient.id }
-        normalizeSortOrder()
-    }
-
-    private func normalizeSortOrder() {
-        for index in ingredients.indices {
-            ingredients[index].sortOrder = index
         }
     }
 
@@ -349,7 +287,7 @@ struct RecipeFormView: View {
             recipe = existingRecipe
         } else {
             recipe = FoodItem(
-                name: name.trimmingCharacters(in: .whitespaces),
+                name: draft.trimmedName,
                 caloriesPer100g: 0,
                 proteinPer100g: 0,
                 carbsPer100g: 0,
@@ -360,7 +298,7 @@ struct RecipeFormView: View {
             modelContext.insert(recipe)
         }
 
-        recipe.name = name.trimmingCharacters(in: .whitespaces)
+        recipe.name = draft.trimmedName
         recipe.brand = nil
         recipe.barcode = nil
         recipe.isRecipe = true
@@ -370,44 +308,44 @@ struct RecipeFormView: View {
             modelContext.delete(oldIngredient)
         }
 
-        let newIngredients = sortedIngredients.enumerated().map { index, draft in
+        let newIngredients = draft.ingredientsForSaving.map { ingredientDraft in
             let ingredient = RecipeIngredient(
-                name: draft.name,
-                brand: draft.brand,
-                portionGrams: draft.portionGrams,
-                caloriesPer100g: draft.caloriesPer100g,
-                proteinPer100g: draft.proteinPer100g,
-                carbsPer100g: draft.carbsPer100g,
-                fatPer100g: draft.fatPer100g,
-                fiberPer100g: draft.fiberPer100g,
-                sugarsPer100g: draft.sugarsPer100g,
-                addedSugarsPer100g: draft.addedSugarsPer100g,
-                sucrosePer100g: draft.sucrosePer100g,
-                glucosePer100g: draft.glucosePer100g,
-                fructosePer100g: draft.fructosePer100g,
-                lactosePer100g: draft.lactosePer100g,
-                maltosePer100g: draft.maltosePer100g,
-                maltodextrinsPer100g: draft.maltodextrinsPer100g,
-                starchPer100g: draft.starchPer100g,
-                polyolsPer100g: draft.polyolsPer100g,
-                saturatedFatPer100g: draft.saturatedFatPer100g,
-                transFatPer100g: draft.transFatPer100g,
-                monounsaturatedFatPer100g: draft.monounsaturatedFatPer100g,
-                polyunsaturatedFatPer100g: draft.polyunsaturatedFatPer100g,
-                omega3FatPer100g: draft.omega3FatPer100g,
-                omega6FatPer100g: draft.omega6FatPer100g,
-                omega9FatPer100g: draft.omega9FatPer100g,
-                saltPer100g: draft.saltPer100g,
-                sodiumPer100g: draft.sodiumPer100g,
-                cholesterolPer100g: draft.cholesterolPer100g,
-                solubleFiberPer100g: draft.solubleFiberPer100g,
-                insolubleFiberPer100g: draft.insolubleFiberPer100g,
-                caseinPer100g: draft.caseinPer100g,
-                serumProteinsPer100g: draft.serumProteinsPer100g,
-                alcoholPer100g: draft.alcoholPer100g,
-                sortOrder: index,
-                produceKind: draft.produceKind,
-                provenance: draft.provenance
+                name: ingredientDraft.name,
+                brand: ingredientDraft.brand,
+                portionGrams: ingredientDraft.portionGrams,
+                caloriesPer100g: ingredientDraft.caloriesPer100g,
+                proteinPer100g: ingredientDraft.proteinPer100g,
+                carbsPer100g: ingredientDraft.carbsPer100g,
+                fatPer100g: ingredientDraft.fatPer100g,
+                fiberPer100g: ingredientDraft.fiberPer100g,
+                sugarsPer100g: ingredientDraft.sugarsPer100g,
+                addedSugarsPer100g: ingredientDraft.addedSugarsPer100g,
+                sucrosePer100g: ingredientDraft.sucrosePer100g,
+                glucosePer100g: ingredientDraft.glucosePer100g,
+                fructosePer100g: ingredientDraft.fructosePer100g,
+                lactosePer100g: ingredientDraft.lactosePer100g,
+                maltosePer100g: ingredientDraft.maltosePer100g,
+                maltodextrinsPer100g: ingredientDraft.maltodextrinsPer100g,
+                starchPer100g: ingredientDraft.starchPer100g,
+                polyolsPer100g: ingredientDraft.polyolsPer100g,
+                saturatedFatPer100g: ingredientDraft.saturatedFatPer100g,
+                transFatPer100g: ingredientDraft.transFatPer100g,
+                monounsaturatedFatPer100g: ingredientDraft.monounsaturatedFatPer100g,
+                polyunsaturatedFatPer100g: ingredientDraft.polyunsaturatedFatPer100g,
+                omega3FatPer100g: ingredientDraft.omega3FatPer100g,
+                omega6FatPer100g: ingredientDraft.omega6FatPer100g,
+                omega9FatPer100g: ingredientDraft.omega9FatPer100g,
+                saltPer100g: ingredientDraft.saltPer100g,
+                sodiumPer100g: ingredientDraft.sodiumPer100g,
+                cholesterolPer100g: ingredientDraft.cholesterolPer100g,
+                solubleFiberPer100g: ingredientDraft.solubleFiberPer100g,
+                insolubleFiberPer100g: ingredientDraft.insolubleFiberPer100g,
+                caseinPer100g: ingredientDraft.caseinPer100g,
+                serumProteinsPer100g: ingredientDraft.serumProteinsPer100g,
+                alcoholPer100g: ingredientDraft.alcoholPer100g,
+                sortOrder: ingredientDraft.sortOrder,
+                produceKind: ingredientDraft.produceKind,
+                provenance: ingredientDraft.provenance
             )
             ingredient.recipe = recipe
             modelContext.insert(ingredient)
