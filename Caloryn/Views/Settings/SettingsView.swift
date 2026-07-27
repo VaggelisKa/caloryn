@@ -96,30 +96,31 @@ struct SettingsView: View {
 
     private func calorieEstimateSection(_ profile: UserProfile) -> some View {
         let budget = settingsBudget(for: profile)
+        let estimate = calorieEstimate(for: profile)
 
         return Section {
-            if profile.manualOverride {
-                Toggle(isOn: .constant(false)) {
-                    calorieEstimateModeToggleLabel(for: profile)
-                }
-                .disabled(true)
-            } else {
+            if estimate.isToggleBound {
                 Toggle(isOn: dynamicEnergyBinding(for: profile)) {
-                    calorieEstimateModeToggleLabel(for: profile)
+                    calorieEstimateModeToggleLabel(estimate)
                 }
-                .disabled(isRequestingHealthAuthorization || (profile.energyCalculationMode != .dynamicHealth && !isHealthAvailable))
+                .disabled(estimate.isToggleDisabled)
+            } else {
+                Toggle(isOn: .constant(estimate.isToggleOn)) {
+                    calorieEstimateModeToggleLabel(estimate)
+                }
+                .disabled(estimate.isToggleDisabled)
             }
 
-            if !profile.manualOverride && profile.energyCalculationMode == .dynamicHealth {
+            if estimate.showsDynamicMetrics {
                 CalorieEstimateMetricRow(
                     title: "Valid Days",
-                    description: "Active Energy days found; \(ActivityCalorieBudget.requiredDynamicActivityDays) days are needed before auto-adjust starts.",
-                    value: "\(budget.validActivityDays)/\(ActivityCalorieBudget.requiredDynamicActivityDays)"
+                    description: SettingsCalorieEstimate.validActivityDaysDescription,
+                    value: SettingsCalorieEstimate.validActivityDaysText(validActivityDays: budget.validActivityDays)
                 )
                 CalorieEstimateMetricRow(
                     title: "Baseline",
                     description: "Your typical Active Energy from recent valid days.",
-                    value: dynamicBaselineText(for: budget)
+                    value: SettingsCalorieEstimate.baselineText(activityBaselineKcal: budget.activityBaselineKcal)
                 )
                 CalorieEstimateMetricRow(
                     title: "Today",
@@ -170,7 +171,7 @@ struct SettingsView: View {
             } else if let dynamicStatus = budget.dynamicStatusText {
                 Text(dynamicStatus)
                     .font(CalorynTheme.caption)
-                    .foregroundStyle(profile.energyCalculationMode == .dynamicHealth ? CalorynTheme.textSecondary : CalorynTheme.terracotta)
+                    .foregroundStyle(estimate.isDynamicStatusInformational ? CalorynTheme.textSecondary : CalorynTheme.terracotta)
             }
 
             if let healthStatusMessage {
@@ -181,23 +182,35 @@ struct SettingsView: View {
         } header: {
             Text("Calorie Estimate")
         } footer: {
-            Text(calorieEstimateFooterText(for: profile))
+            Text(estimate.footerText)
         }
         .task(id: "\(profile.energyCalculationModeRaw)-\(profile.manualOverride)") {
             await settingsEnergyTracker.configure(
                 date: .now,
-                isEnabled: profile.effectiveEnergyCalculationMode == .dynamicHealth
+                isEnabled: calorieEstimate(for: profile).isActiveEnergyTrackingEnabled
             )
         }
         .onChange(of: settingsEnergyTracker.message) { _, message in
-            guard message != nil, profile.energyCalculationMode == .dynamicHealth else { return }
+            guard SettingsCalorieEstimate.fallsBackToLifestyle(
+                energyCalculationMode: profile.energyCalculationMode,
+                trackerMessage: message
+            ) else { return }
             profile.energyCalculationMode = .lifestyleEstimate
         }
     }
 
-    private func calorieEstimateModeToggleLabel(for profile: UserProfile) -> some View {
+    private func calorieEstimate(for profile: UserProfile) -> SettingsCalorieEstimate {
+        SettingsCalorieEstimate(
+            isManualOverride: profile.manualOverride,
+            energyCalculationMode: profile.energyCalculationMode,
+            isHealthAvailable: isHealthAvailable,
+            isRequestingAuthorization: isRequestingHealthAuthorization
+        )
+    }
+
+    private func calorieEstimateModeToggleLabel(_ estimate: SettingsCalorieEstimate) -> some View {
         HStack(alignment: .center, spacing: 12) {
-            Image(systemName: calorieEstimateModeIcon(for: profile))
+            Image(systemName: estimate.modeIconName)
                 .font(CalorynTheme.inlineIcon)
                 .foregroundStyle(CalorynTheme.sage)
                 .frame(width: 24)
@@ -207,28 +220,12 @@ struct SettingsView: View {
                 Text("Auto-adjust calories")
                     .foregroundStyle(CalorynTheme.textPrimary)
 
-                Text(calorieEstimateModeSubtitle(for: profile))
+                Text(estimate.modeSubtitle)
                     .font(CalorynTheme.caption)
                     .foregroundStyle(CalorynTheme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-    }
-
-    private func calorieEstimateModeIcon(for profile: UserProfile) -> String {
-        profile.effectiveEnergyCalculationMode == .dynamicHealth ? "heart.text.square.fill" : "figure.walk"
-    }
-
-    private func calorieEstimateModeSubtitle(for profile: UserProfile) -> String {
-        if profile.manualOverride {
-            return "Off - manual calorie target is set"
-        }
-
-        if profile.energyCalculationMode == .dynamicHealth {
-            return "On - using Health data when available"
-        }
-
-        return "Off - using your activity level"
     }
 
     private func dynamicEnergyBinding(for profile: UserProfile) -> Binding<Bool> {
@@ -275,13 +272,23 @@ struct SettingsView: View {
 
     @MainActor
     private func refreshPendingHealthAuthorizationIfNeeded(for profile: UserProfile) async {
-        guard !profile.manualOverride else { return }
-        guard profile.energyCalculationMode != .dynamicHealth else {
+        let action = SettingsHealthAuthorizationRefresh.action(
+            isManualOverride: profile.manualOverride,
+            energyCalculationMode: profile.energyCalculationMode,
+            isAuthorizationRequested: AppleHealthAdjustmentSettings.authorizationRequested,
+            isHealthAvailable: isHealthAvailable,
+            isRequestingAuthorization: isRequestingHealthAuthorization
+        )
+
+        switch action {
+        case .none:
+            return
+        case .refreshTracker:
             settingsEnergyTracker.refreshWhenActive()
             return
+        case .requestAuthorization:
+            break
         }
-        guard AppleHealthAdjustmentSettings.authorizationRequested else { return }
-        guard isHealthAvailable, !isRequestingHealthAuthorization else { return }
 
         isRequestingHealthAuthorization = true
         healthStatusMessage = nil
@@ -306,30 +313,6 @@ struct SettingsView: View {
             activityMessage: settingsEnergyTracker.message,
             date: .now
         )
-    }
-
-    private func dynamicBaselineText(for budget: ActivityCalorieBudget) -> String {
-        guard let baseline = budget.activityBaselineKcal else {
-            return "-"
-        }
-
-        return Int(baseline.rounded()).kcalFormatted
-    }
-
-    private func calorieEstimateFooterText(for profile: UserProfile) -> String {
-        if profile.manualOverride {
-            return "Manual calorie targets stay fixed until you turn the override off."
-        }
-
-        if !isHealthAvailable {
-            return AppleHealthAdjustmentSettings.unavailableMessage
-        }
-
-        if profile.energyCalculationMode == .dynamicHealth {
-            return "Auto-adjust uses Apple Health activity to keep your daily calorie target up to date. Turn it off to use your activity level instead."
-        }
-
-        return "Your activity level sets the estimate. Auto-adjust can use Apple Health activity instead."
     }
 
     private func openHealthAccessSettings() {
@@ -359,7 +342,12 @@ struct SettingsView: View {
     }
 
     private func goalSection(_ profile: UserProfile) -> some View {
-        Section {
+        let summary = SettingsGoalSummary(
+            targets: profile.nutrientTargets,
+            goalKinds: profile.nutrientGoalKinds
+        )
+
+        return Section {
             HStack {
                 Label("Calories", systemImage: "flame.fill")
                     .foregroundStyle(CalorynTheme.textPrimary)
@@ -370,30 +358,30 @@ struct SettingsView: View {
                     .accessibilityIdentifier("settings.calorieTarget")
             }
 
-            if !profile.manualOverride {
+            if SettingsGoalSummary.showsAdjustmentRow(isManualOverride: profile.manualOverride) {
                 HStack {
                     Label("Adjustment", systemImage: "plusminus")
                         .foregroundStyle(CalorynTheme.textPrimary)
                     Spacer()
-                    Text(adjustmentLabel(for: profile.calorieDeficit))
+                    Text(SettingsGoalSummary.adjustmentLabel(calorieDeficit: profile.calorieDeficit))
                         .font(CalorynTheme.numericBody)
                         .foregroundStyle(CalorynTheme.textSecondary)
                 }
             }
 
-            ForEach(goalSummaryNutrients(for: profile)) { nutrient in
+            ForEach(summary.nutrients) { nutrient in
                 HStack {
                     Label(nutrient.displayName, systemImage: nutrient.systemImage)
                         .foregroundStyle(CalorynTheme.textPrimary)
 
                     Spacer()
 
-                    Text(goalSummaryText(for: nutrient, in: profile))
+                    Text(summary.text(for: nutrient))
                         .font(CalorynTheme.numericBody)
                         .foregroundStyle(nutrient.color)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
-                        .accessibilityLabel(goalSummarySpokenText(for: nutrient, in: profile))
+                        .accessibilityLabel(summary.spokenText(for: nutrient))
                 }
             }
 
@@ -406,54 +394,21 @@ struct SettingsView: View {
         }
     }
 
-    private func goalSummaryNutrients(for profile: UserProfile) -> [TrackedNutrient] {
-        TrackedNutrient.allCases.filter { profile.target(for: $0) != nil }
-    }
-
-    private func goalSummaryText(for nutrient: TrackedNutrient, in profile: UserProfile) -> String {
-        goalSummary(for: nutrient, in: profile, formatter: nutrient.unit.formatted)
-    }
-
-    /// VoiceOver reads the bare "66.7g" as an unpronounceable glyph, so the spoken
-    /// label spells the unit out.
-    private func goalSummarySpokenText(for nutrient: TrackedNutrient, in profile: UserProfile) -> String {
-        goalSummary(for: nutrient, in: profile, formatter: nutrient.unit.spokenFormatted)
-    }
-
-    private func goalSummary(
-        for nutrient: TrackedNutrient,
-        in profile: UserProfile,
-        formatter: (Double) -> String
-    ) -> String {
-        guard let target = profile.target(for: nutrient) else { return "Not set" }
-        let formattedTarget = formatter(target)
-
-        switch profile.goalKind(for: nutrient) {
-        case .minimum:
-            return "At least \(formattedTarget)"
-        case .target:
-            return formattedTarget
-        case .maximum:
-            return "At most \(formattedTarget)"
-        }
-    }
-
-    private func adjustmentLabel(for deficit: Double) -> String {
-        if deficit > 0 {
-            return "-\(Int(deficit)) kcal"
-        } else if deficit < 0 {
-            return "+\(Int(abs(deficit))) kcal"
-        }
-        return "Maintenance"
-    }
-
     private func profileSection(_ profile: UserProfile) -> some View {
-        Section {
-            LabeledContent("Age", value: "\(profile.age)")
-            LabeledContent("Sex", value: profile.sex.displayName)
-            LabeledContent("Height", value: "\(Int(profile.heightCm)) cm")
-            LabeledContent("Weight", value: String(format: "%.1f kg", profile.weightKg))
-            LabeledContent("Activity", value: profile.activityLevel.displayName)
+        let summary = SettingsProfileSummary(
+            age: profile.age,
+            sex: profile.sex,
+            heightCm: profile.heightCm,
+            weightKg: profile.weightKg,
+            activityLevel: profile.activityLevel
+        )
+
+        return Section {
+            LabeledContent("Age", value: summary.ageText)
+            LabeledContent("Sex", value: summary.sexText)
+            LabeledContent("Height", value: summary.heightText)
+            LabeledContent("Weight", value: summary.weightText)
+            LabeledContent("Activity", value: summary.activityText)
 
             NavigationLink("Edit Profile") {
                 ProfileEditView(profile: profile)
@@ -475,17 +430,17 @@ struct SettingsView: View {
 
             Button {
                 exportURL = CSVExporter.exportURL(from: allEntries)
-                if exportURL != nil {
+                if SettingsDataSectionRules.presentsShareSheet(exportURL: exportURL) {
                     showExportSheet = true
                 }
             } label: {
                 Label("Export CSV", systemImage: "square.and.arrow.up")
             }
-            .disabled(allEntries.isEmpty)
+            .disabled(!SettingsDataSectionRules.isExportEnabled(loggedEntryCount: allEntries.count))
         } header: {
             Text("Data")
         } footer: {
-            if iCloudSyncEnabled {
+            if SettingsDataSectionRules.showsSyncFooter(isICloudSyncEnabled: iCloudSyncEnabled) {
                 Text("Your food log syncs automatically across your devices via iCloud.")
             }
         }
@@ -517,7 +472,9 @@ struct SettingsView: View {
     }
 
     private var appVersion: String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "-"
+        SettingsAboutInfo.versionText(
+            shortVersionString: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
+        )
     }
 }
 
@@ -798,7 +755,7 @@ private struct NutrientGoalEditRow: View {
     @State private var isGoalTypePickerVisible = false
 
     private var hasValue: Bool {
-        !targetText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        NutrientGoalPickerVisibility.isVisible(targetText: targetText)
     }
 
     var body: some View {
@@ -932,11 +889,17 @@ struct ProfileEditView: View {
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button {
-                    let cal = Double(profile.dailyCalorieTarget)
-                    let proteinRatio = cal > 0 ? (profile.proteinTargetG * 4.0) / cal : 0.30
-                    let carbRatio    = cal > 0 ? (profile.carbTargetG    * 4.0) / cal : 0.40
-                    let fatRatio     = cal > 0 ? (profile.fatTargetG     * 9.0) / cal : 0.30
-                    profile.recalculate(proteinRatio: proteinRatio, carbRatio: carbRatio, fatRatio: fatRatio)
+                    let ratios = ProfileEditMacroRatios(
+                        dailyCalorieTarget: profile.dailyCalorieTarget,
+                        proteinTargetG: profile.proteinTargetG,
+                        carbTargetG: profile.carbTargetG,
+                        fatTargetG: profile.fatTargetG
+                    )
+                    profile.recalculate(
+                        proteinRatio: ratios.protein,
+                        carbRatio: ratios.carbs,
+                        fatRatio: ratios.fat
+                    )
                     dismiss()
                 } label: {
                     Text("Save")
