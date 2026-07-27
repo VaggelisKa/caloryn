@@ -132,6 +132,36 @@ jobs:
             python3 .github/scripts/mutation_summary.py mutation-report.json
           } >> "$GITHUB_STEP_SUMMARY"
 
+      # A score is only worth reading if the tool observed the suite at all.
+      # See docs/testing/mutation-testing.md: muter has reported every mutant
+      # as surviving while the same mutation fails the suite locally, which is
+      # a broken audit wearing a number. Refuse to publish that as a result.
+      - name: Reject an impossible result
+        if: always()
+        run: |
+          set -euo pipefail
+
+          [ -f mutation-report.json ] || exit 0
+
+          python3 - <<'PY'
+          import json
+          import sys
+
+          report = json.load(open("mutation-report.json"))
+          mutants = report.get("totalAppliedMutationOperators", 0)
+          killed = report.get("numberOfKilledMutants", 0)
+
+          if mutants > 0 and killed == 0:
+              sys.exit(
+                  f"Every one of {mutants} mutants survived. A suite of this size "
+                  "does not miss all of them, so this is muter failing to observe "
+                  "test failures rather than a measurement. Treat the score as "
+                  "absent, not as zero."
+              )
+
+          print(f"Killed {killed} of {mutants} mutants.")
+          PY
+
       - name: Upload report
         if: always()
         uses: actions/upload-artifact@v4

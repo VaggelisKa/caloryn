@@ -91,29 +91,73 @@ A **missing report** is the one thing that does fail the job, and it is not the
 same event as a low score: it means muter never ran, so nothing was measured.
 That distinction was learned the hard way — see below.
 
-## Status
+## Status: the audit does not work yet
 
-The first scheduled run (26 July 2026) **failed and reported green.** The step
-passed each scoped path as a separate argument, so muter took the first and
-rejected the other seventeen:
+**No mutation score has ever been produced for this project.** Three problems
+were found in sequence; two are fixed and the third is open.
+
+### 1. The invocation was wrong, and the job went green anyway (fixed)
+
+The first scheduled run (26 July 2026) passed each scoped path as a separate
+argument, so muter took the first and rejected the rest:
 
 ```
 Error: 11 unexpected arguments: 'Caloryn/Services/ActivityCalorieBudget.swift', ...
 ```
 
 Because the step carries `continue-on-error: true` — so a low score can never
-block anything — the job still exited successfully and the summary said only
-that no report was produced. Nobody was watching that line.
+block anything — the job exited successfully. The summary said only that no
+report was produced, and nobody was watching that line. The paths are now joined
+into the single comma-separated argument muter expects, and a **missing report
+now fails the job**, which is a different event from a low score.
 
-Two changes came out of it. The paths are now joined into the single
-comma-separated argument muter expects, and the summarize step exits non-zero
-when there is no report at all. The audit still cannot gate a pull request: it
-runs on a schedule and by hand, never on a PR.
+### 2. The published muter predates Xcode 26 (fixed)
 
-Expect to adjust `muter.conf.yml` once there is real output. Muter's report
-format has changed between releases, and `.github/scripts/mutation_summary.py`
-reads it defensively for that reason — that path has still never seen a real
-report.
+`brew install muter` gives you muter 16, released September 2023. It dies here:
+
+```
+Could not parse build request json at path: .../XCBuildData/<hash>.xcbuilddata/build-request.json
+```
+
+It also predates muter learning to recognise Swift Testing failures at all
+(upstream #306, merged 21 July 2026). Most of this suite is `@Test` / `#expect`,
+so that build would have scored our best-tested code as our weakest.
+
+The source is maintained; only the release is stale. The workflow now builds a
+**pinned commit** and caches it on that SHA, so the tool cannot shift underneath
+a score comparison. Bump `MUTER_COMMIT` deliberately, and expect the number to
+move when you do.
+
+### 3. Muter does not observe our test failures (open)
+
+With both fixes in place the run completes and reports:
+
+> **Mutation score: 0%** — 0 of 279 mutants killed
+
+That is not a measurement. Two pieces of evidence:
+
+- **Direct.** Muter recorded the mutant at `GoalEditDraft.swift:104`
+  (`&&` → `||` in `isInvalidTarget`) as `testSuiteOutcome: "passed"`. Applying
+  that exact edit by hand and running `Caloryn-Unit` fails with **9 failing
+  assertions**. The suite kills that mutant; muter did not notice.
+- **Timing.** 279 mutants finished in 1h16m — **16.5 seconds each**. One real
+  run of the unit plan takes 6–10 minutes in CI. Muter cannot have been running
+  the suite at all.
+
+`TestSuiteOutcome.from(testLog:terminationStatus:)` returns `.passed` only when
+the log holds no failure text *and* the process exited 0, so the likely shape is
+that the per-mutant `xcodebuild` invocation is exiting successfully without
+running the tests. The mutated copy lives at `<project>_mutated`; a plausible
+cause is that the copy lacks resolved Swift packages — this project gained a
+test-only SPM dependency (swift-snapshot-testing) — but that has **not** been
+confirmed.
+
+Until this is understood, the workflow **rejects a 0-killed result** rather than
+publishing it. A broken audit wearing a number is worse than no audit, because
+the number invites the wrong conclusion about the suite.
+
+`.github/scripts/mutation_summary.py` has now read one real report and its
+assumptions held.
 
 Muter is the only meaningful mutation-testing tool for Swift, and its maintenance
 is thin. If it breaks against a future Xcode, dropping this workflow costs
