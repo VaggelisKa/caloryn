@@ -612,24 +612,32 @@ struct ActivityCalorieBudgetConsumptionInvariantTests {
         #expect(budget.baseProgressEnd > 0)
     }
 
-    @Test("Given fractional consumption just above the target, when the budget reports, then over-by is rounded away")
-    func fractionalOverConsumptionDisagreesWithTheOverAmount() {
-        // Characterization: `isOver` compares raw calories while `overAmount` compares
-        // rounded calories, so a sub-half-calorie overshoot reports "over" by 0 kcal.
+    @Test("Given fractional consumption just above the target, when the budget reports, then it is not over budget by zero")
+    func fractionalOverConsumptionAgreesWithTheOverAmount() {
+        // A sub-half-calorie overshoot rounds down to the target, so no over-budget treatment.
         let budget = makeInvariantBudget(consumed: 2_000.4, staticTarget: 2_000)
 
-        #expect(budget.isOver)
+        #expect(budget.isOver == false)
         #expect(budget.overAmount == 0)
         #expect(budget.remaining == 0)
     }
 
-    @Test("Given consumption just below the target, when the budget reports, then rounding can zero out the remainder")
+    @Test("Given consumption just below the target, when the budget reports, then it is neither over nor has calories left")
     func fractionalUnderConsumptionRoundsRemainingToZero() {
-        // Characterization: 0.4 kcal are still available but the rounded view shows none left.
         let budget = makeInvariantBudget(consumed: 1_999.6, staticTarget: 2_000)
 
         #expect(budget.isOver == false)
         #expect(budget.remaining == 0)
         #expect(budget.overAmount == 0)
+    }
+
+    @Test(
+        "Given any consumption, when the budget reports, then over-budget agrees with the over amount",
+        arguments: [0.0, 1_999.4, 1_999.6, 2_000.0, 2_000.4, 2_000.6, 2_001.0, 3_000.5]
+    )
+    func isOverAgreesWithTheOverAmount(consumed: Double) {
+        let budget = makeInvariantBudget(consumed: consumed, staticTarget: 2_000)
+
+        #expect(budget.isOver == (budget.overAmount > 0))
     }
 }
