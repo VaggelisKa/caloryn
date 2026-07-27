@@ -147,7 +147,9 @@ struct HistoryCalorieTrendProjection {
     }
 
     var canDrillDown: Bool {
-        loggedPointCount >= 2
+        // Gated on logged days, not plotted points: in the 90-day range a point is a calendar
+        // week, so three days logged inside one week left the only data the user had unreachable.
+        loggedDayCount >= 2
     }
 
     var yAxisUpperBound: Double {
