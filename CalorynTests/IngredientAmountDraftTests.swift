@@ -94,15 +94,31 @@ struct IngredientAmountDraftTests {
         #expect(typed.canSave == false)
     }
 
-    /// Characterizes today's behaviour: the parser is `Double(_:)`, which also
-    /// accepts exponent notation, so "1e3" is a saveable one-kilogram portion
-    /// even though the keypad cannot produce it.
-    @Test("Exponent notation is accepted as an amount")
-    func exponentNotationIsAccepted() {
+    /// The field is a decimal keypad, so exponent notation can only arrive by
+    /// paste — and it arrives as an amount nobody weighed out.
+    @Test("Exponent notation is not an amount")
+    func exponentNotationIsRejected() {
         let typed = draft(typing: "1e3")
 
-        #expect(typed.grams == 1_000)
-        #expect(typed.canSave)
+        #expect(typed.grams == 0)
+        #expect(typed.canSave == false)
+    }
+
+    @Test("The other spellings Double accepts are not amounts either", arguments: [
+        "1E3", "0x1p4", "inf", "-inf", "infinity", "nan", "1e400"
+    ])
+    func nonDecimalSpellingsAreRejected(text: String) {
+        let typed = draft(typing: text)
+
+        #expect(typed.grams == 0)
+        #expect(typed.canSave == false)
+    }
+
+    @Test("Plain decimals still parse once the stricter check is in place", arguments: [
+        ("12.5", 12.5), ("12,5", 12.5), ("0.5", 0.5), ("+7", 7.0), ("1000", 1000.0)
+    ])
+    func plainDecimalsStillParse(text: String, expected: Double) {
+        #expect(draft(typing: text).grams == expected)
     }
 
     // MARK: - Preview

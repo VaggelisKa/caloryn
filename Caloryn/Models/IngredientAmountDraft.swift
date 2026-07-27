@@ -47,10 +47,21 @@ struct IngredientAmountDraft: Equatable {
 
     /// Accepts both "." and "," as the decimal separator, so the field behaves
     /// the same whichever one the keyboard produces.
+    ///
+    /// Only plain decimal text is a weight. `Double(_:)` on its own also reads
+    /// exponent notation, hex floats, "inf" and "nan" — none of which a decimal
+    /// keypad can produce, and all of which arrive as amounts no kitchen scale
+    /// could mean ("1e3" was a saveable kilogram). So the characters are checked
+    /// before the conversion, and anything else reads as no amount at all.
     static func parseDecimal(_ string: String) -> Double? {
         let normalized = string
             .trimmingCharacters(in: .whitespaces)
             .replacingOccurrences(of: ",", with: ".")
+        guard !normalized.isEmpty else { return nil }
+        let isPlainDecimal = normalized.allSatisfy { character in
+            (character.isASCII && character.isNumber) || character == "." || character == "-" || character == "+"
+        }
+        guard isPlainDecimal else { return nil }
         return Double(normalized)
     }
 
