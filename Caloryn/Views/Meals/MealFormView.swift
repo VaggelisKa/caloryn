@@ -1,81 +1,6 @@
 import SwiftData
 import SwiftUI
 
-private struct MealComponentDraft: Identifiable {
-    let id: UUID
-    var snapshot: FoodLogEntrySnapshot
-
-    init(id: UUID = UUID(), foodItem: FoodItem) {
-        self.id = id
-        snapshot = FoodLogEntrySnapshot(
-            foodItem: foodItem,
-            portionGrams: foodItem.defaultServingG ?? 100
-        )
-    }
-
-    init?(item: MealTemplateItem) {
-        guard let data = item.snapshotData,
-              let snapshot = try? JSONDecoder().decode(FoodLogEntrySnapshot.self, from: data) else {
-            return nil
-        }
-        id = item.id
-        self.snapshot = snapshot
-    }
-
-    var amountDraft: RecipeIngredientDraft {
-        let portionGrams = snapshot.portionGrams
-        let nutritionPer100g = portionGrams > 0
-            ? snapshot.nutrition.scaled(by: 100 / portionGrams)
-            : .zero
-
-        return RecipeIngredientDraft(
-            id: id,
-            name: snapshot.foodName,
-            brand: nil,
-            portionGrams: portionGrams,
-            caloriesPer100g: nutritionPer100g.calories,
-            proteinPer100g: nutritionPer100g.proteinG,
-            carbsPer100g: nutritionPer100g.carbsG,
-            fatPer100g: nutritionPer100g.fatG,
-            fiberPer100g: nutritionPer100g.fiberG,
-            sugarsPer100g: nutritionPer100g.sugarsG,
-            addedSugarsPer100g: nutritionPer100g.addedSugarsG,
-            sucrosePer100g: nutritionPer100g.sucroseG,
-            glucosePer100g: nutritionPer100g.glucoseG,
-            fructosePer100g: nutritionPer100g.fructoseG,
-            lactosePer100g: nutritionPer100g.lactoseG,
-            maltosePer100g: nutritionPer100g.maltoseG,
-            maltodextrinsPer100g: nutritionPer100g.maltodextrinsG,
-            starchPer100g: nutritionPer100g.starchG,
-            polyolsPer100g: nutritionPer100g.polyolsG,
-            saturatedFatPer100g: nutritionPer100g.saturatedFatG,
-            transFatPer100g: nutritionPer100g.transFatG,
-            monounsaturatedFatPer100g: nutritionPer100g.monounsaturatedFatG,
-            polyunsaturatedFatPer100g: nutritionPer100g.polyunsaturatedFatG,
-            omega3FatPer100g: nutritionPer100g.omega3FatG,
-            omega6FatPer100g: nutritionPer100g.omega6FatG,
-            omega9FatPer100g: nutritionPer100g.omega9FatG,
-            saltPer100g: nutritionPer100g.saltG,
-            sodiumPer100g: nutritionPer100g.sodiumG,
-            cholesterolPer100g: nutritionPer100g.cholesterolG,
-            solubleFiberPer100g: nutritionPer100g.solubleFiberG,
-            insolubleFiberPer100g: nutritionPer100g.insolubleFiberG,
-            caseinPer100g: nutritionPer100g.caseinG,
-            serumProteinsPer100g: nutritionPer100g.serumProteinsG,
-            alcoholPer100g: nutritionPer100g.alcoholG,
-            sortOrder: 0,
-            produceKind: ProduceKind(rawValue: snapshot.produceKindSnapshotRaw ?? "")
-                ?? .unclassified
-        )
-    }
-
-    func updatingPortion(to grams: Double) -> MealComponentDraft {
-        var copy = self
-        copy.snapshot = snapshot.scaled(toPortionGrams: grams)
-        return copy
-    }
-}
-
 struct MealFormView: View {
     let existingMeal: MealTemplate?
     let onSaved: (() -> Void)?
@@ -83,8 +8,7 @@ struct MealFormView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
 
-    @State private var name = ""
-    @State private var components: [MealComponentDraft] = []
+    @State private var draft = MealFormDraft()
     @State private var showingFoodSearch = false
     @State private var componentForAmount: MealComponentDraft?
     @State private var showingDeleteConfirmation = false
@@ -102,16 +26,6 @@ struct MealFormView: View {
 
     private var isEditing: Bool {
         existingMeal != nil
-    }
-
-    private var totalNutrition: NutritionValues {
-        components.reduce(.zero) { $0 + $1.snapshot.nutrition }
-    }
-
-    private var canSave: Bool {
-        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && !components.isEmpty
-            && components.allSatisfy { $0.snapshot.portionGrams > 0 }
     }
 
     var body: some View {
@@ -157,7 +71,7 @@ struct MealFormView: View {
                         }
                     }
                     .accessibilityLabel("Save Meal")
-                    .disabled(!canSave || isSaving)
+                    .disabled(!draft.canSave || isSaving)
                 }
             }
             .onAppear(perform: populateFromExisting)
@@ -178,13 +92,13 @@ struct MealFormView: View {
             }
             .sheet(item: $componentForAmount) { component in
                 IngredientAmountPickerView(ingredient: component.amountDraft) { updated in
-                    upsert(component.updatingPortion(to: updated.portionGrams))
+                    draft.upsert(component.updatingPortion(to: updated.portionGrams))
                 }
             }
             .confirmationDialog("Delete Meal", isPresented: $showingDeleteConfirmation) {
                 Button("Delete", role: .destructive, action: deleteMeal)
             } message: {
-                Text("This will permanently remove \"\(name)\" from your meals.")
+                Text("This will permanently remove \"\(draft.name)\" from your meals.")
             }
             .alert("Couldn’t Save Meal", isPresented: errorIsPresented) {
                 Button("OK", role: .cancel) { errorMessage = nil }
@@ -201,7 +115,7 @@ struct MealFormView: View {
                 .font(CalorynTheme.sectionEyebrow)
                 .foregroundStyle(CalorynTheme.textSecondary)
 
-            TextField("Meal name (e.g. Weekday Breakfast)", text: $name)
+            TextField("Meal name (e.g. Weekday Breakfast)", text: $draft.name)
                 .font(CalorynTheme.bodyText)
                 .textInputAutocapitalization(.words)
                 .focused($nameIsFocused)
@@ -213,22 +127,22 @@ struct MealFormView: View {
     private var summaryCard: some View {
         VStack(spacing: 14) {
             VStack(spacing: 4) {
-                Text(totalNutrition.calories.kcalFormatted)
+                Text(draft.totalNutrition.calories.kcalFormatted)
                     .font(CalorynTheme.displayNumber)
                     .foregroundStyle(CalorynTheme.sage)
                     .contentTransition(.numericText())
-                    .animation(.smooth(duration: 0.3), value: totalNutrition.calories)
+                    .animation(.smooth(duration: 0.3), value: draft.totalNutrition.calories)
 
-                Text(components.count == 1 ? "1 item" : "\(components.count) items")
+                Text(draft.components.count == 1 ? "1 item" : "\(draft.components.count) items")
                     .font(CalorynTheme.bodyText)
                     .foregroundStyle(CalorynTheme.textSecondary)
             }
 
             HStack(spacing: CalorynTheme.cardSpacing) {
-                summaryMetric("Protein", value: totalNutrition.proteinG, color: CalorynTheme.proteinColor)
-                summaryMetric("Carbs", value: totalNutrition.carbsG, color: CalorynTheme.carbColor)
-                summaryMetric("Fat", value: totalNutrition.fatG, color: CalorynTheme.fatColor)
-                summaryMetric("Fiber", value: totalNutrition.fiberG, color: CalorynTheme.fiberColor)
+                summaryMetric("Protein", value: draft.totalNutrition.proteinG, color: CalorynTheme.proteinColor)
+                summaryMetric("Carbs", value: draft.totalNutrition.carbsG, color: CalorynTheme.carbColor)
+                summaryMetric("Fat", value: draft.totalNutrition.fatG, color: CalorynTheme.fatColor)
+                summaryMetric("Fiber", value: draft.totalNutrition.fiberG, color: CalorynTheme.fiberColor)
             }
         }
         .frame(maxWidth: .infinity)
@@ -265,7 +179,7 @@ struct MealFormView: View {
                 }
             }
 
-            if components.isEmpty {
+            if draft.components.isEmpty {
                 ContentUnavailableView(
                     "No Items",
                     systemImage: "fork.knife",
@@ -274,14 +188,14 @@ struct MealFormView: View {
                 .frame(minHeight: 160)
             } else {
                 VStack(spacing: 0) {
-                    ForEach(components) { component in
+                    ForEach(draft.components) { component in
                         MealComponentRow(
                             component: component,
                             onEdit: { componentForAmount = component },
-                            onDelete: { delete(component) }
+                            onDelete: { draft.delete(component) }
                         )
 
-                        if component.id != components.last?.id {
+                        if component.id != draft.components.last?.id {
                             Divider()
                                 .foregroundStyle(CalorynTheme.stone.opacity(0.3))
                         }
@@ -300,26 +214,13 @@ struct MealFormView: View {
 
     @MainActor
     private func populateFromExisting() {
-        guard components.isEmpty else { return }
+        guard draft.components.isEmpty else { return }
         guard let existingMeal else {
             nameIsFocused = true
             return
         }
 
-        name = existingMeal.name
-        components = existingMeal.sortedItems.compactMap(MealComponentDraft.init(item:))
-    }
-
-    private func upsert(_ component: MealComponentDraft) {
-        if let index = components.firstIndex(where: { $0.id == component.id }) {
-            components[index] = component
-        } else {
-            components.append(component)
-        }
-    }
-
-    private func delete(_ component: MealComponentDraft) {
-        components.removeAll { $0.id == component.id }
+        draft = MealFormDraft(existingMeal: existingMeal)
     }
 
     private func saveMeal() {
@@ -329,8 +230,8 @@ struct MealFormView: View {
 
         do {
             try MealTemplateCommands.saveMeal(
-                name: name,
-                snapshots: components.map(\.snapshot),
+                name: draft.name,
+                snapshots: draft.components.map(\.snapshot),
                 existingMealID: existingMeal?.id,
                 modelContext: modelContext
             )
