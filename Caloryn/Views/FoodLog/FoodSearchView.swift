@@ -626,6 +626,7 @@ struct FoodSearchView: View {
                             Spacer()
                         }
                         .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
                     }
                 }
                 .calorynPlainListStyle()
