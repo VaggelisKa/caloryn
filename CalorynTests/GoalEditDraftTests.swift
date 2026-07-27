@@ -187,6 +187,18 @@ struct GoalEditDraftTests {
         #expect(comma == period)
     }
 
+    @Test(
+        "Text a decimal keypad cannot produce is not a goal",
+        arguments: ["1e3", "1E3", "0x1p4", "inf", "-inf", "nan", "NaN", "1_000", String(repeating: "9", count: 400)]
+    )
+    func spellingsTheKeypadCannotProduceAreRejected(text: String) {
+        var draft = makeDraft()
+        draft.nutrientTargetTexts[.fiber] = text
+
+        #expect(draft.storedTarget(for: .fiber) == nil)
+        #expect(draft.isInvalidTarget(for: .fiber))
+    }
+
     @Test("Surrounding whitespace does not invalidate a goal")
     func whitespaceIsTrimmed() {
         var draft = makeDraft()
