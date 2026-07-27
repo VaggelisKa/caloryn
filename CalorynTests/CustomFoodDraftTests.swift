@@ -11,10 +11,10 @@ struct CustomFoodDraftTests {
 
     @Test(
         "Decimals parse the same whichever separator the keyboard produces",
-        arguments: [("12.5", 12.5), ("12,5", 12.5), ("  7 ", 7.0), ("0", 0.0)]
+        arguments: [("12.5", 12.5), ("12,5", 12.5), ("  7 ", 7.0), ("0", 0.0), ("-2.5", -2.5)]
     )
     func decimalsParse(text: String, expected: Double) {
-        #expect(CustomFoodDraft.parseDecimal(text) == expected)
+        #expect(text.decimalInputValue == expected)
     }
 
     @Test(
@@ -22,7 +22,22 @@ struct CustomFoodDraftTests {
         arguments: ["", "abc", "1.2.3", "--4"]
     )
     func nonNumbersDoNotParse(text: String) {
-        #expect(CustomFoodDraft.parseDecimal(text) == nil)
+        #expect(text.decimalInputValue == nil)
+    }
+
+    /// A decimal keypad cannot produce any of these, so anything that does is
+    /// pasted or injected. `Double(_:)` accepts them all, and an infinity or a
+    /// NaN reaching a formatter or an `Int(_:)` conversion terminates the app.
+    @Test(
+        "Notation a decimal keypad cannot produce is rejected",
+        arguments: [
+            "1e3", "1E3", "0x1p4", "inf", "-inf", "infinity", "nan", "NaN",
+            "1_000", "١٢", "5 5", "1e400",
+            String(repeating: "9", count: 400)
+        ]
+    )
+    func nonKeypadNotationIsRejected(text: String) {
+        #expect(text.decimalInputValue == nil)
     }
 
     // MARK: - Save gating
@@ -72,6 +87,117 @@ struct CustomFoodDraftTests {
 
         draft.sodiumPerServing = ""
         #expect(draft.canSave)
+    }
+
+    // MARK: - Every field enforces the keypad contract
+
+    @Test(
+        "Calories written in notation the keypad cannot produce block saving",
+        arguments: ["1e3", "inf", "nan", "0x1p4"]
+    )
+    func nonKeypadCaloriesBlockSaving(text: String) {
+        var draft = CustomFoodDraft()
+        draft.name = "Rolled Oats"
+        draft.caloriesPerServing = text
+
+        #expect(!draft.canSave)
+        #expect(draft.previewCalories == 0)
+        #expect(draft.nutritionPer100g.calories.isFinite)
+    }
+
+    @Test(
+        "A serving written in notation the keypad cannot produce falls back to 100g",
+        arguments: ["1e3", "inf", "nan", "0x1p4"]
+    )
+    func nonKeypadServingFallsBack(text: String) {
+        var draft = CustomFoodDraft()
+        draft.caloriesPerServing = "380"
+        draft.servingSizeGrams = text
+
+        #expect(draft.effectiveServingGrams == CustomFoodDraft.fallbackServingGrams)
+        #expect(draft.storedServingGrams == nil)
+        #expect(draft.nutritionPer100g.calories.isFinite)
+    }
+
+    @Test(
+        "A core macro written in notation the keypad cannot produce stays unstated",
+        arguments: ["1e3", "inf", "nan", "0x1p4"]
+    )
+    func nonKeypadCoreMacrosStayUnstated(text: String) {
+        var draft = CustomFoodDraft()
+        draft.name = "Rolled Oats"
+        draft.caloriesPerServing = "380"
+        draft.proteinPerServing = text
+        draft.carbsPerServing = text
+        draft.fatPerServing = text
+        draft.fiberPerServing = text
+
+        #expect(draft.suppliedProtein == nil)
+        #expect(draft.suppliedCarbohydrates == nil)
+        #expect(draft.suppliedFat == nil)
+        #expect(draft.suppliedFiber == nil)
+        #expect(draft.proteinPer100g == nil)
+        #expect(draft.carbohydratesPer100g == nil)
+        #expect(draft.fatPer100g == nil)
+        #expect(draft.fiberPer100g == nil)
+    }
+
+    @Test(
+        "An optional nutrient written in notation the keypad cannot produce blocks saving",
+        arguments: ["1e3", "inf", "nan", "0x1p4"]
+    )
+    func nonKeypadOptionalNutrientsBlockSaving(text: String) {
+        var draft = CustomFoodDraft()
+        draft.name = "Rolled Oats"
+        draft.caloriesPerServing = "380"
+
+        for keyPath in [
+            \CustomFoodDraft.sugarsPerServing,
+            \CustomFoodDraft.addedSugarsPerServing,
+            \CustomFoodDraft.saturatedFatPerServing,
+            \CustomFoodDraft.sodiumPerServing,
+            \CustomFoodDraft.cholesterolPerServing,
+            \CustomFoodDraft.alcoholPerServing
+        ] {
+            var candidate = draft
+            candidate[keyPath: keyPath] = text
+
+            #expect(!candidate.optionalTrackedInputsAreValid)
+            #expect(!candidate.canSave)
+        }
+    }
+
+    @Test("No unparseable field can put an infinity or a NaN into the stored payload")
+    func nonKeypadFieldsNeverReachTheStore() {
+        var draft = CustomFoodDraft()
+        draft.name = "Rolled Oats"
+        draft.caloriesPerServing = "inf"
+        draft.proteinPerServing = "nan"
+        draft.carbsPerServing = "1e3"
+        draft.fatPerServing = "0x1p4"
+        draft.fiberPerServing = "inf"
+        draft.sugarsPerServing = "nan"
+        draft.addedSugarsPerServing = "1e3"
+        draft.saturatedFatPerServing = "inf"
+        draft.sodiumPerServing = "nan"
+        draft.cholesterolPerServing = "1e3"
+        draft.alcoholPerServing = "inf"
+        draft.servingSizeGrams = "nan"
+
+        let edit = draft.personalEdit(isEditingExistingFood: false)
+
+        #expect(edit.caloriesPer100g.isFinite)
+        #expect(edit.proteinPer100g == nil)
+        #expect(edit.carbohydratesPer100g == nil)
+        #expect(edit.fatPer100g == nil)
+        #expect(edit.fiberPer100g == nil)
+        #expect(edit.sugarsPer100g == nil)
+        #expect(edit.addedSugarsPer100g == nil)
+        #expect(edit.saturatedFatPer100g == nil)
+        #expect(edit.sodiumPer100g == nil)
+        #expect(edit.cholesterolPer100g == nil)
+        #expect(edit.alcoholPer100g == nil)
+        #expect(edit.defaultServingG == nil)
     }
 
     // MARK: - Serving size
@@ -287,7 +413,7 @@ struct CustomFoodDraftTests {
     func perServingTextRoundTrips() {
         let text = CustomFoodDraft.optionalPerServingText(13, serving: 40)
 
-        #expect(CustomFoodDraft.parseDecimal(text) == 5.2)
+        #expect(text.decimalInputValue == 5.2)
     }
 
     @Test("A macro the provider never stated is shown blank, not as zero")

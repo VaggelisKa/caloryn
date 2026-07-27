@@ -87,21 +87,12 @@ struct CustomFoodDraft: Equatable {
 
     // MARK: - Parsing
 
-    /// Parses decimal strings accepting both "." and "," as the separator, so
-    /// the form behaves the same regardless of which the keyboard produces.
-    static func parseDecimal(_ string: String) -> Double? {
-        let normalized = string
-            .trimmingCharacters(in: .whitespaces)
-            .replacingOccurrences(of: ",", with: ".")
-        return Double(normalized)
-    }
-
     /// Blank is allowed — it means the nutrient was not stated — but anything
     /// present must parse to a non-negative number.
     static func isOptionalNonnegativeDecimal(_ string: String) -> Bool {
         let trimmed = string.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return true }
-        return (parseDecimal(trimmed) ?? -1) >= 0
+        return (trimmed.decimalInputValue ?? -1) >= 0
     }
 
     // MARK: - Derived values
@@ -113,7 +104,7 @@ struct CustomFoodDraft: Equatable {
     }
 
     var servingGrams: Double {
-        Self.parseDecimal(servingSizeGrams) ?? Self.fallbackServingGrams
+        servingSizeGrams.decimalInputValue ?? Self.fallbackServingGrams
     }
 
     /// The serving the saved food is stored against. A zero or negative serving
@@ -122,22 +113,22 @@ struct CustomFoodDraft: Equatable {
         servingGrams > 0 ? servingGrams : Self.fallbackServingGrams
     }
 
-    var previewCalories: Double { Self.parseDecimal(caloriesPerServing) ?? 0 }
-    var previewProtein: Double { Self.parseDecimal(proteinPerServing) ?? 0 }
-    var previewCarbs: Double { Self.parseDecimal(carbsPerServing) ?? 0 }
-    var previewFat: Double { Self.parseDecimal(fatPerServing) ?? 0 }
+    var previewCalories: Double { caloriesPerServing.decimalInputValue ?? 0 }
+    var previewProtein: Double { proteinPerServing.decimalInputValue ?? 0 }
+    var previewCarbs: Double { carbsPerServing.decimalInputValue ?? 0 }
+    var previewFat: Double { fatPerServing.decimalInputValue ?? 0 }
 
     /// Distinguished from `previewProtein` because a blank macro means "not
     /// stated" when saving, which the store records differently from a zero.
-    var suppliedProtein: Double? { Self.parseDecimal(proteinPerServing) }
-    var suppliedCarbohydrates: Double? { Self.parseDecimal(carbsPerServing) }
-    var suppliedFat: Double? { Self.parseDecimal(fatPerServing) }
-    var suppliedFiber: Double? { Self.parseDecimal(fiberPerServing) }
+    var suppliedProtein: Double? { proteinPerServing.decimalInputValue }
+    var suppliedCarbohydrates: Double? { carbsPerServing.decimalInputValue }
+    var suppliedFat: Double? { fatPerServing.decimalInputValue }
+    var suppliedFiber: Double? { fiberPerServing.decimalInputValue }
 
     /// The serving size to store, or nil when the field does not name a usable
     /// one — distinct from `effectiveServingGrams`, which always has a value.
     var storedServingGrams: Double? {
-        Self.parseDecimal(servingSizeGrams).flatMap { $0 > 0 ? $0 : nil }
+        servingSizeGrams.decimalInputValue.flatMap { $0 > 0 ? $0 : nil }
     }
 
     // MARK: - Validation
@@ -159,7 +150,7 @@ struct CustomFoodDraft: Equatable {
     var canSave: Bool {
         !trimmedName.isEmpty
         && !caloriesPerServing.isEmpty
-        && (Self.parseDecimal(caloriesPerServing) ?? -1) >= 0
+        && (caloriesPerServing.decimalInputValue ?? -1) >= 0
         && optionalTrackedInputsAreValid
     }
 
@@ -167,7 +158,7 @@ struct CustomFoodDraft: Equatable {
 
     var nutritionPerServing: NutritionValues {
         NutritionValues(
-            calories: Self.parseDecimal(caloriesPerServing) ?? 0,
+            calories: caloriesPerServing.decimalInputValue ?? 0,
             proteinG: suppliedProtein ?? 0,
             carbsG: suppliedCarbohydrates ?? 0,
             fatG: suppliedFat ?? 0,
@@ -204,7 +195,7 @@ struct CustomFoodDraft: Equatable {
         unit: TrackedNutrientUnit = .grams
     ) -> Double? {
         let trimmed = text.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty, let inputValue = Self.parseDecimal(trimmed) else { return nil }
+        guard !trimmed.isEmpty, let inputValue = trimmed.decimalInputValue else { return nil }
         return unit.storedValue(fromInput: inputValue)
     }
 
