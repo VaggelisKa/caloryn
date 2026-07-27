@@ -9,6 +9,10 @@ struct TodayView: View {
     @Query(sort: \UserProfile.updatedAt, order: .reverse) private var profiles: [UserProfile]
     @Query private var allEntries: [FoodLogEntry]
 
+    /// Apple's minimum touch target; a bare chevron glyph is smaller than this and the
+    /// accessibility audit reports "Hit area is too small".
+    private static let minimumHitTarget: CGFloat = 44
+
     private struct FoodSearchPresentation: Identifiable {
         let id = UUID()
         let mealType: MealType
@@ -241,6 +245,8 @@ struct TodayView: View {
                 Image(systemName: "chevron.left")
                     .font(CalorynTheme.inlineIcon)
                     .foregroundStyle(CalorynTheme.sage)
+                    .frame(minWidth: Self.minimumHitTarget, minHeight: Self.minimumHitTarget, alignment: .leading)
+                    .contentShape([.interaction, .accessibility], .rect)
             }
             .accessibilityLabel("Previous day")
             .accessibilityIdentifier("today.previousDay")
@@ -263,6 +269,8 @@ struct TodayView: View {
                 Image(systemName: "chevron.right")
                     .font(CalorynTheme.inlineIcon)
                     .foregroundStyle(selectedDate.isAtFutureLogLimit ? CalorynTheme.textSecondary.opacity(0.3) : CalorynTheme.sage)
+                    .frame(minWidth: Self.minimumHitTarget, minHeight: Self.minimumHitTarget, alignment: .trailing)
+                    .contentShape([.interaction, .accessibility], .rect)
             }
             .disabled(selectedDate.isAtFutureLogLimit)
             .accessibilityLabel("Next day")
