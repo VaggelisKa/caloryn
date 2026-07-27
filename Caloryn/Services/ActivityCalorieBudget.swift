@@ -118,7 +118,10 @@ struct ActivityCalorieBudget: Equatable {
     }
 
     var isOver: Bool {
-        consumed > Double(adjustedTarget)
+        // Derived from the same rounded value as `remaining` and `overAmount`: comparing the
+        // raw total here let a sub-half-calorie overshoot show an over-budget treatment that
+        // then reported being over by 0 kcal.
+        roundedConsumed > adjustedTarget
     }
 
     var hasDynamicIncrease: Bool {

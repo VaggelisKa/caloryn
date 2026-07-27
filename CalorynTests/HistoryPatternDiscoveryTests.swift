@@ -228,8 +228,8 @@ struct HistoryPatternDiscoveryTests {
         #expect(projection.canDrillDown)
     }
 
-    @Test("given a 90-day range with several logged days inside one calendar week, when projecting the calorie trend, then only that week counts as a logged point")
-    func quarterCountsLoggedWeeksNotLoggedDays() {
+    @Test("given a 90-day range with several logged days inside one calendar week, when projecting the calorie trend, then one week is plotted but drill-down stays available")
+    func quarterPlotsWeeksButDrillsDownOnLoggedDays() {
         let dates = days(fromJanuary: 5, count: 14)
         let entries = [
             makeCalorieEntry(date: janDate(5), calories: 2_000),
@@ -244,7 +244,7 @@ struct HistoryPatternDiscoveryTests {
 
         #expect(projection.loggedDayCount == 3)
         #expect(projection.loggedPointCount == 1)
-        #expect(projection.canDrillDown == false)
+        #expect(projection.canDrillDown)
     }
 
     @Test("given a projected chart index, when looking up a point, then the index is rounded to the nearest position")

@@ -144,6 +144,9 @@ private struct DailyConsistencyStrip: View {
         .frame(height: 14)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel)
+        // The strip is 14pt tall by design; widening only the accessibility shape clears
+        // the minimum hit target without moving anything on screen.
+        .contentShape(.accessibility, Rectangle().inset(by: -15))
     }
 
     private var accessibilityLabel: String {
@@ -168,6 +171,9 @@ private struct WeeklyConsistencyStrip: View {
         .frame(height: 14)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel)
+        // The strip is 14pt tall by design; widening only the accessibility shape clears
+        // the minimum hit target without moving anything on screen.
+        .contentShape(.accessibility, Rectangle().inset(by: -15))
     }
 
     private var accessibilityLabel: String {

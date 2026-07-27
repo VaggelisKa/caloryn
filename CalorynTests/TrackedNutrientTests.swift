@@ -29,6 +29,26 @@ final class TrackedNutrientTests: XCTestCase {
         XCTAssertEqual(TrackedNutrientUnit.milligramsFromGrams.storedValue(fromInput: 1_500), 1.5)
     }
 
+    func testSpokenFormattingSpellsTheUnitOutAndAgreesWithTheVisualNumber() {
+        XCTAssertEqual(TrackedNutrientUnit.grams.spokenFormatted(66.7), "66.7 grams")
+        XCTAssertEqual(TrackedNutrientUnit.grams.spokenFormatted(12), "12 grams")
+        XCTAssertEqual(TrackedNutrientUnit.grams.spokenFormatted(1), "1 gram")
+        XCTAssertEqual(TrackedNutrientUnit.milligramsFromGrams.spokenFormatted(0.0015), "2 milligrams")
+        XCTAssertEqual(TrackedNutrientUnit.milligramsFromGrams.spokenFormatted(0.001), "1 milligram")
+    }
+
+    /// `GoalEditDraft.storedTarget` puts no upper bound on a nutrient goal, so a user can
+    /// save "1" followed by thirty zeroes. Sodium and cholesterol are editable goals in
+    /// milligrams, which multiply by a further 1000 before formatting, so that path is the
+    /// one that overflows first. A `Double` past `Int.max` must render, not trap.
+    func testSpokenFormattingSurvivesValuesBeyondIntMax() {
+        XCTAssertTrue(TrackedNutrientUnit.milligramsFromGrams.spokenFormatted(1e30).hasSuffix(" milligrams"))
+        XCTAssertTrue(TrackedNutrientUnit.grams.spokenFormatted(1e30).hasSuffix(" grams"))
+        XCTAssertTrue(TrackedNutrientUnit.grams.spokenFormatted(-1e30).hasSuffix(" grams"))
+        XCTAssertFalse(TrackedNutrientUnit.grams.spokenFormatted(.infinity).isEmpty)
+        XCTAssertFalse(TrackedNutrientUnit.grams.spokenFormatted(.nan).isEmpty)
+    }
+
     func testNutrientValuesSumRequiredAndOptionalEntryValues() {
         let first = makeTestEntry(
             foodItem: makeTestFoodItem(

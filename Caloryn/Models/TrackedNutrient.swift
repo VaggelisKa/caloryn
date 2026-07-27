@@ -63,6 +63,28 @@ enum TrackedNutrientUnit {
         }
     }
 
+    /// The same number as `formatted`, with the unit spelled out so VoiceOver says
+    /// "66.7 grams" rather than reading the bare glyph in "66.7g".
+    func spokenFormatted(_ value: Double) -> String {
+        switch self {
+        case .grams:
+            Self.spoken(value, singular: "gram", plural: "grams")
+        case .milligramsFromGrams:
+            Self.spoken((value * 1000).rounded(), singular: "milligram", plural: "milligrams")
+        }
+    }
+
+    private static func spoken(_ value: Double, singular: String, plural: String) -> String {
+        let rounded = (value * 10).rounded() / 10
+        // Formatted straight from the `Double`: `Int(_:)` traps rather than converts past
+        // `Int.max`, and nothing bounds a nutrient goal on the way in, so a goal typed as
+        // "1" and thirty zeroes reaches here — doubled again by the milligram branch.
+        let number = rounded == rounded.rounded()
+            ? String(format: "%.0f", rounded)
+            : String(format: "%.1f", rounded)
+        return "\(number) \(rounded == 1 ? singular : plural)"
+    }
+
     func inputFormatted(_ storedValue: Double) -> String {
         switch self {
         case .grams:

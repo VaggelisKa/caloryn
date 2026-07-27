@@ -344,24 +344,15 @@ final class JourneyTests: UITestCase {
         for destination in [TabBar.Destination.today, .myFoods, .history, .settings] {
             tabs.go(to: destination)
 
-            // Settings currently renders macro targets as bare values such as
-            // "66.7g", which the audit flags as "Label not human-readable"
-            // because VoiceOver cannot read it as "66.7 grams". That is a real
-            // pre-existing defect, recorded as a finding to fix separately, so
-            // the description check is skipped only on this screen rather than
-            // changing the app to make the suite go green.
-            var auditTypes: XCUIAccessibilityAuditType = [.elementDetection]
-            if destination != .settings {
-                auditTypes.insert(.sufficientElementDescription)
-            }
+            let auditTypes: XCUIAccessibilityAuditType = [
+                .elementDetection,
+                .sufficientElementDescription,
+                .hitRegion
+            ]
 
             try XCTContext.runActivity(named: "Audit \(destination.rawValue)") { _ in
-                // `.hitRegion` is excluded everywhere: the audit reports "Hit
-                // area is too small" on the main screens. That is a real
-                // accessibility defect, recorded as a finding to fix
-                // separately. Contrast and dynamic-type audits are excluded
-                // because they report on the design system rather than on
-                // defects this suite is positioned to fix.
+                // Contrast and dynamic-type audits are excluded because they report on
+                // the design system rather than on defects this suite is positioned to fix.
                 try app.performAccessibilityAudit(for: auditTypes)
             }
         }
