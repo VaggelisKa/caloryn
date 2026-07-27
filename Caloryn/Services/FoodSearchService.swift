@@ -283,6 +283,15 @@ final class FoodSearchService {
     func search(query: String) {
         searchTask?.cancel()
 
+        #if DEBUG
+        // The in-flight fixture stays in flight: a real search resolves in milliseconds,
+        // which is too fast for the screenshot harness to photograph.
+        if Self.pinsSearchInFlight {
+            isSearching = true
+            return
+        }
+        #endif
+
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             searchResults = []
@@ -728,7 +737,10 @@ final class FoodSearchService {
         guard ProcessInfo.processInfo.environment["CALORYN_LOOKUP_FIXTURE"]?.hasPrefix("search-") == true else {
             return ""
         }
-        return "fixture"
+        // The in-flight fixture wants the list that shows *results and* a spinner, which
+        // needs a local match: with none, the view shows a full-screen spinner instead.
+        // "salad" matches the `customFoods` seed.
+        return pinsSearchInFlight ? "salad" : "fixture"
     }
 
     static var debugInitialBarcodeFailure: FoodLookupError? {
@@ -746,9 +758,18 @@ final class FoodSearchService {
             .hasPrefix("barcode-") == true ? "5711953150388" : nil
     }
 
+    /// Holds the search spinner on screen instead of letting it resolve. The trailing
+    /// "still searching" row is only visible for a few hundred milliseconds in a real
+    /// search, so every settled capture misses it — which is how it painted its own
+    /// white background over the sheet canvas unnoticed.
+    static var pinsSearchInFlight: Bool {
+        ProcessInfo.processInfo.environment["CALORYN_LOOKUP_FIXTURE"] == "search-loading"
+    }
+
     private func applyDebugFixtureIfRequested() {
         switch ProcessInfo.processInfo.environment["CALORYN_LOOKUP_FIXTURE"] {
-        case "search-results":
+        case "search-results", "search-loading":
+            isSearching = Self.pinsSearchInFlight
             searchResults = [
                 FoodSearchResult(
                     product: OpenFoodFactsProduct.fixture(

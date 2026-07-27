@@ -170,14 +170,22 @@ the expected colour instead.
 ./scripts/theme-screenshots.sh [output-dir]     # default /tmp/caloryn-theme-shots
 ```
 
-Captures 17 surfaces in both appearances — Today, the food search sheet, its results and
-the portion picker, History with both drill-downs, Settings with both editors, My Foods,
-multi-add review and its portion editor, the three creation sheets, and the ingredient
-amount picker — then prints how much of each screen is `pageBackground`, `cardBackground`,
-sage, and pure white.
+Captures 18 surfaces in both appearances — Today, the food search sheet, its results, those
+results *while the search is still running*, and the portion picker, History with both
+drill-downs, Settings with both editors, My Foods, multi-add review and its portion editor,
+the three creation sheets, and the ingredient amount picker — then prints how much of each
+screen is `pageBackground`, `cardBackground`, sage, and pure white.
 
 Every extension of this harness so far has found a bug on the screen it was extended to
 reach. That is the argument for adding a capture whenever a screen is touched.
+
+**A transient state is a surface too.** The search results list keeps a trailing spinner row
+while more results are on the way, and that row painted its own white background for as long
+as it existed: no capture could show it, because a real search settles in milliseconds and
+every capture waits for it to settle. The `CALORYN_LOOKUP_FIXTURE=search-loading` fixture
+(DEBUG) pins the search in flight so the row stays on screen. Note that the fixture also
+needs a *local* match in the seed — with none, the view shows a full-screen spinner and
+never builds the list at all, which is a different screen and photographs clean.
 
 It prefers an already-booted simulator, so running it does not boot a second one alongside
 whichever device you are testing on by hand.

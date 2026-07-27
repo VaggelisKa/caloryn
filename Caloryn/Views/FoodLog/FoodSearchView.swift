@@ -626,6 +626,7 @@ struct FoodSearchView: View {
                             Spacer()
                         }
                         .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
                     }
                 }
                 .calorynPlainListStyle()
@@ -724,6 +725,7 @@ struct FoodSearchView: View {
         .accessibilityValue(
             selectionAccessibilityValue(for: .remoteProduct(product.id))
         )
+        .accessibilityIdentifier("foodSearch.result.\(productName)")
     }
 
     private func contextualSuggestionRow(
