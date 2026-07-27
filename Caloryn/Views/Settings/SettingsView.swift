@@ -125,7 +125,9 @@ struct SettingsView: View {
                 CalorieEstimateMetricRow(
                     title: "Today",
                     description: "Active Energy read from Apple Health for today.",
-                    value: Int(settingsEnergyTracker.activeEnergyKcal.rounded()).kcalFormatted
+                    value: SettingsCalorieEstimate.todayText(
+                        activeEnergyKcal: settingsEnergyTracker.activeEnergyKcal
+                    )
                 )
 
                 if let lastRefresh = settingsEnergyTracker.lastRefresh {
