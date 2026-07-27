@@ -76,8 +76,11 @@ enum TrackedNutrientUnit {
 
     private static func spoken(_ value: Double, singular: String, plural: String) -> String {
         let rounded = (value * 10).rounded() / 10
+        // Formatted straight from the `Double`: `Int(_:)` traps rather than converts past
+        // `Int.max`, and nothing bounds a nutrient goal on the way in, so a goal typed as
+        // "1" and thirty zeroes reaches here — doubled again by the milligram branch.
         let number = rounded == rounded.rounded()
-            ? "\(Int(rounded))"
+            ? String(format: "%.0f", rounded)
             : String(format: "%.1f", rounded)
         return "\(number) \(rounded == 1 ? singular : plural)"
     }
