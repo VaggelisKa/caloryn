@@ -1,164 +1,63 @@
-# Mutation testing
+# Mutation testing: why there isn't any
 
-## What it tells you that coverage does not
+There was a weekly mutation audit here, using [muter][muter]. It was removed in
+July 2026 without ever having produced a score. This note exists so the next
+person to reach for muter knows what they are walking into.
 
-Code coverage says a line *ran*. It does not say anything was *checked*. A test
-that calls a function and asserts nothing produces the same coverage number as a
-test that verifies every branch.
+## What mutation testing would have told us
 
-Mutation testing closes that gap. Muter edits the source — flips `<` to `<=`,
-removes a side effect, changes a boolean — rebuilds, and reruns the suite. If
-the tests still pass, that mutant **survived**: the line runs during tests
-without being verified.
+Coverage says a line ran. Mutation testing asks whether anything would have
+noticed if that line were wrong: it edits the source — flips a comparison,
+removes a side effect — and checks whether the suite goes red. A mutant that
+survives is a line that executes during tests without being verified.
 
-This project has a concrete example. `HealthKitService.swift` shows about 300 of
-433 lines covered, but it has no tests at all — those lines are executed
-incidentally during app start-up. Coverage rates it well; mutation testing would
-rate it at zero.
+That is the one question this suite cannot answer about itself, which is why it
+was worth attempting.
 
-## Running it locally
+## Why it was dropped
 
-Muter is not a project dependency and is not installed by the repo. Install it
-yourself when you want to run an audit:
+Three problems, found in sequence. The first two were fixed; the third was not.
 
-```sh
-brew install muter-mutation-testing/formulae/muter
-```
+**The invocation was wrong, and the job reported green.** `--files-to-mutate`
+takes one comma-separated argument; the workflow passed eighteen separate ones,
+so muter accepted the first and rejected the rest. The step carried
+`continue-on-error: true` — correctly, since a low score should never block a
+pull request — so the job went green anyway, for every run it ever made.
 
-Then, from the repo root:
+**The published release predates current Xcode.** `brew install muter` gives you
+muter 16, released September 2023. It cannot parse Xcode 26's
+`build-request.json`, and it predates muter recognising Swift Testing failures at
+all (upstream #306, July 2026). Since most of this suite is `@Test` / `#expect`,
+that build would have reported our best-tested code as our weakest. Building a
+pinned commit of the maintained source got past both.
 
-```sh
-muter run --files-to-mutate "Caloryn/Services/NutritionCalculator.swift"
-```
+**Muter could not observe our test failures.** With the tooling fixed, a full run
+completed and reported **0 of 279 mutants killed**. That was not a measurement:
 
-`--files-to-mutate` takes **one comma-separated argument**, not a list of
-arguments. Space-separated paths make muter accept the first and reject the rest
-with `unexpected arguments`:
-
-```sh
-muter run --files-to-mutate "Caloryn/Models/GoalEditDraft.swift,Caloryn/Models/PortionSelection.swift"
-```
-
-Mutation testing reruns the whole test suite **once per mutant**, so it is slow —
-minutes for one file, hours for the whole domain core. Run it against one file at
-a time while working on that file.
-
-Configuration lives in `muter.conf.yml`. It pins the `Caloryn-Unit` test plan,
-because the UI journey tests take over two minutes per run and would make an
-audit take days.
-
-## Reading the result
-
-A report lists, per file, how many mutants were **killed** (a test failed — good)
-and how many **survived** (no test noticed — a gap).
-
-For each survivor, ask: *if this line were wrong in this way, would a user
-notice?* If yes, the tests need a stronger assertion. If no — the mutation is in
-logging, a debug path, or genuinely equivalent code — leave it. A 100% score is
-not the goal; understanding the survivors is.
-
-## Why it is scoped
-
-The audit only mutates pure domain logic that already has real tests:
-
-| Area | Files |
-| --- | --- |
-| Nutrition math | `NutritionCalculator`, `ActivityCalorieBudget` |
-| History | `HistoryAnalytics`, `HistoryPatternDiscovery` |
-| Logging | `FavoriteFoodLogging`, `DailyReminderPlanner` |
-| App Intents | `CalorynIntentDomain` |
-| Domain models | `ProduceVarietySummary`, `NutritionValues`, `DailyGoalSnapshot`, `GoalEditSeed`, `OnboardingProfileSave`, `SelectedDayRollover` |
-
-Views are excluded: they are covered by journey tests, which are far too slow to
-rerun per mutant. Files with no tests are excluded because the result is a
-foregone conclusion — everything survives, which tells you nothing you did not
-already know from the coverage report.
-
-## Why it is not a CI gate
-
-It runs weekly and on demand (`.github/workflows/mutation-audit.yml`), and **the
-score** never fails the build. Three reasons:
-
-1. It is far too slow for pull-request feedback.
-2. Mutation scores are noisy — equivalent mutants can never be killed, so a
-   perfect score is unreachable and chasing one wastes effort.
-3. Gating on it encourages tests written to kill mutants rather than to describe
-   behavior, which is the same failure mode as gating on a coverage percentage.
-
-Treat it as a periodic audit that tells you where the assertions are thin.
-
-A **missing report** is the one thing that does fail the job, and it is not the
-same event as a low score: it means muter never ran, so nothing was measured.
-That distinction was learned the hard way — see below.
-
-## Status: the audit does not work yet
-
-**No mutation score has ever been produced for this project.** Three problems
-were found in sequence; two are fixed and the third is open.
-
-### 1. The invocation was wrong, and the job went green anyway (fixed)
-
-The first scheduled run (26 July 2026) passed each scoped path as a separate
-argument, so muter took the first and rejected the rest:
-
-```
-Error: 11 unexpected arguments: 'Caloryn/Services/ActivityCalorieBudget.swift', ...
-```
-
-Because the step carries `continue-on-error: true` — so a low score can never
-block anything — the job exited successfully. The summary said only that no
-report was produced, and nobody was watching that line. The paths are now joined
-into the single comma-separated argument muter expects, and a **missing report
-now fails the job**, which is a different event from a low score.
-
-### 2. The published muter predates Xcode 26 (fixed)
-
-`brew install muter` gives you muter 16, released September 2023. It dies here:
-
-```
-Could not parse build request json at path: .../XCBuildData/<hash>.xcbuilddata/build-request.json
-```
-
-It also predates muter learning to recognise Swift Testing failures at all
-(upstream #306, merged 21 July 2026). Most of this suite is `@Test` / `#expect`,
-so that build would have scored our best-tested code as our weakest.
-
-The source is maintained; only the release is stale. The workflow now builds a
-**pinned commit** and caches it on that SHA, so the tool cannot shift underneath
-a score comparison. Bump `MUTER_COMMIT` deliberately, and expect the number to
-move when you do.
-
-### 3. Muter does not observe our test failures (open)
-
-With both fixes in place the run completes and reports:
-
-> **Mutation score: 0%** — 0 of 279 mutants killed
-
-That is not a measurement. Two pieces of evidence:
-
-- **Direct.** Muter recorded the mutant at `GoalEditDraft.swift:104`
-  (`&&` → `||` in `isInvalidTarget`) as `testSuiteOutcome: "passed"`. Applying
-  that exact edit by hand and running `Caloryn-Unit` fails with **9 failing
-  assertions**. The suite kills that mutant; muter did not notice.
-- **Timing.** 279 mutants finished in 1h16m — **16.5 seconds each**. One real
-  run of the unit plan takes 6–10 minutes in CI. Muter cannot have been running
-  the suite at all.
+- Muter recorded the mutant at `GoalEditDraft.swift:104` — `&&` → `||` in
+  `isInvalidTarget` — as `passed`. Applying that exact edit by hand and running
+  `Caloryn-Unit` fails with 9 assertions. The suite kills it; muter did not see.
+- 279 mutants finished in 1h16m — 16.5 seconds each, against 6–10 minutes for
+  one real run of the unit plan in CI. The suite cannot have been running.
 
 `TestSuiteOutcome.from(testLog:terminationStatus:)` returns `.passed` only when
-the log holds no failure text *and* the process exited 0, so the likely shape is
-that the per-mutant `xcodebuild` invocation is exiting successfully without
-running the tests. The mutated copy lives at `<project>_mutated`; a plausible
-cause is that the copy lacks resolved Swift packages — this project gained a
-test-only SPM dependency (swift-snapshot-testing) — but that has **not** been
-confirmed.
+the log holds no failure text *and* the process exits 0, so the per-mutant
+`xcodebuild` was likely exiting successfully without testing. An unconfirmed but
+plausible cause: the mutated copy at `<project>_mutated` lacks resolved Swift
+packages, and this project has a test-only SPM dependency.
 
-Until this is understood, the workflow **rejects a 0-killed result** rather than
-publishing it. A broken audit wearing a number is worse than no audit, because
-the number invites the wrong conclusion about the suite.
+## If you want to try again
 
-`.github/scripts/mutation_summary.py` has now read one real report and its
-assumptions held.
+The blocker is upstream, not here. Muter's last release is from September 2023
+while its `master` is active, so any attempt means pinning an unreleased commit
+and owning that choice.
 
-Muter is the only meaningful mutation-testing tool for Swift, and its maintenance
-is thin. If it breaks against a future Xcode, dropping this workflow costs
-nothing else in the test suite.
+Two things worth keeping from the last attempt:
+
+1. **A tool that cannot measure must fail loudly.** A missing report and a low
+   score are different events; so are "0% because the suite is weak" and "0%
+   because nothing ran". The old workflow treated all of them as green.
+2. **Check the wall clock.** 16.5 seconds per mutant was the tell, and it was
+   visible in the report before any of the source-reading was necessary.
+
+[muter]: https://github.com/muter-mutation-testing/muter
