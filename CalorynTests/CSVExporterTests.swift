@@ -38,7 +38,7 @@ final class CSVExporterTests: XCTestCase {
             csv,
             """
             Date,Meal,Food,Portion (g),Calories,Protein (g),Carbs (g),Fat (g),Fiber (g)
-            2026-01-02,Snack 2,Greek Yogurt; Honey,150,150,15.0,12.0,4.5,0.0
+            2026-01-02,Snack 2,"Greek Yogurt, Honey",150,150,15.0,12.0,4.5,0.0
             2026-01-03,Dinner,Rice Bowl,200,260,8.0,56.0,2.0,3.0
 
             """

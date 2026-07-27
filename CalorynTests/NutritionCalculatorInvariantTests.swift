@@ -376,14 +376,26 @@ struct NutritionCalculatorMacroInvariantTests {
         #expect(NutritionCalculator.macroGrams(calories: 0, ratio: 0, caloriesPerGram: 4) == 0)
     }
 
-    @Test("Given a zero calories-per-gram divisor, when grams are computed, then the result is not finite")
-    func zeroDivisorIsNotGuarded() {
-        // Characterization: `macroGrams` divides without guarding the denominator.
+    @Test("Given a zero calories-per-gram divisor, when grams are computed, then the result is a finite zero")
+    func zeroDivisorYieldsZeroRatherThanANonFiniteValue() {
+        // A zero divisor has no meaningful answer. Returning 0 keeps a bad
+        // input from propagating as a plausible-looking infinity into a macro
+        // target and only failing much later, at the formatter.
         let withCalories = NutritionCalculator.macroGrams(calories: 2_000, ratio: 0.3, caloriesPerGram: 0)
-        #expect(withCalories.isInfinite)
+        #expect(withCalories == 0)
 
         let withoutCalories = NutritionCalculator.macroGrams(calories: 0, ratio: 0, caloriesPerGram: 0)
-        #expect(withoutCalories.isNaN)
+        #expect(withoutCalories == 0)
+    }
+
+    @Test("Given a non-finite expenditure, when the default target is computed, then it stays representable")
+    func nonFiniteExpenditureDoesNotTrapTheTargetConversion() {
+        // `Int(_:)` traps on a non-finite Double, and this is the one place
+        // `defaultTarget` converts one.
+        #expect(NutritionCalculator.defaultTarget(energyExpenditure: .nan) == 1_200)
+        #expect(NutritionCalculator.defaultTarget(energyExpenditure: -.infinity) == 1_200)
+        #expect(NutritionCalculator.defaultTarget(energyExpenditure: .infinity) == .max)
+        #expect(NutritionCalculator.defaultTarget(energyExpenditure: 1e30) == .max)
     }
 
     @Test(

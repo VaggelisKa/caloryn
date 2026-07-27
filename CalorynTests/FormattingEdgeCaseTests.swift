@@ -107,6 +107,46 @@ struct FormattingEdgeCaseTests {
         #expect(2_500_000.kcalFormatted == "2500000 kcal")
     }
 
+    // MARK: - Non-finite and out-of-range input must not trap
+
+    /// These could not be characterized before the fix: `Int(_:)` traps on a
+    /// non-finite or out-of-range Double, and a trap takes down the whole
+    /// `xcodebuild test` process rather than failing one test. So these assert
+    /// the new behaviour directly -- that a bad number renders as text.
+    @Test(
+        "kcalFormatted renders non-finite input as zero rather than trapping",
+        arguments: [
+            (Double.nan, "0 kcal"),
+            (Double.infinity, "0 kcal"),
+            (-Double.infinity, "0 kcal"),
+        ]
+    )
+    func kcalFormattedHandlesNonFiniteValues(value: Double, expected: String) {
+        #expect(value.kcalFormatted == expected)
+    }
+
+    @Test(
+        "wholeFormatted renders non-finite input as zero rather than trapping",
+        arguments: [
+            (Double.nan, "0"),
+            (Double.infinity, "0"),
+            (-Double.infinity, "0"),
+        ]
+    )
+    func wholeFormattedHandlesNonFiniteValues(value: Double, expected: String) {
+        #expect(value.wholeFormatted == expected)
+    }
+
+    @Test("Finite values beyond Int's range clamp to its bounds instead of trapping")
+    func outOfRangeFiniteValuesClampToIntBounds() {
+        #expect(1e30.wholeFormatted == "\(Int.max)")
+        #expect((-1e30).wholeFormatted == "\(Int.min)")
+        #expect(1e30.kcalFormatted == "\(Int.max) kcal")
+        // macroFormatted's whole-number branch reaches the same conversion:
+        // "%.1f" of 1e30 ends in ".0", so it too used to trap here.
+        #expect(1e30.macroFormatted == "\(Int.max)g")
+    }
+
     // MARK: - wholeFormatted truncation (not rounding)
 
     @Test(

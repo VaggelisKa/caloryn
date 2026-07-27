@@ -20,8 +20,58 @@ struct CSVExporterEdgeCaseTests {
         csv.split(separator: "\n", omittingEmptySubsequences: true).map(String.init)
     }
 
-    /// Naive column count for a single CSV line (this exporter never quotes
-    /// fields, so a plain comma split is the correct oracle for its output).
+    /// Parses a CSV blob into records of unescaped fields, per RFC 4180.
+    ///
+    /// A naive comma split was the right oracle while the exporter quoted
+    /// nothing. Now that it quotes, only a parser that honours quoting can
+    /// tell a field separator from a comma inside a name -- which is the
+    /// whole point of the format.
+    private func records(of csv: String) -> [[String]] {
+        var records: [[String]] = []
+        var fields: [String] = []
+        var field = ""
+        var inQuotes = false
+        var iterator = csv.makeIterator()
+        var pending: Character?
+
+        while let character = pending ?? iterator.next() {
+            pending = nil
+            if inQuotes {
+                if character == "\"" {
+                    // A doubled quote is one literal quote; a lone one closes.
+                    if let next = iterator.next() {
+                        if next == "\"" { field.append("\"") } else { inQuotes = false; pending = next }
+                    } else {
+                        inQuotes = false
+                    }
+                } else {
+                    field.append(character)
+                }
+            } else {
+                switch character {
+                case "\"": inQuotes = true
+                case ",": fields.append(field); field = ""
+                case "\n": fields.append(field); records.append(fields); fields = []; field = ""
+                default: field.append(character)
+                }
+            }
+        }
+        if !field.isEmpty || !fields.isEmpty {
+            fields.append(field)
+            records.append(fields)
+        }
+        return records
+    }
+
+    /// The parsed fields of the single data record in a one-entry export.
+    private func onlyDataRecord(of csv: String) -> [String] {
+        let parsed = records(of: csv)
+        #expect(parsed.count == 2, "expected a header record and exactly one data record")
+        return parsed.count == 2 ? parsed[1] : []
+    }
+
+    /// Naive column count for a single CSV line, used only where the test is
+    /// about a field that needs no quoting and so is written through verbatim.
     private func columnCount(of line: String) -> Int {
         line.split(separator: ",", omittingEmptySubsequences: false).count
     }
@@ -100,27 +150,26 @@ struct CSVExporterEdgeCaseTests {
 
     // MARK: - Special characters in food names
 
-    @Test("A comma in the food name is replaced with a semicolon, keeping the row's column count intact")
-    func commaInFoodNameIsReplacedWithSemicolonPreservingColumnCount() {
+    @Test("A comma in the food name is quoted, not substituted, so the name survives the round trip")
+    func commaInFoodNameIsQuotedAndPreservedVerbatim() {
         let entry = makeTestEntry(foodItem: makeTestFoodItem(name: "Rice, Beans, and Corn"))
         let csv = CSVExporter.generateCSV(from: [entry])
-        let dataLine = physicalLines(of: csv)[1]
+        let fields = onlyDataRecord(of: csv)
 
-        #expect(columnCount(of: dataLine) == 9)
-        #expect(dataLine.contains("Rice; Beans; and Corn"))
-        #expect(!dataLine.contains("Rice,"))
+        #expect(fields.count == 9)
+        #expect(fields[2] == "Rice, Beans, and Corn")
+        #expect(csv.contains("\"Rice, Beans, and Corn\""))
     }
 
-    @Test("Double quotes in the food name pass through completely unescaped")
-    func doubleQuotesPassThroughUnescaped() {
+    @Test("Double quotes in the food name are doubled inside a quoted field and parse back to the original")
+    func doubleQuotesAreEscapedByDoubling() {
         let entry = makeTestEntry(foodItem: makeTestFoodItem(name: "\"Half Baked\" Ice Cream"))
         let csv = CSVExporter.generateCSV(from: [entry])
-        let dataLine = physicalLines(of: csv)[1]
+        let fields = onlyDataRecord(of: csv)
 
-        // No quoting/escaping logic exists in CSVExporter, so the quote
-        // characters are written through verbatim.
-        #expect(dataLine.contains("\"Half Baked\" Ice Cream"))
-        #expect(columnCount(of: dataLine) == 9)
+        #expect(fields.count == 9)
+        #expect(fields[2] == "\"Half Baked\" Ice Cream")
+        #expect(csv.contains("\"\"\"Half Baked\"\" Ice Cream\""))
     }
 
     @Test("An apostrophe (single quote) in the food name passes through unescaped and does not affect column count")
@@ -172,8 +221,8 @@ struct CSVExporterEdgeCaseTests {
         #expect(columnCount(of: dataLine) == 9)
     }
 
-    @Test("A newline embedded in a food name is NOT escaped or quoted, so it splits one logical row into extra physical lines")
-    func newlineInFoodNameBreaksLogicalRowIntoExtraPhysicalLines() {
+    @Test("A newline embedded in a food name stays inside one quoted field instead of splitting the row")
+    func newlineInFoodNameIsQuotedAndStaysInOneRecord() {
         let entry = makeTestEntry(
             date: makeTestDate(year: 2026, month: 4, day: 1),
             foodItem: makeTestFoodItem(name: "Multi\nLine Snack"),
@@ -181,31 +230,46 @@ struct CSVExporterEdgeCaseTests {
         )
 
         let csv = CSVExporter.generateCSV(from: [entry])
-        let lines = physicalLines(of: csv)
+        let fields = onlyDataRecord(of: csv)
 
-        // A well-formed CSV would still have exactly 2 physical lines
-        // (header + 1 data row) with the newline quoted inside the field.
-        // Because CSVExporter performs no quoting at all, the embedded
-        // newline corrupts the row into two separate physical lines with
-        // broken column counts -- a genuine parseability bug.
-        #expect(lines.count == 3)
-        #expect(lines[1] == "2026-04-01,Breakfast,Multi")
-        #expect(lines[2] == "Line Snack,100,100,10.0,20.0,5.0,0.0")
-        #expect(columnCount(of: lines[1]) != 9)
+        #expect(fields.count == 9)
+        #expect(fields[2] == "Multi\nLine Snack")
+        // The quoted newline is still a real newline in the file, so the blob
+        // spans three physical lines -- which is exactly why a CSV reader has
+        // to track quoting rather than split on "\n".
+        #expect(physicalLines(of: csv).count == 3)
     }
 
-    @Test("The spec example (comma, quotes, apostrophe together) is transformed, not fully preserved verbatim")
-    func combinedSpecialCharacterExampleIsTransformedNotPreservedVerbatim() {
+    @Test("The spec example (comma, quotes, apostrophe together) survives the export byte-for-byte")
+    func combinedSpecialCharacterExampleIsPreservedVerbatim() {
         let original = "Ben & Jerry's \"Half Baked\", 500ml"
         let entry = makeTestEntry(foodItem: makeTestFoodItem(name: original))
         let csv = CSVExporter.generateCSV(from: [entry])
-        let dataLine = physicalLines(of: csv)[1]
+        let fields = onlyDataRecord(of: csv)
 
-        // The comma is destructively replaced with a semicolon (not quoted),
-        // so the exported field is NOT byte-identical to the original name.
-        #expect(dataLine.contains("Ben & Jerry's \"Half Baked\"; 500ml"))
-        #expect(!dataLine.contains(original))
-        #expect(columnCount(of: dataLine) == 9)
+        #expect(fields.count == 9)
+        #expect(fields[2] == original)
+    }
+
+    @Test("Two entries whose names contain commas and newlines still parse as exactly two records")
+    func multipleCorruptingNamesStillParseAsOneRecordEach() {
+        let entries = [
+            makeTestEntry(
+                date: makeTestDate(year: 2026, month: 4, day: 1),
+                foodItem: makeTestFoodItem(name: "Multi\nLine, Snack")
+            ),
+            makeTestEntry(
+                date: makeTestDate(year: 2026, month: 4, day: 2),
+                foodItem: makeTestFoodItem(name: "Quote \" and, comma")
+            ),
+        ]
+
+        let parsed = records(of: CSVExporter.generateCSV(from: entries))
+
+        #expect(parsed.count == 3)
+        #expect(parsed.allSatisfy { $0.count == 9 })
+        #expect(parsed[1][2] == "Multi\nLine, Snack")
+        #expect(parsed[2][2] == "Quote \" and, comma")
     }
 
     // MARK: - Numeric column formatting edge cases
@@ -265,7 +329,7 @@ struct CSVExporterEdgeCaseTests {
         defer { try? FileManager.default.removeItem(at: url) }
 
         let fileContents = try String(contentsOf: url, encoding: .utf8)
-        #expect(fileContents.contains("Crème brûlée; Café"))
+        #expect(onlyDataRecord(of: fileContents)[2] == "Crème brûlée, Café")
     }
 
     @Test("exportURL for an empty log still writes a valid file containing only the header")
