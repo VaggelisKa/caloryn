@@ -9,35 +9,25 @@ struct GoalSummaryStepView: View {
     @Binding var calorieDeficit: Double
     var onContinue: (Int, Bool) -> Void
 
-    @State private var manualTarget: String = ""
-    @State private var useManualOverride = false
+    /// Every rule this step applies lives in the draft; the view reads it and
+    /// renders. See `OnboardingGoalSummaryDraft`.
+    @State private var draft = OnboardingGoalSummaryDraft()
     @FocusState private var isManualTargetFocused: Bool
 
-    private var bmr: Double {
-        NutritionCalculator.bmr(sex: sex, weightKg: weightKg, heightCm: heightCm, age: age)
+    /// The answers from the earlier steps, which this step only reads. The
+    /// deficit is the container's, because the saved profile keeps it.
+    private var basis: OnboardingGoalSummaryDraft.Basis {
+        OnboardingGoalSummaryDraft.Basis(
+            age: age,
+            sex: sex,
+            heightCm: heightCm,
+            weightKg: weightKg,
+            activityLevel: activityLevel,
+            calorieDeficit: calorieDeficit
+        )
     }
 
-    private var tdee: Double {
-        NutritionCalculator.tdee(bmr: bmr, activity: activityLevel)
-    }
-
-    private var calculatedTarget: Int {
-        NutritionCalculator.defaultTarget(tdee: tdee, deficit: calorieDeficit)
-    }
-
-    private var appliesManualTarget: Bool {
-        if useManualOverride, let manual = Int(manualTarget), manual >= 1000 {
-            return true
-        }
-        return false
-    }
-
-    private var displayTarget: Int {
-        if appliesManualTarget, let manual = Int(manualTarget) {
-            return manual
-        }
-        return calculatedTarget
-    }
+    private var displayTarget: Int { draft.displayTarget(basis: basis) }
 
     var body: some View {
         ScrollView {
@@ -64,7 +54,7 @@ struct GoalSummaryStepView: View {
             .padding(.bottom, 100)
         }
         .safeAreaInset(edge: .bottom) {
-            Button { onContinue(displayTarget, appliesManualTarget) } label: {
+            Button { onContinue(displayTarget, draft.appliesManualTarget) } label: {
                 Text("Continue")
                     .font(CalorynTheme.buttonLabel)
                     .frame(maxWidth: .infinity)
@@ -75,13 +65,11 @@ struct GoalSummaryStepView: View {
             .padding(.bottom, 16)
             .accessibilityIdentifier("onboarding.goalSummary.continue")
         }
-        .onChange(of: calculatedTarget) {
-            if !useManualOverride {
-                manualTarget = "\(calculatedTarget)"
-            }
+        .onChange(of: basis.calculatedTarget) {
+            draft.calculatedTargetChanged(basis: basis)
         }
         .onAppear {
-            manualTarget = "\(calculatedTarget)"
+            draft.seedManualTarget(basis: basis)
         }
     }
 
@@ -102,8 +90,8 @@ struct GoalSummaryStepView: View {
 
     private var statsCards: some View {
         HStack(spacing: CalorynTheme.cardSpacing) {
-            statPill("BMR", value: "\(Int(bmr))", unit: "kcal")
-            statPill("Daily Burn", value: "\(Int(tdee))", unit: "kcal")
+            statPill("BMR", value: "\(Int(basis.bmr))", unit: "kcal")
+            statPill("Daily Burn", value: "\(Int(basis.tdee))", unit: "kcal")
             statPill("Deficit", value: "\(Int(calorieDeficit))", unit: "kcal")
         }
     }
@@ -136,13 +124,13 @@ struct GoalSummaryStepView: View {
                     .font(CalorynTheme.microCaption)
                     .foregroundStyle(CalorynTheme.textSecondary)
                 Slider(value: $calorieDeficit, in: -500...1000, step: 50)
-                    .disabled(useManualOverride)
+                    .disabled(draft.useManualOverride)
                 Text("Deficit")
                     .font(CalorynTheme.microCaption)
                     .foregroundStyle(CalorynTheme.textSecondary)
             }
 
-            Text(deficitLabel)
+            Text(basis.deficitLabel)
                 .font(CalorynTheme.caption)
                 .foregroundStyle(CalorynTheme.terracotta)
                 .frame(maxWidth: .infinity, alignment: .center)
@@ -150,26 +138,17 @@ struct GoalSummaryStepView: View {
         .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
     }
 
-    private var deficitLabel: String {
-        if calorieDeficit > 0 {
-            return "-\(Int(calorieDeficit)) kcal/day (lose weight)"
-        } else if calorieDeficit < 0 {
-            return "+\(Int(abs(calorieDeficit))) kcal/day (gain weight)"
-        }
-        return "Maintenance (no change)"
-    }
-
     private var manualOverrideSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Toggle(isOn: $useManualOverride) {
+            Toggle(isOn: $draft.useManualOverride) {
                 Text("Set custom target")
                     .font(CalorynTheme.bodyText)
                     .foregroundStyle(CalorynTheme.textPrimary)
             }
 
-            if useManualOverride {
+            if draft.useManualOverride {
                 HStack {
-                    TextField("Calories", text: $manualTarget)
+                    TextField("Calories", text: $draft.manualTargetText)
                         .keyboardType(.numberPad)
                         .font(CalorynTheme.numericBody)
                         .focused($isManualTargetFocused)
