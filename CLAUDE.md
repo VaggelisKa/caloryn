@@ -8,7 +8,9 @@ them as dead code.
 
 `xcodebuild test -project Caloryn.xcodeproj -scheme Caloryn -testPlan <plan> -destination "platform=iOS Simulator,name=iPhone 17" CODE_SIGNING_ALLOWED=NO`
 
-Plans: `Caloryn-Unit` (641 tests, ~1.4s) · `Caloryn-UI` (9 journeys, ~88s) · `Caloryn-All`.
+Plans: `Caloryn-Unit` (~1.4s) · `Caloryn-UI` (15 journeys, ~170s) · `Caloryn-All`. Measure the
+unit count yourself before quoting one — every wave moves it, so a number written here is
+wrong by the next PR.
 
 Use `set -o pipefail` when piping xcodebuild — otherwise a failed build reports `grep`'s
 exit code and looks green.

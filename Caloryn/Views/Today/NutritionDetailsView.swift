@@ -9,39 +9,28 @@ struct NutritionDetailsView: View {
 
     @Environment(\.dismiss) private var dismiss
 
-    private var totalNutrition: NutritionValues {
-        entries.reduce(.zero) { $0 + $1.nutrition }
-    }
-
-    private var totalCalories: Double {
-        totalNutrition.calories
-    }
-
-    private var totalPortionGrams: Double {
-        entries.reduce(0) { $0 + $1.portionGrams }
-    }
-
-    private var roundedCalories: Int {
-        calorieBudget.roundedConsumed
-    }
-
-    private var remainingCalories: Int {
-        calorieBudget.remaining
-    }
-
-    private var overCalories: Int {
-        calorieBudget.overAmount
+    private var summary: NutritionDetailsSummary {
+        NutritionDetailsSummary(
+            entries: entries.map {
+                NutritionDetailsSummary.Entry(
+                    nutrition: $0.nutrition,
+                    portionGrams: $0.portionGrams
+                )
+            }
+        )
     }
 
     private var calorieAccentColor: Color {
-        calorieBudget.isOver ? CalorynTheme.terracotta : CalorynTheme.sage
+        color(for: NutritionDetailsSummary.calorieAccent(isOver: calorieBudget.isOver))
     }
 
     private var shouldShowDynamicTDEE: Bool {
-        calorieBudget.isDynamicModeRequested
-            || calorieBudget.activeEnergyKcal > 0
-            || calorieBudget.dynamicAdjustment != 0
-            || calorieBudget.activityMessage != nil
+        NutritionDetailsSummary.showsDynamicTDEE(
+            isDynamicModeRequested: calorieBudget.isDynamicModeRequested,
+            activeEnergyKcal: calorieBudget.activeEnergyKcal,
+            dynamicAdjustment: calorieBudget.dynamicAdjustment,
+            hasActivityMessage: calorieBudget.activityMessage != nil
+        )
     }
 
     private var allNutrientMetrics: [TrackedNutrientMetric] {
@@ -54,41 +43,26 @@ struct NutritionDetailsView: View {
         ProduceVarietySummary(entries: entries)
     }
 
-    private var proteinDetails: [DetailNutrient] {
-        [
-            detail("casein", "Casein", \.caseinG),
-            detail("serum-proteins", "Serum proteins", \.serumProteinsG)
-        ].compactMap { $0 }
+    private func color(for accent: NutritionDetailsSummary.CalorieAccent) -> Color {
+        switch accent {
+        case .withinBudget:
+            CalorynTheme.sage
+        case .overBudget:
+            CalorynTheme.terracotta
+        }
     }
 
-    private var carbDetails: [DetailNutrient] {
-        [
-            detail("sucrose", "Sucrose", \.sucroseG),
-            detail("glucose", "Glucose", \.glucoseG),
-            detail("fructose", "Fructose", \.fructoseG),
-            detail("lactose", "Lactose", \.lactoseG),
-            detail("maltose", "Maltose", \.maltoseG),
-            detail("maltodextrins", "Maltodextrins", \.maltodextrinsG),
-            detail("starch", "Starch", \.starchG),
-            detail("polyols", "Polyols", \.polyolsG)
-        ].compactMap { $0 }
-    }
-
-    private var fatDetails: [DetailNutrient] {
-        [
-            detail("trans-fat", "Trans fat", \.transFatG),
-            detail("monounsaturated-fat", "Monounsaturated", \.monounsaturatedFatG),
-            detail("polyunsaturated-fat", "Polyunsaturated", \.polyunsaturatedFatG),
-            detail("omega-3-fat", "Omega-3 fat", \.omega3FatG),
-            detail("omega-6-fat", "Omega-6 fat", \.omega6FatG),
-            detail("omega-9-fat", "Omega-9 fat", \.omega9FatG)
-        ].compactMap { $0 }
-    }
-
-    private var saltDetails: [DetailNutrient] {
-        [
-            detail("salt", "Salt equivalent", \.saltG)
-        ].compactMap { $0 }
+    private func color(for group: NutrientDetailGroup) -> Color {
+        switch group {
+        case .protein:
+            CalorynTheme.proteinColor
+        case .carbs:
+            CalorynTheme.carbColor
+        case .fat:
+            CalorynTheme.fatColor
+        case .salt:
+            CalorynTheme.stone
+        }
     }
 
     var body: some View {
@@ -124,14 +98,16 @@ struct NutritionDetailsView: View {
     }
 
     private var calorieSummary: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        let summary = summary
+
+        return VStack(alignment: .leading, spacing: 14) {
             Text("Daily Nutrition")
                 .font(CalorynTheme.sectionTitle)
                 .foregroundStyle(CalorynTheme.textPrimary)
                 .accessibilityIdentifier("nutritionDetails.title")
 
             HStack(alignment: .firstTextBaseline) {
-                Text("\(roundedCalories)")
+                Text("\(calorieBudget.roundedConsumed)")
                     .font(CalorynTheme.displayNumber)
                     .foregroundStyle(calorieAccentColor)
                     .contentTransition(.numericText())
@@ -143,7 +119,7 @@ struct NutritionDetailsView: View {
             }
 
             progressBar(
-                current: totalCalories,
+                current: summary.totalCalories,
                 target: Double(calorieBudget.adjustedTarget),
                 color: calorieAccentColor
             )
@@ -153,8 +129,8 @@ struct NutritionDetailsView: View {
 
             HStack(alignment: .top, spacing: 10) {
                 summaryStat(
-                    label: calorieBudget.isOver ? "Over" : "Remaining",
-                    value: "\(calorieBudget.isOver ? overCalories : remainingCalories)",
+                    label: NutritionDetailsSummary.calorieSummaryLabel(isOver: calorieBudget.isOver),
+                    value: "\(calorieBudget.isOver ? calorieBudget.overAmount : calorieBudget.remaining)",
                     detail: "kcal",
                     color: calorieAccentColor
                 )
@@ -163,15 +139,15 @@ struct NutritionDetailsView: View {
 
                 summaryStat(
                     label: "Logged",
-                    value: "\(entries.count)",
-                    detail: entries.count == 1 ? "item" : "items"
+                    value: "\(summary.loggedItemCount)",
+                    detail: summary.loggedItemsUnitText
                 )
 
                 verticalDivider
 
                 summaryStat(
                     label: "Food Weight",
-                    value: totalPortionGrams.macroFormatted,
+                    value: summary.totalPortionGramsText,
                     detail: "total"
                 )
             }
@@ -214,7 +190,11 @@ struct NutritionDetailsView: View {
 
                         Text(dynamicAdjustmentText)
                             .font(CalorynTheme.numericBody)
-                            .foregroundStyle(calorieBudget.dynamicAdjustment < 0 ? CalorynTheme.textSecondary : CalorynTheme.carbColor)
+                            .foregroundStyle(
+                                NutritionDetailsSummary.isDynamicAdjustmentMuted(calorieBudget.dynamicAdjustment)
+                                    ? CalorynTheme.textSecondary
+                                    : CalorynTheme.carbColor
+                            )
                             .contentTransition(.numericText())
                     }
                 }
@@ -236,7 +216,9 @@ struct NutritionDetailsView: View {
 
                     compactActivityStat(
                         label: "Today",
-                        value: Int(calorieBudget.activeEnergyKcal.rounded()).kcalFormatted,
+                        value: NutritionDetailsSummary.activeEnergyText(
+                            activeEnergyKcal: calorieBudget.activeEnergyKcal
+                        ),
                         color: CalorynTheme.carbColor
                     )
 
@@ -255,31 +237,22 @@ struct NutritionDetailsView: View {
     }
 
     private var baselineText: String {
-        guard let baseline = calorieBudget.activityBaselineKcal else {
-            return "-"
-        }
-
-        return Int(baseline.rounded()).kcalFormatted
+        NutritionDetailsSummary.baselineText(
+            activityBaselineKcal: calorieBudget.activityBaselineKcal
+        )
     }
 
     private var dynamicAdjustmentText: String {
-        let adjustment = calorieBudget.dynamicAdjustment
-        if adjustment > 0 {
-            return "+\(adjustment.kcalFormatted)"
-        }
-        if adjustment < 0 {
-            return "-\(abs(adjustment).kcalFormatted)"
-        }
-        return "0 kcal"
+        NutritionDetailsSummary.dynamicAdjustmentText(calorieBudget.dynamicAdjustment)
     }
 
     private var dynamicStatusNoticeColor: Color {
-        switch calorieBudget.dynamicStatus {
-        case .unavailable:
+        switch NutritionDetailsSummary.statusNoticeStyle(for: calorieBudget.dynamicStatus) {
+        case .warning:
             CalorynTheme.terracotta
-        case .learning:
+        case .informational:
             CalorynTheme.carbColor
-        case .staticEstimate, .ready:
+        case .neutral:
             CalorynTheme.textSecondary
         }
     }
@@ -442,22 +415,14 @@ struct NutritionDetailsView: View {
         }
     }
 
-    @ViewBuilder
     private var detailSections: some View {
-        if !proteinDetails.isEmpty {
-            detailSection("Protein Details", systemImage: "dumbbell.fill", color: CalorynTheme.proteinColor, items: proteinDetails)
-        }
-
-        if !carbDetails.isEmpty {
-            detailSection("Carb Details", systemImage: "fork.knife", color: CalorynTheme.carbColor, items: carbDetails)
-        }
-
-        if !fatDetails.isEmpty {
-            detailSection("Fat Details", systemImage: "drop.fill", color: CalorynTheme.fatColor, items: fatDetails)
-        }
-
-        if !saltDetails.isEmpty {
-            detailSection("Salt", systemImage: "s.circle.fill", color: CalorynTheme.stone, items: saltDetails)
+        ForEach(NutrientDetailGroup.populatedGroups(in: summary.totalNutrition)) { populated in
+            detailSection(
+                populated.title,
+                systemImage: populated.systemImage,
+                color: color(for: populated.group),
+                items: populated.items
+            )
         }
     }
 
@@ -490,7 +455,7 @@ struct NutritionDetailsView: View {
 
             VStack(spacing: 0) {
                 ForEach(items) { item in
-                    detailRow(label: item.label, value: formattedDetailValue(item))
+                    detailRow(label: item.label, value: item.formattedValue)
                         .padding(.vertical, 5)
 
                     if item.id != items.last?.id {
@@ -570,7 +535,7 @@ struct NutritionDetailsView: View {
     }
 
     private func progressBar(current: Double, target: Double, color: Color) -> some View {
-        let progress = target > 0 ? min(max(current / target, 0), 1) : 0
+        let progress = NutritionDetailsSummary.progressFraction(current: current, target: target)
 
         return GeometryReader { geo in
             ZStack(alignment: .leading) {
@@ -587,36 +552,6 @@ struct NutritionDetailsView: View {
         .accessibilityHidden(true)
     }
 
-    private func detail(
-        _ id: String,
-        _ label: String,
-        _ keyPath: KeyPath<NutritionValues, Double?>,
-        unit: DetailNutrient.Unit = .grams
-    ) -> DetailNutrient? {
-        guard let value = totalNutrition[keyPath: keyPath] else { return nil }
-        return DetailNutrient(id: id, label: label, value: value, unit: unit)
-    }
-
-    private func formattedDetailValue(_ item: DetailNutrient) -> String {
-        switch item.unit {
-        case .grams:
-            item.value.macroFormatted
-        case .milligramsFromGrams:
-            "\(Int((item.value * 1000).rounded()))mg"
-        }
-    }
-}
-
-private struct DetailNutrient: Identifiable {
-    enum Unit {
-        case grams
-        case milligramsFromGrams
-    }
-
-    let id: String
-    let label: String
-    let value: Double
-    let unit: Unit
 }
 
 #Preview("Nutrition Details - Auto-adjust") {

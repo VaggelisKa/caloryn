@@ -28,30 +28,25 @@ struct MealSectionView: View {
         self.onDelete = onDelete
     }
 
-    private var sectionTitle: String {
-        if let titleOverride { return titleOverride }
-        return mealType == .snack ? mealType.displayName(snackIndex: snackIndex) : mealType.displayName
-    }
-
-    private var totalCalories: Double {
-        entries.reduce(0) { $0 + $1.calories }
-    }
-
-    private var totalProtein: Double {
-        entries.reduce(0) { $0 + $1.proteinG }
-    }
-
-    private var totalCarbs: Double {
-        entries.reduce(0) { $0 + $1.carbsG }
-    }
-
-    private var totalFat: Double {
-        entries.reduce(0) { $0 + $1.fatG }
+    private var summary: MealSectionSummary {
+        MealSectionSummary(
+            mealType: mealType,
+            snackIndex: snackIndex,
+            titleOverride: titleOverride,
+            entries: entries.map {
+                MealSectionSummary.Entry(
+                    calories: $0.calories,
+                    proteinG: $0.proteinG,
+                    carbsG: $0.carbsG,
+                    fatG: $0.fatG
+                )
+            }
+        )
     }
 
     var body: some View {
         Section {
-            if entries.count <= 1 {
+            if summary.usesSingleRowTransition {
                 SingleMealTransitionRow(
                     entry: entries.first,
                     onEdit: onEdit,
@@ -73,45 +68,47 @@ struct MealSectionView: View {
                 sectionHeader
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Add food or meal to \(sectionTitle)")
+            .accessibilityLabel(summary.addAccessibilityLabel)
             .accessibilityHint("Double tap to add food or a saved meal")
             .accessibilityIdentifier("today.mealHeader.\(mealType.rawValue)")
         }
     }
 
     private var sectionHeader: some View {
-        HStack(spacing: 8) {
+        let summary = summary
+
+        return HStack(spacing: 8) {
             Image(systemName: mealType.iconName)
                 .foregroundStyle(CalorynTheme.sage)
                 .font(CalorynTheme.compactIcon)
 
-            Text(sectionTitle)
+            Text(summary.title)
                 .font(CalorynTheme.caption)
                 .foregroundStyle(CalorynTheme.textSecondary)
 
             Spacer()
 
             VStack(alignment: .trailing, spacing: 2) {
-                if !totalCalories.isZero {
-                    Text(totalCalories.kcalFormatted)
+                if summary.showsCalories {
+                    Text(summary.caloriesText)
                         .font(CalorynTheme.numericMicroCaption)
                         .foregroundStyle(CalorynTheme.textSecondary)
                 }
 
-                if !entries.isEmpty {
+                if summary.showsMacroBreakdown {
                     HStack(spacing: 6) {
-                        if !totalProtein.isZero {
-                            Text("\(totalProtein.macroFormatted) P")
+                        if summary.showsProtein {
+                            Text(summary.proteinText)
                                 .font(CalorynTheme.numericMicroCaption)
                                 .foregroundStyle(CalorynTheme.proteinColor)
                         }
-                        if !totalCarbs.isZero {
-                            Text("\(totalCarbs.macroFormatted) C")
+                        if summary.showsCarbs {
+                            Text(summary.carbsText)
                                 .font(CalorynTheme.numericMicroCaption)
                                 .foregroundStyle(CalorynTheme.carbColor)
                         }
-                        if !totalFat.isZero {
-                            Text("\(totalFat.macroFormatted) F")
+                        if summary.showsFat {
+                            Text(summary.fatText)
                                 .font(CalorynTheme.numericMicroCaption)
                                 .foregroundStyle(CalorynTheme.fatColor)
                         }
