@@ -19,12 +19,16 @@ struct DetailNutrient: Identifiable, Equatable {
         self.unit = unit
     }
 
+    /// Scaling to milligrams multiplies whatever the product data held by a
+    /// thousand, so `Int(_:)` cannot do the rounding: it terminates the process
+    /// past `Int.max` rather than throwing, and nothing bounds a nutrient value
+    /// on the way in.
     var formattedValue: String {
         switch unit {
         case .grams:
             value.macroFormatted
         case .milligramsFromGrams:
-            "\(Int((value * 1000).rounded()))mg"
+            "\((value * 1000).rounded().truncatedSafely)mg"
         }
     }
 }

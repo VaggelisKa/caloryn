@@ -103,6 +103,15 @@ final class NutrientDetailGroupTests: XCTestCase {
 
         XCTAssertEqual(nutrient.formattedValue, "20mg")
     }
+
+    /// Nothing bounds a nutrient value on the way in, and the milligram branch
+    /// multiplies it by a thousand before rounding — which `Int(_:)` answers by
+    /// terminating the process.
+    func testAnUnboundedNutrientValueIsRenderedRatherThanCrashing() {
+        let huge = DetailNutrient(id: "salt", label: "Salt", value: 1e30, unit: .milligramsFromGrams)
+
+        XCTAssertEqual(huge.formattedValue, "\(Int.max)mg")
+    }
 }
 
 private extension NutrientDetailGroup {

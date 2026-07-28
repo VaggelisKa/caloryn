@@ -153,6 +153,19 @@ final class NutritionDetailsSummaryTests: XCTestCase {
         XCTAssertEqual(NutritionDetailsSummary.activeEnergyText(activeEnergyKcal: 430.2), "430 kcal")
     }
 
+    /// Apple Health is not obliged to hand back a sane number, and rounding one
+    /// with `Int(_:)` terminates the process rather than throwing. Both figures
+    /// have to come out as text.
+    func testAnImpossibleHealthReadingIsRenderedRatherThanCrashing() {
+        XCTAssertEqual(NutritionDetailsSummary.baselineText(activityBaselineKcal: .nan), "0 kcal")
+        XCTAssertEqual(NutritionDetailsSummary.activeEnergyText(activeEnergyKcal: .nan), "0 kcal")
+        XCTAssertEqual(NutritionDetailsSummary.activeEnergyText(activeEnergyKcal: .infinity), "0 kcal")
+        XCTAssertEqual(
+            NutritionDetailsSummary.baselineText(activityBaselineKcal: 1e30),
+            "\(Int.max) kcal"
+        )
+    }
+
     func testAnIncreaseIsSignedAndAReductionIsNegated() {
         XCTAssertEqual(NutritionDetailsSummary.dynamicAdjustmentText(180), "+180 kcal")
         XCTAssertEqual(NutritionDetailsSummary.dynamicAdjustmentText(-90), "-90 kcal")

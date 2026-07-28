@@ -100,17 +100,24 @@ struct NutritionDetailsSummary: Equatable {
     }
 
     /// A dash until enough valid days exist for a baseline to mean anything.
+    ///
+    /// Both this and `activeEnergyText` come from Apple Health, so `Int(_:)`
+    /// cannot be used to round them: it terminates the process on a NaN, an
+    /// infinity or anything past `Int.max` rather than throwing.
+    /// `truncatedSafely`, via `Double.kcalFormatted`, renders those as text
+    /// instead — the same reasoning `SettingsCalorieEstimate` already applies to
+    /// the identical pair of figures in Settings.
     static func baselineText(activityBaselineKcal: Double?) -> String {
         guard let activityBaselineKcal else {
             return "-"
         }
 
-        return Int(activityBaselineKcal.rounded()).kcalFormatted
+        return activityBaselineKcal.rounded().kcalFormatted
     }
 
     /// Today's Active Energy, as read from Apple Health.
     static func activeEnergyText(activeEnergyKcal: Double) -> String {
-        Int(activeEnergyKcal.rounded()).kcalFormatted
+        activeEnergyKcal.rounded().kcalFormatted
     }
 
     /// Always signed, so "+180 kcal" and "-90 kcal" read as the change they are
