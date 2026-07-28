@@ -18,10 +18,15 @@ exit code and looks green.
 1. **Assert on behaviour, never structure.** No test may depend on view composition or
    on which type performed a write. Don't add ViewInspector: it breaks on exactly the
    refactoring it should protect.
-2. **Characterize, don't fix.** A test that reveals a bug encodes current behaviour and
-   reports it. Never fix the app inside a change whose value is being
-   behaviour-preserving. Check `main` before calling anything a regression — several
-   "new" bugs here predated the PR under review.
+2. **Fix small bugs, characterize big ones.** Small and local — a missing guard, an
+   unvalidated parse, a wrong rounding — fix it, update the test that pinned the old
+   behaviour, and put it in **its own commit**, never mixed into a behaviour-preserving
+   change: "everything passed unchanged" is a refactor's whole warrant, and one fix
+   spends it. Anything needing a new abstraction, a schema change or a redesign is not
+   a small bug — stop, encode current behaviour in a passing test, report it, and open
+   a ticket if asked. Duplication is the exception worth consolidating: the same defect
+   in three parsers is one fix, not three. Check `main` before calling anything a
+   regression — several "new" bugs here predated the PR under review.
 3. **View logic goes in `Caloryn/Models/` as a plain struct, not a ViewModel layer.**
    See `GoalEditDraft`, `CustomFoodDraft`, `PortionSelection`. The view keeps
    `@State private var draft` and renders it. Take the *facts* a rule needs, not a model

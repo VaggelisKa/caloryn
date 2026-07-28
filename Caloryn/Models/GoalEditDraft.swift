@@ -107,11 +107,12 @@ struct GoalEditDraft: Equatable {
     /// The typed value converted to the unit the profile stores, or nil when
     /// the field is blank, unparseable, or not a positive number.
     func storedTarget(for nutrient: TrackedNutrient) -> Double? {
-        // Accept a decimal comma so the field behaves the same for users whose
-        // keyboard produces one.
-        let normalized = trimmedText(for: nutrient).replacingOccurrences(of: ",", with: ".")
-
-        guard !normalized.isEmpty, let input = Double(normalized), input > 0 else {
+        // decimalInputValue accepts a decimal comma so the field behaves the
+        // same for users whose keyboard produces one, and rejects the spellings
+        // a keypad cannot produce — "1e3" was a saveable goal, and an infinity
+        // reaches an Int(_:) conversion, which traps rather than throws. The
+        // `> 0` guard below already excluded NaN, but not those.
+        guard let input = trimmedText(for: nutrient).decimalInputValue, input > 0 else {
             return nil
         }
 
