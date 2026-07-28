@@ -16,35 +16,8 @@ struct MyFoodsView: View {
     @State private var mealErrorMessage: String?
     @State private var showsAllFavorites = false
 
-    private var manualEntries: [FoodItem] {
-        foodItems.filter(\.isManualEntry)
-    }
-
-    private var editedProducts: [FoodItem] {
-        foodItems.filter(\.isEditedCatalogProduct)
-    }
-
-    private var recipes: [FoodItem] {
-        foodItems.filter(\.isRecipe)
-    }
-
-    private var favorites: [FoodItem] {
-        FavoriteFoodLogging.sortedFavorites(from: foodItems)
-    }
-
-    private var visibleFavorites: [FoodItem] {
-        FavoriteFoodLogging.visibleFavorites(
-            from: foodItems,
-            showsAll: showsAllFavorites
-        )
-    }
-
-    private var nonFavoriteManualEntries: [FoodItem] {
-        manualEntries.filter { !$0.isFavorite }
-    }
-
-    private var nonFavoriteRecipes: [FoodItem] {
-        recipes.filter { !$0.isFavorite }
+    private var listing: MyFoodsListing {
+        MyFoodsListing(foodItems: foodItems, showsAllFavorites: showsAllFavorites)
     }
 
     var body: some View {
@@ -53,10 +26,10 @@ struct MyFoodsView: View {
                 favoritesSection
                     .listRowBackground(CalorynTheme.cardBackground)
 
-                if recipes.isEmpty {
+                if listing.showsEmptyRecipesSection {
                     emptyRecipesSection
                         .listRowBackground(CalorynTheme.cardBackground)
-                } else if !nonFavoriteRecipes.isEmpty {
+                } else if listing.showsRecipesSection {
                     recipesSection
                         .listRowBackground(CalorynTheme.cardBackground)
                 }
@@ -64,10 +37,10 @@ struct MyFoodsView: View {
                 mealsSection
                     .listRowBackground(CalorynTheme.cardBackground)
 
-                if manualEntries.isEmpty {
+                if listing.showsEmptyManualEntriesSection {
                     emptyManualEntriesSection
                         .listRowBackground(CalorynTheme.cardBackground)
-                } else if !nonFavoriteManualEntries.isEmpty {
+                } else if listing.showsManualEntriesSection {
                     manualEntriesSection
                         .listRowBackground(CalorynTheme.cardBackground)
                 }
@@ -163,15 +136,16 @@ struct MyFoodsView: View {
     }
 
     private var favoritesSection: some View {
-        Section {
-            if favorites.isEmpty {
+        let listing = listing
+        return Section {
+            if listing.favorites.isEmpty {
                 EmptyFoodGroupRow(
                     title: "No Favorites",
                     message: "Favorite recipes or manual entries for quick access.",
                     systemImage: "star"
                 )
             } else {
-                ForEach(visibleFavorites) { food in
+                ForEach(listing.visibleFavorites) { food in
                     libraryButton(for: food)
                         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                             deleteButton(for: food)
@@ -179,10 +153,10 @@ struct MyFoodsView: View {
                         }
                 }
 
-                if favorites.count > FavoriteFoodLogging.collapsedFavoriteLimit {
+                if listing.showsFavoritesDisclosure {
                     Button(action: toggleFavoritesDisclosure) {
                         HStack {
-                            Text(showsAllFavorites ? "Show less" : "Show all \(favorites.count)")
+                            Text(showsAllFavorites ? "Show less" : "Show all \(listing.favorites.count)")
                             Spacer()
                             Image(systemName: showsAllFavorites ? "chevron.up" : "chevron.down")
                         }
@@ -194,7 +168,7 @@ struct MyFoodsView: View {
                     .accessibilityLabel(
                         showsAllFavorites
                             ? "Show fewer favorites"
-                            : "Show all \(favorites.count) favorites"
+                            : "Show all \(listing.favorites.count) favorites"
                     )
                 }
             }
@@ -202,7 +176,7 @@ struct MyFoodsView: View {
             HStack {
                 Label("Favorites", systemImage: "star.fill")
                 Spacer()
-                Text("\(favorites.count)")
+                Text("\(listing.favorites.count)")
             }
             .font(CalorynTheme.caption)
             .foregroundStyle(CalorynTheme.textSecondary)
@@ -240,7 +214,7 @@ struct MyFoodsView: View {
 
     private var manualEntriesSection: some View {
         Section {
-            ForEach(nonFavoriteManualEntries) { food in
+            ForEach(listing.nonFavoriteManualEntries) { food in
                 libraryButton(for: food)
                     .swipeActions(edge: .leading, allowsFullSwipe: false) {
                         favoriteButton(for: food)
@@ -258,7 +232,7 @@ struct MyFoodsView: View {
 
     private var recipesSection: some View {
         Section {
-            ForEach(nonFavoriteRecipes) { recipe in
+            ForEach(listing.nonFavoriteRecipes) { recipe in
                 libraryButton(for: recipe)
                     .swipeActions(edge: .leading, allowsFullSwipe: false) {
                         favoriteButton(for: recipe)
@@ -275,21 +249,22 @@ struct MyFoodsView: View {
     }
 
     private var editedProductCatalogSection: some View {
-        Section {
+        let editedProductCount = listing.editedProducts.count
+        return Section {
             NavigationLink {
                 EditedProductCatalogView()
             } label: {
                 Text(
-                    editedProducts.count == 1
+                    editedProductCount == 1
                         ? "1 product"
-                        : "\(editedProducts.count) products"
+                        : "\(editedProductCount) products"
                 )
                 .font(CalorynTheme.bodyText)
                 .foregroundStyle(CalorynTheme.textPrimary)
             }
             .accessibilityLabel(
-                "Edited Product Catalog, \(editedProducts.count) "
-                    + (editedProducts.count == 1 ? "product" : "products")
+                "Edited Product Catalog, \(editedProductCount) "
+                    + (editedProductCount == 1 ? "product" : "products")
             )
         } header: {
             Text("Edited Product Catalog")
