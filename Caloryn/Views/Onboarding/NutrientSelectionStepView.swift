@@ -5,12 +5,10 @@ struct NutrientSelectionStepView: View {
     var isCompleting = false
     var onComplete: () -> Void
 
-    private var selectedNutrients: [TrackedNutrient] {
-        TrackedNutrient.selected(from: selectedNutrientIDs)
-    }
-
-    private var selectedExtras: [TrackedNutrient] {
-        selectedNutrients.filter { !TrackedNutrient.defaultSelection.contains($0) }
+    /// The selection rules live here; the view reads them and renders. See
+    /// `OnboardingNutrientSelection`.
+    private var selection: OnboardingNutrientSelection {
+        OnboardingNutrientSelection(rawValue: selectedNutrientIDs)
     }
 
     private var optionalNutrientColumns: [GridItem] {
@@ -47,9 +45,9 @@ struct NutrientSelectionStepView: View {
                             ForEach(TrackedNutrient.editableGoalNutrients) { nutrient in
                                 NutrientSelectionTile(
                                     nutrient: nutrient,
-                                    isSelected: selectedNutrients.contains(nutrient)
+                                    isSelected: selection.isSelected(nutrient)
                                 ) {
-                                    toggle(nutrient)
+                                    selectedNutrientIDs = selection.toggling(nutrient)
                                 }
                             }
                         }
@@ -113,19 +111,8 @@ struct NutrientSelectionStepView: View {
         }
     }
 
-    private func toggle(_ nutrient: TrackedNutrient) {
-        var extras = selectedExtras
-        if extras.contains(nutrient) {
-            extras.removeAll { $0 == nutrient }
-        } else {
-            extras.append(nutrient)
-        }
-
-        selectedNutrientIDs = TrackedNutrient.rawSelection(from: TrackedNutrient.defaultSelection + extras)
-    }
-
     private func ensureDefaultMacrosSelected() {
-        selectedNutrientIDs = TrackedNutrient.rawSelection(from: TrackedNutrient.defaultSelection + selectedExtras)
+        selectedNutrientIDs = selection.normalizedRawValue
     }
 }
 

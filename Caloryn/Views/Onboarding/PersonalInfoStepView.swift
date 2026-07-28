@@ -34,30 +34,38 @@ struct PersonalInfoStepView: View {
 
                     fieldCard("Age") {
                         HStack {
-                            Text("\(age) years")
+                            Text(OnboardingPersonalInfo.ageLabel(age))
                                 .font(CalorynTheme.numericBody)
                                 .foregroundStyle(CalorynTheme.textPrimary)
                             Spacer()
-                            Stepper("", value: $age, in: 16...100)
+                            Stepper("", value: $age, in: OnboardingPersonalInfo.ageRange)
                                 .labelsHidden()
                         }
                     }
 
                     fieldCard("Height") {
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("\(Int(heightCm)) cm")
+                            Text(OnboardingPersonalInfo.heightLabel(heightCm))
                                 .font(CalorynTheme.numericBody)
                                 .foregroundStyle(CalorynTheme.textPrimary)
-                            Slider(value: $heightCm, in: 120...220, step: 1)
+                            Slider(
+                                value: $heightCm,
+                                in: OnboardingPersonalInfo.heightRange,
+                                step: OnboardingPersonalInfo.heightStep
+                            )
                         }
                     }
 
                     fieldCard("Weight") {
                         VStack(alignment: .leading, spacing: 8) {
-                            Text(String(format: "%.1f kg", weightKg))
+                            Text(OnboardingPersonalInfo.weightLabel(weightKg))
                                 .font(CalorynTheme.numericBody)
                                 .foregroundStyle(CalorynTheme.textPrimary)
-                            Slider(value: $weightKg, in: 40...200, step: 0.5)
+                            Slider(
+                                value: $weightKg,
+                                in: OnboardingPersonalInfo.weightRange,
+                                step: OnboardingPersonalInfo.weightStep
+                            )
                         }
                     }
                 }

@@ -1,16 +1,6 @@
 import SwiftUI
 import SwiftData
 
-enum OnboardingStep: Hashable {
-    case welcome
-    case personalInfo
-    case activityLevel
-    case energyCalculationMode
-    case goalSummary
-    case macroRatios(Int)
-    case nutrientSelection
-}
-
 struct OnboardingContainerView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \UserProfile.updatedAt, order: .reverse) private var profiles: [UserProfile]
@@ -36,7 +26,7 @@ struct OnboardingContainerView: View {
     var body: some View {
         NavigationStack(path: $path) {
             WelcomeStepView {
-                path.append(.personalInfo)
+                advance(from: .welcome)
             }
             .navigationDestination(for: OnboardingStep.self) { step in
                 switch step {
@@ -49,11 +39,11 @@ struct OnboardingContainerView: View {
                         heightCm: $heightCm,
                         weightKg: $weightKg
                     ) {
-                        path.append(.activityLevel)
+                        advance(from: .personalInfo)
                     }
                 case .activityLevel:
                     ActivityLevelStepView(activityLevel: $activityLevel) {
-                        path.append(.energyCalculationMode)
+                        advance(from: .activityLevel)
                     }
                 case .energyCalculationMode:
                     EnergyCalculationModeStepView(
@@ -76,7 +66,7 @@ struct OnboardingContainerView: View {
                     ) { target, isManual in
                         finalCalorieTarget = target
                         isManualCalorieTarget = isManual
-                        path.append(.macroRatios(target))
+                        advance(from: .goalSummary, calorieTarget: target)
                     }
                 case .macroRatios(let calorieTarget):
                     MacroRatioStepView(
@@ -87,7 +77,7 @@ struct OnboardingContainerView: View {
                         primaryButtonTitle: "Continue"
                     ) {
                         finalCalorieTarget = calorieTarget
-                        path.append(.nutrientSelection)
+                        advance(from: .macroRatios(calorieTarget))
                     }
                 case .nutrientSelection:
                     NutrientSelectionStepView(
@@ -100,18 +90,29 @@ struct OnboardingContainerView: View {
         }
     }
 
+    /// Pushes whatever `OnboardingFlow` says comes next, so the order lives in
+    /// one place rather than in each step's continue handler.
+    private func advance(from step: OnboardingStep, calorieTarget: Int = 0) {
+        guard let next = OnboardingFlow.step(after: step, calorieTarget: calorieTarget) else { return }
+        path.append(next)
+    }
+
     private func continueFromEnergyCalculationMode() {
-        guard !isRequestingHealthAuthorization else { return }
-        appleHealthOnboardingMessage = nil
-
-        guard energyCalculationMode == .dynamicHealth else {
-            AppleHealthAdjustmentSettings.disable()
-            path.append(.goalSummary)
+        switch OnboardingFlow.energyModeContinuation(
+            mode: energyCalculationMode,
+            isRequestingAuthorization: isRequestingHealthAuthorization
+        ) {
+        case .ignore:
             return
-        }
-
-        Task {
-            await requestAppleHealthAndContinue()
+        case .disableAppleHealthAndAdvance:
+            appleHealthOnboardingMessage = nil
+            AppleHealthAdjustmentSettings.disable()
+            advance(from: .energyCalculationMode)
+        case .requestAppleHealthAuthorization:
+            appleHealthOnboardingMessage = nil
+            Task {
+                await requestAppleHealthAndContinue()
+            }
         }
     }
 
@@ -123,17 +124,17 @@ struct OnboardingContainerView: View {
         }
 
         let update = await AppleHealthAdjustmentSettings.enable()
-        guard update.isEnabled else {
+        switch OnboardingFlow.appleHealthOutcome(isEnabled: update.isEnabled, message: update.message) {
+        case .fallBackToLifestyleEstimate(let message):
             energyCalculationMode = .lifestyleEstimate
-            appleHealthOnboardingMessage = update.message
-            return
+            appleHealthOnboardingMessage = message
+        case .advance:
+            advance(from: .energyCalculationMode)
         }
-
-        path.append(.goalSummary)
     }
 
     private func completeOnboarding() {
-        guard !isCompletingOnboarding else { return }
+        guard OnboardingFlow.shouldComplete(isCompleting: isCompletingOnboarding) else { return }
         appleHealthOnboardingMessage = nil
 
         isCompletingOnboarding = true
