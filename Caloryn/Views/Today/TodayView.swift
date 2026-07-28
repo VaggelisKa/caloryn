@@ -63,43 +63,47 @@ struct TodayView: View {
     }
 
     private var todayEntries: [FoodLogEntry] {
-        allEntries.filter { Calendar.current.isDate($0.date, inSameDayAs: selectedDate) }
+        DayFoodLogSelection.entries(allEntries, on: selectedDate, date: \.date)
     }
 
     private var totalCalories: Double {
         todayEntries.reduce(0) { $0 + $1.calories }
     }
 
+    private var todayNutriscoreGrades: [String?] {
+        todayEntries.map(\.historicalNutriscoreGrade)
+    }
+
     private var nutriscoreDistribution: [(grade: String, count: Int)] {
-        let grades = todayEntries.compactMap { $0.historicalNutriscoreGrade }
-        let valid = ["a", "b", "c", "d", "e"]
-        return valid.map { grade in
-            (grade, grades.filter { $0.lowercased() == grade }.count)
-        }.filter { $0.count > 0 }
+        NutriscoreDayDistribution.distribution(of: todayNutriscoreGrades)
     }
 
     private var hasNutriscoreData: Bool {
-        todayEntries.contains { $0.historicalNutriscoreGrade != nil }
+        NutriscoreDayDistribution.hasData(todayNutriscoreGrades)
     }
 
     private var coreMeals: [MealType] {
-        [.breakfast, .lunch, .dinner]
+        DayFoodLogSelection.coreMeals
     }
 
     private var yesterdayEntries: [FoodLogEntry] {
-        allEntries.filter {
-            Calendar.current.isDate($0.date, inSameDayAs: selectedDate.yesterday)
-        }
+        DayFoodLogSelection.entries(allEntries, on: selectedDate.yesterday, date: \.date)
     }
 
     private var canCopyYesterday: Bool {
-        todayEntries.isEmpty && !yesterdayEntries.isEmpty
+        DayFoodLogSelection.canCopyYesterday(
+            loggedTodayCount: todayEntries.count,
+            loggedYesterdayCount: yesterdayEntries.count
+        )
     }
 
     private func entries(for meal: MealType) -> [FoodLogEntry] {
-        todayEntries
-            .filter { $0.mealType == meal }
-            .sorted { $0.createdAt < $1.createdAt }
+        DayFoodLogSelection.entries(
+            todayEntries,
+            inMeal: meal,
+            mealType: \.mealType,
+            createdAt: \.createdAt
+        )
     }
 
     var body: some View {
@@ -355,12 +359,11 @@ struct TodayView: View {
     }
 
     private func copyYesterday() {
-        let orderedEntries = yesterdayEntries.sorted {
-            if $0.mealType.sortOrder != $1.mealType.sortOrder {
-                return $0.mealType.sortOrder < $1.mealType.sortOrder
-            }
-            return $0.createdAt < $1.createdAt
-        }
+        let orderedEntries = DayFoodLogSelection.copyOrdered(
+            yesterdayEntries,
+            mealType: \.mealType,
+            createdAt: \.createdAt
+        )
         DailyFoodLogCommands.copyLoggedEntries(
             orderedEntries,
             to: selectedDate,
