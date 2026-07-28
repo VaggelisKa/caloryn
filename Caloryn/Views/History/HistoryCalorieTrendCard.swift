@@ -13,36 +13,27 @@ struct HistoryCalorieTrendCard: View {
         self.drillDownAction = drillDownAction
     }
 
-    private var hasLoggedData: Bool {
-        projection.hasLoggedData
+    private var summary: HistoryCalorieTrendCardSummary {
+        HistoryCalorieTrendCardSummary(
+            range: projection.range,
+            dailyCalorieTarget: projection.dailyCalorieTarget,
+            totalDayCount: projection.totalDayCount,
+            loggedDayCount: projection.loggedDayCount,
+            onTrackLoggedDayCount: projection.onTrackLoggedDayCount,
+            hasLoggedData: projection.hasLoggedData,
+            averageCaloriesPerLoggedDay: projection.averageCaloriesPerLoggedDay,
+            averageTargetPerLoggedDay: projection.averageTargetPerLoggedDay,
+            totalCalories: projection.totalCalories,
+            loggedDayTargetTotal: projection.loggedDayTargetTotal
+        )
     }
 
-    private var totalCalories: Double {
-        projection.totalCalories
-    }
-
-    private var averageCalories: Double {
-        projection.averageCaloriesPerLoggedDay
-    }
-
-    private var yAxisUpperBound: Double {
-        projection.yAxisUpperBound
-    }
-
-    private var barWidth: MarkDimension {
-        .fixed(projection.range == .week ? 10 : 6)
-    }
-
-    private var chartHeight: CGFloat {
-        projection.range == .week ? 160 : 180
-    }
-
-    private var xAxisDomain: ClosedRange<Double> {
-        guard let firstIndex = projection.points.first?.index,
-              let lastIndex = projection.points.last?.index else {
-            return 0 ... 1
-        }
-        return (firstIndex - 0.5) ... (lastIndex + 0.5)
+    private var layout: HistoryCalorieTrendChartLayout {
+        HistoryCalorieTrendChartLayout(
+            range: projection.range,
+            surface: .card,
+            pointCount: projection.points.count
+        )
     }
 
     var body: some View {
@@ -52,7 +43,7 @@ struct HistoryCalorieTrendCard: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("View calorie trend details")
-            .accessibilityValue(accessibilityLabel)
+            .accessibilityValue(summary.chartAccessibilityLabel)
             .accessibilityIdentifier("history.calorieTrend.card")
         } else {
             content
@@ -76,7 +67,9 @@ struct HistoryCalorieTrendCard: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        let summary = summary
+
+        return VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .center, spacing: 8) {
                 Text("Calorie Trend")
                     .font(CalorynTheme.sectionEyebrow)
@@ -93,22 +86,22 @@ struct HistoryCalorieTrendCard: View {
                 }
             }
 
-            if hasLoggedData {
+            if summary.showsStatColumns {
                 HStack(alignment: .top, spacing: 0) {
                     statColumn(
-                        value: Int(averageCalories.rounded()).formatted(),
+                        value: summary.averageValueText,
                         unit: "kcal/day avg",
-                        detail: averageDifferenceText,
-                        detailColor: averageDifferenceColor
+                        detail: projection.averageDifferenceText,
+                        detailColor: color(for: summary.averageDifferenceTone)
                     )
 
                     Spacer(minLength: 16)
 
                     statColumn(
-                        value: Int(totalCalories.rounded()).formatted(),
+                        value: summary.totalValueText,
                         unit: "kcal logged",
-                        detail: totalDifferenceText,
-                        detailColor: totalDifferenceColor
+                        detail: projection.totalDifferenceText,
+                        detailColor: color(for: summary.totalDifferenceTone)
                     )
                 }
             }
@@ -125,7 +118,7 @@ struct HistoryCalorieTrendCard: View {
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text(value)
                     .font(CalorynTheme.compactNumber)
-                    .foregroundStyle(hasLoggedData ? CalorynTheme.textPrimary : CalorynTheme.textSecondary)
+                    .foregroundStyle(CalorynTheme.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
 
@@ -146,13 +139,15 @@ struct HistoryCalorieTrendCard: View {
     }
 
     private var chart: some View {
-        Chart {
+        let layout = layout
+
+        return Chart {
             ForEach(projection.points) { chartPoint in
                 if chartPoint.isLogged {
                     BarMark(
                         x: .value("Period", chartPoint.index),
                         y: .value("Calories", chartPoint.value),
-                        width: barWidth
+                        width: .fixed(layout.barWidth)
                     )
                     .foregroundStyle(chartPoint.status.tint)
                     .cornerRadius(4)
@@ -178,7 +173,7 @@ struct HistoryCalorieTrendCard: View {
             AxisMarks(values: projection.points.map(\.index)) { value in
                 AxisValueLabel(centered: false) {
                     if let index = value.as(Double.self),
-                       let chartPoint = chartPoint(for: index) {
+                       let chartPoint = projection.point(for: index) {
                         Text(chartPoint.xAxisLabel)
                             .font(CalorynTheme.chartAxisLabel)
                             .foregroundStyle(.clear)
@@ -215,58 +210,21 @@ struct HistoryCalorieTrendCard: View {
                     .font(CalorynTheme.chartAxisLabel)
             }
         }
-        .chartYScale(domain: 0 ... yAxisUpperBound)
-        .chartXScale(domain: xAxisDomain)
-        .frame(height: chartHeight)
-        .accessibilityLabel(accessibilityLabel)
+        .chartYScale(domain: 0 ... projection.yAxisUpperBound)
+        .chartXScale(domain: layout.xAxisDomain)
+        .frame(height: layout.chartHeight)
+        .accessibilityLabel(summary.chartAccessibilityLabel)
     }
 
-    private func chartPoint(for index: Double) -> HistoryCalorieTrendPoint? {
-        projection.point(for: index)
-    }
-
-    private var averageDifferenceText: String {
-        projection.averageDifferenceText
-    }
-
-    private var averageDifferenceColor: Color {
-        guard hasLoggedData else { return CalorynTheme.textSecondary }
-        return color(
-            forDifference: Double(Int(averageCalories.rounded()) - projection.averageTargetPerLoggedDay),
-            target: Double(projection.averageTargetPerLoggedDay)
-        )
-    }
-
-    private var totalDifferenceText: String {
-        projection.totalDifferenceText
-    }
-
-    private var totalDifferenceColor: Color {
-        guard hasLoggedData else { return CalorynTheme.textSecondary }
-        let targetTotal = projection.loggedDayTargetTotal
-        return color(
-            forDifference: Double(Int(totalCalories.rounded()) - targetTotal),
-            target: Double(targetTotal)
-        )
-    }
-
-    private func color(forDifference difference: Double, target: Double) -> Color {
-        guard target > 0 else { return CalorynTheme.textSecondary }
-
-        return HistoryGoalStatus.calorieStatus(
-            calories: target + difference,
-            loggedCount: 1,
-            targetCalories: Int(target.rounded())
-        )
-        .tint
-    }
-
-    private var accessibilityLabel: String {
-        guard hasLoggedData else {
-            return "Calorie trend for \(projection.range.label). 0 of \(projection.totalDayCount) days logged. Target \(projection.dailyCalorieTarget) calories."
+    private func color(
+        for tone: HistoryCalorieTrendCardSummary.DifferenceTone
+    ) -> Color {
+        switch tone {
+        case .neutral:
+            CalorynTheme.textSecondary
+        case .status(let status):
+            status.tint
         }
-
-        return "Calorie trend for \(projection.range.label). \(projection.loggedDayCount) of \(projection.totalDayCount) days logged. Average \(Int(averageCalories.rounded())) calories per logged day. Target \(projection.dailyCalorieTarget) calories."
     }
 }
 
