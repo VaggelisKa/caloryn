@@ -6,32 +6,30 @@ struct HistoryWeeklyRollupCard: View {
 
     private struct ChartWeek: Identifiable {
         let index: Double
+        let label: String
         let week: HistoryWeekSummary
 
         var id: Date { week.id }
     }
 
+    private var layout: HistoryWeeklyConsistencyChart {
+        HistoryWeeklyConsistencyChart(weekCount: projection.weeks.count)
+    }
+
     private var chartWeeks: [ChartWeek] {
         projection.weeks.enumerated().map { offset, week in
-            ChartWeek(index: Double(offset), week: week)
+            ChartWeek(
+                index: Double(offset),
+                label: HistoryWeeklyConsistencyChart.label(forOffset: offset),
+                week: week
+            )
         }
-    }
-
-    private var xAxisDomain: ClosedRange<Double> {
-        guard let firstIndex = chartWeeks.first?.index,
-              let lastIndex = chartWeeks.last?.index else {
-            return 0 ... 1
-        }
-
-        return (firstIndex - 0.5) ... (lastIndex + 0.5)
-    }
-
-    private var barWidth: MarkDimension {
-        .fixed(chartWeeks.count > 10 ? 12 : 16)
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        let layout = layout
+
+        return VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Weekly Consistency")
                     .font(CalorynTheme.sectionEyebrow)
@@ -50,7 +48,7 @@ struct HistoryWeeklyRollupCard: View {
                     BarMark(
                         x: .value("Week", chartWeek.index),
                         y: .value("On Track", chartWeek.week.onTrackRatio * 100),
-                        width: barWidth
+                        width: .fixed(layout.barWidth)
                     )
                     .foregroundStyle(chartWeek.week.consistencyTint)
                     .cornerRadius(4)
@@ -68,12 +66,12 @@ struct HistoryWeeklyRollupCard: View {
                 }
             }
             .chartXAxis {
-                AxisMarks(values: chartWeeks.map(\.index)) { value in
+                AxisMarks(values: layout.indices) { value in
                     AxisValueLabel(centered: false) {
                         if let index = value.as(Double.self),
-                           let chartWeek = chartWeek(for: index) {
-                            Text(weekLabel(for: chartWeek))
-                                .font(CalorynTheme.weeklyChartXAxisLabel(isDense: chartWeeks.count > 10))
+                           let label = layout.label(forChartValue: index) {
+                            Text(label)
+                                .font(CalorynTheme.weeklyChartXAxisLabel(isDense: layout.isDense))
                                 .foregroundStyle(.clear)
                                 .accessibilityHidden(true)
                         }
@@ -87,8 +85,8 @@ struct HistoryWeeklyRollupCard: View {
 
                         ForEach(chartWeeks) { chartWeek in
                             if let xPosition = proxy.position(forX: chartWeek.index) {
-                                Text(weekLabel(for: chartWeek))
-                                    .font(CalorynTheme.weeklyChartXAxisLabel(isDense: chartWeeks.count > 10))
+                                Text(chartWeek.label)
+                                    .font(CalorynTheme.weeklyChartXAxisLabel(isDense: layout.isDense))
                                     .foregroundStyle(CalorynTheme.textSecondary)
                                     .position(
                                         x: plotRect.minX + xPosition,
@@ -102,24 +100,15 @@ struct HistoryWeeklyRollupCard: View {
                 .accessibilityHidden(true)
             }
             .chartYScale(domain: 0 ... 100)
-            .chartXScale(domain: xAxisDomain)
+            .chartXScale(domain: layout.xAxisDomain)
             .frame(height: 170)
-            .accessibilityLabel(accessibilityLabel)
+            .accessibilityLabel(
+                HistoryWeeklyConsistencyChart.accessibilityLabel(
+                    loggedDayCount: projection.loggedDayCount,
+                    totalDayCount: projection.totalDayCount
+                )
+            )
         }
         .historyCard()
-    }
-
-    private var accessibilityLabel: String {
-        "Weekly consistency of on-track days. \(projection.loggedDayCount) of \(projection.totalDayCount) days logged."
-    }
-
-    private func weekLabel(for chartWeek: ChartWeek) -> String {
-        "W\(Int(chartWeek.index) + 1)"
-    }
-
-    private func chartWeek(for index: Double) -> ChartWeek? {
-        let roundedIndex = Int(index.rounded())
-        guard chartWeeks.indices.contains(roundedIndex) else { return nil }
-        return chartWeeks[roundedIndex]
     }
 }

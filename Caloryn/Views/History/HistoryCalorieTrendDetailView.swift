@@ -46,8 +46,25 @@ struct HistoryCalorieTrendDetailView: View {
 private struct HistoryCalorieTrendRangeSummaryCard: View {
     let projection: HistoryCalorieTrendProjection
 
+    private var summary: HistoryCalorieTrendCardSummary {
+        HistoryCalorieTrendCardSummary(
+            range: projection.range,
+            dailyCalorieTarget: projection.dailyCalorieTarget,
+            totalDayCount: projection.totalDayCount,
+            loggedDayCount: projection.loggedDayCount,
+            onTrackLoggedDayCount: projection.onTrackLoggedDayCount,
+            hasLoggedData: projection.hasLoggedData,
+            averageCaloriesPerLoggedDay: projection.averageCaloriesPerLoggedDay,
+            averageTargetPerLoggedDay: projection.averageTargetPerLoggedDay,
+            totalCalories: projection.totalCalories,
+            loggedDayTargetTotal: projection.loggedDayTargetTotal
+        )
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        let summary = summary
+
+        return VStack(alignment: .leading, spacing: 14) {
             Text("Range Summary")
                 .font(CalorynTheme.sectionEyebrow)
                 .foregroundStyle(CalorynTheme.textSecondary)
@@ -55,7 +72,7 @@ private struct HistoryCalorieTrendRangeSummaryCard: View {
 
             HStack(alignment: .top, spacing: 12) {
                 metric(
-                    value: "\(projection.onTrackLoggedDayCount)/\(projection.loggedDayCount)",
+                    value: summary.onTrackRatioText,
                     label: "logged days on track"
                 )
 
@@ -64,7 +81,7 @@ private struct HistoryCalorieTrendRangeSummaryCard: View {
                     .frame(height: 42)
 
                 metric(
-                    value: Int(projection.averageCaloriesPerLoggedDay.rounded()).formatted(),
+                    value: summary.averageValueText,
                     label: "kcal/day avg"
                 )
             }
@@ -125,24 +142,18 @@ private struct HistoryCalorieTrendInteractiveChart: View {
 
     @Binding var selectedPointID: String?
 
-    private var yAxisUpperBound: Double {
-        projection.yAxisUpperBound
-    }
-
-    private var barWidth: MarkDimension {
-        .fixed(projection.range == .week ? 14 : 10)
-    }
-
-    private var xAxisDomain: ClosedRange<Double> {
-        guard let firstIndex = projection.points.first?.index,
-              let lastIndex = projection.points.last?.index else {
-            return 0 ... 1
-        }
-        return (firstIndex - 0.5) ... (lastIndex + 0.5)
+    private var layout: HistoryCalorieTrendChartLayout {
+        HistoryCalorieTrendChartLayout(
+            range: projection.range,
+            surface: .detail,
+            pointCount: projection.points.count
+        )
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        let layout = layout
+
+        return VStack(alignment: .leading, spacing: 14) {
             Text("Calories")
                 .font(CalorynTheme.sectionEyebrow)
                 .foregroundStyle(CalorynTheme.textSecondary)
@@ -154,14 +165,14 @@ private struct HistoryCalorieTrendInteractiveChart: View {
                         BarMark(
                             x: .value("Period", point.index),
                             y: .value("Calories", point.value),
-                            width: barWidth
+                            width: .fixed(layout.barWidth)
                         )
-                        .foregroundStyle(pointColor(point))
+                        .foregroundStyle(barColor(point))
                         .cornerRadius(4)
                         .accessibilityLabel(point.accessibilityLabel)
                         .accessibilityValue(point.accessibilityValue)
 
-                        if selectedPointID == point.id {
+                        if emphasis(point) == .selected {
                             PointMark(
                                 x: .value("Period", point.index),
                                 y: .value("Calories", point.value)
@@ -194,7 +205,7 @@ private struct HistoryCalorieTrendInteractiveChart: View {
                 AxisMarks(values: projection.points.map(\.index)) { value in
                     AxisValueLabel(centered: false) {
                         if let index = value.as(Double.self),
-                           let point = chartPoint(for: index) {
+                           let point = projection.point(for: index) {
                             Text(point.xAxisLabel)
                                 .font(CalorynTheme.chartAxisLabel)
                                 .foregroundStyle(.clear)
@@ -245,7 +256,7 @@ private struct HistoryCalorieTrendInteractiveChart: View {
                                     }
                                     .buttonStyle(.plain)
                                     .frame(
-                                        width: chartHitTargetWidth(in: plotRect),
+                                        width: layout.hitTargetWidth(plotWidth: plotRect.width),
                                         height: plotRect.height + 26
                                     )
                                     .position(
@@ -267,28 +278,36 @@ private struct HistoryCalorieTrendInteractiveChart: View {
                         .font(CalorynTheme.chartAxisLabel)
                 }
             }
-            .chartYScale(domain: 0 ... yAxisUpperBound)
-            .chartXScale(domain: xAxisDomain)
-            .frame(height: projection.range == .week ? 220 : 240)
-            .accessibilityLabel(accessibilityLabel)
+            .chartYScale(domain: 0 ... projection.yAxisUpperBound)
+            .chartXScale(domain: layout.xAxisDomain)
+            .frame(height: layout.chartHeight)
+            .accessibilityLabel(
+                HistoryCalorieTrendCardSummary.detailChartAccessibilityLabel(
+                    range: projection.range,
+                    loggedDayCount: projection.loggedDayCount,
+                    totalDayCount: projection.totalDayCount
+                )
+            )
         }
         .historyCard()
     }
 
-    private func pointColor(_ point: HistoryCalorieTrendPoint) -> Color {
-        if let selectedPointID, selectedPointID != point.id {
-            return point.status.tint.opacity(0.48)
+    private func emphasis(
+        _ point: HistoryCalorieTrendPoint
+    ) -> HistoryCalorieTrendChartLayout.BarEmphasis {
+        HistoryCalorieTrendChartLayout.barEmphasis(
+            pointID: point.id,
+            selectedPointID: selectedPointID
+        )
+    }
+
+    private func barColor(_ point: HistoryCalorieTrendPoint) -> Color {
+        switch emphasis(point) {
+        case .normal, .selected:
+            point.status.tint
+        case .muted:
+            point.status.tint.opacity(0.48)
         }
-        return point.status.tint
-    }
-
-    private func chartPoint(for index: Double) -> HistoryCalorieTrendPoint? {
-        projection.point(for: index)
-    }
-
-    private func chartHitTargetWidth(in plotRect: CGRect) -> CGFloat {
-        let count = max(projection.points.count, 1)
-        return max(plotRect.width / CGFloat(count), 18)
     }
 
     private func selectPoint(
@@ -296,17 +315,16 @@ private struct HistoryCalorieTrendInteractiveChart: View {
         plotRect: CGRect,
         proxy: ChartProxy
     ) {
-        guard plotRect.contains(location) else { return }
+        let layout = layout
+        guard let localX = layout.axis.plotLocalX(for: location, in: plotRect),
+              let slot = layout.selectedSlot(
+                chartValue: proxy.value(atX: localX, as: Double.self)
+              ),
+              projection.points.indices.contains(slot) else {
+            return
+        }
 
-        let localX = location.x - plotRect.minX
-        guard let index = proxy.value(atX: localX, as: Double.self),
-              let point = chartPoint(for: index) else { return }
-
-        selectedPointID = point.id
-    }
-
-    private var accessibilityLabel: String {
-        "Detailed calorie trend for \(projection.range.label). \(projection.loggedDayCount) of \(projection.totalDayCount) days logged."
+        selectedPointID = projection.points[slot].id
     }
 }
 
@@ -320,8 +338,7 @@ private struct HistoryCalorieTrendSelectedAnalysis: View {
             let detail = day.makeDetail()
             HistoryCalorieTrendSelectedDayCard(
                 projection: projection,
-                detail: detail,
-                topFoods: detail.topFoods
+                detail: detail
             )
         case .week(let week):
             HistoryCalorieTrendSelectedWeekCard(
@@ -337,41 +354,39 @@ private struct HistoryCalorieTrendSelectedAnalysis: View {
 private struct HistoryCalorieTrendSelectedDayCard: View {
     let projection: HistoryCalorieTrendProjection
     let detail: HistoryDayDetail
-    let topFoods: [HistoryFoodSummary]
 
-    private var visibleFoods: [HistoryFoodSummary] {
-        Array(topFoods.prefix(3))
-    }
-
-    private var mealRows: [HistoryCalorieTrendMealRow] {
-        MealType.allCases.map { mealType in
-            let meal = detail.mealSummaries.first { $0.mealType == mealType }
-            return HistoryCalorieTrendMealRow(
-                id: mealType.id,
-                title: mealType == .snack ? "Snacks" : mealType.displayName,
-                iconName: mealType.iconName,
-                calories: meal?.calories ?? 0
-            )
-        }
+    private var breakdown: HistoryCalorieTrendDayBreakdown {
+        HistoryCalorieTrendDayBreakdown(
+            isLogged: detail.isLogged,
+            calorieDifference: detail.calorieDifference,
+            dailyCalorieTarget: detail.dailyCalorieTarget,
+            mealCalories: Dictionary(
+                detail.mealSummaries.map { ($0.mealType, $0.calories) },
+                uniquingKeysWith: { $1 }
+            ),
+            foods: detail.topFoods
+        )
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        let breakdown = breakdown
+
+        return VStack(alignment: .leading, spacing: 14) {
             header
 
-            if detail.isLogged {
+            if breakdown.isLogged {
                 metricStack
                 Divider()
                     .foregroundStyle(CalorynTheme.stone.opacity(0.3))
-                mealSplit
+                mealSplit(breakdown)
 
-                if !visibleFoods.isEmpty {
+                if breakdown.showsFoodSection {
                     Divider()
                         .foregroundStyle(CalorynTheme.stone.opacity(0.3))
-                    foodDrivers
+                    foodDrivers(breakdown)
                 }
             } else {
-                unloggedState
+                unloggedState(breakdown)
             }
         }
         .historyCard()
@@ -420,7 +435,7 @@ private struct HistoryCalorieTrendSelectedDayCard: View {
         }
     }
 
-    private var mealSplit: some View {
+    private func mealSplit(_ breakdown: HistoryCalorieTrendDayBreakdown) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Meal Split")
                 .font(CalorynTheme.sectionEyebrow)
@@ -428,11 +443,11 @@ private struct HistoryCalorieTrendSelectedDayCard: View {
                 .textCase(.uppercase)
 
             VStack(spacing: 8) {
-                ForEach(mealRows) { row in
+                ForEach(breakdown.mealRows) { row in
                     HStack(alignment: .center, spacing: 10) {
                         Image(systemName: row.iconName)
                             .font(CalorynTheme.compactIcon)
-                            .foregroundStyle(row.calories > 0 ? CalorynTheme.sage : CalorynTheme.textSecondary)
+                            .foregroundStyle(row.hasCalories ? CalorynTheme.sage : CalorynTheme.textSecondary)
                             .frame(width: 20)
                             .accessibilityHidden(true)
 
@@ -442,9 +457,9 @@ private struct HistoryCalorieTrendSelectedDayCard: View {
 
                         Spacer()
 
-                        Text(row.calories > 0 ? Int(row.calories.rounded()).kcalFormatted : "none")
+                        Text(row.caloriesText)
                             .font(CalorynTheme.numericCaption)
-                            .foregroundStyle(row.calories > 0 ? CalorynTheme.textPrimary : CalorynTheme.textSecondary)
+                            .foregroundStyle(row.hasCalories ? CalorynTheme.textPrimary : CalorynTheme.textSecondary)
                     }
                     .accessibilityElement(children: .combine)
                 }
@@ -452,20 +467,20 @@ private struct HistoryCalorieTrendSelectedDayCard: View {
         }
     }
 
-    private var foodDrivers: some View {
+    private func foodDrivers(_ breakdown: HistoryCalorieTrendDayBreakdown) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(detail.calorieDifference > 0 ? "Top Contributors" : "Foods Logged")
+            Text(breakdown.foodSectionTitle)
                 .font(CalorynTheme.sectionEyebrow)
                 .foregroundStyle(CalorynTheme.textSecondary)
                 .textCase(.uppercase)
 
             VStack(spacing: 8) {
-                ForEach(visibleFoods) { food in
+                ForEach(breakdown.visibleFoods) { food in
                     foodRow(food)
                 }
 
-                if topFoods.count > visibleFoods.count {
-                    Text("+ \(topFoods.count - visibleFoods.count) more")
+                if let overflowText = breakdown.overflowText {
+                    Text(overflowText)
                         .font(CalorynTheme.caption)
                         .foregroundStyle(CalorynTheme.textSecondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -474,7 +489,7 @@ private struct HistoryCalorieTrendSelectedDayCard: View {
         }
     }
 
-    private var unloggedState: some View {
+    private func unloggedState(_ breakdown: HistoryCalorieTrendDayBreakdown) -> some View {
         HStack(alignment: .center, spacing: 12) {
             Image(systemName: "calendar")
                 .font(CalorynTheme.inlineIcon)
@@ -482,7 +497,7 @@ private struct HistoryCalorieTrendSelectedDayCard: View {
                 .frame(width: 28)
                 .accessibilityHidden(true)
 
-            Text("No food logged. Target was \(detail.dailyCalorieTarget.formatted()) kcal.")
+            Text(breakdown.unloggedText)
                 .font(CalorynTheme.caption)
                 .foregroundStyle(CalorynTheme.textSecondary)
         }
@@ -507,7 +522,7 @@ private struct HistoryCalorieTrendSelectedDayCard: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
 
-                Text("\(food.entryCount) \(food.entryCount == 1 ? "entry" : "entries")")
+                Text(HistoryCalorieTrendDayBreakdown.entryCountText(food.entryCount))
                     .font(CalorynTheme.microCaption)
                     .foregroundStyle(CalorynTheme.textSecondary)
             }
@@ -528,21 +543,29 @@ private struct HistoryCalorieTrendSelectedWeekCard: View {
     let point: HistoryCalorieTrendPoint
     let topFoods: [HistoryFoodSummary]
 
-    private var biggestDay: HistoryDaySummary? {
-        week.days.filter(\.isLogged).max {
-            abs($0.calorieDifference) < abs($1.calorieDifference)
-        }
-    }
-
-    private var visibleFoods: [HistoryFoodSummary] {
-        Array(topFoods.prefix(3))
+    private var breakdown: HistoryCalorieTrendWeekBreakdown {
+        HistoryCalorieTrendWeekBreakdown(
+            weekStartText: week.startDate.dayMonthFormatted,
+            loggedDays: week.loggedDays,
+            totalDays: week.totalDays,
+            onTrackDays: week.onTrackDays,
+            loggedDaySwings: week.days.filter(\.isLogged).map {
+                HistoryCalorieTrendWeekBreakdown.DaySwing(
+                    dateText: $0.date.shortFormatted,
+                    calorieDifference: $0.calorieDifference
+                )
+            },
+            foods: topFoods
+        )
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            header
+        let breakdown = breakdown
 
-            if week.loggedDays > 0 {
+        return VStack(alignment: .leading, spacing: 14) {
+            header(breakdown)
+
+            if breakdown.hasLoggedDays {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(projection.targetDeltaText(point.targetDelta, unit: "kcal/day"))
                         .font(CalorynTheme.numericBody)
@@ -563,7 +586,7 @@ private struct HistoryCalorieTrendSelectedWeekCard: View {
 
                 HStack(alignment: .top, spacing: 12) {
                     compactMetric(
-                        value: "\(week.onTrackDays)/\(week.loggedDays)",
+                        value: breakdown.onTrackRatioText,
                         label: "logged days on track",
                         color: week.consistencyTint
                     )
@@ -573,21 +596,21 @@ private struct HistoryCalorieTrendSelectedWeekCard: View {
                         .frame(height: 38)
 
                     compactMetric(
-                        value: "\(week.loggedDays)/\(week.totalDays)",
+                        value: breakdown.coverageRatioText,
                         label: "days logged"
                     )
                 }
 
-                if let biggestDay {
+                if let biggestSwingText = breakdown.biggestSwingText {
                     Divider()
                         .foregroundStyle(CalorynTheme.stone.opacity(0.3))
 
-                    Text("Biggest swing: \(biggestDay.date.shortFormatted), \(HistoryCalorieTrendProjection.deltaText(biggestDay.calorieDifference, unit: "kcal"))")
+                    Text(biggestSwingText)
                         .font(CalorynTheme.caption)
                         .foregroundStyle(CalorynTheme.textSecondary)
                 }
 
-                if !visibleFoods.isEmpty {
+                if breakdown.showsFoodSection {
                     Divider()
                         .foregroundStyle(CalorynTheme.stone.opacity(0.3))
 
@@ -597,13 +620,13 @@ private struct HistoryCalorieTrendSelectedWeekCard: View {
                             .foregroundStyle(CalorynTheme.textSecondary)
                             .textCase(.uppercase)
 
-                        ForEach(visibleFoods) { food in
+                        ForEach(breakdown.visibleFoods) { food in
                             foodRow(food)
                         }
                     }
                 }
             } else {
-                Text("No food logged in this week.")
+                Text(breakdown.emptyText)
                     .font(CalorynTheme.caption)
                     .foregroundStyle(CalorynTheme.textSecondary)
             }
@@ -612,9 +635,9 @@ private struct HistoryCalorieTrendSelectedWeekCard: View {
         .accessibilityElement(children: .contain)
     }
 
-    private var header: some View {
+    private func header(_ breakdown: HistoryCalorieTrendWeekBreakdown) -> some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text("Week of \(week.startDate.dayMonthFormatted)")
+            Text(breakdown.headerText)
                 .font(CalorynTheme.itemTitle)
                 .foregroundStyle(CalorynTheme.textPrimary)
 
@@ -660,13 +683,6 @@ private struct HistoryCalorieTrendSelectedWeekCard: View {
         }
         .accessibilityElement(children: .combine)
     }
-}
-
-private struct HistoryCalorieTrendMealRow: Identifiable {
-    let id: String
-    let title: String
-    let iconName: String
-    let calories: Double
 }
 
 #if DEBUG

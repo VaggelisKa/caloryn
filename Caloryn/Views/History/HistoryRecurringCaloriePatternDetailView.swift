@@ -65,84 +65,46 @@ private struct HistoryPatternGroupCountsCard: View {
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-    private var mealName: String {
-        pattern.mealType == .snack ? "Snack" : pattern.mealType.displayName
-    }
-
-    private var mealDifference: String {
-        let roundedDifference = Int(abs(pattern.mealDifferenceCalories).rounded()).formatted()
-        let sign = pattern.mealDifferenceCalories >= 0 ? "+" : "−"
-        return "\(sign)\(roundedDifference) kcal"
-    }
-
-    private var supportingTitle: String {
-        switch pattern.kind {
-        case .weekdayMeal:
-            "Logged \(pattern.weekdayName)s"
-        case .mealOnly:
-            "\(pattern.outcome.targetText.capitalized) days"
-        }
-    }
-
-    private var supportingValue: String {
-        switch pattern.kind {
-        case .weekdayMeal:
-            "\(pattern.supportingDays.count) of \(pattern.cohortDayCount)"
-        case .mealOnly:
-            "\(pattern.supportingDays.count)"
-        }
-    }
-
-    private var supportingDetail: String {
-        switch pattern.kind {
-        case .weekdayMeal:
-            pattern.outcome.targetText
-        case .mealOnly:
-            "supporting logged days"
-        }
-    }
-
-    private var comparisonValue: String {
-        switch pattern.kind {
-        case .weekdayMeal:
-            "\(pattern.outcomeComparisonCount) of \(pattern.outcomeComparisonDayCount)"
-        case .mealOnly:
-            "\(pattern.mealComparisonDayCount)"
-        }
-    }
-
-    private var comparisonDetail: String {
-        switch pattern.kind {
-        case .weekdayMeal:
-            pattern.outcome.targetText
-        case .mealOnly:
-            "comparison logged days"
-        }
+    private var summary: HistoryRecurringCaloriePatternDetailSummary {
+        HistoryRecurringCaloriePatternDetailSummary(
+            kind: pattern.kind,
+            outcomeTargetText: pattern.outcome.targetText,
+            weekdayName: pattern.weekdayName,
+            mealType: pattern.mealType,
+            supportingDayCount: pattern.supportingDays.count,
+            cohortDayCount: pattern.cohortDayCount,
+            outcomeComparisonCount: pattern.outcomeComparisonCount,
+            outcomeComparisonDayCount: pattern.outcomeComparisonDayCount,
+            mealComparisonDayCount: pattern.mealComparisonDayCount,
+            mealDifferenceCalories: pattern.mealDifferenceCalories
+        )
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        let summary = summary
+
+        return VStack(alignment: .leading, spacing: 16) {
             Text("Outcome Frequency")
                 .font(CalorynTheme.sectionEyebrow)
                 .foregroundStyle(CalorynTheme.textSecondary)
                 .textCase(.uppercase)
 
-            frequencyComparison
+            frequencyComparison(summary)
 
             Divider()
                 .foregroundStyle(CalorynTheme.cardSeparator)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("\(mealName) Comparison")
+                Text(summary.mealComparisonTitle)
                     .font(CalorynTheme.sectionEyebrow)
                     .foregroundStyle(CalorynTheme.textSecondary)
                     .textCase(.uppercase)
 
-                Text(mealDifference)
+                Text(summary.mealDifferenceText)
                     .font(CalorynTheme.compactNumber)
                     .foregroundStyle(CalorynTheme.textPrimary)
 
-                Text("Average difference versus other eligible logged days")
+                Text(summary.mealDifferenceCaption)
                     .font(CalorynTheme.caption)
                     .foregroundStyle(CalorynTheme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -155,30 +117,34 @@ private struct HistoryPatternGroupCountsCard: View {
     }
 
     @ViewBuilder
-    private var frequencyComparison: some View {
+    private func frequencyComparison(
+        _ summary: HistoryRecurringCaloriePatternDetailSummary
+    ) -> some View {
         if dynamicTypeSize.isAccessibilitySize {
             VStack(alignment: .leading, spacing: 12) {
-                frequencyStats
+                frequencyStats(summary)
             }
         } else {
             HStack(alignment: .top, spacing: 16) {
-                frequencyStats
+                frequencyStats(summary)
             }
         }
     }
 
     @ViewBuilder
-    private var frequencyStats: some View {
+    private func frequencyStats(
+        _ summary: HistoryRecurringCaloriePatternDetailSummary
+    ) -> some View {
         HistoryPatternFrequencyStat(
-            title: supportingTitle,
-            value: supportingValue,
-            detail: supportingDetail
+            title: summary.supportingTitle,
+            value: summary.supportingValue,
+            detail: summary.supportingDetail
         )
 
         HistoryPatternFrequencyStat(
-            title: "Other logged days",
-            value: comparisonValue,
-            detail: comparisonDetail
+            title: summary.comparisonTitle,
+            value: summary.comparisonValue,
+            detail: summary.comparisonDetail
         )
     }
 }
@@ -214,21 +180,30 @@ private struct HistoryPatternSupportingDayCard: View {
     let isExpanded: Bool
     let action: () -> Void
 
-    private var mealName: String {
-        mealType == .snack ? "Snacks" : mealType.displayName
+    private var row: HistoryRecurringCaloriePatternDayRow {
+        HistoryRecurringCaloriePatternDayRow(
+            dateText: day.date.shortFormatted,
+            totalCalories: day.totalCalories,
+            dailyCalorieTarget: day.dailyCalorieTarget,
+            mealCalories: day.mealCalories,
+            mealType: mealType,
+            isExpanded: isExpanded
+        )
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        let row = row
+
+        return VStack(alignment: .leading, spacing: 12) {
             Button(action: action) {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack(alignment: .firstTextBaseline, spacing: 10) {
                         VStack(alignment: .leading, spacing: 3) {
-                            Text(day.date.shortFormatted)
+                            Text(row.dateText)
                                 .font(CalorynTheme.itemTitle)
                                 .foregroundStyle(CalorynTheme.textPrimary)
 
-                            Text("\(Int(day.totalCalories.rounded()).formatted()) kcal logged · \(day.dailyCalorieTarget.formatted()) kcal target")
+                            Text(row.totalsText)
                                 .font(CalorynTheme.caption)
                                 .foregroundStyle(CalorynTheme.textSecondary)
                         }
@@ -252,13 +227,13 @@ private struct HistoryPatternSupportingDayCard: View {
                             .frame(width: 20)
                             .accessibilityHidden(true)
 
-                        Text(mealName)
+                        Text(row.mealName)
                             .font(CalorynTheme.caption)
                             .foregroundStyle(CalorynTheme.textPrimary)
 
                         Spacer()
 
-                        Text(Int(day.mealCalories.rounded()).kcalFormatted)
+                        Text(row.mealCaloriesText)
                             .font(CalorynTheme.numericCaption)
                             .foregroundStyle(CalorynTheme.textPrimary)
                     }
@@ -268,21 +243,19 @@ private struct HistoryPatternSupportingDayCard: View {
             }
             .buttonStyle(.plain)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel(
-                "\(day.date.shortFormatted), \(Int(day.totalCalories.rounded()).formatted()) kcal logged, \(day.dailyCalorieTarget.formatted()) kcal target, \(mealName), \(Int(day.mealCalories.rounded()).kcalFormatted)"
-            )
-            .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
-            .accessibilityHint(isExpanded ? "Collapses contributing foods" : "Expands contributing foods")
+            .accessibilityLabel(row.accessibilityLabel)
+            .accessibilityValue(row.accessibilityValue)
+            .accessibilityHint(row.accessibilityHint)
             .accessibilityIdentifier("history.recurringPattern.supportingDay")
 
             if isExpanded {
                 VStack(alignment: .leading, spacing: 7) {
-                    Text("Foods logged in \(mealName.lowercased())")
+                    Text(row.expandedSectionTitle)
                         .font(CalorynTheme.microCaptionEmphasized)
                         .foregroundStyle(CalorynTheme.textSecondary)
 
                     if day.mealFoods.isEmpty {
-                        Text("No \(mealName.lowercased()) calories were logged.")
+                        Text(row.expandedEmptyText)
                             .font(CalorynTheme.microCaption)
                             .foregroundStyle(CalorynTheme.textSecondary)
                             .fixedSize(horizontal: false, vertical: true)
