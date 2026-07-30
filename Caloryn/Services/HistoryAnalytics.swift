@@ -96,6 +96,11 @@ struct HistoryAnalytics {
     static let onTrackTolerance = 0.05
 
     let range: HistoryRange
+    /// The calendar every date in this analytics run was derived against.
+    /// Projections built on top of it must reuse it rather than reading the
+    /// ambient one, or a day can be labelled from a different time zone than
+    /// it was bucketed in.
+    let calendar: Calendar
     let current: HistoryPeriodSummary
     let previous: HistoryPeriodSummary
     let goalComparison: HistoryGoalComparison
@@ -110,6 +115,7 @@ struct HistoryAnalytics {
         targetResolver: HistoryDayTargetResolver? = nil
     ) {
         self.range = range
+        self.calendar = calendar
         // Without snapshots every day falls back to the current profile target,
         // which matches the pre-snapshot behavior of History.
         let resolver = targetResolver ?? HistoryDayTargetResolver(
@@ -251,7 +257,7 @@ struct HistoryPeriodSummary {
         self.dailyCalorieTarget = days.isEmpty
             ? CalorieDomain.clamped(targetResolver.fallbackTarget)
             : (Double(days.reduce(0) { $0 + $1.dailyCalorieTarget }) / Double(days.count)).roundedCalories
-        self.weeklyRollups = Self.weeklyRollups(from: days)
+        self.weeklyRollups = Self.weeklyRollups(from: days, calendar: calendar)
     }
 
     func count(for status: HistoryGoalStatus) -> Int {
@@ -298,9 +304,12 @@ struct HistoryPeriodSummary {
         }
     }
 
-    private static func weeklyRollups(from days: [HistoryDaySummary]) -> [HistoryWeekSummary] {
+    private static func weeklyRollups(
+        from days: [HistoryDaySummary],
+        calendar: Calendar
+    ) -> [HistoryWeekSummary] {
         let groupedDays = Dictionary(grouping: days) { day in
-            day.date.startOfWeek
+            day.date.startOfWeek(in: calendar)
         }
 
         return groupedDays.keys.sorted().map { startDate in

@@ -8,7 +8,8 @@ struct HistoryPatternDiscovery {
     init(analytics: HistoryAnalytics) {
         calorieTrend = HistoryCalorieTrendProjection(
             range: analytics.range,
-            summary: analytics.current
+            summary: analytics.current,
+            calendar: analytics.calendar
         )
         macroPatterns = HistoryMacroPatternsProjection(patterns: analytics.macroPatterns)
         weeklyConsistency = HistoryWeeklyConsistencyProjection(summary: analytics.current)
@@ -74,7 +75,7 @@ struct HistoryCalorieTrendProjection {
     let biggestInconsistencyText: String?
     let points: [HistoryCalorieTrendPoint]
 
-    init(range: HistoryRange, summary: HistoryPeriodSummary) {
+    init(range: HistoryRange, summary: HistoryPeriodSummary, calendar: Calendar = .current) {
         self.range = range
         dailyCalorieTarget = summary.dailyCalorieTarget
         totalDayCount = summary.totalDayCount
@@ -89,7 +90,8 @@ struct HistoryCalorieTrendProjection {
             .reduce(0) { $0 + $1.calories }
         biggestInconsistencyText = Self.biggestInconsistencyText(
             range: range,
-            summary: summary
+            summary: summary,
+            calendar: calendar
         )
 
         switch range {
@@ -111,7 +113,7 @@ struct HistoryCalorieTrendProjection {
                     status: status,
                     isLogged: week.loggedDays > 0,
                     xAxisLabel: label,
-                    accessibilityLabel: "\(label), week of \(week.startDate.dayMonthFormatted)",
+                    accessibilityLabel: "\(label), week of \(week.startDate.dayMonthFormatted(in: calendar))",
                     accessibilityValue: week.loggedDays == 0
                         ? "No calories logged"
                         : "\(averageCalories.rounded().truncatedSafely) average calories per logged day, \(status.label)",
@@ -127,8 +129,8 @@ struct HistoryCalorieTrendProjection {
                     targetDelta: day.calorieDifference,
                     status: day.status,
                     isLogged: day.isLogged,
-                    xAxisLabel: Self.weekdayInitial(for: day.date),
-                    accessibilityLabel: day.date.shortFormatted,
+                    xAxisLabel: day.date.weekdayInitial(in: calendar),
+                    accessibilityLabel: day.date.shortFormatted(in: calendar),
                     accessibilityValue: day.isLogged
                         ? "\(day.calories.rounded().truncatedSafely) calories, \(day.status.label)"
                         : "No calories logged",
@@ -235,7 +237,8 @@ struct HistoryCalorieTrendProjection {
 
     private static func biggestInconsistencyText(
         range: HistoryRange,
-        summary: HistoryPeriodSummary
+        summary: HistoryPeriodSummary,
+        calendar: Calendar
     ) -> String? {
         switch range {
         case .quarter:
@@ -253,7 +256,7 @@ struct HistoryCalorieTrendProjection {
                 return "Most stable: logged weeks stayed near target"
             }
 
-            return "Biggest swing: week of \(week.startDate.dayMonthFormatted), \(deltaText(weeklyDelta(week, target: week.targetPerLoggedDay), unit: "kcal/day"))"
+            return "Biggest swing: week of \(week.startDate.dayMonthFormatted(in: calendar)), \(deltaText(weeklyDelta(week, target: week.targetPerLoggedDay), unit: "kcal/day"))"
 
         case .week, .twoWeeks, .month:
             let loggedDays = summary.days.filter(\.isLogged)
@@ -267,7 +270,7 @@ struct HistoryCalorieTrendProjection {
                 return "Most stable: logged days stayed near target"
             }
 
-            return "Biggest swing: \(day.date.shortFormatted), \(deltaText(day.calorieDifference, unit: "kcal"))"
+            return "Biggest swing: \(day.date.shortFormatted(in: calendar)), \(deltaText(day.calorieDifference, unit: "kcal"))"
         }
     }
 
@@ -319,10 +322,6 @@ struct HistoryCalorieTrendProjection {
         }
     }
 
-    private static func weekdayInitial(for date: Date) -> String {
-        let weekday = Calendar.current.component(.weekday, from: date)
-        return ["S", "M", "T", "W", "T", "F", "S"][max(0, min(weekday - 1, 6))]
-    }
 }
 
 struct HistoryCalorieTrendPoint: Identifiable {

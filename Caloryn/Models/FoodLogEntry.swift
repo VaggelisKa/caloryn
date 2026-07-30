@@ -212,7 +212,7 @@ final class FoodLogEntry {
     ) {
         id = UUID()
         self.createdAt = createdAt
-        self.date = Calendar.current.startOfDay(for: date)
+        self.date = date.startOfDay
         self.mealType = mealType
         self.snackIndex = mealType == .snack ? snackIndex : 0
         self.foodItem = foodItem
@@ -239,7 +239,7 @@ final class FoodLogEntry {
     ) {
         let scaledSnapshot = FoodLogEntrySnapshot(entry: self)
             .scaled(toPortionGrams: portionGrams)
-        self.date = Calendar.current.startOfDay(for: date)
+        self.date = date.startOfDay
         self.mealType = mealType
         self.snackIndex = mealType == .snack ? snackIndex : 0
         self.portionGrams = scaledSnapshot.portionGrams
@@ -253,7 +253,7 @@ final class FoodLogEntry {
         portionGrams: Double,
         snackIndex: Int = 1
     ) {
-        self.date = Calendar.current.startOfDay(for: date)
+        self.date = date.startOfDay
         self.mealType = mealType
         self.snackIndex = mealType == .snack ? snackIndex : 0
         self.foodItem = foodItem
