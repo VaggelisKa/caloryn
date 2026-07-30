@@ -47,6 +47,8 @@ struct ActivityLevelStepView: View {
             .padding(.bottom, 16)
             .accessibilityIdentifier("onboarding.activityLevel.continue")
         }
+        .calorynPageCanvas()
+        .calorynDrillDownNavigation()
     }
 }
 

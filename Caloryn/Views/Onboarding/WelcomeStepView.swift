@@ -60,7 +60,7 @@ struct LogCardMock: View {
         HStack(spacing: 16) {
             Image(systemName: icon)
                 .font(CalorynTheme.inlineIcon)
-                .foregroundStyle(.white)
+                .foregroundStyle(CalorynTheme.warmWhite)
                 .frame(width: 44, height: 44)
                 .background(color)
                 .clipShape(Circle())
@@ -134,6 +134,13 @@ struct WelcomeStepView: View {
             .padding(.horizontal, CalorynTheme.pagePadding)
             .padding(.bottom, 40)
         }
+        // The root of the onboarding `NavigationStack`, and the first screen a
+        // new user ever sees. Without a canvas it rendered on the system window
+        // background — pure white in light mode, near-black in dark — while
+        // every screen reached afterwards is `pageBackground`.
+        .calorynPageCanvas()
+        // No back button to theme: this screen deliberately hides the bar, and
+        // it is the stack root, so `calorynDrillDownNavigation()` does not apply.
         .toolbarVisibility(.hidden, for: .navigationBar)
     }
 }
