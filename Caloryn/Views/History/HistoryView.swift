@@ -28,54 +28,25 @@ struct HistoryView: View {
     private var profile: UserProfile? { profiles.first }
 
     private func relevantEntries(for range: HistoryRange) -> [FoodLogEntry] {
-        relevantEntries(startingAt: analyticsStartDate(for: range))
+        relevantEntries(
+            startingAt: HistoryEntryWindow.analyticsStart(
+                for: range,
+                now: .now,
+                calendar: .current
+            )
+        )
     }
 
     private func relevantEntries(startingAt startDate: Date) -> [FoodLogEntry] {
-        var entries: [FoodLogEntry] = []
-        #if DEBUG
-        var previousDate: Date?
-        #endif
-
-        for entry in allEntries {
-            #if DEBUG
-            if let previousDate {
-                precondition(
-                    previousDate >= entry.date,
-                    "History entries must stay sorted newest-first by date."
-                )
-            }
-            previousDate = entry.date
-            #endif
-
-            if entry.date >= startDate {
-                entries.append(entry)
-            } else {
-                break
-            }
-        }
-
-        return entries
+        HistoryEntryWindow.entries(allEntries, newestFirstFrom: startDate, date: \.date)
     }
 
     private var widestAnalyticsStartDate: Date {
-        analyticsStartDate(for: .quarter)
+        HistoryEntryWindow.widestAnalyticsStart(now: .now, calendar: .current)
     }
 
     private var recurringPatternStartDate: Date {
-        HistoryRecurringCaloriePatternEngine()
-            .evidenceWindow(now: .now, calendar: .current)
-            .lowerBound
-    }
-
-    private func analyticsStartDate(for range: HistoryRange) -> Date {
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: .now)
-        return calendar.date(
-            byAdding: .day,
-            value: -(range.days * 2 - 1),
-            to: today
-        ) ?? today
+        HistoryEntryWindow.recurringPatternStart(now: .now, calendar: .current)
     }
 
     private var analyticsRefreshID: HistoryAnalyticsRefreshID {
