@@ -618,7 +618,7 @@ struct GoalEditView: View {
                             .foregroundStyle(CalorynTheme.textSecondary)
                     }
                 } else {
-                    LabeledContent("Estimated Daily Burn", value: "\(Int(profile.tdee)) kcal")
+                    LabeledContent("Estimated Daily Burn", value: "\(profile.tdee.truncatedSafely) kcal")
                     LabeledContent("Target", value: "\(calculatedTarget) kcal")
                 }
             }
@@ -652,26 +652,26 @@ struct GoalEditView: View {
 
             Section("Macro Goals") {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Protein: \(Int(draft.proteinRatio * 100))% · \(previewProteinTarget.macroFormatted)")
+                    Text("Protein: \((draft.proteinRatio * 100).truncatedSafely)% · \(previewProteinTarget.macroFormatted)")
                         .font(CalorynTheme.numericBody)
                     Slider(value: $draft.proteinRatio, in: 0.10...0.50, step: 0.05)
                         .tint(CalorynTheme.proteinColor)
                 }
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Carbs: \(Int(draft.carbRatio * 100))% · \(previewCarbTarget.macroFormatted)")
+                    Text("Carbs: \((draft.carbRatio * 100).truncatedSafely)% · \(previewCarbTarget.macroFormatted)")
                         .font(CalorynTheme.numericBody)
                     Slider(value: $draft.carbRatio, in: 0.10...0.60, step: 0.05)
                         .tint(CalorynTheme.carbColor)
                 }
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Fat: \(Int(draft.fatRatio * 100))% · \(previewFatTarget.macroFormatted)")
+                    Text("Fat: \((draft.fatRatio * 100).truncatedSafely)% · \(previewFatTarget.macroFormatted)")
                         .font(CalorynTheme.numericBody)
                     Slider(value: $draft.fatRatio, in: 0.10...0.50, step: 0.05)
                         .tint(CalorynTheme.fatColor)
                 }
 
                 if !draft.isMacroValid {
-                    Text("Ratios should total 100% (currently \(Int(draft.macroTotal * 100))%)")
+                    Text("Ratios should total 100% (currently \((draft.macroTotal * 100).truncatedSafely)%)")
                         .font(CalorynTheme.caption)
                         .foregroundStyle(CalorynTheme.terracotta)
                 }
@@ -856,7 +856,7 @@ struct ProfileEditView: View {
                 }
 
                 VStack(alignment: .leading) {
-                    Text("Height: \(Int(profile.heightCm)) cm")
+                    Text("Height: \(profile.heightCm.truncatedSafely) cm")
                     Slider(value: $profile.heightCm, in: 120...220, step: 1)
                 }
 

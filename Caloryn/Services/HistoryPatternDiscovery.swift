@@ -107,14 +107,14 @@ struct HistoryCalorieTrendProjection {
                     id: "week-\(week.id.ISO8601Format())",
                     index: Double(offset),
                     value: averageCalories,
-                    targetDelta: Int(averageCalories.rounded()) - week.targetPerLoggedDay,
+                    targetDelta: averageCalories.roundedCalories - week.targetPerLoggedDay,
                     status: status,
                     isLogged: week.loggedDays > 0,
                     xAxisLabel: label,
                     accessibilityLabel: "\(label), week of \(week.startDate.dayMonthFormatted)",
                     accessibilityValue: week.loggedDays == 0
                         ? "No calories logged"
-                        : "\(Int(averageCalories.rounded())) average calories per logged day, \(status.label)",
+                        : "\(averageCalories.rounded().truncatedSafely) average calories per logged day, \(status.label)",
                     selection: .week(week)
                 )
             }
@@ -130,7 +130,7 @@ struct HistoryCalorieTrendProjection {
                     xAxisLabel: Self.weekdayInitial(for: day.date),
                     accessibilityLabel: day.date.shortFormatted,
                     accessibilityValue: day.isLogged
-                        ? "\(Int(day.calories.rounded())) calories, \(day.status.label)"
+                        ? "\(day.calories.rounded().truncatedSafely) calories, \(day.status.label)"
                         : "No calories logged",
                     selection: .day(day)
                 )
@@ -160,16 +160,16 @@ struct HistoryCalorieTrendProjection {
 
     var averageDifferenceText: String {
         guard hasLoggedData else { return "No logged days" }
-        return Self.differenceText(Int(averageCaloriesPerLoggedDay.rounded()) - averageTargetPerLoggedDay)
+        return Self.differenceText(averageCaloriesPerLoggedDay.roundedCalories - averageTargetPerLoggedDay)
     }
 
     var totalDifferenceText: String {
         guard hasLoggedData else { return "No logged days" }
-        return Self.differenceText(Int(totalCalories.rounded()) - loggedDayTargetTotal)
+        return Self.differenceText(totalCalories.roundedCalories - loggedDayTargetTotal)
     }
 
     var totalTargetDelta: Int {
-        Int(totalCalories.rounded()) - loggedDayTargetTotal
+        totalCalories.roundedCalories - loggedDayTargetTotal
     }
 
     /// Shown when some days in range use the documented fallback target
@@ -184,8 +184,15 @@ struct HistoryCalorieTrendProjection {
         return "\(Self.deltaText(totalTargetDelta, unit: "kcal")) target total"
     }
 
+    /// The point a chart-space x value falls on, or `nil` outside the series.
+    ///
+    /// Non-finite indices are rejected rather than truncated: `truncatedSafely`
+    /// answers 0 for NaN and the infinities, which would silently select the
+    /// first day for a gesture value that means nothing. The equivalent
+    /// `HistoryChartIndexAxis.slot(for:)` draws the same line.
     func point(for index: Double) -> HistoryCalorieTrendPoint? {
-        let roundedIndex = Int(index.rounded())
+        guard index.isFinite else { return nil }
+        let roundedIndex = index.rounded().truncatedSafely
         guard points.indices.contains(roundedIndex) else { return nil }
         return points[roundedIndex]
     }
@@ -207,7 +214,7 @@ struct HistoryCalorieTrendProjection {
     func averageDeltaText(value: Double, unit: String) -> String? {
         guard averageCaloriesPerLoggedDay > 0 else { return nil }
 
-        let difference = Int((value - averageCaloriesPerLoggedDay).rounded())
+        let difference = (value - averageCaloriesPerLoggedDay).rounded().truncatedSafely
         if difference == 0 {
             return "Matches \(averageLabel) average"
         }
@@ -265,7 +272,7 @@ struct HistoryCalorieTrendProjection {
     }
 
     private static func weeklyDelta(_ week: HistoryWeekSummary, target: Int) -> Int {
-        Int(week.averageCaloriesPerLoggedDay.rounded()) - target
+        week.averageCaloriesPerLoggedDay.roundedCalories - target
     }
 
     private static func weeklyStatus(_ week: HistoryWeekSummary, target: Int) -> HistoryGoalStatus {

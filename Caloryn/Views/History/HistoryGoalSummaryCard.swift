@@ -73,7 +73,7 @@ struct HistoryGoalSummaryCard: View {
                     .frame(height: 34)
 
                 compactMetric(
-                    value: "\(Int(summary.averageCaloriesPerLoggedDay.rounded()))",
+                    value: "\(summary.averageCaloriesPerLoggedDay.rounded().truncatedSafely)",
                     label: "kcal/day avg"
                 )
             }
@@ -178,7 +178,7 @@ private struct WeeklyConsistencyStrip: View {
 
     private var accessibilityLabel: String {
         let weekDescriptions = weeks.map {
-            "\(Int(($0.onTrackRatio * 100).rounded())) percent on track, \($0.loggedDays) of \($0.totalDays) days logged"
+            "\(($0.onTrackRatio * 100).rounded().truncatedSafely) percent on track, \($0.loggedDays) of \($0.totalDays) days logged"
         }
         return "Weekly goal consistency: \(weekDescriptions.joined(separator: "; "))."
     }

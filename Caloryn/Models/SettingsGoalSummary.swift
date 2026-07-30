@@ -57,9 +57,9 @@ struct SettingsGoalSummary: Equatable {
     /// estimated burn; a surplus is the same number the other way round.
     static func adjustmentLabel(calorieDeficit: Double) -> String {
         if calorieDeficit > 0 {
-            return "-\(Int(calorieDeficit)) kcal"
+            return "-\(calorieDeficit.truncatedSafely) kcal"
         } else if calorieDeficit < 0 {
-            return "+\(Int(abs(calorieDeficit))) kcal"
+            return "+\(abs(calorieDeficit).truncatedSafely) kcal"
         }
 
         return "Maintenance"

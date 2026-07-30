@@ -37,9 +37,9 @@ struct OnboardingGoalSummaryDraft: Equatable {
         /// other, so the sign is spelled out rather than shown as a minus.
         var deficitLabel: String {
             if calorieDeficit > 0 {
-                return "-\(Int(calorieDeficit)) kcal/day (lose weight)"
+                return "-\(calorieDeficit.truncatedSafely) kcal/day (lose weight)"
             } else if calorieDeficit < 0 {
-                return "+\(Int(abs(calorieDeficit))) kcal/day (gain weight)"
+                return "+\(abs(calorieDeficit).truncatedSafely) kcal/day (gain weight)"
             }
             return "Maintenance (no change)"
         }

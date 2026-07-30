@@ -105,7 +105,7 @@ private struct HistoryMacroPatternRow: View {
     private var deltaText: String? {
         guard pattern.previous.loggedDays > 0 else { return nil }
 
-        let rounded = Int(pattern.averageValueDelta.rounded())
+        let rounded = pattern.averageValueDelta.rounded().truncatedSafely
         if rounded > 0 { return "+\(rounded)g vs prev" }
         if rounded < 0 { return "\(rounded)g vs prev" }
         return "No avg change"
@@ -116,7 +116,7 @@ private struct HistoryMacroPatternRow: View {
             return CalorynTheme.textSecondary
         }
 
-        guard Int(pattern.averageValueDelta.rounded()) != 0 else {
+        guard pattern.averageValueDelta.rounded().truncatedSafely != 0 else {
             return CalorynTheme.textSecondary
         }
 

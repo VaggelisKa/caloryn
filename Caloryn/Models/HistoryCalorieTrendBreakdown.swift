@@ -34,7 +34,7 @@ struct HistoryCalorieTrendDayBreakdown {
         var hasCalories: Bool { calories > 0 }
 
         var caloriesText: String {
-            hasCalories ? Int(calories.rounded()).kcalFormatted : "none"
+            hasCalories ? calories.rounded().truncatedSafely.kcalFormatted : "none"
         }
     }
 

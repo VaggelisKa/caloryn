@@ -64,6 +64,12 @@ struct PortionSelection: Equatable {
     static let gramStepSize = 5
     static let minimumGramOption = 5
     static let minimumGramOptionLimit = 500
+    /// The wheel is a materialized `Array`, one row per 5g step, so its ceiling
+    /// is a row count as much as a weight: 10kg is 2,000 rows, past any real
+    /// recipe and still instant to build. Without it a serving size straight
+    /// off the food API sets the ceiling — 50kg is ten million rows, and a
+    /// serving past `Int.max` clamps to `Int.max` and never finishes at all.
+    static let maximumGramOptionLimit = 10_000
 
     /// Countable servings are capped so the wheel stays usable, and floored at
     /// two so a picker with a single choice is never shown.
@@ -167,7 +173,7 @@ struct PortionSelection: Equatable {
             portionGrams = Double(nearest)
         case .serving:
             guard let gramsPerUnit = shape.servingGramsPerUnit else { return }
-            servingCount = max(1, min(maxServingCount, Int(round(portionGrams / gramsPerUnit))))
+            servingCount = max(1, min(maxServingCount, round(portionGrams / gramsPerUnit).truncatedSafely))
             portionGrams = Double(servingCount) * gramsPerUnit
         case .recipeServing:
             recipeServingID = Self.nearestRecipeServingOptionID(
@@ -241,35 +247,35 @@ struct PortionSelection: Equatable {
         guard let gramsPerUnit = shape.servingGramsPerUnit else { return 1 }
         return max(
             minimumServingCountLimit,
-            min(maximumServingCountLimit, Int(servingCountGramCeiling / gramsPerUnit))
+            min(maximumServingCountLimit, (servingCountGramCeiling / gramsPerUnit).truncatedSafely)
         )
     }
 
     static func normalizedServingCount(for grams: Double, shape: Shape) -> Int {
         guard let gramsPerUnit = shape.servingGramsPerUnit else { return 1 }
-        let count = Int(round(grams / gramsPerUnit))
+        let count = round(grams / gramsPerUnit).truncatedSafely
         return max(1, min(maxServingCount(for: shape), count))
     }
 
-    /// The largest value the gram wheel offers: always at least 500g, and more
-    /// when the food's own serving (or four of a recipe's) exceeds that.
+    /// The largest value the gram wheel offers: always at least 500g, more when
+    /// the food's own serving (or four of a recipe's) exceeds that, and never
+    /// past `maximumGramOptionLimit` — the wheel is materialized row by row, so
+    /// an unbounded serving size is an unbounded array.
     static func gramOptionLimit(for shape: Shape) -> Int {
         let defaultServing = shape.recipeTotalGrams
         let step = Double(gramStepSize)
+        let largestMultiplier = shape.isRecipe
+            ? (recipeServingOptions.map(\.multiplier).max() ?? 1)
+            : 1
+        let servingLimit = (ceil(defaultServing * largestMultiplier / step) * step).truncatedSafely
 
-        if shape.isRecipe {
-            let largestMultiplier = recipeServingOptions.map(\.multiplier).max() ?? 1
-            let servingLimit = Int(ceil(defaultServing * largestMultiplier / step) * step)
-            return max(minimumGramOptionLimit, servingLimit)
-        }
-
-        return max(minimumGramOptionLimit, Int(ceil(defaultServing / step) * step))
+        return min(maximumGramOptionLimit, max(minimumGramOptionLimit, servingLimit))
     }
 
     static func normalizedGramStep(_ grams: Double, limit: Int) -> Int {
         max(
             minimumGramOption,
-            min(limit, Int(round(grams / Double(gramStepSize))) * gramStepSize)
+            min(limit, (round(grams / Double(gramStepSize)) * Double(gramStepSize)).truncatedSafely)
         )
     }
 

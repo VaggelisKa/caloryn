@@ -276,7 +276,7 @@ private struct MealComponentRow: View {
                             .foregroundStyle(CalorynTheme.textPrimary)
                             .lineLimit(1)
 
-                        Text("\(Int(component.snapshot.portionGrams.rounded()))g")
+                        Text("\(component.snapshot.portionGrams.rounded().truncatedSafely)g")
                             .font(CalorynTheme.caption)
                             .foregroundStyle(CalorynTheme.textSecondary)
                     }

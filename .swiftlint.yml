@@ -47,6 +47,15 @@ custom_rules:
     message: "Use CalorynTheme.warmWhite or CalorynTheme.cardBackground. Pure white reads as a stark block against the warm page background."
     severity: error
 
+  # Not the whole trap class: `Int(someDouble)` in general is indistinguishable by regex
+  # from `Int(someInt)` and `Int(someString)`, which are safe. `Int(x.rounded())` is
+  # unambiguously a floating-point conversion, and it is the form the crash arrived in.
+  trapping_int_conversion:
+    name: "Trapping Int conversion"
+    regex: '\bInt\((?:[^()]|\([^()]*\))*\.rounded\(\)\)'
+    message: "Use Double.truncatedSafely. Int(_:) is a trap, not a conversion — NaN, an infinity or anything past Int64 terminates the process, and these numbers reach it from user input, HealthKit and the food API."
+    severity: error
+
   raw_color_literal:
     name: "Colour literal"
     regex: 'Color\(red:\s*[0-9]'

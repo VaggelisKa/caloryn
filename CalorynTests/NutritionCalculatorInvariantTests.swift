@@ -391,11 +391,13 @@ struct NutritionCalculatorMacroInvariantTests {
     @Test("Given a non-finite expenditure, when the default target is computed, then it stays representable")
     func nonFiniteExpenditureDoesNotTrapTheTargetConversion() {
         // `Int(_:)` traps on a non-finite Double, and this is the one place
-        // `defaultTarget` converts one.
+        // `defaultTarget` converts one. The ceiling is the calorie domain
+        // rather than `Int.max`, because callers subtract from this number and
+        // sum it across a period — `Int.max` only moves the trap there.
         #expect(NutritionCalculator.defaultTarget(energyExpenditure: .nan) == 1_200)
         #expect(NutritionCalculator.defaultTarget(energyExpenditure: -.infinity) == 1_200)
-        #expect(NutritionCalculator.defaultTarget(energyExpenditure: .infinity) == .max)
-        #expect(NutritionCalculator.defaultTarget(energyExpenditure: 1e30) == .max)
+        #expect(NutritionCalculator.defaultTarget(energyExpenditure: .infinity) == CalorieDomain.maximum)
+        #expect(NutritionCalculator.defaultTarget(energyExpenditure: 1e30) == CalorieDomain.maximum)
     }
 
     @Test(

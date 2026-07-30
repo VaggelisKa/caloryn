@@ -40,7 +40,10 @@ struct GoalEditDraft: Equatable {
 
     // MARK: - Calorie target
 
-    var manualTarget: Int? { Int(targetText) }
+    /// Clamped into `CalorieDomain`: this is a free-text field, and the typed
+    /// number is saved onto the profile, then subtracted from and summed across
+    /// a period by History.
+    var manualTarget: Int? { Int(targetText).map(CalorieDomain.clamped) }
 
     func calculatedTarget(tdee: Double) -> Int {
         NutritionCalculator.defaultTarget(tdee: tdee, deficit: calorieDeficit)
@@ -135,9 +138,9 @@ struct GoalEditDraft: Equatable {
 
     var deficitLabel: String {
         if calorieDeficit > 0 {
-            return "-\(Int(calorieDeficit)) kcal/day (lose weight)"
+            return "-\(calorieDeficit.truncatedSafely) kcal/day (lose weight)"
         } else if calorieDeficit < 0 {
-            return "+\(Int(abs(calorieDeficit))) kcal/day (gain weight)"
+            return "+\(abs(calorieDeficit).truncatedSafely) kcal/day (gain weight)"
         }
         return "Maintenance (no change)"
     }

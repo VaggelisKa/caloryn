@@ -276,8 +276,8 @@ private struct MealEntryRow: View {
                 }
 
                 Text(entry.proteinG.isZero
-                     ? "\(Int(entry.portionGrams))g"
-                     : "\(Int(entry.portionGrams))g · \(entry.proteinG.macroFormatted) protein")
+                     ? "\(entry.portionGrams.truncatedSafely)g"
+                     : "\(entry.portionGrams.truncatedSafely)g · \(entry.proteinG.macroFormatted) protein")
                     .font(CalorynTheme.caption)
                     .foregroundStyle(CalorynTheme.textSecondary)
             }
@@ -285,7 +285,7 @@ private struct MealEntryRow: View {
             Spacer()
 
             VStack(alignment: .trailing, spacing: 2) {
-                Text("\(Int(entry.calories.rounded()))")
+                Text("\(entry.calories.rounded().truncatedSafely)")
                     .font(CalorynTheme.numericBody)
                     .foregroundStyle(CalorynTheme.textPrimary)
 

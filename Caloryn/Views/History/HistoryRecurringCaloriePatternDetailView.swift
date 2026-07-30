@@ -269,7 +269,7 @@ private struct HistoryPatternSupportingDayCard: View {
 
                                 Spacer(minLength: 8)
 
-                                Text(Int(food.calories.rounded()).kcalFormatted)
+                                Text(food.calories.rounded().truncatedSafely.kcalFormatted)
                                     .font(CalorynTheme.numericCaption)
                                     .foregroundStyle(CalorynTheme.textSecondary)
                             }
