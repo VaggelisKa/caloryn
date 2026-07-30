@@ -703,7 +703,7 @@ struct FoodSearchView: View {
 
                 Spacer(minLength: 8)
 
-                Text("\(Int(suggestion.resolvedPortionGrams.rounded()))g")
+                Text("\(suggestion.resolvedPortionGrams.rounded().truncatedSafely)g")
                     .font(CalorynTheme.numericBody)
                     .foregroundStyle(CalorynTheme.textPrimary)
             }
@@ -712,7 +712,7 @@ struct FoodSearchView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(
-            "\(food.name), suggested \(Int(suggestion.resolvedPortionGrams.rounded())) grams"
+            "\(food.name), suggested \(suggestion.resolvedPortionGrams.rounded().truncatedSafely) grams"
         )
         .accessibilityValue(selectionAccessibilityValue(for: .food(food.id)))
         .accessibilityHint(

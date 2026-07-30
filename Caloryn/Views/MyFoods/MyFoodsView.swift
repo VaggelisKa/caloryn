@@ -564,7 +564,7 @@ private struct RecipeLibraryRow: View {
             Spacer(minLength: 12)
 
             VStack(alignment: .trailing, spacing: 2) {
-                Text("\(Int(calories.rounded()))")
+                Text("\(calories.rounded().truncatedSafely)")
                     .font(CalorynTheme.numericBody)
                     .foregroundStyle(CalorynTheme.textPrimary)
 
@@ -586,7 +586,7 @@ private struct RecipeLibraryRow: View {
             return "\(ingredientLabel) · \(macroLabel)"
         }
 
-        return "\(ingredientLabel) · \(Int(totalGrams.rounded()))g · \(macroLabel)"
+        return "\(ingredientLabel) · \(totalGrams.rounded().truncatedSafely)g · \(macroLabel)"
     }
 }
 

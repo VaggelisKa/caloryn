@@ -242,7 +242,7 @@ struct CustomFoodDraft: Equatable {
         name = food.name
         brand = food.brand ?? ""
         servingSizeGrams = food.defaultServingG.map(\.manualInputFormatted) ?? ""
-        caloriesPerServing = "\(Int(food.calories(forGrams: serving)))"
+        caloriesPerServing = "\(food.calories(forGrams: serving).truncatedSafely)"
         proteinPerServing = Self.editableCoreText(
             food.protein(forGrams: serving),
             origin: food.fieldOrigin(for: .protein)
@@ -334,7 +334,7 @@ extension Double {
     var manualInputFormatted: String {
         let rounded = (self * 10).rounded() / 10
         if rounded == rounded.rounded() {
-            return "\(Int(rounded))"
+            return "\(rounded.truncatedSafely)"
         }
         return String(format: "%.1f", rounded)
     }

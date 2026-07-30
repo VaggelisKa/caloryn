@@ -86,7 +86,7 @@ struct HistoryRecurringCaloriePattern: Identifiable {
     }
 
     var comparisonText: String {
-        let roundedDifference = Int(abs(mealDifferenceCalories).rounded())
+        let roundedDifference = abs(mealDifferenceCalories).rounded().truncatedSafely
         let direction = mealDifferenceCalories > 0 ? "more" : "less"
         let mealName = mealType == .snack ? "Snacks" : mealType.displayName
 

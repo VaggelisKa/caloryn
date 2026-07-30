@@ -23,7 +23,7 @@ struct DailyReminderBridge: View {
 
         return DailyReminderPlanner.makePlan(
             isEnabled: isEnabled,
-            remainingToday: target.map { max(0, $0 - Int(consumedToday.rounded())) },
+            remainingToday: target.map { max(0, $0 - consumedToday.rounded().truncatedSafely) },
             fullDayTarget: target,
             reminderMinutesFromMidnight: reminderMinutes
         )

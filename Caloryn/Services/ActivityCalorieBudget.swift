@@ -106,7 +106,7 @@ struct ActivityCalorieBudget: Equatable {
     }
 
     var roundedConsumed: Int {
-        Int(consumed.rounded())
+        consumed.rounded().truncatedSafely
     }
 
     var remaining: Int {
@@ -142,7 +142,7 @@ struct ActivityCalorieBudget: Equatable {
             rawDelta = activeEnergyKcal - activityBaselineKcal
         }
 
-        let roundedDelta = Int(rawDelta.rounded())
+        let roundedDelta = rawDelta.rounded().truncatedSafely
         return min(max(roundedDelta, Self.minimumDailyDelta), Self.maximumDailyDelta)
     }
 

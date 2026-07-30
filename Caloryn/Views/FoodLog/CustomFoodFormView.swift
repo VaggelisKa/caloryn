@@ -218,11 +218,11 @@ struct CustomFoodFormView: View {
 
     private var caloriePreviewCard: some View {
         VStack(spacing: 4) {
-            Text("\(Int(previewCalories))")
+            Text("\(previewCalories.truncatedSafely)")
                 .font(CalorynTheme.displayNumber)
                 .foregroundStyle(CalorynTheme.sage)
                 .contentTransition(.numericText())
-                .animation(.smooth(duration: 0.3), value: Int(previewCalories))
+                .animation(.smooth(duration: 0.3), value: previewCalories.truncatedSafely)
 
             Text("calories per serving")
                 .font(CalorynTheme.bodyText)

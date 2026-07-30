@@ -17,7 +17,7 @@ struct MultiAddPortionEditorView: View {
             case .grams:
                 value.macroFormatted
             case .milligramsFromGrams:
-                "\(Int((value * 1000).rounded()))mg"
+                "\((value * 1000).rounded().truncatedSafely)mg"
             }
         }
     }
@@ -103,13 +103,13 @@ struct MultiAddPortionEditorView: View {
 
     private var caloriePreview: some View {
         VStack(spacing: 4) {
-            Text("\(Int(editedSnapshot.nutrition.calories.rounded()))")
+            Text("\(editedSnapshot.nutrition.calories.rounded().truncatedSafely)")
                 .font(CalorynTheme.displayNumber)
                 .foregroundStyle(CalorynTheme.sage)
                 .contentTransition(.numericText())
                 .animation(
                     .smooth(duration: 0.3),
-                    value: Int(editedSnapshot.nutrition.calories.rounded())
+                    value: editedSnapshot.nutrition.calories.rounded().truncatedSafely
                 )
 
             Text("calories")
@@ -232,7 +232,7 @@ struct MultiAddPortionEditorView: View {
     }
 
     private static func portionOptions(around initialPortion: Double) -> [Double] {
-        let maximum = max(500, Int(ceil(initialPortion * 4 / 5) * 5))
+        let maximum = max(500, (ceil(initialPortion * 4 / 5) * 5).truncatedSafely)
         var values = stride(from: 5, through: maximum, by: 5).map(Double.init)
         if initialPortion > 0, !values.contains(initialPortion) {
             values.append(initialPortion)
@@ -243,7 +243,7 @@ struct MultiAddPortionEditorView: View {
 
     private static func formattedPickerValue(_ grams: Double) -> String {
         if grams.rounded() == grams {
-            return "\(Int(grams))"
+            return "\(grams.truncatedSafely)"
         }
         return grams.formatted(.number.precision(.fractionLength(0...1)))
     }

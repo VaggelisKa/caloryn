@@ -41,7 +41,7 @@ struct PortionPickerView: View {
             case .grams:
                 value.macroFormatted
             case .milligramsFromGrams:
-                "\(Int((value * 1000).rounded()))mg"
+                "\((value * 1000).rounded().truncatedSafely)mg"
             }
         }
     }
@@ -290,11 +290,11 @@ struct PortionPickerView: View {
 
     private var caloriePreview: some View {
         VStack(spacing: 4) {
-            Text("\(Int(previewCalories))")
+            Text("\(previewCalories.truncatedSafely)")
                 .font(CalorynTheme.displayNumber)
                 .foregroundStyle(CalorynTheme.sage)
                 .contentTransition(.numericText())
-                .animation(.smooth(duration: 0.3), value: Int(previewCalories))
+                .animation(.smooth(duration: 0.3), value: previewCalories.truncatedSafely)
                 .accessibilityIdentifier("portionPicker.calories")
 
             Text("calories")
@@ -417,11 +417,11 @@ struct PortionPickerView: View {
 
                 Spacer()
 
-                Text("\(Int(portionGrams.rounded()))g")
+                Text("\(portionGrams.rounded().truncatedSafely)g")
                     .font(CalorynTheme.caption)
                     .foregroundStyle(CalorynTheme.textSecondary)
                     .contentTransition(.numericText())
-                    .animation(.smooth(duration: 0.3), value: Int(portionGrams.rounded()))
+                    .animation(.smooth(duration: 0.3), value: portionGrams.rounded().truncatedSafely)
             }
 
             VStack(spacing: 0) {

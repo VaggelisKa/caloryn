@@ -529,7 +529,7 @@ private struct HistoryCalorieTrendSelectedDayCard: View {
 
             Spacer(minLength: 8)
 
-            Text(Int(food.calories.rounded()).kcalFormatted)
+            Text(food.calories.rounded().truncatedSafely.kcalFormatted)
                 .font(CalorynTheme.numericCaption)
                 .foregroundStyle(CalorynTheme.textPrimary)
         }
@@ -677,7 +677,7 @@ private struct HistoryCalorieTrendSelectedWeekCard: View {
 
             Spacer(minLength: 8)
 
-            Text(Int(food.calories.rounded()).kcalFormatted)
+            Text(food.calories.rounded().truncatedSafely.kcalFormatted)
                 .font(CalorynTheme.numericCaption)
                 .foregroundStyle(CalorynTheme.textPrimary)
         }

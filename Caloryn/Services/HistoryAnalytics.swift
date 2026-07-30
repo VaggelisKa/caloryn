@@ -221,7 +221,7 @@ struct HistoryPeriodSummary {
     var averageTargetPerLoggedDay: Int {
         let loggedDays = days.filter(\.isLogged)
         guard !loggedDays.isEmpty else { return dailyCalorieTarget }
-        return Int((Double(loggedDayTargetTotal) / Double(loggedDays.count)).rounded())
+        return (Double(loggedDayTargetTotal) / Double(loggedDays.count)).rounded().truncatedSafely
     }
 
     /// `true` when at least one logged day has no persisted goal snapshot and
@@ -250,7 +250,7 @@ struct HistoryPeriodSummary {
         self.days = days
         self.dailyCalorieTarget = days.isEmpty
             ? targetResolver.fallbackTarget
-            : Int((Double(days.reduce(0) { $0 + $1.dailyCalorieTarget }) / Double(days.count)).rounded())
+            : (Double(days.reduce(0) { $0 + $1.dailyCalorieTarget }) / Double(days.count)).rounded().truncatedSafely
         self.weeklyRollups = Self.weeklyRollups(from: days)
     }
 
@@ -359,7 +359,7 @@ struct HistoryDaySummary: Identifiable {
     var id: Date { date }
     var isLogged: Bool { entryCount > 0 }
     var calorieDifference: Int {
-        Int(calories.rounded()) - dailyCalorieTarget
+        calories.rounded().truncatedSafely - dailyCalorieTarget
     }
 
     init(
@@ -456,7 +456,7 @@ struct HistoryDayDetail: Identifiable {
     var id: Date { date }
     var isLogged: Bool { entryCount > 0 }
     var calorieDifference: Int {
-        Int(calories.rounded()) - dailyCalorieTarget
+        calories.rounded().truncatedSafely - dailyCalorieTarget
     }
 
     init(
@@ -669,7 +669,7 @@ struct HistoryWeekSummary: Identifiable {
         let targetDays = logged.isEmpty ? days : logged
         targetPerLoggedDay = targetDays.isEmpty
             ? 0
-            : Int((Double(targetDays.reduce(0) { $0 + $1.dailyCalorieTarget }) / Double(targetDays.count)).rounded())
+            : (Double(targetDays.reduce(0) { $0 + $1.dailyCalorieTarget }) / Double(targetDays.count)).rounded().truncatedSafely
         hasEstimatedTargets = targetDays.contains(where: \.isTargetEstimated)
     }
 }

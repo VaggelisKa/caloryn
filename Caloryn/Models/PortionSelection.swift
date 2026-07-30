@@ -167,7 +167,7 @@ struct PortionSelection: Equatable {
             portionGrams = Double(nearest)
         case .serving:
             guard let gramsPerUnit = shape.servingGramsPerUnit else { return }
-            servingCount = max(1, min(maxServingCount, Int(round(portionGrams / gramsPerUnit))))
+            servingCount = max(1, min(maxServingCount, round(portionGrams / gramsPerUnit).truncatedSafely))
             portionGrams = Double(servingCount) * gramsPerUnit
         case .recipeServing:
             recipeServingID = Self.nearestRecipeServingOptionID(
@@ -241,13 +241,13 @@ struct PortionSelection: Equatable {
         guard let gramsPerUnit = shape.servingGramsPerUnit else { return 1 }
         return max(
             minimumServingCountLimit,
-            min(maximumServingCountLimit, Int(servingCountGramCeiling / gramsPerUnit))
+            min(maximumServingCountLimit, (servingCountGramCeiling / gramsPerUnit).truncatedSafely)
         )
     }
 
     static func normalizedServingCount(for grams: Double, shape: Shape) -> Int {
         guard let gramsPerUnit = shape.servingGramsPerUnit else { return 1 }
-        let count = Int(round(grams / gramsPerUnit))
+        let count = round(grams / gramsPerUnit).truncatedSafely
         return max(1, min(maxServingCount(for: shape), count))
     }
 
@@ -259,17 +259,17 @@ struct PortionSelection: Equatable {
 
         if shape.isRecipe {
             let largestMultiplier = recipeServingOptions.map(\.multiplier).max() ?? 1
-            let servingLimit = Int(ceil(defaultServing * largestMultiplier / step) * step)
+            let servingLimit = (ceil(defaultServing * largestMultiplier / step) * step).truncatedSafely
             return max(minimumGramOptionLimit, servingLimit)
         }
 
-        return max(minimumGramOptionLimit, Int(ceil(defaultServing / step) * step))
+        return max(minimumGramOptionLimit, (ceil(defaultServing / step) * step).truncatedSafely)
     }
 
     static func normalizedGramStep(_ grams: Double, limit: Int) -> Int {
         max(
             minimumGramOption,
-            min(limit, Int(round(grams / Double(gramStepSize))) * gramStepSize)
+            min(limit, (round(grams / Double(gramStepSize)) * Double(gramStepSize)).truncatedSafely)
         )
     }
 

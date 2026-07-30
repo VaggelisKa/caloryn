@@ -108,7 +108,7 @@ struct HistoryRecurringCaloriePatternDetailSummary: Equatable {
     /// Zero reads as "+0 kcal" — the sign is about direction of the pattern,
     /// and a pattern with no difference never reaches this screen.
     var mealDifferenceText: String {
-        let magnitude = Int(abs(mealDifferenceCalories).rounded()).formatted()
+        let magnitude = abs(mealDifferenceCalories).rounded().truncatedSafely.formatted()
         let sign = mealDifferenceCalories >= 0 ? "+" : Self.minusSign
         return "\(sign)\(magnitude) kcal"
     }
@@ -150,17 +150,17 @@ struct HistoryRecurringCaloriePatternDayRow: Equatable {
     var mealName: String { HistoryMealLabel.rowTitle(for: mealType) }
 
     var totalsText: String {
-        "\(Int(totalCalories.rounded()).formatted()) kcal logged · \(dailyCalorieTarget.formatted()) kcal target"
+        "\(totalCalories.rounded().truncatedSafely.formatted()) kcal logged · \(dailyCalorieTarget.formatted()) kcal target"
     }
 
     var mealCaloriesText: String {
-        Int(mealCalories.rounded()).kcalFormatted
+        mealCalories.rounded().truncatedSafely.kcalFormatted
     }
 
     /// The row is one element to VoiceOver: read piecemeal it is four
     /// unattributed numbers.
     var accessibilityLabel: String {
-        "\(dateText), \(Int(totalCalories.rounded()).formatted()) kcal logged, \(dailyCalorieTarget.formatted()) kcal target, \(mealName), \(mealCaloriesText)"
+        "\(dateText), \(totalCalories.rounded().truncatedSafely.formatted()) kcal logged, \(dailyCalorieTarget.formatted()) kcal target, \(mealName), \(mealCaloriesText)"
     }
 
     var accessibilityValue: String {

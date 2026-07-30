@@ -26,7 +26,19 @@ struct WidgetCalorieSummary: Codable, Hashable, Sendable {
         target: Int,
         dynamicAdjustment: Int = 0
     ) {
-        self.consumed = max(0, Int(consumed.rounded()))
+        // `Int(_:)` is a trap, not a conversion: NaN, an infinity or anything past
+        // `Int64` terminates the process, and `consumed` is a raw sum of logged
+        // calories. `Double.truncatedSafely` says the same thing, but it lives in
+        // the app target, which this shared file is compiled into the widget
+        // without — so the guard is spelled out here.
+        let rounded = consumed.rounded()
+        if !rounded.isFinite || rounded <= 0 {
+            self.consumed = 0
+        } else if rounded >= Double(Int.max) {
+            self.consumed = .max
+        } else {
+            self.consumed = Int(rounded)
+        }
         self.baseTarget = max(1, baseTarget)
         self.target = max(1, target)
         self.dynamicAdjustment = dynamicAdjustment

@@ -23,7 +23,7 @@ struct SettingsProfileSummary: Equatable {
 
     /// Truncated, not rounded — the height slider only ever produces whole
     /// centimetres.
-    var heightText: String { "\(Int(heightCm)) cm" }
+    var heightText: String { "\(heightCm.truncatedSafely) cm" }
 
     var weightText: String { String(format: "%.1f kg", weightKg) }
 

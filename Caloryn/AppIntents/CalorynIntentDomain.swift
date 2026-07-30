@@ -220,7 +220,7 @@ enum TodayCaloriesIntentResponse: Equatable, Sendable {
         guard let snapshot,
               snapshot.state == .ready,
               calendar.isDate(snapshot.dayStart, inSameDayAs: now),
-              snapshot.calories.consumed == max(0, Int(currentConsumed.rounded())),
+              snapshot.calories.consumed == max(0, currentConsumed.rounded().truncatedSafely),
               snapshot.calories.baseTarget == max(1, expectedBaseTarget),
               snapshot.calories.target == max(1, expectedTarget),
               snapshot.usesDynamicTarget == expectsDynamicTarget else {
@@ -285,6 +285,6 @@ enum IntentNumberFormatting {
     }
 
     static func calories(_ value: Double) -> String {
-        Int(value.rounded()).formatted(.number.grouping(.automatic))
+        value.rounded().truncatedSafely.formatted(.number.grouping(.automatic))
     }
 }

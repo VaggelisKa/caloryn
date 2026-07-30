@@ -25,7 +25,7 @@ enum OnboardingPersonalInfo {
     /// elsewhere in the app. The slider steps by 1 within a finite range, so
     /// there is no fractional or non-finite value to reach the conversion.
     static func heightLabel(_ heightCm: Double) -> String {
-        "\(Int(heightCm)) cm"
+        "\(heightCm.truncatedSafely) cm"
     }
 
     /// Kept to one decimal because the slider steps by half a kilogram.

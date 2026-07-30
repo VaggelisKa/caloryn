@@ -183,7 +183,7 @@ struct MultiAddReviewView: View {
     }
 
     private func calorieText(for item: MultiAddDraftItem) -> some View {
-        Text("\(Int(item.snapshot.nutrition.calories.rounded())) kcal")
+        Text("\(item.snapshot.nutrition.calories.rounded().truncatedSafely) kcal")
     }
 
     private func recoverySection(_ state: MultiAddPartialBatch) -> some View {
@@ -254,7 +254,7 @@ struct MultiAddReviewView: View {
 
     private func formattedPortion(_ portion: Double) -> String {
         if portion.rounded() == portion {
-            return "\(Int(portion)) grams"
+            return "\(portion.truncatedSafely) grams"
         }
         return "\(portion.formatted(.number.precision(.fractionLength(0...1)))) grams"
     }

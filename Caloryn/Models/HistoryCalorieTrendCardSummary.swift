@@ -57,11 +57,11 @@ struct HistoryCalorieTrendCardSummary: Equatable {
     var showsStatColumns: Bool { hasLoggedData }
 
     var averageValueText: String {
-        Int(averageCaloriesPerLoggedDay.rounded()).formatted()
+        averageCaloriesPerLoggedDay.rounded().truncatedSafely.formatted()
     }
 
     var totalValueText: String {
-        Int(totalCalories.rounded()).formatted()
+        totalCalories.rounded().truncatedSafely.formatted()
     }
 
     var onTrackRatioText: String {
@@ -89,7 +89,7 @@ struct HistoryCalorieTrendCardSummary: Equatable {
 
         return .status(
             HistoryGoalStatus.calorieStatus(
-                calories: Double(Int(value.rounded())),
+                calories: Double(value.rounded().truncatedSafely),
                 loggedCount: 1,
                 targetCalories: target
             )
@@ -105,7 +105,7 @@ struct HistoryCalorieTrendCardSummary: Equatable {
             return "Calorie trend for \(range.label). 0 of \(totalDayCount) days logged. Target \(dailyCalorieTarget) calories."
         }
 
-        return "Calorie trend for \(range.label). \(loggedDayCount) of \(totalDayCount) days logged. Average \(Int(averageCaloriesPerLoggedDay.rounded())) calories per logged day. Target \(dailyCalorieTarget) calories."
+        return "Calorie trend for \(range.label). \(loggedDayCount) of \(totalDayCount) days logged. Average \(averageCaloriesPerLoggedDay.rounded().truncatedSafely) calories per logged day. Target \(dailyCalorieTarget) calories."
     }
 
     /// The drill-down's chart phrases the same sentence more briefly — the

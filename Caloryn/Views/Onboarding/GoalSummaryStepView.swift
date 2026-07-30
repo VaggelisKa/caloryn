@@ -90,9 +90,9 @@ struct GoalSummaryStepView: View {
 
     private var statsCards: some View {
         HStack(spacing: CalorynTheme.cardSpacing) {
-            statPill("BMR", value: "\(Int(basis.bmr))", unit: "kcal")
-            statPill("Daily Burn", value: "\(Int(basis.tdee))", unit: "kcal")
-            statPill("Deficit", value: "\(Int(calorieDeficit))", unit: "kcal")
+            statPill("BMR", value: "\(basis.bmr.truncatedSafely)", unit: "kcal")
+            statPill("Daily Burn", value: "\(basis.tdee.truncatedSafely)", unit: "kcal")
+            statPill("Deficit", value: "\(calorieDeficit.truncatedSafely)", unit: "kcal")
         }
     }
 

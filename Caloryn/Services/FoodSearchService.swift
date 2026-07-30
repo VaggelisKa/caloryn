@@ -921,7 +921,7 @@ struct OpenFoodFactsProduct: Decodable, Identifiable, Hashable {
             return servingSize
         }
         if let servingQuantityG, servingQuantityG > 0 {
-            return "\(Int(servingQuantityG))g"
+            return "\(servingQuantityG.truncatedSafely)g"
         }
         return nil
     }
@@ -931,10 +931,10 @@ struct OpenFoodFactsProduct: Decodable, Identifiable, Hashable {
             return (servingQuantityG, formattedServingDescription)
         }
         if let productQuantity, productQuantity > 0 {
-            return (productQuantity, "1 pack (\(Int(productQuantity))g)")
+            return (productQuantity, "1 pack (\(productQuantity.truncatedSafely)g)")
         }
         if let quantityGrams {
-            return (quantityGrams, "1 pack (\(Int(quantityGrams))g)")
+            return (quantityGrams, "1 pack (\(quantityGrams.truncatedSafely)g)")
         }
         return (nil, nil)
     }
