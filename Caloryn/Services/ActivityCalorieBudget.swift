@@ -87,8 +87,11 @@ struct ActivityCalorieBudget: Equatable {
     }
 
     var baseTarget: Int {
-        guard let activityBaselineKcal else { return staticTarget }
+        // Clamped, not just passed through: `staticTarget` is whatever was
+        // saved on the profile, and every reader subtracts from it.
+        guard let activityBaselineKcal else { return CalorieDomain.clamped(staticTarget) }
         let maintenanceTDEE = bmr + (bmr * Self.thermicEffectOfFoodRatio) + activityBaselineKcal
+        // `defaultTarget` clamps its own result.
         return NutritionCalculator.defaultTarget(
             energyExpenditure: maintenanceTDEE,
             deficit: calorieDeficit
@@ -102,11 +105,11 @@ struct ActivityCalorieBudget: Equatable {
     var adjustedTarget: Int {
         guard dynamicStatus == .ready else { return baseTarget }
         // `baseTarget` is already floored, but a negative activity adjustment can push today's target below the safe minimum.
-        return max(Self.minimumTarget, baseTarget + dynamicAdjustment)
+        return CalorieDomain.clamped(max(Self.minimumTarget, baseTarget + dynamicAdjustment))
     }
 
     var roundedConsumed: Int {
-        consumed.rounded().truncatedSafely
+        consumed.roundedCalories
     }
 
     var remaining: Int {
@@ -142,7 +145,7 @@ struct ActivityCalorieBudget: Equatable {
             rawDelta = activeEnergyKcal - activityBaselineKcal
         }
 
-        let roundedDelta = rawDelta.rounded().truncatedSafely
+        let roundedDelta = rawDelta.roundedCalories
         return min(max(roundedDelta, Self.minimumDailyDelta), Self.maximumDailyDelta)
     }
 

@@ -23,7 +23,9 @@ final class NonFiniteNumberSafetyTests: XCTestCase {
     func testCalorieBudgetClampsAConsumedTotalPastTheIntegerRange() {
         let budget = makeBudget(consumed: 1e30, staticTarget: 2_000)
 
-        XCTAssertEqual(budget.roundedConsumed, .max)
+        // Clamped to the calorie domain, not to `Int.max`: `Int.max` would only
+        // move the trap to the subtraction in `remaining`.
+        XCTAssertEqual(budget.roundedConsumed, CalorieDomain.maximum)
         XCTAssertEqual(budget.remaining, 0)
         XCTAssertTrue(budget.isOver)
         XCTAssertGreaterThan(budget.overAmount, 0)
@@ -91,7 +93,7 @@ final class NonFiniteNumberSafetyTests: XCTestCase {
         )
 
         let projection = HistoryPatternDiscovery(analytics: analytics).calorieTrend
-        XCTAssertEqual(projection.totalTargetDelta, Int.max - 2_000)
+        XCTAssertEqual(projection.totalTargetDelta, CalorieDomain.maximum - 2_000)
         XCTAssertFalse(projection.totalDifferenceText.isEmpty)
     }
 

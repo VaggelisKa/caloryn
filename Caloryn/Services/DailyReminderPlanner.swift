@@ -24,6 +24,13 @@ enum DailyReminderPlanner {
     /// isn't opened every day.
     static let planHorizonDays = 7
 
+    /// Today's remaining calories, as the reminder title states them. Lives
+    /// here rather than in `DailyReminderBridge` so the arithmetic can be
+    /// driven with a number no view would ever be asked to render.
+    static func remainingToday(target: Int, consumed: Double) -> Int {
+        max(0, CalorieDomain.clamped(target) - consumed.roundedCalories)
+    }
+
     static func makePlan(
         isEnabled: Bool,
         remainingToday: Int?,

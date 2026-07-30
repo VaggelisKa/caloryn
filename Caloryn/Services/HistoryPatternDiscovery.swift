@@ -107,7 +107,7 @@ struct HistoryCalorieTrendProjection {
                     id: "week-\(week.id.ISO8601Format())",
                     index: Double(offset),
                     value: averageCalories,
-                    targetDelta: averageCalories.rounded().truncatedSafely - week.targetPerLoggedDay,
+                    targetDelta: averageCalories.roundedCalories - week.targetPerLoggedDay,
                     status: status,
                     isLogged: week.loggedDays > 0,
                     xAxisLabel: label,
@@ -160,16 +160,16 @@ struct HistoryCalorieTrendProjection {
 
     var averageDifferenceText: String {
         guard hasLoggedData else { return "No logged days" }
-        return Self.differenceText(averageCaloriesPerLoggedDay.rounded().truncatedSafely - averageTargetPerLoggedDay)
+        return Self.differenceText(averageCaloriesPerLoggedDay.roundedCalories - averageTargetPerLoggedDay)
     }
 
     var totalDifferenceText: String {
         guard hasLoggedData else { return "No logged days" }
-        return Self.differenceText(totalCalories.rounded().truncatedSafely - loggedDayTargetTotal)
+        return Self.differenceText(totalCalories.roundedCalories - loggedDayTargetTotal)
     }
 
     var totalTargetDelta: Int {
-        totalCalories.rounded().truncatedSafely - loggedDayTargetTotal
+        totalCalories.roundedCalories - loggedDayTargetTotal
     }
 
     /// Shown when some days in range use the documented fallback target
@@ -272,7 +272,7 @@ struct HistoryCalorieTrendProjection {
     }
 
     private static func weeklyDelta(_ week: HistoryWeekSummary, target: Int) -> Int {
-        week.averageCaloriesPerLoggedDay.rounded().truncatedSafely - target
+        week.averageCaloriesPerLoggedDay.roundedCalories - target
     }
 
     private static func weeklyStatus(_ week: HistoryWeekSummary, target: Int) -> HistoryGoalStatus {

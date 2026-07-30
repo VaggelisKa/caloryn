@@ -221,7 +221,7 @@ struct HistoryPeriodSummary {
     var averageTargetPerLoggedDay: Int {
         let loggedDays = days.filter(\.isLogged)
         guard !loggedDays.isEmpty else { return dailyCalorieTarget }
-        return (Double(loggedDayTargetTotal) / Double(loggedDays.count)).rounded().truncatedSafely
+        return (Double(loggedDayTargetTotal) / Double(loggedDays.count)).roundedCalories
     }
 
     /// `true` when at least one logged day has no persisted goal snapshot and
@@ -249,8 +249,8 @@ struct HistoryPeriodSummary {
         }
         self.days = days
         self.dailyCalorieTarget = days.isEmpty
-            ? targetResolver.fallbackTarget
-            : (Double(days.reduce(0) { $0 + $1.dailyCalorieTarget }) / Double(days.count)).rounded().truncatedSafely
+            ? CalorieDomain.clamped(targetResolver.fallbackTarget)
+            : (Double(days.reduce(0) { $0 + $1.dailyCalorieTarget }) / Double(days.count)).roundedCalories
         self.weeklyRollups = Self.weeklyRollups(from: days)
     }
 
@@ -359,7 +359,7 @@ struct HistoryDaySummary: Identifiable {
     var id: Date { date }
     var isLogged: Bool { entryCount > 0 }
     var calorieDifference: Int {
-        calories.rounded().truncatedSafely - dailyCalorieTarget
+        calories.roundedCalories - dailyCalorieTarget
     }
 
     init(
@@ -370,7 +370,10 @@ struct HistoryDaySummary: Identifiable {
     ) {
         self.date = date
         self.entries = entries
-        self.dailyCalorieTarget = dailyCalorieTarget
+        // Clamped here, at the boundary, rather than at every reader: the
+        // target comes off a saved profile, and every use of it is arithmetic
+        // — a difference, a sum across the period, a weekly average.
+        self.dailyCalorieTarget = CalorieDomain.clamped(dailyCalorieTarget)
         self.isTargetEstimated = isTargetEstimated
         entryCount = entries.count
 
@@ -456,7 +459,7 @@ struct HistoryDayDetail: Identifiable {
     var id: Date { date }
     var isLogged: Bool { entryCount > 0 }
     var calorieDifference: Int {
-        calories.rounded().truncatedSafely - dailyCalorieTarget
+        calories.roundedCalories - dailyCalorieTarget
     }
 
     init(
@@ -467,7 +470,7 @@ struct HistoryDayDetail: Identifiable {
         isTargetEstimated: Bool = false
     ) {
         self.date = date
-        self.dailyCalorieTarget = dailyCalorieTarget
+        self.dailyCalorieTarget = CalorieDomain.clamped(dailyCalorieTarget)
         self.isTargetEstimated = isTargetEstimated
         entryCount = entries.count
         totalPortionGrams = entries.reduce(0) { $0 + $1.portionGrams }
@@ -669,7 +672,7 @@ struct HistoryWeekSummary: Identifiable {
         let targetDays = logged.isEmpty ? days : logged
         targetPerLoggedDay = targetDays.isEmpty
             ? 0
-            : (Double(targetDays.reduce(0) { $0 + $1.dailyCalorieTarget }) / Double(targetDays.count)).rounded().truncatedSafely
+            : (Double(targetDays.reduce(0) { $0 + $1.dailyCalorieTarget }) / Double(targetDays.count)).roundedCalories
         hasEstimatedTargets = targetDays.contains(where: \.isTargetEstimated)
     }
 }
