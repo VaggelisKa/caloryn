@@ -12,11 +12,11 @@ import Foundation
 /// `TestFactories.swift`) using `Calendar.current`/its time zone -- never
 /// `Date.now` -- so results are deterministic and reproducible.
 ///
-/// `isToday` and `isAtFutureLogLimit` are intentionally NOT covered here:
-/// both are defined purely in terms of `Date.now`/`Calendar.current`
-/// relative to "now", so there is no way to assert on them with a fixed
-/// expected value without embedding `Date.now` in the assertion itself,
-/// which the test brief explicitly rules out.
+/// The ambient (no-argument) spellings are what this file exercises.
+/// `DateHelperCalendarInjectionTests.swift` covers the same rules under an
+/// injected calendar -- foreign time zones, week starts and non-Gregorian
+/// calendars -- including `isToday` and `isAtFutureLogLimit`, which are only
+/// pinnable once the calendar and "now" are supplied rather than read.
 struct DateHelperEdgeCaseTests {
 
     // MARK: - startOfDay
@@ -277,17 +277,13 @@ struct DateHelperEdgeCaseTests {
 
     // MARK: - Calendar day-boundary semantics across time zones
     //
-    // Date+Helpers always uses `Calendar.current`, so it cannot be
-    // parameterized by time zone directly, and mutating the global
-    // `TimeZone`/`Calendar.current` would introduce shared mutable state
-    // across parallel tests (explicitly disallowed). Instead, these tests
-    // exercise the same Calendar day-boundary primitive
-    // (`Calendar.startOfDay(for:)`) that `startOfDay`/`daysFrom` are built
-    // on, using explicitly-constructed `Calendar` values for a couple of
-    // named time zones -- including one with a non-zero, non-hour offset
-    // (India Standard Time, UTC+5:30) -- to characterize how the same
-    // absolute instant can resolve to different calendar days depending on
-    // the zone in effect.
+    // These characterize the `Calendar.startOfDay(for:)` primitive that
+    // `startOfDay`/`daysFrom` are built on, using explicitly-constructed
+    // `Calendar` values for a couple of named time zones -- including one
+    // with a non-zero, non-hour offset (India Standard Time, UTC+5:30) -- to
+    // show how the same absolute instant resolves to different calendar days
+    // depending on the zone in effect. The helpers themselves are driven with
+    // those zones in `DateHelperCalendarInjectionTests.swift`.
 
     private func calendar(timeZoneIdentifier: String) -> Calendar {
         var cal = Calendar(identifier: .gregorian)

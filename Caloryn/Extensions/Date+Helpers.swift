@@ -126,9 +126,12 @@ extension Date {
 
     private func formatted(pattern: String, in calendar: Calendar) -> String {
         let formatter = DateFormatter()
+        // Order matters: assigning `locale` resets `calendar` to that locale's
+        // calendar, so the calendar has to be set afterwards or a non-Gregorian
+        // one is silently discarded.
+        formatter.locale = calendar.locale ?? .current
         formatter.calendar = calendar
         formatter.timeZone = calendar.timeZone
-        formatter.locale = calendar.locale ?? .current
         formatter.dateFormat = pattern
         return formatter.string(from: self)
     }
