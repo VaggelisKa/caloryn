@@ -14,6 +14,7 @@ struct HistoryRecurringCaloriePatternDetailView: View {
                 ForEach(pattern.supportingDays) { day in
                     HistoryPatternSupportingDayCard(
                         day: day,
+                        dateText: pattern.dayText(for: day.date),
                         mealType: pattern.mealType,
                         isExpanded: expandedDayIDs.contains(day.id),
                         action: { toggleDay(day) }
@@ -176,13 +177,14 @@ private struct HistoryPatternFrequencyStat: View {
 
 private struct HistoryPatternSupportingDayCard: View {
     let day: HistoryRecurringCaloriePatternDay
+    let dateText: String
     let mealType: MealType
     let isExpanded: Bool
     let action: () -> Void
 
     private var row: HistoryRecurringCaloriePatternDayRow {
         HistoryRecurringCaloriePatternDayRow(
-            dateText: day.date.shortFormatted,
+            dateText: dateText,
             totalCalories: day.totalCalories,
             dailyCalorieTarget: day.dailyCalorieTarget,
             mealCalories: day.mealCalories,

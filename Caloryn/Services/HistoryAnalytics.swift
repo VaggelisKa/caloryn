@@ -186,6 +186,13 @@ struct HistoryPeriodSummary {
     let dailyCalorieTarget: Int
     let days: [HistoryDaySummary]
     let weeklyRollups: [HistoryWeekSummary]
+    /// The calendar these days were bucketed and these weeks rolled up in.
+    /// It travels *with* the summary because it is part of what the summary
+    /// means: History pushes `(range, summary)` into the drill-down and
+    /// nothing else, so anything that labels a day has to be able to reach
+    /// the calendar that day was bucketed in. Re-supplying it at each hop is
+    /// what let the detail projection fall back to `.current`.
+    let calendar: Calendar
 
     var totalDayCount: Int {
         days.count
@@ -254,6 +261,7 @@ struct HistoryPeriodSummary {
             )
         }
         self.days = days
+        self.calendar = calendar
         self.dailyCalorieTarget = days.isEmpty
             ? CalorieDomain.clamped(targetResolver.fallbackTarget)
             : (Double(days.reduce(0) { $0 + $1.dailyCalorieTarget }) / Double(days.count)).roundedCalories

@@ -8,8 +8,7 @@ struct HistoryPatternDiscovery {
     init(analytics: HistoryAnalytics) {
         calorieTrend = HistoryCalorieTrendProjection(
             range: analytics.range,
-            summary: analytics.current,
-            calendar: analytics.calendar
+            summary: analytics.current
         )
         macroPatterns = HistoryMacroPatternsProjection(patterns: analytics.macroPatterns)
         weeklyConsistency = HistoryWeeklyConsistencyProjection(summary: analytics.current)
@@ -63,6 +62,11 @@ struct HistoryWeeklyConsistencyProjection {
 
 struct HistoryCalorieTrendProjection {
     let range: HistoryRange
+    /// Taken from the summary rather than accepted as a parameter: a defaulted
+    /// `calendar: Calendar = .current` silently succeeded at the wrong answer
+    /// whenever a caller forgot it, which is exactly how the detail screen came
+    /// to label foreign-zone days from the host calendar.
+    let calendar: Calendar
     let dailyCalorieTarget: Int
     let totalDayCount: Int
     let loggedDayCount: Int
@@ -75,8 +79,10 @@ struct HistoryCalorieTrendProjection {
     let biggestInconsistencyText: String?
     let points: [HistoryCalorieTrendPoint]
 
-    init(range: HistoryRange, summary: HistoryPeriodSummary, calendar: Calendar = .current) {
+    init(range: HistoryRange, summary: HistoryPeriodSummary) {
+        let calendar = summary.calendar
         self.range = range
+        self.calendar = calendar
         dailyCalorieTarget = summary.dailyCalorieTarget
         totalDayCount = summary.totalDayCount
         loggedDayCount = summary.loggedDayCount
@@ -184,6 +190,18 @@ struct HistoryCalorieTrendProjection {
     var totalTargetDeltaText: String {
         if totalTargetDelta == 0 { return "On target total" }
         return "\(Self.deltaText(totalTargetDelta, unit: "kcal")) target total"
+    }
+
+    /// Day and week labels for the detail screen. They exist here, not in the
+    /// view, so that a label cannot be produced without the calendar its date
+    /// was bucketed in; both still route through the single `Date+Helpers`
+    /// rule.
+    func dayText(for date: Date) -> String {
+        date.shortFormatted(in: calendar)
+    }
+
+    func weekStartText(for date: Date) -> String {
+        date.dayMonthFormatted(in: calendar)
     }
 
     /// The point a chart-space x value falls on, or `nil` outside the series.

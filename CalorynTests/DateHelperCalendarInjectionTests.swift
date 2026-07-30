@@ -355,4 +355,149 @@ struct HistoryCalendarInjectionTests {
             #expect(point.accessibilityLabel == day.date.shortFormatted(in: cal))
         }
     }
+
+    /// The drill-down is reached with a summary alone -- History pushes
+    /// `(range, summary)` and nothing else -- so the calendar has to survive
+    /// that hop or the detail screen relabels a foreign-zone day from the host.
+    @Test("a summary rebuilt into the detail projection keeps the calendar it was derived under")
+    func detailProjectionRebuiltFromASummaryKeepsItsCalendar() {
+        let cal = calendar("Pacific/Kiritimati") // UTC+14
+        let analytics = HistoryAnalytics(
+            entries: [],
+            profile: nil,
+            range: .week,
+            endDate: date(utcYear: 2026, month: 1, day: 10),
+            calendar: cal
+        )
+
+        // Exactly what HistoryCalorieTrendDetailView does with the pushed snapshot.
+        let projection = HistoryCalorieTrendProjection(
+            range: analytics.range,
+            summary: analytics.current
+        )
+
+        for (point, day) in zip(projection.points, analytics.current.days) {
+            #expect(point.xAxisLabel == day.date.weekdayInitial(in: cal))
+            #expect(point.accessibilityLabel == day.date.shortFormatted(in: cal))
+            #expect(projection.dayText(for: day.date) == day.date.shortFormatted(in: cal))
+        }
+
+        // Noon UTC on the 10th is already the 11th in Kiritimati, so the seven
+        // Kiritimati days are Mon 5th through Sun 11th -- not the host's week.
+        #expect(projection.points.map(\.xAxisLabel) == ["M", "T", "W", "T", "F", "S", "S"])
+    }
+
+    @Test("the detail projection's week labels name the week its rollups were bucketed into")
+    func detailProjectionWeekLabelsUseTheSummaryCalendar() {
+        let cal = calendar("Pacific/Kiritimati") // UTC+14
+        let analytics = HistoryAnalytics(
+            entries: [],
+            profile: nil,
+            range: .quarter,
+            endDate: date(utcYear: 2026, month: 1, day: 10),
+            calendar: cal
+        )
+        let projection = HistoryCalorieTrendProjection(
+            range: analytics.range,
+            summary: analytics.current
+        )
+
+        for (point, week) in zip(projection.points, analytics.current.weeklyRollups) {
+            #expect(point.accessibilityLabel.hasSuffix(week.startDate.dayMonthFormatted(in: cal)))
+            #expect(projection.weekStartText(for: week.startDate)
+                == week.startDate.dayMonthFormatted(in: cal))
+        }
+    }
+
+    @Test("a recurring pattern labels its supporting days in the calendar it was discovered under")
+    func recurringPatternDayLabelsUseItsDiscoveryCalendar() {
+        let cal = calendar("Pacific/Kiritimati") // UTC+14
+        let now = date(utcYear: 2026, month: 2, day: 2)
+        // Five Mondays in the 30-day window, each blowing past a saved target
+        // at dinner; every other eligible day sits on target.
+        let entries = Self.recurringDinnerEntries(now: now, calendar: cal)
+        let resolver = HistoryDayTargetResolver(
+            fallbackTarget: 2_000,
+            valuesByDayKey: Self.savedTargets(now: now, calendar: cal)
+        )
+
+        guard let pattern = HistoryRecurringCaloriePatternEngine().discover(
+            entries: entries,
+            targetResolver: resolver,
+            now: now,
+            calendar: cal
+        ) else {
+            Issue.record("expected a recurring pattern from the seeded window")
+            return
+        }
+
+        for day in pattern.supportingDays {
+            #expect(pattern.dayText(for: day.date) == day.date.shortFormatted(in: cal))
+        }
+    }
+
+    private static func savedTargets(
+        now: Date,
+        calendar: Calendar
+    ) -> [String: DailyGoalSnapshotValues] {
+        var values: [String: DailyGoalSnapshotValues] = [:]
+        for offset in 1...31 {
+            guard let day = calendar.date(byAdding: .day, value: -offset, to: now) else { continue }
+            values[DailyGoalSnapshot.dayKey(for: day, calendar: calendar)] = DailyGoalSnapshotValues(
+                baseCalorieTarget: 2_000,
+                healthAdjustment: 0,
+                effectiveCalorieTarget: 2_000,
+                calculationMode: .lifestyleEstimate,
+                isManualTarget: false
+            )
+        }
+        return values
+    }
+
+    private static func recurringDinnerEntries(
+        now: Date,
+        calendar: Calendar
+    ) -> [FoodLogEntry] {
+        var entries: [FoodLogEntry] = []
+        for offset in 1...30 {
+            guard let day = calendar.date(byAdding: .day, value: -offset, to: now) else { continue }
+            let noon = calendar.date(
+                bySettingHour: 12,
+                minute: 0,
+                second: 0,
+                of: calendar.startOfDay(for: day)
+            ) ?? day
+            let isMonday = calendar.component(.weekday, from: day) == 2
+
+            entries.append(
+                makeTestEntry(
+                    date: noon,
+                    mealType: .lunch,
+                    foodItem: makeTestFoodItem(
+                        name: "Lunch plate",
+                        caloriesPer100g: 1_400,
+                        proteinPer100g: 0,
+                        carbsPer100g: 0,
+                        fatPer100g: 0
+                    ),
+                    portionGrams: 100
+                )
+            )
+            entries.append(
+                makeTestEntry(
+                    date: noon,
+                    mealType: .dinner,
+                    foodItem: makeTestFoodItem(
+                        name: "Dinner plate",
+                        caloriesPer100g: isMonday ? 1_600 : 600,
+                        proteinPer100g: 0,
+                        carbsPer100g: 0,
+                        fatPer100g: 0
+                    ),
+                    portionGrams: 100
+                )
+            )
+        }
+        return entries
+    }
 }
