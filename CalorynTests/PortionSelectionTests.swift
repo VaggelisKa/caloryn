@@ -204,6 +204,37 @@ struct PortionSelectionTests {
         #expect(options.contains(3_200))
     }
 
+    /// A 50,000 kg serving is nonsense, but `defaultServingG` comes from the
+    /// food API and from a free-text field, so the wheel has to survive one.
+    /// Before the wheel was bounded this built ten million rows — and at
+    /// `1e12` grams, two hundred billion, which exhausts memory rather than
+    /// merely stalling. The moderate value is what this test uses so that a
+    /// failing run finishes.
+    @Test("The gram wheel stays a usable number of rows for an absurd serving size")
+    func gramWheelIsBoundedForAnAbsurdServing() {
+        let options = selection(
+            PortionSelection.Shape(defaultServingGrams: 50_000_000),
+            grams: 100
+        ).gramOptions
+
+        #expect(options.count <= PortionSelection.maximumGramOptionLimit / PortionSelection.gramStepSize)
+        #expect(options.last == PortionSelection.maximumGramOptionLimit)
+    }
+
+    @Test(
+        "No serving size can widen the gram wheel past its ceiling",
+        arguments: [1e12, 1e30, Double.infinity, .nan, -1e30]
+    )
+    func gramWheelCeilingHoldsForAnyServing(serving: Double) {
+        for isRecipe in [false, true] {
+            let shape = PortionSelection.Shape(isRecipe: isRecipe, defaultServingGrams: serving)
+            let options = PortionSelection(shape: shape, initialGrams: 100, isExistingEntry: false).gramOptions
+
+            #expect(options.count >= PortionSelection.minimumGramOptionLimit / PortionSelection.gramStepSize)
+            #expect(options.count <= PortionSelection.maximumGramOptionLimit / PortionSelection.gramStepSize)
+        }
+    }
+
     @Test("The serving wheel offers at least two counts, so it is never a wheel of one")
     func servingWheelOffersAChoice() {
         #expect(selection(slicedFood, grams: 45).maxServingCount >= 2)
