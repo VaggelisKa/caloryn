@@ -39,29 +39,46 @@ struct OnboardingScreen: Screen {
     var goalTarget: XCUIElement { element("onboarding.goalSummary.target") }
     var startTracking: XCUIElement { element("onboarding.startTracking") }
 
+    /// Every step of the flow, in the order `OnboardingStep` pushes them, paired
+    /// with the control that both proves the step is on screen and moves past it.
+    ///
+    /// Each identifier belongs to exactly one step, so "the next one exists" is a
+    /// sound arrival check even while a push animation is still running. The
+    /// screenshot harness walks this list to photograph each screen and
+    /// `completeWithDefaults` walks it to get past onboarding, so the order is
+    /// written down once rather than in each caller.
+    static let steps: [Step] = [
+        Step(name: "welcome", advanceIdentifier: "onboarding.getStarted"),
+        Step(name: "personal-info", advanceIdentifier: "onboarding.personalInfo.continue"),
+        Step(name: "activity-level", advanceIdentifier: "onboarding.activityLevel.continue"),
+        Step(name: "energy-mode", advanceIdentifier: "onboarding.energyMode.continue"),
+        Step(name: "goal-summary", advanceIdentifier: "onboarding.goalSummary.continue"),
+        Step(name: "macro-ratios", advanceIdentifier: "onboarding.macroRatios.continue"),
+        Step(name: "nutrients", advanceIdentifier: "onboarding.startTracking")
+    ]
+
+    struct Step {
+        /// Used in screenshot filenames, so it is kebab-case rather than the
+        /// enum's camelCase.
+        let name: String
+        let advanceIdentifier: String
+    }
+
+    func advance(_ step: Step) -> XCUIElement {
+        element(step.advanceIdentifier)
+    }
+
     /// Walks the whole onboarding flow using each step's continue button.
     /// Steps are advanced by identifier rather than by position, so inserting
     /// a step does not silently skip part of the flow.
     func completeWithDefaults() {
         tap(getStarted)
 
-        // Order matches OnboardingStep: welcome, personalInfo, activityLevel,
-        // energyCalculationMode, goalSummary, macroRatios, nutrientSelection.
-        let continueIdentifiers = [
-            "onboarding.personalInfo.continue",
-            "onboarding.activityLevel.continue",
-            "onboarding.energyMode.continue",
-            "onboarding.goalSummary.continue",
-            "onboarding.macroRatios.continue"
-        ]
-
-        for identifier in continueIdentifiers {
+        for step in Self.steps.dropFirst() {
             // Not every build presents every step; skip any that is absent
             // rather than failing, but require that at least the flow ends.
-            tapIfPresent(element(identifier), timeout: 5)
+            tapIfPresent(advance(step), timeout: 5)
         }
-
-        tapIfPresent(startTracking, timeout: 5)
     }
 }
 
