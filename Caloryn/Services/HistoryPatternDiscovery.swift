@@ -184,7 +184,14 @@ struct HistoryCalorieTrendProjection {
         return "\(Self.deltaText(totalTargetDelta, unit: "kcal")) target total"
     }
 
+    /// The point a chart-space x value falls on, or `nil` outside the series.
+    ///
+    /// Non-finite indices are rejected rather than truncated: `truncatedSafely`
+    /// answers 0 for NaN and the infinities, which would silently select the
+    /// first day for a gesture value that means nothing. The equivalent
+    /// `HistoryChartIndexAxis.slot(for:)` draws the same line.
     func point(for index: Double) -> HistoryCalorieTrendPoint? {
+        guard index.isFinite else { return nil }
         let roundedIndex = index.rounded().truncatedSafely
         guard points.indices.contains(roundedIndex) else { return nil }
         return points[roundedIndex]
