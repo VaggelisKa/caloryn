@@ -63,7 +63,7 @@ struct NutrientSelectionStepView: View {
                 HStack(spacing: 8) {
                     if isCompleting {
                         ProgressView()
-                            .tint(.white)
+                            .tint(CalorynTheme.warmWhite)
                     }
 
                     Text("Start Tracking")
@@ -78,6 +78,8 @@ struct NutrientSelectionStepView: View {
             .padding(.bottom, 16)
             .accessibilityIdentifier("onboarding.startTracking")
         }
+        .calorynPageCanvas()
+        .calorynDrillDownNavigation()
         .onAppear(perform: ensureDefaultMacrosSelected)
     }
 

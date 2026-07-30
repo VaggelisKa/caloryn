@@ -70,6 +70,11 @@ struct MacroRatioStepView: View {
                 }
             }
         }
+        .calorynPageCanvas()
+        // The existing toolbar item is `topBarTrailing`; the drill-down modifier
+        // owns `topBarLeading`, so this screen does not end up with two back
+        // buttons the way `PortionPickerView` would.
+        .calorynDrillDownNavigation()
     }
 
     // MARK: - Macro Slider

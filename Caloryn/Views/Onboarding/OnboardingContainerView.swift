@@ -259,7 +259,7 @@ struct EnergyCalculationModeStepView: View {
                 HStack(spacing: 8) {
                     if isRequestingAuthorization {
                         ProgressView()
-                            .tint(.white)
+                            .tint(CalorynTheme.warmWhite)
                     }
 
                     Text(selectedMode == .dynamicHealth ? "Allow & Continue" : "Continue")
@@ -274,6 +274,11 @@ struct EnergyCalculationModeStepView: View {
             .padding(.bottom, 16)
             .accessibilityIdentifier("onboarding.energyMode.continue")
         }
+        // Nested in a file whose outer view is the `NavigationStack` itself, which
+        // is exactly how an unthemed screen hides from a file-scoped grep — see
+        // docs/theme.md, "Audit per struct, not per file".
+        .calorynPageCanvas()
+        .calorynDrillDownNavigation()
         .onChange(of: isHealthAvailable, initial: true) {
             if !isHealthAvailable && selectedMode == .dynamicHealth {
                 selectedMode = .lifestyleEstimate

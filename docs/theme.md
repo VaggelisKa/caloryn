@@ -170,14 +170,32 @@ the expected colour instead.
 ./scripts/theme-screenshots.sh [output-dir]     # default /tmp/caloryn-theme-shots
 ```
 
-Captures 18 surfaces in both appearances — Today, the food search sheet, its results, those
-results *while the search is still running*, and the portion picker, History with both
-drill-downs, Settings with both editors, My Foods, multi-add review and its portion editor,
-the three creation sheets, and the ingredient amount picker — then prints how much of each
-screen is `pageBackground`, `cardBackground`, sage, and pure white.
+Captures 25 surfaces in both appearances — all seven onboarding steps, Today, the food
+search sheet, its results, those results *while the search is still running*, and the
+portion picker, History with both drill-downs, Settings with both editors, My Foods,
+multi-add review and its portion editor, the three creation sheets, and the ingredient
+amount picker — then prints how much of each screen is `pageBackground`,
+`cardBackground`, sage, and pure white.
 
 Every extension of this harness so far has found a bug on the screen it was extended to
 reach. That is the argument for adding a capture whenever a screen is touched.
+
+### A screen the harness cannot reach is a screen nobody looks at
+
+The onboarding captures came last and found the largest single gap: **none** of the seven
+steps had a canvas, so the first screen a new user ever saw was system white — and in dark
+mode near-black — while everything behind it was warm. Five of them also carried a system
+back button, blue.
+
+The reason it survived so long is structural rather than careless. Every capture in this
+file launches with a fixture that seeds a `UserProfile`, and `ContentView` shows the main
+tabs whenever a profile exists. Onboarding was not merely un-photographed; it was
+*unreachable* by the only tool that looks at colour. The fix is one line — the `.empty`
+fixture seeds no profile — but nothing pointed at the omission, because a harness reports
+what it captured, never what it could not.
+
+So when auditing, ask which screens the harness cannot get to at all, not just which of
+its captures look wrong.
 
 **A transient state is a surface too.** The search results list keeps a trailing spinner row
 while more results are on the way, and that row painted its own white background for as long

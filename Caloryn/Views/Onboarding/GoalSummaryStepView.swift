@@ -65,6 +65,8 @@ struct GoalSummaryStepView: View {
             .padding(.bottom, 16)
             .accessibilityIdentifier("onboarding.goalSummary.continue")
         }
+        .calorynPageCanvas()
+        .calorynDrillDownNavigation()
         .onChange(of: basis.calculatedTarget) {
             draft.calculatedTargetChanged(basis: basis)
         }

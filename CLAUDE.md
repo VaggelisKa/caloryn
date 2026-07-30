@@ -63,9 +63,11 @@ exit code and looks green.
    `.swiftlint.yml` enforces the bans, but **a lint rule is a per-match regex and can
    never catch a *missing* modifier** — that is the whole class of bug here. Colour is
    only ever verified by looking: run `./scripts/theme-screenshots.sh`, which captures
-   all 18 surfaces in both appearances and prints a per-screen colour census. When
+   all 25 surfaces in both appearances and prints a per-screen colour census. When
    auditing for a missing modifier, scan **per struct, not per file** — a file-scoped
    grep hid three unthemed screens because their outer view in the same file was fine.
+   And scan for screens the harness *cannot reach*: all seven onboarding steps were
+   unthemed for as long as every capture had needed a seeded profile to get anywhere.
 7. **Measure, don't assume.** Already tried and dead: parallelising the UI target
    (141s vs 140s), letting xcodebuild re-resolve packages (+112s), and mutation testing
    (muter cannot see this suite's failures — `docs/testing/mutation-testing.md`). CI

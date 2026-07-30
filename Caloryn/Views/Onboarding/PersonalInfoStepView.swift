@@ -85,6 +85,10 @@ struct PersonalInfoStepView: View {
             .padding(.bottom, 16)
             .accessibilityIdentifier("onboarding.personalInfo.continue")
         }
+        .calorynPageCanvas()
+        // This step hides the navigation bar outright, so there is no back
+        // button to replace — `calorynDrillDownNavigation()` would install a
+        // toolbar item into a bar that is never shown.
         .toolbarVisibility(.hidden, for: .navigationBar)
     }
 

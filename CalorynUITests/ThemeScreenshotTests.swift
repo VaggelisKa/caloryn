@@ -40,6 +40,7 @@ final class ThemeScreenshotTests: UITestCase {
     // MARK: - Capture
 
     private func captureAllSurfaces(appearance: Appearance) {
+        captureOnboarding(appearance)
         captureTodayAndSearch(appearance)
         captureSearchInFlight(appearance)
         capturePortionPicker(appearance)
@@ -48,6 +49,40 @@ final class ThemeScreenshotTests: UITestCase {
         captureCalorieTrendDrillDown(appearance)
         captureSettingsAndMyFoods(appearance)
         captureCreationSheets(appearance)
+    }
+
+    /// The whole onboarding flow — seven screens, and the only ones a user sees before
+    /// there is a profile to see anything else with.
+    ///
+    /// It is captured first because it comes first, and it exists at all because for a
+    /// long time nothing here rendered it: every one of these seven shipped with no
+    /// canvas, so the first impression of the app was a system-white (or system-black)
+    /// page while every screen behind it was warm. No test failed. The harness reached 18
+    /// surfaces and not one of them was reachable without a seeded profile.
+    ///
+    /// `.empty` is the fixture with no `UserProfile`, which is exactly what
+    /// `ContentView` keys onboarding off — no separate launch path is needed.
+    private func captureOnboarding(_ appearance: Appearance) {
+        let app = launch(fixture: .empty, appearance: appearance)
+        let onboarding = OnboardingScreen(app: app)
+
+        for (index, step) in OnboardingScreen.steps.enumerated() {
+            let advance = onboarding.advance(step)
+            XCTAssertTrue(
+                advance.awaitExistence(),
+                "Onboarding step '\(step.name)' never appeared, so it was not photographed"
+            )
+            // The welcome graphic animates for ~2.2s after `onAppear` (three spring
+            // entrances, then a 1.5s-delayed re-layout), and the steps that follow fade
+            // in with the push. A capture taken mid-animation photographs a half-drawn
+            // screen, which reads as a theme problem when it is not one.
+            sleep(step.name == "welcome" ? 4 : 1)
+            // Lettered rather than named alphabetically, so the census lists these in
+            // the order the user walks them.
+            let ordinal = String(UnicodeScalar(UInt8(97 + index)))
+            attach(app, "00\(ordinal)-onboarding-\(step.name)", appearance)
+            advance.tap()
+        }
     }
 
     /// Today, plus the food search sheet — the sheet whose plain list used to paint a
