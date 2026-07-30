@@ -12,19 +12,31 @@ struct CalorieRingView: View {
     @State private var isDetailsPressing = false
     @ScaledMetric private var numberSize: CGFloat = 44
 
-    private var animatedBaseProgress: Double {
-        calorieBudget.hasDynamicIncrease ? min(animatedRingProgress, calorieBudget.baseProgressEnd) : animatedRingProgress
+    private var ringProgress: CalorieRingProgress {
+        CalorieRingProgress(budget: calorieBudget, animatedProgress: animatedRingProgress)
     }
 
-    private var animatedDynamicProgress: Double {
-        guard calorieBudget.hasDynamicIncrease, animatedRingProgress > calorieBudget.baseProgressEnd else {
-            return calorieBudget.baseProgressEnd
-        }
-        return min(animatedRingProgress, 1)
+    private var summary: CalorieRingSummary {
+        CalorieRingSummary(budget: calorieBudget)
     }
 
     private var dynamicTargetColor: Color {
         CalorynTheme.carbColor
+    }
+
+    /// The semantic accent the summary decided, mapped onto the theme here.
+    private var accentColor: Color {
+        switch summary.accent {
+        case .withinBudget: CalorynTheme.sage
+        case .overBudget: CalorynTheme.terracotta
+        }
+    }
+
+    private var dynamicArcColor: Color {
+        switch summary.accent {
+        case .withinBudget: dynamicTargetColor
+        case .overBudget: CalorynTheme.terracotta
+        }
     }
 
     private var centerContentWidth: CGFloat {
@@ -43,60 +55,36 @@ struct CalorieRingView: View {
                     style: StrokeStyle(lineWidth: 14, lineCap: .round)
                 )
 
-            Circle()
-                .trim(
-                    from: calorieBudget.baseProgressEnd,
-                    to: calorieBudget.hasDynamicIncrease ? 1 : calorieBudget.baseProgressEnd
-                )
-                .stroke(
-                    dynamicTargetColor.opacity(0.42),
-                    style: StrokeStyle(lineWidth: 14, lineCap: .round)
-                )
-                .rotationEffect(.degrees(-90))
-                .opacity(calorieBudget.hasDynamicIncrease ? 1 : 0)
+            arc(ringProgress.dynamicTrack, color: dynamicTargetColor.opacity(0.42))
 
-            Circle()
-                .trim(from: 0, to: animatedBaseProgress)
-                .stroke(
-                    calorieBudget.isOver ? CalorynTheme.terracotta : CalorynTheme.sage,
-                    style: StrokeStyle(lineWidth: 14, lineCap: .round)
-                )
-                .rotationEffect(.degrees(-90))
-                .opacity(animatedRingProgress < 0.01 ? 0 : 1)
+            arc(ringProgress.baseArc, color: accentColor)
 
-            Circle()
-                .trim(from: calorieBudget.baseProgressEnd, to: animatedDynamicProgress)
-                .stroke(
-                    calorieBudget.isOver ? CalorynTheme.terracotta : dynamicTargetColor,
-                    style: StrokeStyle(lineWidth: 14, lineCap: .round)
-                )
-                .rotationEffect(.degrees(-90))
-                .opacity(calorieBudget.hasDynamicIncrease && animatedDynamicProgress > calorieBudget.baseProgressEnd ? 1 : 0)
+            arc(ringProgress.dynamicArc, color: dynamicArcColor)
 
             VStack(spacing: 2) {
-                if calorieBudget.isOver {
-                    Text("\(calorieBudget.overAmount)")
+                if summary.isOver {
+                    Text("\(summary.centerValue)")
                         .font(CalorynTheme.ringNumber(size: numberSize))
                         .foregroundStyle(CalorynTheme.terracotta)
                         .contentTransition(.numericText())
 
-                    Text("over")
+                    Text(summary.centerCaption)
                         .font(CalorynTheme.caption)
                         .foregroundStyle(CalorynTheme.terracotta.opacity(0.85))
                 } else {
-                    Text("\(calorieBudget.remaining)")
+                    Text("\(summary.centerValue)")
                         .font(CalorynTheme.ringNumber(size: numberSize))
                         .foregroundStyle(CalorynTheme.textPrimary)
                         .contentTransition(.numericText())
 
-                    Text("remaining")
+                    Text(summary.centerCaption)
                         .font(CalorynTheme.caption)
                         .foregroundStyle(CalorynTheme.textSecondary)
                 }
 
-                Text("\(calorieBudget.roundedConsumed) eaten")
+                Text(summary.eatenText)
                     .font(CalorynTheme.caption)
-                    .foregroundStyle(calorieBudget.isOver ? CalorynTheme.terracotta.opacity(0.7) : CalorynTheme.textSecondary.opacity(0.75))
+                    .foregroundStyle(summary.isOver ? CalorynTheme.terracotta.opacity(0.7) : CalorynTheme.textSecondary.opacity(0.75))
                     .padding(.top, 6)
 
                 dynamicTargetCue
@@ -123,12 +111,9 @@ struct CalorieRingView: View {
         .animation(.smooth(duration: 0.35), value: calorieBudget.adjustedTarget)
         .animation(.smooth(duration: 0.35), value: calorieBudget.isActivityLoading)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(accessibilityDescription)
-        .accessibilityValue(calorieBudget.isOver
-            ? "\(calorieBudget.roundedConsumed) eaten, \(calorieBudget.overAmount) calories over target of \(calorieBudget.adjustedTarget)"
-            : "\(calorieBudget.roundedConsumed) eaten, \(calorieBudget.remaining) remaining of \(calorieBudget.adjustedTarget)"
-        )
-        .accessibilityHint(onDetailsRequested == nil ? "" : "Tap or long press to show nutrition details.")
+        .accessibilityLabel(summary.accessibilityLabel)
+        .accessibilityValue(summary.accessibilityValue)
+        .accessibilityHint(CalorieRingSummary.accessibilityHint(isInteractive: onDetailsRequested != nil))
         .accessibilityAddTraits(onDetailsRequested == nil ? [] : .isButton)
         .accessibilityAction(named: Text("Show nutrition details")) {
             requestDetails()
@@ -171,59 +156,54 @@ struct CalorieRingView: View {
         }
     }
 
+    /// One progress arc, drawn from the top: the span comes from
+    /// `CalorieRingProgress`, the stroke and the rotation stay here.
+    private func arc(_ arc: CalorieRingProgress.Arc, color: Color) -> some View {
+        Circle()
+            .trim(from: arc.start, to: arc.end)
+            .stroke(color, style: StrokeStyle(lineWidth: 14, lineCap: .round))
+            .rotationEffect(.degrees(-90))
+            .opacity(arc.isVisible ? 1 : 0)
+    }
+
     @ViewBuilder
     private var dynamicTargetCue: some View {
-        if calorieBudget.isActivityLoading {
+        switch summary.cue {
+        case .none:
+            EmptyView()
+        case .updating:
             HStack(spacing: 5) {
                 ProgressView()
                     .controlSize(.mini)
 
-                Text("updating")
+                Text(summary.cue.text ?? "")
                     .lineLimit(1)
             }
             .font(CalorynTheme.microCaption)
             .foregroundStyle(CalorynTheme.textSecondary)
             .frame(maxWidth: centerContentWidth)
             .padding(.top, 2)
-        } else if calorieBudget.hasDynamicIncrease {
-            HStack(spacing: 4) {
-                Image(systemName: "flame.fill")
-                    .font(CalorynTheme.compactIcon)
-
-                Text("+\(calorieBudget.dynamicIncrease) dynamic")
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.78)
-            }
-                .font(CalorynTheme.numericMicroCaptionEmphasized)
-                .foregroundStyle(dynamicTargetColor)
-                .frame(maxWidth: centerContentWidth)
-                .padding(.top, 2)
-                .accessibilityLabel("\(calorieBudget.dynamicIncrease) calorie auto-adjust increase")
-        } else if calorieBudget.hasDynamicReduction {
-            HStack(spacing: 4) {
-                Image(systemName: "arrow.down.circle.fill")
-                    .font(CalorynTheme.compactIcon)
-
-                Text("\(calorieBudget.dynamicAdjustment) dynamic")
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.78)
-            }
-                .font(CalorynTheme.numericMicroCaptionEmphasized)
-                .foregroundStyle(CalorynTheme.textSecondary)
-                .frame(maxWidth: centerContentWidth)
-                .padding(.top, 2)
-                .accessibilityLabel("\(abs(calorieBudget.dynamicAdjustment)) calorie auto-adjust reduction")
+        case .increase:
+            cueLabel(iconName: "flame.fill", color: dynamicTargetColor)
+        case .reduction:
+            cueLabel(iconName: "arrow.down.circle.fill", color: CalorynTheme.textSecondary)
         }
     }
 
-    private var accessibilityDescription: String {
-        let activityDescription = calorieBudget.hasDynamicIncrease ? ", includes \(calorieBudget.dynamicIncrease) calorie auto-adjust increase" : ""
+    private func cueLabel(iconName: String, color: Color) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: iconName)
+                .font(CalorynTheme.compactIcon)
 
-        if calorieBudget.isOver {
-            return "Calorie ring, \(calorieBudget.roundedConsumed) eaten, \(calorieBudget.overAmount) calories over a \(calorieBudget.adjustedTarget) calorie goal\(activityDescription)"
-        } else {
-            return "Calorie ring, \(calorieBudget.remaining) remaining of \(calorieBudget.adjustedTarget) calories, \(calorieBudget.roundedConsumed) eaten\(activityDescription)"
+            Text(summary.cue.text ?? "")
+                .lineLimit(1)
+                .minimumScaleFactor(0.78)
         }
+            .font(CalorynTheme.numericMicroCaptionEmphasized)
+            .foregroundStyle(color)
+            .frame(maxWidth: centerContentWidth)
+            .padding(.top, 2)
+            .accessibilityLabel(summary.cue.accessibilityLabel ?? "")
     }
 
     private func setDetailsPressing(_ pressing: Bool) {

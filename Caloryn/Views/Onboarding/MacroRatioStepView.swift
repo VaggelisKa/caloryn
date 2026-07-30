@@ -8,19 +8,13 @@ struct MacroRatioStepView: View {
     var primaryButtonTitle = "Start Tracking"
     var onComplete: () -> Void
 
-    private var total: Double { proteinRatio + carbRatio + fatRatio }
-    private var isValid: Bool { abs(total - 1.0) <= 0.01 }
-
-    private var proteinGrams: Double {
-        NutritionCalculator.macroGrams(calories: Double(calorieTarget), ratio: proteinRatio, caloriesPerGram: 4)
-    }
-
-    private var carbGrams: Double {
-        NutritionCalculator.macroGrams(calories: Double(calorieTarget), ratio: carbRatio, caloriesPerGram: 4)
-    }
-
-    private var fatGrams: Double {
-        NutritionCalculator.macroGrams(calories: Double(calorieTarget), ratio: fatRatio, caloriesPerGram: 9)
+    private var selection: MacroRatioSelection {
+        MacroRatioSelection(
+            calorieTarget: calorieTarget,
+            protein: proteinRatio,
+            carbs: carbRatio,
+            fat: fatRatio
+        )
     }
 
     var body: some View {
@@ -36,32 +30,12 @@ struct MacroRatioStepView: View {
                 }
                 .padding(.top, 8)
 
-                macroSlider(
-                    name: "Protein",
-                    ratio: $proteinRatio,
-                    grams: proteinGrams,
-                    color: CalorynTheme.proteinColor,
-                    range: 0.10...0.50
-                )
+                macroSlider(macro: .protein, ratio: $proteinRatio)
+                macroSlider(macro: .carbs, ratio: $carbRatio)
+                macroSlider(macro: .fat, ratio: $fatRatio)
 
-                macroSlider(
-                    name: "Carbs",
-                    ratio: $carbRatio,
-                    grams: carbGrams,
-                    color: CalorynTheme.carbColor,
-                    range: 0.10...0.60
-                )
-
-                macroSlider(
-                    name: "Fat",
-                    ratio: $fatRatio,
-                    grams: fatGrams,
-                    color: CalorynTheme.fatColor,
-                    range: 0.10...0.50
-                )
-
-                if !isValid {
-                    Text("Ratios should total 100% (currently \(Int(total * 100))%)")
+                if let validationMessage = selection.validationMessage {
+                    Text(validationMessage)
                         .font(CalorynTheme.caption)
                         .foregroundStyle(CalorynTheme.terracotta)
                         .transition(.opacity)
@@ -78,7 +52,7 @@ struct MacroRatioStepView: View {
                     .padding(.vertical, 16)
             }
             .adaptiveGlassProminentButton()
-            .disabled(!isValid)
+            .disabled(!selection.isValid)
             .padding(.horizontal, CalorynTheme.pagePadding)
             .padding(.bottom, 16)
             .accessibilityIdentifier("onboarding.macroRatios.continue")
@@ -86,9 +60,9 @@ struct MacroRatioStepView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Skip") {
-                    proteinRatio = 0.30
-                    carbRatio    = 0.40
-                    fatRatio     = 0.30
+                    proteinRatio = MacroRatioSelection.defaultSplit.protein
+                    carbRatio    = MacroRatioSelection.defaultSplit.carbs
+                    fatRatio     = MacroRatioSelection.defaultSplit.fat
                     onComplete()
                 }
                 .foregroundStyle(CalorynTheme.textSecondary)
@@ -98,32 +72,39 @@ struct MacroRatioStepView: View {
 
     // MARK: - Macro Slider
 
+    private func color(for macro: MacroRatioSelection.Macro) -> Color {
+        switch macro {
+        case .protein: CalorynTheme.proteinColor
+        case .carbs: CalorynTheme.carbColor
+        case .fat: CalorynTheme.fatColor
+        }
+    }
+
     private func macroSlider(
-        name: String,
-        ratio: Binding<Double>,
-        grams: Double,
-        color: Color,
-        range: ClosedRange<Double>
+        macro: MacroRatioSelection.Macro,
+        ratio: Binding<Double>
     ) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        let color = color(for: macro)
+
+        return VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Circle()
                     .fill(color)
                     .frame(width: 10, height: 10)
-                Text(name)
+                Text(macro.displayName)
                     .font(CalorynTheme.itemTitle)
                     .foregroundStyle(CalorynTheme.textPrimary)
                 Spacer()
-                Text("\(Int(ratio.wrappedValue * 100))%")
+                Text(selection.percentText(for: macro))
                     .font(CalorynTheme.numericBody)
                     .foregroundStyle(color)
                 Text("·")
                     .foregroundStyle(CalorynTheme.textSecondary)
-                Text("\(Int(grams))g")
+                Text(selection.gramsText(for: macro))
                     .font(CalorynTheme.numericCaption)
                     .foregroundStyle(CalorynTheme.textSecondary)
             }
-            Slider(value: ratio, in: range, step: 0.05)
+            Slider(value: ratio, in: macro.sliderRange, step: 0.05)
                 .tint(color)
         }
         .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
