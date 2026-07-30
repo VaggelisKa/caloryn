@@ -62,6 +62,11 @@ struct HistoryWeeklyConsistencyProjection {
 
 struct HistoryCalorieTrendProjection {
     let range: HistoryRange
+    /// Taken from the summary rather than accepted as a parameter: a defaulted
+    /// `calendar: Calendar = .current` silently succeeded at the wrong answer
+    /// whenever a caller forgot it, which is exactly how the detail screen came
+    /// to label foreign-zone days from the host calendar.
+    let calendar: Calendar
     let dailyCalorieTarget: Int
     let totalDayCount: Int
     let loggedDayCount: Int
@@ -75,7 +80,9 @@ struct HistoryCalorieTrendProjection {
     let points: [HistoryCalorieTrendPoint]
 
     init(range: HistoryRange, summary: HistoryPeriodSummary) {
+        let calendar = summary.calendar
         self.range = range
+        self.calendar = calendar
         dailyCalorieTarget = summary.dailyCalorieTarget
         totalDayCount = summary.totalDayCount
         loggedDayCount = summary.loggedDayCount
@@ -89,7 +96,8 @@ struct HistoryCalorieTrendProjection {
             .reduce(0) { $0 + $1.calories }
         biggestInconsistencyText = Self.biggestInconsistencyText(
             range: range,
-            summary: summary
+            summary: summary,
+            calendar: calendar
         )
 
         switch range {
@@ -111,7 +119,7 @@ struct HistoryCalorieTrendProjection {
                     status: status,
                     isLogged: week.loggedDays > 0,
                     xAxisLabel: label,
-                    accessibilityLabel: "\(label), week of \(week.startDate.dayMonthFormatted)",
+                    accessibilityLabel: "\(label), week of \(week.startDate.dayMonthFormatted(in: calendar))",
                     accessibilityValue: week.loggedDays == 0
                         ? "No calories logged"
                         : "\(averageCalories.rounded().truncatedSafely) average calories per logged day, \(status.label)",
@@ -127,8 +135,8 @@ struct HistoryCalorieTrendProjection {
                     targetDelta: day.calorieDifference,
                     status: day.status,
                     isLogged: day.isLogged,
-                    xAxisLabel: Self.weekdayInitial(for: day.date),
-                    accessibilityLabel: day.date.shortFormatted,
+                    xAxisLabel: day.date.weekdayInitial(in: calendar),
+                    accessibilityLabel: day.date.shortFormatted(in: calendar),
                     accessibilityValue: day.isLogged
                         ? "\(day.calories.rounded().truncatedSafely) calories, \(day.status.label)"
                         : "No calories logged",
@@ -184,6 +192,18 @@ struct HistoryCalorieTrendProjection {
         return "\(Self.deltaText(totalTargetDelta, unit: "kcal")) target total"
     }
 
+    /// Day and week labels for the detail screen. They exist here, not in the
+    /// view, so that a label cannot be produced without the calendar its date
+    /// was bucketed in; both still route through the single `Date+Helpers`
+    /// rule.
+    func dayText(for date: Date) -> String {
+        date.shortFormatted(in: calendar)
+    }
+
+    func weekStartText(for date: Date) -> String {
+        date.dayMonthFormatted(in: calendar)
+    }
+
     /// The point a chart-space x value falls on, or `nil` outside the series.
     ///
     /// Non-finite indices are rejected rather than truncated: `truncatedSafely`
@@ -235,7 +255,8 @@ struct HistoryCalorieTrendProjection {
 
     private static func biggestInconsistencyText(
         range: HistoryRange,
-        summary: HistoryPeriodSummary
+        summary: HistoryPeriodSummary,
+        calendar: Calendar
     ) -> String? {
         switch range {
         case .quarter:
@@ -253,7 +274,7 @@ struct HistoryCalorieTrendProjection {
                 return "Most stable: logged weeks stayed near target"
             }
 
-            return "Biggest swing: week of \(week.startDate.dayMonthFormatted), \(deltaText(weeklyDelta(week, target: week.targetPerLoggedDay), unit: "kcal/day"))"
+            return "Biggest swing: week of \(week.startDate.dayMonthFormatted(in: calendar)), \(deltaText(weeklyDelta(week, target: week.targetPerLoggedDay), unit: "kcal/day"))"
 
         case .week, .twoWeeks, .month:
             let loggedDays = summary.days.filter(\.isLogged)
@@ -267,7 +288,7 @@ struct HistoryCalorieTrendProjection {
                 return "Most stable: logged days stayed near target"
             }
 
-            return "Biggest swing: \(day.date.shortFormatted), \(deltaText(day.calorieDifference, unit: "kcal"))"
+            return "Biggest swing: \(day.date.shortFormatted(in: calendar)), \(deltaText(day.calorieDifference, unit: "kcal"))"
         }
     }
 
@@ -319,10 +340,6 @@ struct HistoryCalorieTrendProjection {
         }
     }
 
-    private static func weekdayInitial(for date: Date) -> String {
-        let weekday = Calendar.current.component(.weekday, from: date)
-        return ["S", "M", "T", "W", "T", "F", "S"][max(0, min(weekday - 1, 6))]
-    }
 }
 
 struct HistoryCalorieTrendPoint: Identifiable {

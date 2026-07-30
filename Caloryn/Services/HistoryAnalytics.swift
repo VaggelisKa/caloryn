@@ -96,6 +96,11 @@ struct HistoryAnalytics {
     static let onTrackTolerance = 0.05
 
     let range: HistoryRange
+    /// The calendar every date in this analytics run was derived against.
+    /// Projections built on top of it must reuse it rather than reading the
+    /// ambient one, or a day can be labelled from a different time zone than
+    /// it was bucketed in.
+    let calendar: Calendar
     let current: HistoryPeriodSummary
     let previous: HistoryPeriodSummary
     let goalComparison: HistoryGoalComparison
@@ -110,6 +115,7 @@ struct HistoryAnalytics {
         targetResolver: HistoryDayTargetResolver? = nil
     ) {
         self.range = range
+        self.calendar = calendar
         // Without snapshots every day falls back to the current profile target,
         // which matches the pre-snapshot behavior of History.
         let resolver = targetResolver ?? HistoryDayTargetResolver(
@@ -180,6 +186,13 @@ struct HistoryPeriodSummary {
     let dailyCalorieTarget: Int
     let days: [HistoryDaySummary]
     let weeklyRollups: [HistoryWeekSummary]
+    /// The calendar these days were bucketed and these weeks rolled up in.
+    /// It travels *with* the summary because it is part of what the summary
+    /// means: History pushes `(range, summary)` into the drill-down and
+    /// nothing else, so anything that labels a day has to be able to reach
+    /// the calendar that day was bucketed in. Re-supplying it at each hop is
+    /// what let the detail projection fall back to `.current`.
+    let calendar: Calendar
 
     var totalDayCount: Int {
         days.count
@@ -248,10 +261,11 @@ struct HistoryPeriodSummary {
             )
         }
         self.days = days
+        self.calendar = calendar
         self.dailyCalorieTarget = days.isEmpty
             ? CalorieDomain.clamped(targetResolver.fallbackTarget)
             : (Double(days.reduce(0) { $0 + $1.dailyCalorieTarget }) / Double(days.count)).roundedCalories
-        self.weeklyRollups = Self.weeklyRollups(from: days)
+        self.weeklyRollups = Self.weeklyRollups(from: days, calendar: calendar)
     }
 
     func count(for status: HistoryGoalStatus) -> Int {
@@ -298,9 +312,12 @@ struct HistoryPeriodSummary {
         }
     }
 
-    private static func weeklyRollups(from days: [HistoryDaySummary]) -> [HistoryWeekSummary] {
+    private static func weeklyRollups(
+        from days: [HistoryDaySummary],
+        calendar: Calendar
+    ) -> [HistoryWeekSummary] {
         let groupedDays = Dictionary(grouping: days) { day in
-            day.date.startOfWeek
+            day.date.startOfWeek(in: calendar)
         }
 
         return groupedDays.keys.sorted().map { startDate in

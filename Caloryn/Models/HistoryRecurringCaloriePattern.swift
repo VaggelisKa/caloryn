@@ -75,6 +75,16 @@ struct HistoryRecurringCaloriePattern: Identifiable {
     let rateSeparation: Double
     let windowStart: Date
     let windowEnd: Date
+    /// The calendar this pattern's window, weekday cohorts and supporting days
+    /// were derived in, carried on the pattern for the same reason the period
+    /// summary carries its own: the drill-down receives the pattern alone.
+    let calendar: Calendar
+
+    /// Supporting-day label, produced here so it cannot be spelled without the
+    /// calendar the day was bucketed in. Routes through `Date+Helpers`.
+    func dayText(for date: Date) -> String {
+        date.shortFormatted(in: calendar)
+    }
 
     var headline: String {
         switch kind {
@@ -300,7 +310,8 @@ struct HistoryRecurringCaloriePatternEngine {
                     targetRelativeMealDifference: mealDifference.targetRelativeDifference,
                     rateSeparation: rateSeparation,
                     windowStart: window.lowerBound,
-                    windowEnd: window.upperBound
+                    windowEnd: window.upperBound,
+                    calendar: calendar
                 )
 
                 return Candidate(
@@ -362,7 +373,8 @@ struct HistoryRecurringCaloriePatternEngine {
                 targetRelativeMealDifference: mealDifference.targetRelativeDifference,
                 rateSeparation: 1,
                 windowStart: window.lowerBound,
-                windowEnd: window.upperBound
+                windowEnd: window.upperBound,
+                calendar: calendar
             )
 
             return Candidate(

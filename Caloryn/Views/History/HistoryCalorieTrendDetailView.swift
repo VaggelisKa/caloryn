@@ -396,7 +396,7 @@ private struct HistoryCalorieTrendSelectedDayCard: View {
     private var header: some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(detail.date.shortFormatted)
+                Text(projection.dayText(for: detail.date))
                     .font(CalorynTheme.itemTitle)
                     .foregroundStyle(CalorynTheme.textPrimary)
 
@@ -545,13 +545,13 @@ private struct HistoryCalorieTrendSelectedWeekCard: View {
 
     private var breakdown: HistoryCalorieTrendWeekBreakdown {
         HistoryCalorieTrendWeekBreakdown(
-            weekStartText: week.startDate.dayMonthFormatted,
+            weekStartText: projection.weekStartText(for: week.startDate),
             loggedDays: week.loggedDays,
             totalDays: week.totalDays,
             onTrackDays: week.onTrackDays,
             loggedDaySwings: week.days.filter(\.isLogged).map {
                 HistoryCalorieTrendWeekBreakdown.DaySwing(
-                    dateText: $0.date.shortFormatted,
+                    dateText: projection.dayText(for: $0.date),
                     calorieDifference: $0.calorieDifference
                 )
             },
