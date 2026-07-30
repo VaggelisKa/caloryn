@@ -2,70 +2,6 @@ import SwiftUI
 import SwiftData
 import UIKit
 
-enum FoodSearchMode {
-    case logging
-    case ingredientSelection((FoodItem) -> Void)
-    case mealComponentSelection((FoodItem) -> Void)
-
-    var title: String {
-        switch self {
-        case .logging: "Add Food"
-        case .ingredientSelection: "Add Ingredient"
-        case .mealComponentSelection: "Add Meal Item"
-        }
-    }
-
-    var isSelection: Bool {
-        switch self {
-        case .logging: false
-        case .ingredientSelection, .mealComponentSelection: true
-        }
-    }
-
-    var includesRecipes: Bool {
-        switch self {
-        case .logging, .mealComponentSelection: true
-        case .ingredientSelection: false
-        }
-    }
-
-    var usesNonStickySectionTitles: Bool {
-        switch self {
-        case .logging, .mealComponentSelection: true
-        case .ingredientSelection: false
-        }
-    }
-
-    var allowsManualEntryCreation: Bool {
-        switch self {
-        case .ingredientSelection: true
-        case .logging, .mealComponentSelection: false
-        }
-    }
-
-    var supportsMultiSelection: Bool {
-        switch self {
-        case .logging: true
-        case .ingredientSelection, .mealComponentSelection: false
-        }
-    }
-
-    func isMultiSelectionControlEnabled(
-        isSelectingMultiple: Bool,
-        selectableOptionCount: Int
-    ) -> Bool {
-        supportsMultiSelection
-            && (isSelectingMultiple || selectableOptionCount > 0)
-    }
-
-    var isIngredientSelection: Bool {
-        switch self {
-        case .ingredientSelection: true
-        case .logging, .mealComponentSelection: false
-        }
-    }
-}
-
 struct FoodSearchView: View {
     private struct MultiAddPresentation: Identifiable {
         let id = UUID()
@@ -143,16 +79,46 @@ struct FoodSearchView: View {
         )
     }
 
+    /// Which of the screen's seven states is showing. `FoodSearchScreenContent`
+    /// owns the precedence; the view only renders the answer.
+    private var screenContent: FoodSearchScreenContent {
+        FoodSearchScreenContent.resolve(
+            isLookingUpBarcode: isLookingUpBarcode,
+            hasBarcodeLookupError: barcodeLookupError != nil,
+            showingRecent: showingRecent,
+            isSearching: searchService.isSearching,
+            hasSearchFailure: searchService.failure != nil,
+            hasLocalMatches: hasLocalMatches,
+            hasProductSearchResults: hasProductSearchResults
+        )
+    }
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 searchBar
 
-                if isLookingUpBarcode || barcodeLookupError != nil {
+                switch screenContent {
+                case .barcodeLookupFailure, .barcodeLookupProgress:
                     barcodeLookupOverlay
-                } else if showingRecent {
+                case .recent:
                     recentFoodsList
-                } else {
+                case .searchProgress:
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                case .searchFailure:
+                    if let failure = searchService.failure {
+                        FoodLookupFailureView(presentation: failure.presentation) {
+                            searchService.search(query: searchText)
+                        }
+                    }
+                case .noResults:
+                    ContentUnavailableView(
+                        "No Results",
+                        systemImage: "magnifyingglass",
+                        description: Text("Try a different search term.")
+                    )
+                case .results:
                     searchResultsList
                 }
             }
@@ -299,10 +265,7 @@ struct FoodSearchView: View {
                     showingScanner = true
                 }
                 if automaticallyFocusSearch {
-                    // Keep focus away from a covered search field while a barcode
-                    // result is presented so its navigation title settles cleanly.
-                    isSearchFocused = !isLookingUpBarcode
-                        && barcodeLookupError == nil
+                    isSearchFocused = !screenContent.coversSearchField
                 }
             }
             .task(id: pendingBarcode) {
@@ -367,8 +330,11 @@ struct FoodSearchView: View {
         .padding(.horizontal, CalorynTheme.pagePadding)
         .padding(.vertical, 10)
         .onChange(of: searchText) {
-            if !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-               barcodeLookupError?.dismissesWhenNameSearchBegins == true {
+            if FoodSearchScreenContent.dismissesBarcodeFailure(
+                forSearchText: searchText,
+                errorDismissesOnNameSearch:
+                    barcodeLookupError?.dismissesWhenNameSearchBegins == true
+            ) {
                 BarcodeRecoveryAnalytics.record(path: .nameSearch, result: .started)
                 barcodeLookupError = nil
                 lastScannedBarcode = nil
@@ -410,9 +376,7 @@ struct FoodSearchView: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityValue(
-                        isSelectingMultiple
-                            ? selectionAccessibilityValue(for: .meal(meal.id))
-                            : ""
+                        selectionAccessibilityValue(for: .meal(meal.id))
                     )
                     .accessibilityIdentifier("meal.select.\(meal.id.uuidString)")
                 }
@@ -497,141 +461,122 @@ struct FoodSearchView: View {
     private var hasProductSearchResults: Bool { listing.hasProductSearchResults }
 
     private var searchResultsList: some View {
-        Group {
-            if searchService.isSearching && !hasLocalMatches {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if let failure = searchService.failure, !hasLocalMatches {
-                FoodLookupFailureView(presentation: failure.presentation) {
-                    searchService.search(query: searchText)
-                }
-            } else if !hasProductSearchResults && !hasLocalMatches {
-                ContentUnavailableView(
-                    "No Results",
-                    systemImage: "magnifyingglass",
-                    description: Text("Try a different search term.")
-                )
-            } else {
-                List {
-                    if !matchingMeals.isEmpty {
-                        nonStickySectionTitle("Meals")
+        List {
+            if !matchingMeals.isEmpty {
+                nonStickySectionTitle("Meals")
 
-                        ForEach(matchingMeals) { meal in
-                            Button {
-                                handleMealSelection(meal)
-                            } label: {
-                                selectionRow(
-                                    isSelected: isSelected(.meal(meal.id))
-                                ) {
-                                    MealTemplateLibraryRow(
-                                        template: meal,
-                                        showsIcon: false
-                                    )
-                                }
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityValue(
-                                isSelectingMultiple
-                                    ? selectionAccessibilityValue(for: .meal(meal.id))
-                                    : ""
+                ForEach(matchingMeals) { meal in
+                    Button {
+                        handleMealSelection(meal)
+                    } label: {
+                        selectionRow(
+                            isSelected: isSelected(.meal(meal.id))
+                        ) {
+                            MealTemplateLibraryRow(
+                                template: meal,
+                                showsIcon: false
                             )
                         }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityValue(
+                        selectionAccessibilityValue(for: .meal(meal.id))
+                    )
+                }
+                .listRowBackground(Color.clear)
+            }
+
+            if !matchingRecipes.isEmpty {
+                if mode.usesNonStickySectionTitles {
+                    nonStickySectionTitle("Recipes")
+
+                    ForEach(matchingRecipes) { food in
+                        recipeRow(for: food)
+                    }
+                    .listRowBackground(Color.clear)
+                } else {
+                    Section {
+                        ForEach(matchingRecipes) { food in
+                            recipeRow(for: food)
+                        }
                         .listRowBackground(Color.clear)
-                    }
-
-                    if !matchingRecipes.isEmpty {
-                        if mode.usesNonStickySectionTitles {
-                            nonStickySectionTitle("Recipes")
-
-                            ForEach(matchingRecipes) { food in
-                                recipeRow(for: food)
-                            }
-                            .listRowBackground(Color.clear)
-                        } else {
-                            Section {
-                                ForEach(matchingRecipes) { food in
-                                    recipeRow(for: food)
-                                }
-                                .listRowBackground(Color.clear)
-                            } header: {
-                                Text("Recipes")
-                                    .font(CalorynTheme.caption)
-                                    .foregroundStyle(CalorynTheme.textSecondary)
-                            }
-                        }
-                    }
-
-                    if !matchingManualEntries.isEmpty {
-                        if mode.usesNonStickySectionTitles {
-                            nonStickySectionTitle("Manual Entries")
-
-                            ForEach(matchingManualEntries) { food in
-                                personalFoodRow(for: food)
-                            }
-                            .listRowBackground(Color.clear)
-                        } else {
-                            Section {
-                                ForEach(matchingManualEntries) { food in
-                                    personalFoodRow(for: food)
-                                }
-                                .listRowBackground(Color.clear)
-                            } header: {
-                                Text("Manual Entries")
-                                    .font(CalorynTheme.caption)
-                                    .foregroundStyle(CalorynTheme.textSecondary)
-                            }
-                        }
-                    }
-
-                    if hasProductSearchResults {
-                        if mode.usesNonStickySectionTitles {
-                            if hasCategorizedLocalMatches {
-                                nonStickySectionTitle("Search Results")
-                            }
-
-                            ForEach(matchingEditedProducts) { food in
-                                savedFoodRow(for: food)
-                            }
-                            .listRowBackground(Color.clear)
-
-                            ForEach(visibleProviderSearchResults) { result in
-                                remoteProductRow(result)
-                            }
-                            .listRowBackground(Color.clear)
-                        } else {
-                            Section {
-                                ForEach(matchingEditedProducts) { food in
-                                    savedFoodRow(for: food)
-                                }
-                                .listRowBackground(Color.clear)
-
-                                ForEach(visibleProviderSearchResults) { result in
-                                    remoteProductRow(result)
-                                }
-                                .listRowBackground(Color.clear)
-                            } header: {
-                                if hasCategorizedLocalMatches {
-                                    Text("Search Results")
-                                        .font(CalorynTheme.caption)
-                                        .foregroundStyle(CalorynTheme.textSecondary)
-                                }
-                            }
-                        }
-                    }
-
-                    if searchService.isSearching {
-                        HStack {
-                            Spacer()
-                            ProgressView()
-                            Spacer()
-                        }
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Color.clear)
+                    } header: {
+                        Text("Recipes")
+                            .font(CalorynTheme.caption)
+                            .foregroundStyle(CalorynTheme.textSecondary)
                     }
                 }
-                .calorynPlainListStyle()
+            }
+
+            if !matchingManualEntries.isEmpty {
+                if mode.usesNonStickySectionTitles {
+                    nonStickySectionTitle("Manual Entries")
+
+                    ForEach(matchingManualEntries) { food in
+                        personalFoodRow(for: food)
+                    }
+                    .listRowBackground(Color.clear)
+                } else {
+                    Section {
+                        ForEach(matchingManualEntries) { food in
+                            personalFoodRow(for: food)
+                        }
+                        .listRowBackground(Color.clear)
+                    } header: {
+                        Text("Manual Entries")
+                            .font(CalorynTheme.caption)
+                            .foregroundStyle(CalorynTheme.textSecondary)
+                    }
+                }
+            }
+
+            if hasProductSearchResults {
+                if mode.usesNonStickySectionTitles {
+                    if hasCategorizedLocalMatches {
+                        nonStickySectionTitle("Search Results")
+                    }
+
+                    ForEach(matchingEditedProducts) { food in
+                        savedFoodRow(for: food)
+                    }
+                    .listRowBackground(Color.clear)
+
+                    ForEach(visibleProviderSearchResults) { result in
+                        remoteProductRow(result)
+                    }
+                    .listRowBackground(Color.clear)
+                } else {
+                    Section {
+                        ForEach(matchingEditedProducts) { food in
+                            savedFoodRow(for: food)
+                        }
+                        .listRowBackground(Color.clear)
+
+                        ForEach(visibleProviderSearchResults) { result in
+                            remoteProductRow(result)
+                        }
+                        .listRowBackground(Color.clear)
+                    } header: {
+                        if hasCategorizedLocalMatches {
+                            Text("Search Results")
+                                .font(CalorynTheme.caption)
+                                .foregroundStyle(CalorynTheme.textSecondary)
+                        }
+                    }
+                }
+            }
+
+            if searchService.isSearching {
+                HStack {
+                    Spacer()
+                    ProgressView()
+                    Spacer()
+                }
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
             }
         }
+        .calorynPlainListStyle()
     }
 
     private func personalFoodRow(for food: FoodItem) -> some View {
@@ -832,8 +777,9 @@ struct FoodSearchView: View {
     }
 
     private var reviewButtonTitle: String {
-        let noun = selectedItemCount == 1 ? "Item" : "Items"
-        return "Review \(selectedItemCount) \(noun)"
+        MultiAddSelectionLabels.reviewButtonTitle(
+            selectedItemCount: selectedItemCount
+        )
     }
 
     private func captureSuggestionsIfNeeded() {
@@ -885,8 +831,10 @@ struct FoodSearchView: View {
     private func selectionAccessibilityValue(
         for id: MultiAddSelectionGroup.ID
     ) -> String {
-        guard isSelectingMultiple else { return "" }
-        return isSelected(id) ? "Selected" : "Not selected"
+        MultiAddSelectionLabels.selectionValue(
+            isSelectingMultiple: isSelectingMultiple,
+            isSelected: isSelected(id)
+        )
     }
 
     private func toggle(_ group: MultiAddSelectionGroup) {
