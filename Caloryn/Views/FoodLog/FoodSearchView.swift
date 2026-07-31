@@ -2,8 +2,11 @@ import SwiftUI
 import SwiftData
 import UIKit
 
+/// The row builders live in `FoodSearchRows.swift`; the members they touch
+/// are internal rather than private so that same-type extension can reach
+/// them from its own file. Nothing else should.
 struct FoodSearchView: View {
-    private struct MultiAddPresentation: Identifiable {
+    struct MultiAddPresentation: Identifiable {
         let id = UUID()
         let groups: [MultiAddSelectionGroup]
     }
@@ -35,13 +38,13 @@ struct FoodSearchView: View {
         lastScannedBarcode: FoodSearchService.debugInitialBarcode
     )
     @State private var mealErrorMessage: String?
-    @State private var isSelectingMultiple = false
+    @State var isSelectingMultiple = false
     @State private var multiAddSelection = MultiAddSelectionState()
     @State private var suggestionSnapshot: [ContextualFoodSuggestion] = []
     @State private var hasCapturedSuggestions = false
-    @State private var multiAddPresentation: MultiAddPresentation?
+    @State var multiAddPresentation: MultiAddPresentation?
     @ScaledMetric(relativeTo: .body)
-    private var selectionIndicatorWidth: CGFloat = 22
+    var selectionIndicatorWidth: CGFloat = 22
     @FocusState private var isSearchFocused: Bool
 
     /// Every rule about what this screen lists lives in `FoodSearchListing`.
@@ -341,94 +344,60 @@ struct FoodSearchView: View {
     private var recentFoodsList: some View {
         List {
             if !contextualSuggestions.isEmpty {
-                nonStickySectionTitle("Suggested for This Meal")
-
-                ForEach(contextualSuggestions, id: \.1.id) { pair in
-                    contextualSuggestionRow(
-                        food: pair.0,
-                        suggestion: pair.1
-                    )
+                foodSection(title: "Suggested for This Meal") {
+                    ForEach(contextualSuggestions, id: \.1.id) { pair in
+                        contextualSuggestionRow(
+                            food: pair.0,
+                            suggestion: pair.1
+                        )
+                    }
                 }
-                .listRowBackground(Color.clear)
             }
 
             if mode.supportsMultiSelection, !mealTemplates.isEmpty {
-                nonStickySectionTitle("Meals")
-
-                ForEach(mealTemplates) { meal in
-                    Button {
-                        handleMealSelection(meal)
-                    } label: {
-                        selectionRow(
-                            isSelected: isSelected(.meal(meal.id))
-                        ) {
-                            MealTemplateLibraryRow(
-                                template: meal,
-                                showsIcon: false
-                            )
+                foodSection(title: "Meals") {
+                    ForEach(mealTemplates) { meal in
+                        Button {
+                            handleMealSelection(meal)
+                        } label: {
+                            selectionRow(
+                                isSelected: isSelected(.meal(meal.id))
+                            ) {
+                                MealTemplateLibraryRow(
+                                    template: meal,
+                                    showsIcon: false
+                                )
+                            }
                         }
+                        .buttonStyle(.plain)
+                        .accessibilityValue(
+                            selectionAccessibilityValue(for: .meal(meal.id))
+                        )
+                        .accessibilityIdentifier("meal.select.\(meal.id.uuidString)")
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityValue(
-                        selectionAccessibilityValue(for: .meal(meal.id))
-                    )
-                    .accessibilityIdentifier("meal.select.\(meal.id.uuidString)")
                 }
-                .listRowBackground(Color.clear)
             }
 
             if mode.isSelection, !recipes.isEmpty {
-                if mode.usesNonStickySectionTitles {
-                    nonStickySectionTitle("Recipes")
-
+                foodSection(title: "Recipes", stickyHeaderStyle: .system) {
                     ForEach(recipes) { recipe in
                         recipeRow(for: recipe)
-                    }
-                    .listRowBackground(Color.clear)
-                } else {
-                    Section("Recipes") {
-                        ForEach(recipes) { recipe in
-                            recipeRow(for: recipe)
-                        }
-                        .listRowBackground(Color.clear)
                     }
                 }
             }
 
             if mode.isSelection, !manualEntries.isEmpty {
-                if mode.usesNonStickySectionTitles {
-                    nonStickySectionTitle("Manual Entries")
-
+                foodSection(title: "Manual Entries", stickyHeaderStyle: .system) {
                     ForEach(manualEntries) { food in
                         personalFoodRow(for: food)
-                    }
-                    .listRowBackground(Color.clear)
-                } else {
-                    Section("Manual Entries") {
-                        ForEach(manualEntries) { food in
-                            personalFoodRow(for: food)
-                        }
-                        .listRowBackground(Color.clear)
                     }
                 }
             }
 
             if !displayedRecentFoods.isEmpty {
-                if mode.usesNonStickySectionTitles {
-                    nonStickySectionTitle("Recent")
-
+                foodSection(title: "Recent") {
                     ForEach(displayedRecentFoods) { food in
                         savedFoodRow(for: food)
-                    }
-                    .listRowBackground(Color.clear)
-                } else {
-                    Section {
-                        ForEach(displayedRecentFoods) { food in
-                            savedFoodRow(for: food)
-                        }
-                        .listRowBackground(Color.clear)
-                    } header: {
-                        recentSectionHeader
                     }
                 }
             }
@@ -457,105 +426,55 @@ struct FoodSearchView: View {
     private var searchResultsList: some View {
         List {
             if !matchingMeals.isEmpty {
-                nonStickySectionTitle("Meals")
-
-                ForEach(matchingMeals) { meal in
-                    Button {
-                        handleMealSelection(meal)
-                    } label: {
-                        selectionRow(
-                            isSelected: isSelected(.meal(meal.id))
-                        ) {
-                            MealTemplateLibraryRow(
-                                template: meal,
-                                showsIcon: false
-                            )
+                foodSection(title: "Meals") {
+                    ForEach(matchingMeals) { meal in
+                        Button {
+                            handleMealSelection(meal)
+                        } label: {
+                            selectionRow(
+                                isSelected: isSelected(.meal(meal.id))
+                            ) {
+                                MealTemplateLibraryRow(
+                                    template: meal,
+                                    showsIcon: false
+                                )
+                            }
                         }
+                        .buttonStyle(.plain)
+                        .accessibilityValue(
+                            selectionAccessibilityValue(for: .meal(meal.id))
+                        )
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityValue(
-                        selectionAccessibilityValue(for: .meal(meal.id))
-                    )
                 }
-                .listRowBackground(Color.clear)
             }
 
             if !matchingRecipes.isEmpty {
-                if mode.usesNonStickySectionTitles {
-                    nonStickySectionTitle("Recipes")
-
+                foodSection(title: "Recipes") {
                     ForEach(matchingRecipes) { food in
                         recipeRow(for: food)
-                    }
-                    .listRowBackground(Color.clear)
-                } else {
-                    Section {
-                        ForEach(matchingRecipes) { food in
-                            recipeRow(for: food)
-                        }
-                        .listRowBackground(Color.clear)
-                    } header: {
-                        Text("Recipes")
-                            .font(CalorynTheme.caption)
-                            .foregroundStyle(CalorynTheme.textSecondary)
                     }
                 }
             }
 
             if !matchingManualEntries.isEmpty {
-                if mode.usesNonStickySectionTitles {
-                    nonStickySectionTitle("Manual Entries")
-
+                foodSection(title: "Manual Entries") {
                     ForEach(matchingManualEntries) { food in
                         personalFoodRow(for: food)
-                    }
-                    .listRowBackground(Color.clear)
-                } else {
-                    Section {
-                        ForEach(matchingManualEntries) { food in
-                            personalFoodRow(for: food)
-                        }
-                        .listRowBackground(Color.clear)
-                    } header: {
-                        Text("Manual Entries")
-                            .font(CalorynTheme.caption)
-                            .foregroundStyle(CalorynTheme.textSecondary)
                     }
                 }
             }
 
             if hasProductSearchResults {
-                if mode.usesNonStickySectionTitles {
-                    if hasCategorizedLocalMatches {
-                        nonStickySectionTitle("Search Results")
-                    }
-
+                foodSection(
+                    title: "Search Results",
+                    showsTitle: hasCategorizedLocalMatches
+                ) {
                     ForEach(matchingEditedProducts) { food in
                         savedFoodRow(for: food)
                     }
-                    .listRowBackground(Color.clear)
 
                     ForEach(visibleProviderSearchResults) { result in
                         remoteProductRow(result)
-                    }
-                    .listRowBackground(Color.clear)
-                } else {
-                    Section {
-                        ForEach(matchingEditedProducts) { food in
-                            savedFoodRow(for: food)
-                        }
-                        .listRowBackground(Color.clear)
-
-                        ForEach(visibleProviderSearchResults) { result in
-                            remoteProductRow(result)
-                        }
-                        .listRowBackground(Color.clear)
-                    } header: {
-                        if hasCategorizedLocalMatches {
-                            Text("Search Results")
-                                .font(CalorynTheme.caption)
-                                .foregroundStyle(CalorynTheme.textSecondary)
-                        }
                     }
                 }
             }
@@ -573,198 +492,65 @@ struct FoodSearchView: View {
         .calorynPlainListStyle()
     }
 
-    private func personalFoodRow(for food: FoodItem) -> some View {
-        Button {
-            handleFoodItemSelection(food)
-        } label: {
-            selectionRow(isSelected: isSelected(.food(food.id))) {
-                FoodRowView(
-                    name: food.name,
-                    brand: food.brand,
-                    caloriesPer100g: food.caloriesPer100g,
-                    nutriscoreGrade: food.nutriscoreGrade,
-                    servingDescription: food.servingDescription,
-                    isCustom: true,
-                    showsTypeBadge: false
-                )
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityValue(selectionAccessibilityValue(for: .food(food.id)))
-        .accessibilityIdentifier("foodSearch.result.\(food.name)")
+    /// How a section labels itself when the mode pins headers to the top of
+    /// the list (`usesNonStickySectionTitles == false`).
+    ///
+    /// Two styles exist because the two lists have never agreed: the resting
+    /// list's Recipes and Manual Entries sections use `Section(_:)`'s system
+    /// header, while every other pinned header is a caption-styled `Text`.
+    /// This is a rendering refactor, so the inconsistency is preserved, not
+    /// resolved.
+    private enum StickyHeaderStyle {
+        case system
+        case caption
     }
 
-    private func recipeRow(for food: FoodItem) -> some View {
-        Button {
-            handleFoodItemSelection(food)
-        } label: {
-            selectionRow(isSelected: isSelected(.food(food.id))) {
-                FoodRowView(
-                    name: food.name,
-                    brand: food.brand,
-                    caloriesPer100g: food.caloriesPer100g,
-                    caloriesPerServing: food.calories(forGrams: food.defaultServingG ?? 100),
-                    isRecipe: true,
-                    showsTypeBadge: false
-                )
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityValue(selectionAccessibilityValue(for: .food(food.id)))
-    }
-
-    private func savedFoodRow(for food: FoodItem) -> some View {
-        Button {
-            handleFoodItemSelection(food)
-        } label: {
-            selectionRow(isSelected: isSelected(.food(food.id))) {
-                FoodRowView(
-                    name: food.name,
-                    brand: food.brand,
-                    caloriesPer100g: food.caloriesPer100g,
-                    nutriscoreGrade: food.nutriscoreGrade,
-                    servingDescription: food.servingDescription
-                )
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityValue(selectionAccessibilityValue(for: .food(food.id)))
-        .accessibilityIdentifier("foodSearch.result.\(food.name)")
-    }
-
-    private func remoteProductRow(_ result: FoodSearchResult) -> some View {
-        let product = result.product
-        let productName = product.productName ?? "Unknown"
-
-        return Button {
-            handleProductSelection(result)
-        } label: {
-            selectionRow(
-                isSelected: isSelected(.remoteProduct(product.id))
-            ) {
-                FoodRowView(
-                    name: productName,
-                    brand: product.brands,
-                    caloriesPer100g: product.nutriments?.energyKcal100g ?? 0,
-                    nutriscoreGrade: product.nutritionGrades.flatMap { grade in
-                        ["a", "b", "c", "d", "e"].contains(grade.lowercased())
-                            ? grade.lowercased()
-                            : nil
-                    },
-                    servingDescription: product.formattedServingDescription,
-                    caloriesPerServing: product.caloriesPerServing
-                )
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityValue(
-            selectionAccessibilityValue(for: .remoteProduct(product.id))
-        )
-        .accessibilityIdentifier("foodSearch.result.\(productName)")
-    }
-
-    private func contextualSuggestionRow(
-        food: FoodItem,
-        suggestion: ContextualFoodSuggestion
+    /// The one shape every section of both lists shares: a title that either
+    /// scrolls away with its rows or pins to the top, per the mode, above
+    /// rows on a clear background.
+    @ViewBuilder
+    private func foodSection<Rows: View>(
+        title: String,
+        stickyHeaderStyle: StickyHeaderStyle = .caption,
+        showsTitle: Bool = true,
+        @ViewBuilder rows: () -> Rows
     ) -> some View {
-        Button {
-            if isSelectingMultiple {
-                toggleFoodSelection(food)
-            } else {
-                multiAddPresentation = MultiAddPresentation(
-                    groups: [
-                        .savedFood(
-                            food,
-                            portionGrams: suggestion.resolvedPortionGrams,
-                            meal: mealType,
-                            snackIndex: snackIndex
-                        ),
-                    ]
-                )
+        if mode.usesNonStickySectionTitles {
+            if showsTitle {
+                nonStickySectionTitle(title)
             }
-        } label: {
-            selectionRow(
-                isSelected: isSelected(.food(food.id)),
-                spacing: 12
-            ) {
-                Text(food.name)
-                    .font(CalorynTheme.itemTitle)
-                    .foregroundStyle(CalorynTheme.textPrimary)
 
-                Spacer(minLength: 8)
-
-                Text("\(suggestion.resolvedPortionGrams.rounded().truncatedSafely)g")
-                    .font(CalorynTheme.numericBody)
-                    .foregroundStyle(CalorynTheme.textPrimary)
+            rows()
+                .listRowBackground(Color.clear)
+        } else {
+            switch stickyHeaderStyle {
+            case .system:
+                Section(title) {
+                    rows()
+                        .listRowBackground(Color.clear)
+                }
+            case .caption:
+                Section {
+                    rows()
+                        .listRowBackground(Color.clear)
+                } header: {
+                    if showsTitle {
+                        Text(title)
+                            .font(CalorynTheme.caption)
+                            .foregroundStyle(CalorynTheme.textSecondary)
+                    }
+                }
             }
-            .padding(.vertical, 4)
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(
-            "\(food.name), suggested \(suggestion.resolvedPortionGrams.rounded().truncatedSafely) grams"
-        )
-        .accessibilityValue(selectionAccessibilityValue(for: .food(food.id)))
-        .accessibilityHint(
-            isSelectingMultiple
-                ? "Double tap to \(isSelected(.food(food.id)) ? "remove" : "select") this item"
-                : "Double tap to review its portion"
-        )
-        .accessibilityIdentifier("contextualSuggestions.food.\(food.id.uuidString)")
     }
 
-    private func selectionRow<Content: View>(
-        isSelected: Bool,
-        spacing: CGFloat = 10,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        HStack(spacing: 0) {
-            selectionIndicator(isSelected: isSelected)
-                .frame(
-                    width: selectionIndicatorWidth,
-                    alignment: .leading
-                )
-                .opacity(isSelectingMultiple ? 1 : 0)
-                .scaleEffect(
-                    isSelectingMultiple ? 1 : 0.82,
-                    anchor: .leading
-                )
-                .frame(
-                    width: isSelectingMultiple
-                        ? selectionIndicatorWidth + spacing
-                        : 0,
-                    alignment: .leading
-                )
-                .clipped()
-
-            content()
-        }
-        .animation(selectionModeAnimation, value: isSelectingMultiple)
-    }
-
-    private func selectionIndicator(isSelected: Bool) -> some View {
-        Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-            .font(CalorynTheme.inlineIcon)
-            .foregroundStyle(
-                isSelected ? CalorynTheme.sage : CalorynTheme.textSecondary
-            )
-            .contentTransition(.symbolEffect(.replace))
-            .scaleEffect(isSelected ? 1 : 0.94)
-            .animation(selectionChangeAnimation, value: isSelected)
-            .accessibilityHidden(true)
-    }
-
-    private var selectionModeAnimation: Animation? {
+    var selectionModeAnimation: Animation? {
         accessibilityReduceMotion
             ? nil
             : .smooth(duration: 0.22)
     }
 
-    private var selectionChangeAnimation: Animation? {
+    var selectionChangeAnimation: Animation? {
         accessibilityReduceMotion
             ? nil
             : .spring(response: 0.22, dampingFraction: 0.72)
@@ -818,11 +604,11 @@ struct FoodSearchView: View {
         }
     }
 
-    private func isSelected(_ id: MultiAddSelectionGroup.ID) -> Bool {
+    func isSelected(_ id: MultiAddSelectionGroup.ID) -> Bool {
         multiAddSelection.contains(id)
     }
 
-    private func selectionAccessibilityValue(
+    func selectionAccessibilityValue(
         for id: MultiAddSelectionGroup.ID
     ) -> String {
         MultiAddSelectionLabels.selectionValue(
@@ -846,7 +632,7 @@ struct FoodSearchView: View {
         }
     }
 
-    private func toggleFoodSelection(_ food: FoodItem) {
+    func toggleFoodSelection(_ food: FoodItem) {
         let portion = suggestionSnapshot
             .first { $0.foodID == food.id }?
             .resolvedPortionGrams
@@ -897,12 +683,6 @@ struct FoodSearchView: View {
         } catch {
             mealErrorMessage = error.localizedDescription
         }
-    }
-
-    private var recentSectionHeader: some View {
-        Text("Recent")
-            .font(CalorynTheme.caption)
-            .foregroundStyle(CalorynTheme.textSecondary)
     }
 
     private func nonStickySectionTitle(_ title: String) -> some View {
@@ -1042,7 +822,7 @@ struct FoodSearchView: View {
         }
     }
 
-    private func handleProductSelection(_ result: FoodSearchResult) {
+    func handleProductSelection(_ result: FoodSearchResult) {
         switch mode {
         case .logging:
             if isSelectingMultiple {
@@ -1057,7 +837,7 @@ struct FoodSearchView: View {
         }
     }
 
-    private func handleFoodItemSelection(_ food: FoodItem) {
+    func handleFoodItemSelection(_ food: FoodItem) {
         switch mode {
         case .logging:
             if isSelectingMultiple {
