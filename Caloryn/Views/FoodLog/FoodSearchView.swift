@@ -28,11 +28,12 @@ struct FoodSearchView: View {
     @State private var showingScanner = false
     @State private var hasPresentedInitialScanner = false
     @State private var showingCustomFoodForm = false
-    @State private var isLookingUpBarcode = false
-    @State private var barcodeLookupError = FoodSearchService.debugInitialBarcodeFailure
-    @State private var pendingBarcode: String?
-    @State private var lastScannedBarcode = FoodSearchService.debugInitialBarcode
-    @State private var manualRecoveryBarcode: String?
+    /// Every rule about what a scan, a failure and a recovery do to this
+    /// screen's state lives in `BarcodeLookupFlow`.
+    @State private var barcodeFlow = BarcodeLookupFlow(
+        error: FoodSearchService.debugInitialBarcodeFailure,
+        lastScannedBarcode: FoodSearchService.debugInitialBarcode
+    )
     @State private var mealErrorMessage: String?
     @State private var isSelectingMultiple = false
     @State private var multiAddSelection = MultiAddSelectionState()
@@ -74,8 +75,8 @@ struct FoodSearchView: View {
 
     private var selectableOptionCount: Int {
         listing.selectableOptionCount(
-            isLookingUpBarcode: isLookingUpBarcode,
-            hasBarcodeLookupError: barcodeLookupError != nil
+            isLookingUpBarcode: barcodeFlow.isLookingUp,
+            hasBarcodeLookupError: barcodeFlow.hasError
         )
     }
 
@@ -83,8 +84,8 @@ struct FoodSearchView: View {
     /// owns the precedence; the view only renders the answer.
     private var screenContent: FoodSearchScreenContent {
         FoodSearchScreenContent.resolve(
-            isLookingUpBarcode: isLookingUpBarcode,
-            hasBarcodeLookupError: barcodeLookupError != nil,
+            isLookingUpBarcode: barcodeFlow.isLookingUp,
+            hasBarcodeLookupError: barcodeFlow.hasError,
             showingRecent: showingRecent,
             isSearching: searchService.isSearching,
             hasSearchFailure: searchService.failure != nil,
@@ -164,7 +165,7 @@ struct FoodSearchView: View {
                 } else if mode.allowsManualEntryCreation {
                     ToolbarItem(placement: .primaryAction) {
                         Button {
-                            manualRecoveryBarcode = nil
+                            barcodeFlow.manualEntryOpened()
                             showingCustomFoodForm = true
                         } label: {
                             Image(systemName: "plus")
@@ -226,12 +227,10 @@ struct FoodSearchView: View {
             }
             .sheet(isPresented: $showingCustomFoodForm) {
                 CustomFoodFormView(
-                    prefilledBarcode: manualRecoveryBarcode,
+                    prefilledBarcode: barcodeFlow.manualRecoveryBarcode,
                     onSaved: { food in
                         showingCustomFoodForm = false
-                        manualRecoveryBarcode = nil
-                        barcodeLookupError = nil
-                        lastScannedBarcode = nil
+                        barcodeFlow.manualEntrySaved()
                         Task { @MainActor in
                             handleFoodItemSelection(food)
                         }
@@ -268,8 +267,8 @@ struct FoodSearchView: View {
                     isSearchFocused = !screenContent.coversSearchField
                 }
             }
-            .task(id: pendingBarcode) {
-                guard let pendingBarcode else { return }
+            .task(id: barcodeFlow.pendingBarcode) {
+                guard let pendingBarcode = barcodeFlow.pendingBarcode else { return }
                 await performBarcodeLookup(pendingBarcode)
             }
         }
@@ -315,9 +314,7 @@ struct FoodSearchView: View {
 
             Button {
                 isSearchFocused = false
-                barcodeLookupError = nil
-                lastScannedBarcode = nil
-                manualRecoveryBarcode = nil
+                barcodeFlow.scannerOpened()
                 showingScanner = true
             } label: {
                 Image(systemName: "barcode.viewfinder")
@@ -332,13 +329,10 @@ struct FoodSearchView: View {
         .onChange(of: searchText) {
             if FoodSearchScreenContent.dismissesBarcodeFailure(
                 forSearchText: searchText,
-                errorDismissesOnNameSearch:
-                    barcodeLookupError?.dismissesWhenNameSearchBegins == true
+                errorDismissesOnNameSearch: barcodeFlow.errorDismissesOnNameSearch
             ) {
                 BarcodeRecoveryAnalytics.record(path: .nameSearch, result: .started)
-                barcodeLookupError = nil
-                lastScannedBarcode = nil
-                manualRecoveryBarcode = nil
+                barcodeFlow.nameSearchStarted()
             }
             searchService.search(query: searchText)
         }
@@ -956,7 +950,7 @@ struct FoodSearchView: View {
         ZStack(alignment: .topLeading) {
             BarcodeScannerView { code in
                 showingScanner = false
-                handleScannedBarcode(code)
+                barcodeFlow.scanned(code)
             }
             .ignoresSafeArea()
 
@@ -976,11 +970,11 @@ struct FoodSearchView: View {
 
     private var barcodeLookupOverlay: some View {
         Group {
-            if let error = barcodeLookupError {
+            if let error = barcodeFlow.error {
                 BarcodeLookupFailureView(
                     presentation: error.presentation(for: .barcode),
-                    normalizedBarcode: lastScannedBarcode,
-                    offersManualCreation: error == .notFound,
+                    normalizedBarcode: barcodeFlow.lastScannedBarcode,
+                    offersManualCreation: barcodeFlow.offersManualCreation,
                     onRetry: handleRetryableBarcodeFailureAction,
                     onCreateManually: openManualBarcodeRecovery
                 )
@@ -999,19 +993,6 @@ struct FoodSearchView: View {
         .frame(maxWidth: .infinity)
     }
 
-    private func handleScannedBarcode(_ code: String) {
-        guard let normalizedBarcode = BarcodeIdentity.normalized(code) else {
-            isLookingUpBarcode = false
-            barcodeLookupError = .invalidRequest
-            lastScannedBarcode = nil
-            return
-        }
-        isLookingUpBarcode = true
-        barcodeLookupError = nil
-        lastScannedBarcode = normalizedBarcode
-        pendingBarcode = normalizedBarcode
-    }
-
     private func performBarcodeLookup(_ code: String) async {
         let outcome = await BarcodeLookupRecoveryCoordinator.resolve(
             barcode: code,
@@ -1022,51 +1003,43 @@ struct FoodSearchView: View {
 
         switch outcome {
         case .remote(let result):
-            isLookingUpBarcode = false
-            pendingBarcode = nil
-            lastScannedBarcode = nil
+            barcodeFlow.lookupSucceeded()
             handleProductSelection(result)
         case .local(let food, _):
-            isLookingUpBarcode = false
-            pendingBarcode = nil
-            lastScannedBarcode = nil
+            barcodeFlow.lookupSucceeded()
             try? modelContext.save()
             handleFoodItemSelection(food)
         case .failure(let error):
-            guard error != .cancelled else { return }
-            isLookingUpBarcode = false
-            pendingBarcode = nil
-            barcodeLookupError = error
-            triggerBarcodeLookupHaptic(error == .notFound ? .warning : .error)
+            guard let feedback = barcodeFlow.lookupFailed(error) else { return }
+            triggerBarcodeLookupHaptic(feedback)
         }
     }
 
     private func openManualBarcodeRecovery() {
-        guard let normalizedBarcode = BarcodeIdentity.normalized(lastScannedBarcode) else {
-            return
-        }
-        manualRecoveryBarcode = normalizedBarcode
+        guard barcodeFlow.manualRecoveryOpened() else { return }
         BarcodeRecoveryAnalytics.record(path: .manualCreation, result: .started)
-        barcodeLookupError = nil
         isSearchFocused = false
         showingCustomFoodForm = true
     }
 
     private func handleRetryableBarcodeFailureAction() {
-        guard let lastScannedBarcode else {
-            barcodeLookupError = nil
+        switch barcodeFlow.retryRequested() {
+        case .repeatLookup:
+            break
+        case .rescan:
             showingScanner = true
-            return
         }
-        barcodeLookupError = nil
-        isLookingUpBarcode = true
-        pendingBarcode = lastScannedBarcode
     }
 
-    private func triggerBarcodeLookupHaptic(_ type: UINotificationFeedbackGenerator.FeedbackType) {
+    private func triggerBarcodeLookupHaptic(_ feedback: BarcodeLookupFlow.FailureFeedback) {
         let generator = UINotificationFeedbackGenerator()
         generator.prepare()
-        generator.notificationOccurred(type)
+        switch feedback {
+        case .warning:
+            generator.notificationOccurred(.warning)
+        case .error:
+            generator.notificationOccurred(.error)
+        }
     }
 
     private func handleProductSelection(_ result: FoodSearchResult) {
