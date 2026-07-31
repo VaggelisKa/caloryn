@@ -4,9 +4,9 @@ import Foundation
 ///
 /// The portion picker offers up to three ways of saying the same thing —
 /// grams, countable servings ("2 slices"), or a fraction of a recipe — and the
-/// grams are the single truth all three agree on. Switching modes or moving a
-/// wheel has to reconcile the others without the number drifting, which is the
-/// whole reason this lives outside the view.
+/// grams are the single truth all three agree on. Switching modes, typing a
+/// weight or moving a wheel has to reconcile the others without the number
+/// drifting, which is the whole reason this lives outside the view.
 struct PortionSelection: Equatable {
     /// The traits of a food that affect how a portion can be expressed.
     /// Deliberately not a `FoodItem`: these five facts are all that matter, and
@@ -59,17 +59,18 @@ struct PortionSelection: Equatable {
         RecipeServingOption(id: "4", label: "4", multiplier: 4)
     ]
 
-    /// The gram wheel moves in 5g steps and never offers less than 500g, so a
-    /// large portion is always reachable.
-    static let gramStepSize = 5
-    static let minimumGramOption = 5
-    static let minimumGramOptionLimit = 500
-    /// The wheel is a materialized `Array`, one row per 5g step, so its ceiling
-    /// is a row count as much as a weight: 10kg is 2,000 rows, past any real
-    /// recipe and still instant to build. Without it a serving size straight
-    /// off the food API sets the ceiling — 50kg is ten million rows, and a
-    /// serving past `Int.max` clamps to `Int.max` and never finishes at all.
-    static let maximumGramOptionLimit = 10_000
+    /// Grams are typed, not spun, so the only bounds left are the ones that
+    /// keep a mistyped number from becoming a nonsense log: a portion is at
+    /// least a gram and at most 10kg, past any real recipe.
+    static let minimumGrams = 1
+    static let maximumGrams = 10_000
+
+    /// The shortcuts offered beside the field. Three, because they share the
+    /// row with the unit wheel and a fourth would not fit.
+    static let quickGramOptionCount = 3
+    /// What the shortcuts offer a food that knows nothing about its own
+    /// serving — round numbers, since there is nothing better to scale.
+    static let fallbackQuickGramOptions = [50, 100, 200]
 
     /// Countable servings are capped so the wheel stays usable, and floored at
     /// two so a picker with a single choice is never shown.
@@ -82,7 +83,9 @@ struct PortionSelection: Equatable {
     private(set) var shape: Shape
     private(set) var portionGrams: Double
     var mode: Mode
-    var gramStep: Int
+    /// What the grams field currently shows. Free text while the user is mid-
+    /// edit — `commitGramsInput()` is what turns it back into a portion.
+    var gramsInput: String
     var servingCount: Int
     var recipeServingID: String
 
@@ -95,7 +98,7 @@ struct PortionSelection: Equatable {
     init(shape: Shape, initialGrams: Double, isExistingEntry: Bool) {
         self.shape = shape
         portionGrams = initialGrams
-        gramStep = Self.normalizedGramStep(initialGrams, limit: Self.gramOptionLimit(for: shape))
+        gramsInput = Self.formattedGrams(initialGrams)
         servingCount = 1
         recipeServingID = RecipeServingOption.one.id
         mode = .grams
@@ -121,13 +124,10 @@ struct PortionSelection: Equatable {
 
     // MARK: - Options
 
-    var gramOptions: [Int] {
-        Array(stride(
-            from: Self.minimumGramOption,
-            through: Self.gramOptionLimit(for: shape),
-            by: Self.gramStepSize
-        ))
-    }
+    /// The shortcut amounts offered beside the field, scaled to whatever the
+    /// food knows about itself: multiples of a countable serving, fractions of
+    /// a recipe, and round numbers for a food with neither.
+    var quickGramOptions: [Int] { Self.quickGramOptions(for: shape) }
 
     var maxServingCount: Int { Self.maxServingCount(for: shape) }
 
@@ -137,10 +137,43 @@ struct PortionSelection: Equatable {
 
     // MARK: - Reconciliation
 
-    /// The user moved the gram wheel.
-    mutating func gramStepChanged() {
+    /// The user typed a character.
+    ///
+    /// The calorie readout follows every keystroke, so a weight that already
+    /// reads as a number takes effect immediately. Text that does not — an
+    /// empty box on the way to a new number — leaves the portion where it was
+    /// rather than blanking the preview to zero. The text is deliberately left
+    /// alone here: reformatting mid-edit would fight the cursor.
+    mutating func gramsInputChanged() {
+        guard mode == .grams, let typed = Self.parsedGrams(gramsInput) else { return }
+        setGrams(Double(typed))
+    }
+
+    /// The user finished typing in the grams field.
+    ///
+    /// Anything the field cannot mean — an empty box mid-edit, a stray minus,
+    /// a pasted word — leaves the portion where it was rather than zeroing it,
+    /// and the text snaps back to show what is actually logged.
+    mutating func commitGramsInput() {
+        guard mode == .grams else {
+            gramsInput = Self.formattedGrams(portionGrams)
+            return
+        }
+        if let typed = Self.parsedGrams(gramsInput) {
+            setGrams(Double(typed))
+        }
+        gramsInput = Self.formattedGrams(portionGrams)
+    }
+
+    /// The user tapped one of the shortcut amounts.
+    mutating func quickGramOptionChosen(_ grams: Int) {
         guard mode == .grams else { return }
-        portionGrams = Double(gramStep)
+        setGrams(Double(Self.clampedGrams(grams)))
+        gramsInput = Self.formattedGrams(portionGrams)
+    }
+
+    private mutating func setGrams(_ grams: Double) {
+        portionGrams = grams
         if shape.isRecipe {
             recipeServingID = Self.nearestRecipeServingOptionID(
                 for: portionGrams,
@@ -159,18 +192,17 @@ struct PortionSelection: Equatable {
     mutating func recipeServingChanged() {
         guard mode == .recipeServing, let option = selectedRecipeServingOption else { return }
         portionGrams = shape.recipeTotalGrams * option.multiplier
-        gramStep = Self.normalizedGramStep(portionGrams, limit: Self.gramOptionLimit(for: shape))
+        gramsInput = Self.formattedGrams(portionGrams)
     }
 
-    /// The user switched how the portion is expressed. The grams move to the
-    /// nearest value the new mode can represent, rather than staying at a
-    /// figure its wheel cannot show.
+    /// The user switched how the portion is expressed. A wheel can only stop on
+    /// a row it offers, so switching *into* one still moves the grams to the
+    /// nearest figure it can show. Grams no longer round at all — the field can
+    /// hold whatever the other modes produce.
     mutating func modeChanged() {
         switch mode {
         case .grams:
-            let nearest = Self.normalizedGramStep(portionGrams, limit: Self.gramOptionLimit(for: shape))
-            gramStep = nearest
-            portionGrams = Double(nearest)
+            gramsInput = Self.formattedGrams(portionGrams)
         case .serving:
             guard let gramsPerUnit = shape.servingGramsPerUnit else { return }
             servingCount = max(1, min(maxServingCount, round(portionGrams / gramsPerUnit).truncatedSafely))
@@ -218,7 +250,7 @@ struct PortionSelection: Equatable {
 
         switch mode {
         case .grams:
-            gramStep = Self.normalizedGramStep(portionGrams, limit: Self.gramOptionLimit(for: shape))
+            gramsInput = Self.formattedGrams(portionGrams)
         case .serving:
             servingCount = Self.normalizedServingCount(for: portionGrams, shape: shape)
         case .recipeServing:
@@ -257,26 +289,53 @@ struct PortionSelection: Equatable {
         return max(1, min(maxServingCount(for: shape), count))
     }
 
-    /// The largest value the gram wheel offers: always at least 500g, more when
-    /// the food's own serving (or four of a recipe's) exceeds that, and never
-    /// past `maximumGramOptionLimit` — the wheel is materialized row by row, so
-    /// an unbounded serving size is an unbounded array.
-    static func gramOptionLimit(for shape: Shape) -> Int {
-        let defaultServing = shape.recipeTotalGrams
-        let step = Double(gramStepSize)
-        let largestMultiplier = shape.isRecipe
-            ? (recipeServingOptions.map(\.multiplier).max() ?? 1)
-            : 1
-        let servingLimit = (ceil(defaultServing * largestMultiplier / step) * step).truncatedSafely
+    /// The shortcut amounts for a food.
+    ///
+    /// A food that counts in slices gets one, two and three slices; a recipe
+    /// gets a quarter, a half and the whole thing; a food that knows neither
+    /// gets round numbers. Duplicates and out-of-range values are dropped, so a
+    /// serving so large that every multiple clamps to 10kg falls back to the
+    /// round numbers rather than showing "10000" three times.
+    static func quickGramOptions(for shape: Shape) -> [Int] {
+        let raw: [Double] = if shape.isRecipe {
+            [0.25, 0.5, 1].map { shape.recipeTotalGrams * $0 }
+        } else if let gramsPerUnit = shape.servingGramsPerUnit {
+            (1...quickGramOptionCount).map { Double($0) * gramsPerUnit }
+        } else {
+            []
+        }
 
-        return min(maximumGramOptionLimit, max(minimumGramOptionLimit, servingLimit))
+        let options = raw
+            .filter { $0.isFinite && $0 >= Double(minimumGrams) && $0 <= Double(maximumGrams) }
+            .map { $0.rounded().truncatedSafely }
+
+        let deduplicated = NSOrderedSet(array: options).array as? [Int] ?? []
+        return deduplicated.count == quickGramOptionCount ? deduplicated : fallbackQuickGramOptions
     }
 
-    static func normalizedGramStep(_ grams: Double, limit: Int) -> Int {
-        max(
-            minimumGramOption,
-            min(limit, (round(grams / Double(gramStepSize)) * Double(gramStepSize)).truncatedSafely)
-        )
+    /// Whole grams only, within range. `nil` for anything the field cannot
+    /// mean, which the caller reads as "leave the portion alone".
+    static func parsedGrams(_ text: String) -> Int? {
+        let trimmed = text.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty, trimmed.allSatisfy(\.isWholeNumber), let value = Int(trimmed) else {
+            return nil
+        }
+        return clampedGrams(value)
+    }
+
+    static func clampedGrams(_ grams: Int) -> Int {
+        max(minimumGrams, min(maximumGrams, grams))
+    }
+
+    /// How a portion reads in the field. Whole grams lose their decimal point,
+    /// but a portion scaled in from elsewhere keeps its fraction rather than
+    /// being silently rounded on display.
+    static func formattedGrams(_ grams: Double) -> String {
+        guard grams.isFinite else { return "\(minimumGrams)" }
+        if grams.rounded() == grams {
+            return "\(grams.truncatedSafely)"
+        }
+        return grams.formatted(.number.precision(.fractionLength(0...1)).grouping(.never))
     }
 
     static func isApproximatelyEqual(_ lhs: Double, _ rhs: Double) -> Bool {

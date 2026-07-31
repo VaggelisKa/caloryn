@@ -132,20 +132,23 @@ final class NonFiniteNumberSafetyTests: XCTestCase {
         let shape = PortionSelection.Shape(isRecipe: true, defaultServingGrams: .infinity)
         let selection = PortionSelection(shape: shape, initialGrams: 100, isExistingEntry: false)
 
-        XCTAssertGreaterThanOrEqual(PortionSelection.gramOptionLimit(for: shape), 500)
-        XCTAssertGreaterThanOrEqual(selection.gramStep, PortionSelection.minimumGramOption)
+        XCTAssertEqual(
+            PortionSelection.quickGramOptions(for: shape),
+            PortionSelection.fallbackQuickGramOptions
+        )
+        XCTAssertEqual(selection.gramsInput, "100")
     }
 
     func testPortionSelectionSurvivesANonFinitePortion() {
         let shape = PortionSelection.Shape(servingGramsPerUnit: 30)
 
-        XCTAssertGreaterThanOrEqual(
-            PortionSelection.normalizedGramStep(.nan, limit: 500),
-            PortionSelection.minimumGramOption
+        XCTAssertEqual(
+            PortionSelection.formattedGrams(.nan),
+            "\(PortionSelection.minimumGrams)"
         )
-        XCTAssertGreaterThanOrEqual(
-            PortionSelection.normalizedGramStep(.infinity, limit: 500),
-            PortionSelection.minimumGramOption
+        XCTAssertEqual(
+            PortionSelection.formattedGrams(.infinity),
+            "\(PortionSelection.minimumGrams)"
         )
         XCTAssertGreaterThanOrEqual(
             PortionSelection.normalizedServingCount(for: .infinity, shape: shape),

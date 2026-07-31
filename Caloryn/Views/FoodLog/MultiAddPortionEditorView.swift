@@ -27,9 +27,10 @@ struct MultiAddPortionEditorView: View {
     @Binding private var item: MultiAddDraftItem
     private let destinationDescription: String
     private let originalSnapshot: FoodLogEntrySnapshot
-    private let portionOptions: [Double]
+    private let quickGramOptions: [Int]
 
     @State private var portionGrams: Double
+    @State private var gramsInput: String
 
     init(
         item: Binding<MultiAddDraftItem>,
@@ -39,8 +40,9 @@ struct MultiAddPortionEditorView: View {
         self.destinationDescription = destinationDescription
         let snapshot = item.wrappedValue.snapshot
         originalSnapshot = snapshot
-        portionOptions = Self.portionOptions(around: snapshot.portionGrams)
+        quickGramOptions = Self.quickGramOptions(around: snapshot.portionGrams)
         _portionGrams = State(initialValue: snapshot.portionGrams)
+        _gramsInput = State(initialValue: PortionSelection.formattedGrams(snapshot.portionGrams))
     }
 
     var body: some View {
@@ -54,6 +56,8 @@ struct MultiAddPortionEditorView: View {
             .padding(.horizontal, CalorynTheme.pagePadding)
             .padding(.bottom, 100)
         }
+        // The number pad has no dismiss key, so scrolling is how it goes away.
+        .scrollDismissesKeyboard(.interactively)
         .calorynSheetCanvas()
         .calorynDrillDownNavigation()
         .navigationTitle("Edit Portion")
@@ -134,16 +138,23 @@ struct MultiAddPortionEditorView: View {
             .font(CalorynTheme.sectionEyebrow)
             .foregroundStyle(CalorynTheme.textSecondary)
 
-            Picker("Portion in grams", selection: $portionGrams) {
-                ForEach(portionOptions, id: \.self) { grams in
-                    Text(Self.formattedPickerValue(grams))
-                        .tag(grams)
+            GramAmountField(
+                text: $gramsInput,
+                quickOptions: quickGramOptions,
+                identifierPrefix: "multiAdd.editor",
+                onTextChange: {
+                    // The calorie readout follows every keystroke; text that is
+                    // not yet a number leaves the portion alone.
+                    if let typed = PortionSelection.parsedGrams(gramsInput) {
+                        portionGrams = Double(typed)
+                    }
+                },
+                onCommit: commitGramsInput,
+                onQuickOption: { grams in
+                    portionGrams = Double(grams)
+                    gramsInput = PortionSelection.formattedGrams(portionGrams)
                 }
-            }
-            .pickerStyle(.wheel)
-            .frame(maxWidth: .infinity)
-            .frame(height: 150)
-            .clipped()
+            )
         }
         .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
         .accessibilityIdentifier("multiAdd.editor.portion")
@@ -160,7 +171,7 @@ struct MultiAddPortionEditorView: View {
 
                 Spacer()
 
-                Text("\(Self.formattedPickerValue(portionGrams))g")
+                Text("\(PortionSelection.formattedGrams(portionGrams))g")
                     .font(CalorynTheme.caption)
                     .foregroundStyle(CalorynTheme.textSecondary)
                     .contentTransition(.numericText())
@@ -226,25 +237,36 @@ struct MultiAddPortionEditorView: View {
         value.map { Nutrient(id: id, label: label, value: $0, unit: unit) }
     }
 
+    private func commitGramsInput() {
+        if let typed = PortionSelection.parsedGrams(gramsInput) {
+            portionGrams = Double(typed)
+        }
+        gramsInput = PortionSelection.formattedGrams(portionGrams)
+    }
+
     private func save() {
+        // The keypad need not have been dismissed, so an uncommitted edit
+        // would otherwise be dropped on the way out.
+        commitGramsInput()
         item.snapshot = editedSnapshot
         dismiss()
     }
 
-    private static func portionOptions(around initialPortion: Double) -> [Double] {
-        let maximum = max(500, (ceil(initialPortion * 4 / 5) * 5).truncatedSafely)
-        var values = stride(from: 5, through: maximum, by: 5).map(Double.init)
-        if initialPortion > 0, !values.contains(initialPortion) {
-            values.append(initialPortion)
-            values.sort()
+    /// There is no `FoodItem` here — a draft item carries only a snapshot — so
+    /// the shortcuts scale off the portion being edited rather than off a
+    /// serving size, falling back to round numbers when that is unusable.
+    private static func quickGramOptions(around initialPortion: Double) -> [Int] {
+        guard initialPortion.isFinite, initialPortion > 0 else {
+            return PortionSelection.fallbackQuickGramOptions
         }
-        return values
-    }
+        let options = [0.5, 1, 2]
+            .map { (initialPortion * $0).rounded() }
+            .filter { $0 >= Double(PortionSelection.minimumGrams) && $0 <= Double(PortionSelection.maximumGrams) }
+            .map(\.truncatedSafely)
 
-    private static func formattedPickerValue(_ grams: Double) -> String {
-        if grams.rounded() == grams {
-            return "\(grams.truncatedSafely)"
-        }
-        return grams.formatted(.number.precision(.fractionLength(0...1)))
+        let deduplicated = NSOrderedSet(array: options).array as? [Int] ?? []
+        return deduplicated.count == PortionSelection.quickGramOptionCount
+            ? deduplicated
+            : PortionSelection.fallbackQuickGramOptions
     }
 }
