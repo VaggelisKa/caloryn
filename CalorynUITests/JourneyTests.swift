@@ -166,6 +166,49 @@ final class JourneyTests: UITestCase {
         }
     }
 
+    /// A number pad carries no return key, so if a tap off the field does not
+    /// dismiss it the keypad covers the lower half of the screen with no way
+    /// out but saving. That is what shipped, and this is the regression test.
+    func testGivenTheKeypadIsOpenWhenTappingOffTheFieldThenItCloses() {
+        let app = launch(fixture: .customFoods)
+        let today = TodayScreen(app: app)
+        let search = FoodSearchScreen(app: app)
+        let portion = PortionPickerScreen(app: app)
+
+        given("the keypad is open over the portion screen") {
+            today.tap(today.mealHeader("lunch"))
+            search.awaitTappable(search.searchField)
+            search.searchField.typeText("Salad")
+            search.tap(search.result(named: "House Salad"))
+            portion.tap(portion.amountBox)
+            XCTAssertTrue(
+                app.keyboards.firstMatch.awaitExistence(),
+                "Tapping the amount should raise the keypad"
+            )
+        }
+
+        when("the user taps the page away from the field") {
+            portion.tap(portion.calories)
+        }
+
+        then("the keypad goes away") {
+            let gone = NSPredicate(format: "exists == false")
+            let expectation = XCTNSPredicateExpectation(predicate: gone, object: app.keyboards.firstMatch)
+            XCTAssertEqual(
+                XCTWaiter().wait(for: [expectation], timeout: UITestCase.defaultTimeout),
+                .completed,
+                "A tap off the field should put the keypad away"
+            )
+        }
+
+        then("the field still works afterwards") {
+            portion.typeGrams(250)
+            // 250g of 45 kcal per 100g is 112.5, and the readout truncates
+            // rather than rounds.
+            portion.awaitCalories(112)
+        }
+    }
+
     /// The shortcuts exist so a common amount costs one tap. This is also the
     /// only journey that proves the field and the chips agree: the chip has to
     /// move the number the field shows, not just the portion behind it.

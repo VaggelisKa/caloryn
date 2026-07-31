@@ -32,6 +32,10 @@ struct MultiAddPortionEditorView: View {
     @State private var portionGrams: Double
     @State private var gramsInput: String
 
+    /// Owned here rather than inside the field, so a tap anywhere on the page
+    /// can clear it. See `dismissesGramKeypadOnTap`.
+    @FocusState private var isGramsFieldFocused: Bool
+
     init(
         item: Binding<MultiAddDraftItem>,
         destinationDescription: String
@@ -55,9 +59,11 @@ struct MultiAddPortionEditorView: View {
             }
             .padding(.horizontal, CalorynTheme.pagePadding)
             .padding(.bottom, 100)
+            .dismissesGramKeypadOnTap($isGramsFieldFocused)
         }
-        // The number pad has no dismiss key, so scrolling is how it goes away.
-        .scrollDismissesKeyboard(.interactively)
+        // See `PortionPickerView` — interactive dismissal ignores a drag that
+        // never reaches the keypad.
+        .scrollDismissesKeyboard(.immediately)
         .calorynSheetCanvas()
         .calorynDrillDownNavigation()
         .navigationTitle("Edit Portion")
@@ -142,6 +148,7 @@ struct MultiAddPortionEditorView: View {
                 text: $gramsInput,
                 quickOptions: quickGramOptions,
                 identifierPrefix: "multiAdd.editor",
+                isFocused: $isGramsFieldFocused,
                 onTextChange: {
                     // The calorie readout follows every keystroke; text that is
                     // not yet a number leaves the portion alone.
