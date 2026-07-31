@@ -23,6 +23,10 @@ struct PortionPickerView: View {
     @State private var hasPersistedPersonalFood = false
     @State private var replacementFoodItem: FoodItem?
 
+    /// Owned here rather than inside the field, so a tap anywhere on the page
+    /// can clear it. See `dismissesGramKeypadOnTap`.
+    @FocusState private var isGramsFieldFocused: Bool
+
     private typealias PortionMode = PortionSelection.Mode
 
     private struct PortionNutrient: Identifiable {
@@ -155,9 +159,12 @@ struct PortionPickerView: View {
             }
             .padding(.horizontal, CalorynTheme.pagePadding)
             .padding(.bottom, 100)
+            .dismissesGramKeypadOnTap($isGramsFieldFocused)
         }
-        // The number pad has no dismiss key, so scrolling is how it goes away.
-        .scrollDismissesKeyboard(.interactively)
+        // `.immediately`, not `.interactively`: interactive dismissal only
+        // moves the keypad while the drag is over the keypad itself, so a scroll
+        // higher up the page left it sitting there.
+        .scrollDismissesKeyboard(.immediately)
         .calorynSheetCanvas()
         .navigationTitle(isEditing ? "Edit Portion" : "Portion")
         .navigationBarTitleDisplayMode(.inline)
@@ -371,6 +378,7 @@ struct PortionPickerView: View {
                             text: $selection.gramsInput,
                             quickOptions: selection.quickGramOptions,
                             identifierPrefix: "portionPicker",
+                            isFocused: $isGramsFieldFocused,
                             onTextChange: { selection.gramsInputChanged() },
                             onCommit: { selection.commitGramsInput() },
                             onQuickOption: { selection.quickGramOptionChosen($0) }
