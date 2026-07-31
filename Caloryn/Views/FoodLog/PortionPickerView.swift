@@ -29,27 +29,6 @@ struct PortionPickerView: View {
 
     private typealias PortionMode = PortionSelection.Mode
 
-    private struct PortionNutrient: Identifiable {
-        enum Unit {
-            case grams
-            case milligramsFromGrams
-        }
-
-        let id: String
-        let label: String
-        let value: Double
-        let unit: Unit
-
-        var formattedValue: String {
-            switch unit {
-            case .grams:
-                value.macroFormatted
-            case .milligramsFromGrams:
-                "\((value * 1000).rounded().truncatedSafely)mg"
-            }
-        }
-    }
-
     init(
         foodItem: FoodItem,
         mealType: MealType,
@@ -87,10 +66,6 @@ struct PortionPickerView: View {
     }
 
     private var previewCalories: Double { previewNutrition.calories }
-    private var previewProtein: Double { previewNutrition.proteinG }
-    private var previewCarbs: Double { previewNutrition.carbsG }
-    private var previewFat: Double { previewNutrition.fatG }
-    private var previewFiber: Double { previewNutrition.fiberG }
     private var isEditing: Bool { existingEntry != nil }
     private var saveButtonTitle: String {
         if isEditing { return "Save Changes" }
@@ -101,43 +76,10 @@ struct PortionPickerView: View {
         replacementFoodItem ?? foodItem
     }
 
-    private var nutritionDetails: [PortionNutrient] {
-        [
-            PortionNutrient(id: "protein", label: "Protein", value: previewProtein, unit: .grams),
-            PortionNutrient(id: "carbs", label: "Carbs", value: previewCarbs, unit: .grams),
-            PortionNutrient(id: "fat", label: "Fat", value: previewFat, unit: .grams),
-            PortionNutrient(id: "fiber", label: "Fiber", value: previewFiber, unit: .grams)
-        ] + optionalNutritionDetails
-    }
-
-    private var optionalNutritionDetails: [PortionNutrient] {
-        [
-            nutrient("sugars", "Sugars", previewNutrition.sugarsG),
-            nutrient("added-sugars", "Added sugars", previewNutrition.addedSugarsG),
-            nutrient("sucrose", "Sucrose", previewNutrition.sucroseG),
-            nutrient("glucose", "Glucose", previewNutrition.glucoseG),
-            nutrient("fructose", "Fructose", previewNutrition.fructoseG),
-            nutrient("lactose", "Lactose", previewNutrition.lactoseG),
-            nutrient("maltose", "Maltose", previewNutrition.maltoseG),
-            nutrient("maltodextrins", "Maltodextrins", previewNutrition.maltodextrinsG),
-            nutrient("starch", "Starch", previewNutrition.starchG),
-            nutrient("polyols", "Polyols", previewNutrition.polyolsG),
-            nutrient("saturated-fat", "Saturated fat", previewNutrition.saturatedFatG),
-            nutrient("trans-fat", "Trans fat", previewNutrition.transFatG),
-            nutrient("monounsaturated-fat", "Monounsaturated", previewNutrition.monounsaturatedFatG),
-            nutrient("polyunsaturated-fat", "Polyunsaturated", previewNutrition.polyunsaturatedFatG),
-            nutrient("omega-3-fat", "Omega-3 fat", previewNutrition.omega3FatG),
-            nutrient("omega-6-fat", "Omega-6 fat", previewNutrition.omega6FatG),
-            nutrient("omega-9-fat", "Omega-9 fat", previewNutrition.omega9FatG),
-            nutrient("salt", "Salt", previewNutrition.saltG),
-            nutrient("sodium", "Sodium", previewNutrition.sodiumG, unit: .milligramsFromGrams),
-            nutrient("cholesterol", "Cholesterol", previewNutrition.cholesterolG, unit: .milligramsFromGrams),
-            nutrient("soluble-fiber", "Soluble fiber", previewNutrition.solubleFiberG),
-            nutrient("insoluble-fiber", "Insoluble fiber", previewNutrition.insolubleFiberG),
-            nutrient("casein", "Casein", previewNutrition.caseinG),
-            nutrient("serum-proteins", "Serum proteins", previewNutrition.serumProteinsG),
-            nutrient("alcohol", "Alcohol", previewNutrition.alcoholG)
-        ].compactMap { $0 }
+    /// Which rows appear, their order, labels and formatting all live in
+    /// `PortionNutrientBreakdown`; the view only draws them.
+    private var nutritionDetails: [DetailNutrient] {
+        PortionNutrientBreakdown(nutrition: previewNutrition).items
     }
 
     var body: some View {
@@ -488,7 +430,7 @@ struct PortionPickerView: View {
         .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
     }
 
-    private func nutrientRow(_ nutrient: PortionNutrient) -> some View {
+    private func nutrientRow(_ nutrient: DetailNutrient) -> some View {
         HStack {
             Text(nutrient.label)
                 .font(CalorynTheme.bodyText)
@@ -503,16 +445,6 @@ struct PortionPickerView: View {
                 .animation(.smooth(duration: 0.3), value: nutrient.formattedValue)
         }
         .accessibilityElement(children: .combine)
-    }
-
-    private func nutrient(
-        _ id: String,
-        _ label: String,
-        _ value: Double?,
-        unit: PortionNutrient.Unit = .grams
-    ) -> PortionNutrient? {
-        guard let value else { return nil }
-        return PortionNutrient(id: id, label: label, value: value, unit: unit)
     }
 
     private var mealSelector: some View {
