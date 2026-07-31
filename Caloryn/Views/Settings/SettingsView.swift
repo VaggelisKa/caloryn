@@ -236,13 +236,21 @@ struct SettingsView: View {
                 profile.energyCalculationMode == .dynamicHealth
             },
             set: { isEnabled in
-                guard isEnabled != (profile.energyCalculationMode == .dynamicHealth) else { return }
-                if isEnabled {
+                switch SettingsDynamicEnergyFlow.toggleRequest(
+                    isEnabled: isEnabled,
+                    energyCalculationMode: profile.energyCalculationMode
+                ) {
+                case .none:
+                    return
+                case .enable:
                     Task {
                         await enableDynamicEnergy(for: profile)
                     }
-                } else {
-                    disableDynamicEnergy(for: profile)
+                case .disable:
+                    let step = SettingsDynamicEnergyFlow.disable(
+                        isRequestingAuthorization: isRequestingHealthAuthorization
+                    )
+                    applyImmediately(step, to: profile)
                 }
             }
         )
@@ -250,26 +258,12 @@ struct SettingsView: View {
 
     @MainActor
     private func enableDynamicEnergy(for profile: UserProfile) async {
-        guard !isRequestingHealthAuthorization else { return }
+        guard let step = await SettingsDynamicEnergyFlow.enable(
+            isRequestingAuthorization: isRequestingHealthAuthorization,
+            onRequestStarted: { applyState($0) }
+        ) else { return }
 
-        isRequestingHealthAuthorization = true
-        healthStatusMessage = nil
-        defer {
-            isRequestingHealthAuthorization = false
-        }
-
-        let update = await AppleHealthAdjustmentSettings.enable()
-        if update.isEnabled {
-            profile.energyCalculationMode = .dynamicHealth
-            await settingsEnergyTracker.configure(date: .now, isEnabled: true)
-        }
-        healthStatusMessage = update.message
-    }
-
-    private func disableDynamicEnergy(for profile: UserProfile) {
-        let update = AppleHealthAdjustmentSettings.disable()
-        profile.energyCalculationMode = .lifestyleEstimate
-        healthStatusMessage = update.message
+        await apply(step, to: profile)
     }
 
     @MainActor
@@ -282,28 +276,54 @@ struct SettingsView: View {
             isRequestingAuthorization: isRequestingHealthAuthorization
         )
 
-        switch action {
-        case .none:
-            return
-        case .refreshTracker:
+        guard let step = await SettingsDynamicEnergyFlow.step(
+            after: action,
+            isRequestingAuthorization: isRequestingHealthAuthorization,
+            onRequestStarted: { applyState($0) }
+        ) else { return }
+
+        await apply(step, to: profile)
+    }
+
+    /// Performs a step's writes in order: the profile, then the tracker, then
+    /// the screen state the section renders.
+    @MainActor
+    private func apply(_ step: SettingsDynamicEnergyFlow.Step, to profile: UserProfile) async {
+        if let energyCalculationMode = step.energyCalculationMode {
+            profile.energyCalculationMode = energyCalculationMode
+        }
+
+        switch step.trackerCommand {
+        case .start:
+            await settingsEnergyTracker.configure(date: .now, isEnabled: true)
+        case .refresh:
             settingsEnergyTracker.refreshWhenActive()
-            return
-        case .requestAuthorization:
+        case .none:
             break
         }
 
-        isRequestingHealthAuthorization = true
-        healthStatusMessage = nil
-        defer {
-            isRequestingHealthAuthorization = false
+        if let state = step.state {
+            applyState(state)
+        }
+    }
+
+    /// `apply` for a step with no tracker work, so turning auto-adjust off still
+    /// happens in the same turn as the tap rather than a `Task` later.
+    @MainActor
+    private func applyImmediately(_ step: SettingsDynamicEnergyFlow.Step, to profile: UserProfile) {
+        if let energyCalculationMode = step.energyCalculationMode {
+            profile.energyCalculationMode = energyCalculationMode
         }
 
-        let update = await AppleHealthAdjustmentSettings.enable()
-        if update.isEnabled {
-            profile.energyCalculationMode = .dynamicHealth
-            await settingsEnergyTracker.configure(date: .now, isEnabled: true)
+        if let state = step.state {
+            applyState(state)
         }
-        healthStatusMessage = update.message
+    }
+
+    @MainActor
+    private func applyState(_ state: SettingsDynamicEnergyFlow.State) {
+        isRequestingHealthAuthorization = state.isRequestingAuthorization
+        healthStatusMessage = state.statusMessage
     }
 
     private func settingsBudget(for profile: UserProfile) -> ActivityCalorieBudget {
