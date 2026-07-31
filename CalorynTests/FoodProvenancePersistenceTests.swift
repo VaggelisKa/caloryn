@@ -227,6 +227,60 @@ final class FoodProvenancePersistenceTests: XCTestCase {
         XCTAssertTrue(recipe.provenance.recoveredByFallback)
     }
 
+    // MARK: - Which foods are worth a nutrition notice
+
+    /// A food saved before the provenance fields existed carries unknown
+    /// completeness *and* unknown source. Warning about those meant a permanent
+    /// notice on ordinary foods describing our schema rather than the food.
+    func testAFoodThatMerelyPredatesProvenanceIsNotWorthANotice() {
+        XCTAssertFalse(FoodProvenance.unknown.warrantsNutritionNotice)
+    }
+
+    /// But unknown completeness from a known provider is a real signal: it
+    /// means `hasMinimumUsableNutrition` failed, or a recipe ingredient had
+    /// unknown completeness. Those numbers may genuinely be unusable.
+    func testUnknownCompletenessFromAKnownSourceIsWorthANotice() {
+        for source in [FoodDataSource.calorynCatalog, .openFoodFactsCommunity, .userEntered, .mixed] {
+            let provenance = FoodProvenance(
+                provider: nil,
+                source: source,
+                completeness: .unknown,
+                recoveredByFallback: false
+            )
+
+            XCTAssertTrue(
+                provenance.warrantsNutritionNotice,
+                "\(source) with unknown completeness should still warn"
+            )
+        }
+    }
+
+    func testPartialNutritionIsAlwaysWorthANotice() {
+        for source in [FoodDataSource.unknown, .calorynCatalog, .userEntered, .mixed] {
+            let provenance = FoodProvenance(
+                provider: nil,
+                source: source,
+                completeness: .partial,
+                recoveredByFallback: false
+            )
+
+            XCTAssertTrue(provenance.warrantsNutritionNotice, "\(source) with partial data should warn")
+        }
+    }
+
+    func testCompleteNutritionIsNeverWorthANotice() {
+        for source in [FoodDataSource.unknown, .calorynCatalog, .userEntered, .mixed] {
+            let provenance = FoodProvenance(
+                provider: nil,
+                source: source,
+                completeness: .complete,
+                recoveredByFallback: false
+            )
+
+            XCTAssertFalse(provenance.warrantsNutritionNotice, "\(source) with complete data should be quiet")
+        }
+    }
+
     private func makeContainer() throws -> ModelContainer {
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
         return try ModelContainer(

@@ -84,6 +84,24 @@ struct FoodProvenance: Hashable, Sendable {
         recoveredByFallback: false
     )
 
+    /// Whether this food's nutrition is worth warning the user about.
+    ///
+    /// `.unknown` completeness means two different things, and the source is
+    /// what tells them apart. A food whose source is *also* unknown simply
+    /// predates these fields — every food saved before they existed reads that
+    /// way, so a notice there is permanent, universal, and describes our schema
+    /// rather than the food. But a food from a known provider that still has
+    /// unknown completeness got there through `hasMinimumUsableNutrition`
+    /// failing or a recipe ingredient of unknown completeness: its numbers
+    /// really may be unusable, and that is worth saying.
+    var warrantsNutritionNotice: Bool {
+        switch completeness {
+        case .complete: false
+        case .partial: true
+        case .unknown: source != .unknown
+        }
+    }
+
     static func manuallyEntered(completeness: NutritionCompleteness) -> FoodProvenance {
         FoodProvenance(
             provider: nil,

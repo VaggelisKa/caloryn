@@ -141,7 +141,7 @@ struct PortionPickerView: View {
             VStack(spacing: 24) {
                 foodHeader
 
-                if activeFoodItem.provenance.completeness != .complete {
+                if activeFoodItem.provenance.warrantsNutritionNotice {
                     nutritionCompletenessCard
                 }
 
@@ -319,7 +319,7 @@ struct PortionPickerView: View {
                 .foregroundStyle(CalorynTheme.terracotta)
             } else if provenance.completeness == .unknown {
                 Label(
-                    "Nutrition completeness was not recorded for this saved food.",
+                    "This food's nutrition may be incomplete. Check the package and edit your private food if needed.",
                     systemImage: "questionmark.circle"
                 )
                 .font(CalorynTheme.caption)
