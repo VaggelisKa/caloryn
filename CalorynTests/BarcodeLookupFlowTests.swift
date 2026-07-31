@@ -44,7 +44,23 @@ struct BarcodeLookupFlowTests {
         #expect(!flow.isLookingUp)
         #expect(flow.error == .invalidRequest)
         #expect(flow.lastScannedBarcode == nil)
+        #expect(flow.pendingBarcode == nil)
         #expect(!flow.offersManualCreation)
+    }
+
+    @Test("An unreadable scan cancels the lookup already in flight")
+    func unreadableScanClearsTheLookupInFlight() {
+        var flow = BarcodeLookupFlow()
+        flow.scanned(barcode)
+        #expect(flow.pendingBarcode == barcode)
+
+        flow.scanned("12x")
+
+        // The failure is the screen's state now, so nothing may still be
+        // running that would replace it when it resolves.
+        #expect(flow.pendingBarcode == nil)
+        #expect(flow.error == .invalidRequest)
+        #expect(!flow.isLookingUp)
     }
 
     @Test("A scan clears the failure the previous scan left on screen")
