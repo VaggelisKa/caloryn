@@ -48,8 +48,7 @@ final class AppleHealthAdjustmentSettingsTests: XCTestCase {
 
     func testEnableStoresEnabledWhenAuthorizationSucceeds() async {
         let update = await AppleHealthAdjustmentSettings.enable(
-            isHealthAvailable: { true },
-            requestAuthorization: {}
+            reader: StubActiveEnergyReader()
         )
 
         XCTAssertEqual(update, AppleHealthAdjustmentUpdate(
@@ -63,10 +62,7 @@ final class AppleHealthAdjustmentSettingsTests: XCTestCase {
 
     func testEnableStaysDisabledAndRecordsAttemptWhenAuthorizationFails() async {
         let update = await AppleHealthAdjustmentSettings.enable(
-            isHealthAvailable: { true },
-            requestAuthorization: {
-                throw HealthKitServiceError.authorizationFailed
-            }
+            reader: StubActiveEnergyReader(authorizationError: HealthKitServiceError.authorizationFailed)
         )
 
         XCTAssertEqual(update, AppleHealthAdjustmentUpdate(

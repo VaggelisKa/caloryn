@@ -491,6 +491,31 @@ struct SettingsView: View {
         .modelContainer(container)
 }
 
+private struct PreviewActiveEnergyReader: ActiveEnergyReading {
+    let activeEnergyKcal: Double
+    let samples: [DailyActiveEnergySample]
+
+    var isHealthDataAvailable: Bool { true }
+
+    func requestActiveEnergyAuthorization() async throws {}
+
+    func activeEnergyBurnedKcal(for date: Date, calendar: Calendar) async throws -> Double {
+        activeEnergyKcal
+    }
+
+    func dailyActiveEnergyBurnedKcal(
+        from startDate: Date,
+        to endDate: Date,
+        calendar: Calendar
+    ) async throws -> [DailyActiveEnergySample] {
+        samples
+    }
+
+    func observeActiveEnergyChanges(onChange: @escaping @MainActor () -> Void) -> ActiveEnergyObservation? {
+        nil
+    }
+}
+
 #Preview("Settings - Auto-adjust Details") {
     let config = ModelConfiguration(isStoredInMemoryOnly: true)
     let container = try! ModelContainer(for: UserProfile.self, FoodItem.self, FoodLogEntry.self, RecipeIngredient.self, configurations: config)
@@ -515,12 +540,9 @@ struct SettingsView: View {
 
         return DailyActiveEnergySample(date: date, activeEnergyKcal: activeEnergyKcal)
     }
-    let tracker = ActiveEnergyDayTracker(dataSource: ActiveEnergyDataSource(
-        isHealthAvailable: { true },
-        activeEnergyBurnedKcal: { _ in 225 },
-        dailyActiveEnergyBurnedKcal: { _, _ in samples },
-        observeActiveEnergyChanges: { _ in nil }
-    ))
+    let tracker = ActiveEnergyDayTracker(
+        reader: PreviewActiveEnergyReader(activeEnergyKcal: 225, samples: samples)
+    )
 
     let _ = context.insert(profile)
     let _ = try? context.save()

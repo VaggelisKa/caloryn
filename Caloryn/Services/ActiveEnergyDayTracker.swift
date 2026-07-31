@@ -1,64 +1,16 @@
 import Foundation
 import Observation
 
-struct ActiveEnergyObservation {
-    let stop: @MainActor () -> Void
-}
-
-@MainActor
-struct ActiveEnergyDataSource {
-    let isHealthAvailable: () -> Bool
-    let activeEnergyBurnedKcal: (Date) async throws -> Double
-    let dailyActiveEnergyBurnedKcal: (Date, Date) async throws -> [DailyActiveEnergySample]
-    let observeActiveEnergyChanges: (@escaping @MainActor () -> Void) -> ActiveEnergyObservation?
-
-    static let healthKit = ActiveEnergyDataSource(
-        isHealthAvailable: {
-            HealthKitService.isHealthDataAvailable
-        },
-        activeEnergyBurnedKcal: { date in
-            try await HealthKitService.activeEnergyBurnedKcal(for: date)
-        },
-        dailyActiveEnergyBurnedKcal: { startDate, endDate in
-            try await HealthKitService.dailyActiveEnergyBurnedKcal(from: startDate, to: endDate)
-        },
-        observeActiveEnergyChanges: { onChange in
-            guard let query = HealthKitService.observeActiveEnergyChanges(onChange: onChange) else {
-                return nil
-            }
-
-            return ActiveEnergyObservation {
-                HealthKitService.stop(query)
-            }
-        }
-    )
-}
-
 @MainActor
 enum CurrentActivityCalorieBudget {
     static func load(
         profile: UserProfile,
         consumed: Double,
         now: Date = .now,
-        calendar: Calendar = .current
+        calendar: Calendar = .current,
+        reader: any ActiveEnergyReading = HealthKitService.shared
     ) async -> ActivityCalorieBudget? {
-        await load(
-            profile: profile,
-            consumed: consumed,
-            now: now,
-            calendar: calendar,
-            dataSource: .healthKit
-        )
-    }
-
-    static func load(
-        profile: UserProfile,
-        consumed: Double,
-        now: Date,
-        calendar: Calendar,
-        dataSource: ActiveEnergyDataSource
-    ) async -> ActivityCalorieBudget? {
-        guard dataSource.isHealthAvailable() else { return nil }
+        guard reader.isHealthDataAvailable else { return nil }
 
         let dayStart = calendar.startOfDay(for: now)
         let historyStart = calendar.date(
@@ -68,10 +20,11 @@ enum CurrentActivityCalorieBudget {
         ) ?? dayStart
 
         do {
-            async let activeEnergy = dataSource.activeEnergyBurnedKcal(dayStart)
-            async let recentSamples = dataSource.dailyActiveEnergyBurnedKcal(
-                historyStart,
-                dayStart
+            async let activeEnergy = reader.activeEnergyBurnedKcal(for: dayStart, calendar: calendar)
+            async let recentSamples = reader.dailyActiveEnergyBurnedKcal(
+                from: historyStart,
+                to: dayStart,
+                calendar: calendar
             )
             let (activeEnergyKcal, recentActiveEnergySamples) = try await (
                 activeEnergy,
@@ -102,18 +55,14 @@ final class ActiveEnergyDayTracker {
     private(set) var emptyActivityNotice: String?
     private(set) var lastRefresh: Date?
 
-    @ObservationIgnored private let dataSource: ActiveEnergyDataSource
+    @ObservationIgnored private let reader: any ActiveEnergyReading
     @ObservationIgnored private var activeEnergyObservation: ActiveEnergyObservation?
     @ObservationIgnored private var currentRefreshID: UUID?
     private var selectedDate: Date = Date().startOfDay
     private var isEnabled = false
 
-    init() {
-        self.dataSource = .healthKit
-    }
-
-    init(dataSource: ActiveEnergyDataSource) {
-        self.dataSource = dataSource
+    init(reader: any ActiveEnergyReading = HealthKitService.shared) {
+        self.reader = reader
     }
 
     func configure(date: Date, isEnabled: Bool) async {
@@ -161,7 +110,7 @@ final class ActiveEnergyDayTracker {
 
         let refreshID = beginRefresh()
 
-        guard dataSource.isHealthAvailable() else {
+        guard reader.isHealthDataAvailable else {
             guard isCurrentRefresh(refreshID) else { return }
             AppleHealthAdjustmentSettings.disable(message: AppleHealthAdjustmentSettings.unavailableMessage)
             isEnabled = false
@@ -181,8 +130,11 @@ final class ActiveEnergyDayTracker {
             let refreshDate = selectedDate
             let refreshHistoryStartDate = historyStartDate
             let refreshHistoryEndDate = historyEndDate
-            async let todayEnergy = dataSource.activeEnergyBurnedKcal(refreshDate)
-            async let recentSamples = dataSource.dailyActiveEnergyBurnedKcal(refreshHistoryStartDate, refreshHistoryEndDate)
+            async let todayEnergy = reader.activeEnergyBurnedKcal(for: refreshDate)
+            async let recentSamples = reader.dailyActiveEnergyBurnedKcal(
+                from: refreshHistoryStartDate,
+                to: refreshHistoryEndDate
+            )
             let (kcal, samples) = try await (todayEnergy, recentSamples)
 
             guard isCurrentRefresh(refreshID) else { return }
@@ -237,9 +189,9 @@ final class ActiveEnergyDayTracker {
     }
 
     private func startObservingIfNeeded() {
-        guard activeEnergyObservation == nil, dataSource.isHealthAvailable() else { return }
+        guard activeEnergyObservation == nil, reader.isHealthDataAvailable else { return }
 
-        activeEnergyObservation = dataSource.observeActiveEnergyChanges { [weak self] in
+        activeEnergyObservation = reader.observeActiveEnergyChanges { [weak self] in
             guard let self else { return }
 
             Task {

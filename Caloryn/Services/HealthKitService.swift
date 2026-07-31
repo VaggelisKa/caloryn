@@ -120,17 +120,21 @@ private final class HealthKitContinuationGate<Value>: @unchecked Sendable {
     }
 }
 
-@MainActor
-enum HealthKitService {
-    private static let store = HKHealthStore()
-    private static let activeEnergyType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned)!
+/// The live `ActiveEnergyReading`. Stateless — the HealthKit store it talks to
+/// is process-wide — so `shared` exists only to spell the default argument.
+nonisolated struct HealthKitService: ActiveEnergyReading, Sendable {
+    static let shared = HealthKitService()
+
+    @MainActor private static let store = HKHealthStore()
+    @MainActor private static let activeEnergyType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned)!
     private static let healthKitTimeoutNanoseconds: UInt64 = 10_000_000_000
 
-    nonisolated static var isHealthDataAvailable: Bool {
+    var isHealthDataAvailable: Bool {
         HKHealthStore.isHealthDataAvailable()
     }
 
-    static func requestActiveEnergyAuthorization() async throws {
+    @MainActor
+    func requestActiveEnergyAuthorization() async throws {
         guard isHealthDataAvailable else {
             throw HealthKitServiceError.unavailable
         }
@@ -139,7 +143,7 @@ enum HealthKitService {
         // request lets the app attempt reads; the activity queries below own
         // the distinction between zero data and read failures.
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            store.requestAuthorization(toShare: [], read: [activeEnergyType]) { success, error in
+            Self.store.requestAuthorization(toShare: [], read: [Self.activeEnergyType]) { success, error in
                 if let error {
                     continuation.resume(throwing: error)
                     return
@@ -154,7 +158,8 @@ enum HealthKitService {
         }
     }
 
-    static func activeEnergyBurnedKcal(for date: Date, calendar: Calendar = .current) async throws -> Double {
+    @MainActor
+    func activeEnergyBurnedKcal(for date: Date, calendar: Calendar) async throws -> Double {
         guard isHealthDataAvailable else {
             throw HealthKitServiceError.unavailable
         }
@@ -163,14 +168,14 @@ enum HealthKitService {
         let end = calendar.date(byAdding: .day, value: 1, to: start) ?? date
         let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: [.strictStartDate, .strictEndDate])
 
-        return try await withHealthKitTimeout { finish in
+        return try await Self.withHealthKitTimeout { finish in
             let query = HKStatisticsQuery(
-                quantityType: activeEnergyType,
+                quantityType: Self.activeEnergyType,
                 quantitySamplePredicate: predicate,
                 options: .cumulativeSum
             ) { _, statistics, error in
                 if let error {
-                    if isNoDataError(error) {
+                    if Self.isNoDataError(error) {
                         finish(.success(0))
                         return
                     }
@@ -184,15 +189,16 @@ enum HealthKitService {
                 finish(.success(kcal))
             }
 
-            store.execute(query)
+            Self.store.execute(query)
             return HealthKitQueryCancellation(query)
         }
     }
 
-    static func dailyActiveEnergyBurnedKcal(
+    @MainActor
+    func dailyActiveEnergyBurnedKcal(
         from startDate: Date,
         to endDate: Date,
-        calendar: Calendar = .current
+        calendar: Calendar
     ) async throws -> [DailyActiveEnergySample] {
         guard isHealthDataAvailable else {
             throw HealthKitServiceError.unavailable
@@ -206,9 +212,9 @@ enum HealthKitService {
         var interval = DateComponents()
         interval.day = 1
 
-        return try await withHealthKitTimeout { finish in
+        return try await Self.withHealthKitTimeout { finish in
             let query = HKStatisticsCollectionQuery(
-                quantityType: activeEnergyType,
+                quantityType: Self.activeEnergyType,
                 quantitySamplePredicate: predicate,
                 options: .cumulativeSum,
                 anchorDate: start,
@@ -217,7 +223,7 @@ enum HealthKitService {
 
             query.initialResultsHandler = { _, collection, error in
                 if let error {
-                    if isNoDataError(error) {
+                    if Self.isNoDataError(error) {
                         finish(.success([]))
                         return
                     }
@@ -243,15 +249,16 @@ enum HealthKitService {
                 finish(.success(samples))
             }
 
-            store.execute(query)
+            Self.store.execute(query)
             return HealthKitQueryCancellation(query)
         }
     }
 
-    static func observeActiveEnergyChanges(onChange: @escaping @MainActor () -> Void) -> HKObserverQuery? {
+    @MainActor
+    func observeActiveEnergyChanges(onChange: @escaping @MainActor () -> Void) -> ActiveEnergyObservation? {
         guard isHealthDataAvailable else { return nil }
 
-        let query = HKObserverQuery(sampleType: activeEnergyType, predicate: nil) { _, completionHandler, error in
+        let query = HKObserverQuery(sampleType: Self.activeEnergyType, predicate: nil) { _, completionHandler, error in
             if error == nil {
                 Task { @MainActor in
                     onChange()
@@ -261,11 +268,14 @@ enum HealthKitService {
             completionHandler()
         }
 
-        store.execute(query)
-        return query
+        Self.store.execute(query)
+        return ActiveEnergyObservation {
+            Self.stop(query)
+        }
     }
 
-    static func stop(_ query: HKQuery?) {
+    @MainActor
+    fileprivate static func stop(_ query: HKQuery?) {
         guard let query else { return }
         store.stop(query)
     }
@@ -279,6 +289,7 @@ enum HealthKitService {
         return nsError.domain == HKErrorDomain && nsError.code == HKError.Code.errorNoData.rawValue
     }
 
+    @MainActor
     private static func withHealthKitTimeout<Value>(
         operation: (@escaping (Result<Value, Error>) -> Void) -> HealthKitQueryCancellation
     ) async throws -> Value {
