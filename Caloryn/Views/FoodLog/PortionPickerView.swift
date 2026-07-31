@@ -412,7 +412,11 @@ struct PortionPickerView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 // Scoped to the mode so it never animates the wheels' spinning.
                 .animation(.easeInOut(duration: 0.28), value: selection.mode)
-                .accessibilityIdentifier("portionPicker.amountPicker")
+                // No identifier on this container. An identifier here is
+                // inherited by every descendant, so it overwrote the field's
+                // and each chip's — the whole column reported one name and a
+                // journey could not tell the chips apart. It named a single
+                // wheel back when that is what this was.
 
                 if activeFoodItem.isRecipe {
                     Picker("Unit", selection: $selection.mode) {
@@ -521,8 +525,12 @@ struct PortionPickerView: View {
     }
 
     private func savePortion() {
-        // Tapping Save does not reliably resign the keypad first, so a portion
-        // typed and never dismissed would otherwise log the previous value.
+        // Belt and braces. Typing already moves the portion on every keystroke,
+        // so by the time Save is tapped the grams are usually right without
+        // this — deleting it does not fail the journey that saves straight from
+        // the keypad. It stays because it makes "what is saved" depend on the
+        // committed value rather than on the live path having fired, and Save
+        // does not reliably resign the keypad first.
         selection.commitGramsInput()
 
         if let existingEntry {

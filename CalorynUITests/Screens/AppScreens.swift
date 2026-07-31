@@ -144,10 +144,52 @@ struct FoodSearchScreen: Screen {
 struct PortionPickerScreen: Screen {
     let app: XCUIApplication
 
-    var amountPicker: XCUIElement { element("portionPicker.amountPicker") }
     var calories: XCUIElement { element("portionPicker.calories") }
     var save: XCUIElement { element("portionPicker.save") }
     var delete: XCUIElement { element("portionPicker.delete") }
+
+    /// The tappable box around the grams field. The field itself is at zero
+    /// opacity until focused, so this is what a journey taps to start typing.
+    var amountBox: XCUIElement { element("portionPicker.amountBox") }
+
+    func quickGrams(_ grams: Int) -> XCUIElement {
+        element("portionPicker.quickGrams.\(grams)")
+    }
+
+    /// Replaces whatever the grams field holds with `grams`.
+    ///
+    /// The deletes are a fixed count rather than one per existing character:
+    /// reading the old value back would be a second round trip, and a portion
+    /// never exceeds five digits, so over-deleting an already empty field is
+    /// both harmless and cheaper.
+    func typeGrams(_ grams: Int) {
+        tap(amountBox)
+        app.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 6))
+        app.typeText("\(grams)")
+    }
+
+    /// Waits for the calorie readout to settle on `calorieCount`.
+    ///
+    /// The readout animates, so the first sample after typing can still be the
+    /// old number — this waits for the value rather than asserting on it once.
+    @discardableResult
+    func awaitCalories(
+        _ calorieCount: Int,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> Bool {
+        let matches = NSPredicate(format: "label == %@", "\(calorieCount)")
+        let expectation = XCTNSPredicateExpectation(predicate: matches, object: calories)
+        let settled = XCTWaiter().wait(for: [expectation], timeout: UITestCase.defaultTimeout) == .completed
+        if !settled {
+            XCTFail(
+                "Calorie preview showed \(calories.label) rather than \(calorieCount)",
+                file: file,
+                line: line
+            )
+        }
+        return settled
+    }
 }
 
 // MARK: - Nutrition details
