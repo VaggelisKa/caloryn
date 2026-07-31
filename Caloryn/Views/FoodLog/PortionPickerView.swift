@@ -136,14 +136,12 @@ struct PortionPickerView: View {
         ].compactMap { $0 }
     }
 
-    private var gramOptions: [Int] { selection.gramOptions }
-
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
                 foodHeader
 
-                if activeFoodItem.provenance.completeness != .complete {
+                if activeFoodItem.provenance.warrantsNutritionNotice {
                     nutritionCompletenessCard
                 }
 
@@ -158,6 +156,8 @@ struct PortionPickerView: View {
             .padding(.horizontal, CalorynTheme.pagePadding)
             .padding(.bottom, 100)
         }
+        // The number pad has no dismiss key, so scrolling is how it goes away.
+        .scrollDismissesKeyboard(.interactively)
         .calorynSheetCanvas()
         .navigationTitle(isEditing ? "Edit Portion" : "Portion")
         .navigationBarTitleDisplayMode(.inline)
@@ -319,7 +319,7 @@ struct PortionPickerView: View {
                 .foregroundStyle(CalorynTheme.terracotta)
             } else if provenance.completeness == .unknown {
                 Label(
-                    "Nutrition completeness was not recorded for this saved food.",
+                    "This food's nutrition may be incomplete. Check the package and edit your private food if needed.",
                     systemImage: "questionmark.circle"
                 )
                 .font(CalorynTheme.caption)
@@ -342,6 +342,19 @@ struct PortionPickerView: View {
 
     private var maxServingCount: Int { selection.maxServingCount }
 
+    /// Whether the food can be said any way other than in grams, and so needs
+    /// the unit wheel beside the amount.
+    private var hasUnitWheel: Bool {
+        activeFoodItem.isRecipe || activeFoodItem.servingInfo != nil
+    }
+
+    /// A wheel has to be tall enough to show rows above and below the selected
+    /// one. A typed field does not, and pinning it to a wheel's height left a
+    /// third of the card empty.
+    private var amountRowHeight: CGFloat? {
+        selection.mode == .grams && !hasUnitWheel ? nil : 150
+    }
+
     private var portionPicker: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("PORTION SIZE")
@@ -352,27 +365,53 @@ struct PortionPickerView: View {
                 Group {
                     switch selection.mode {
                     case .grams:
-                        Picker("Amount", selection: $selection.gramStep) {
-                            ForEach(gramOptions, id: \.self) { g in
-                                Text("\(g)").tag(g)
-                            }
-                        }
+                        // Typed, not spun: a wheel is fine for "3 slices" and
+                        // miserable for "340 g". See `GramAmountField`.
+                        GramAmountField(
+                            text: $selection.gramsInput,
+                            quickOptions: selection.quickGramOptions,
+                            identifierPrefix: "portionPicker",
+                            onTextChange: { selection.gramsInputChanged() },
+                            onCommit: { selection.commitGramsInput() },
+                            onQuickOption: { selection.quickGramOptionChosen($0) }
+                        )
                     case .serving:
                         Picker("Count", selection: $selection.servingCount) {
                             ForEach(1...maxServingCount, id: \.self) { n in
                                 Text("\(n)").tag(n)
                             }
                         }
+                        .pickerStyle(.wheel)
                     case .recipeServing:
                         Picker("Recipe serving", selection: $selection.recipeServingID) {
                             ForEach(PortionSelection.recipeServingOptions) { option in
                                 Text(option.label).tag(option.id)
                             }
                         }
+                        .pickerStyle(.wheel)
                     }
                 }
-                .pickerStyle(.wheel)
-                .frame(maxWidth: .infinity)
+                // Spinning the unit wheel swaps this whole column between a
+                // field and a wheel, which without a transition is an abrupt
+                // cut mid-gesture. The `id` is what makes it one: without it
+                // SwiftUI reuses the column across the switch and there is no
+                // insertion to transition. The old control leaves first so the
+                // two never cross-dissolve into mush, and the scale is what
+                // makes a fade between two similar-sized controls read at all.
+                .id(selection.mode)
+                .transition(
+                    .asymmetric(
+                        insertion: .opacity.combined(with: .scale(scale: 0.92))
+                            .animation(.easeOut(duration: 0.28).delay(0.12)),
+                        removal: .opacity.animation(.easeIn(duration: 0.12))
+                    )
+                )
+                // A wheel fills the row it is given; the field is shorter than
+                // one, so without this it sits at the top and the unit wheel
+                // beside it reads a line lower.
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                // Scoped to the mode so it never animates the wheels' spinning.
+                .animation(.easeInOut(duration: 0.28), value: selection.mode)
                 .accessibilityIdentifier("portionPicker.amountPicker")
 
                 if activeFoodItem.isRecipe {
@@ -389,16 +428,14 @@ struct PortionPickerView: View {
                     }
                     .pickerStyle(.wheel)
                     .frame(width: 120)
-                } else {
-                    Text("grams")
-                        .font(CalorynTheme.bodyText)
-                        .foregroundStyle(CalorynTheme.textSecondary)
-                        .frame(width: 120)
                 }
+                // A food with no second unit gets no unit column at all. The
+                // wheel needed a label to say what its numbers meant; the field
+                // already reads "180 g", so a "grams" caption beside it only
+                // squeezed the field into 60% of the card to repeat itself.
             }
-            .frame(height: 150)
+            .frame(height: amountRowHeight)
             .clipped()
-            .onChange(of: selection.gramStep) { selection.gramStepChanged() }
             .onChange(of: selection.servingCount) { selection.servingCountChanged() }
             .onChange(of: selection.recipeServingID) { selection.recipeServingChanged() }
             .onChange(of: selection.mode) { selection.modeChanged() }
@@ -484,6 +521,10 @@ struct PortionPickerView: View {
     }
 
     private func savePortion() {
+        // Tapping Save does not reliably resign the keypad first, so a portion
+        // typed and never dismissed would otherwise log the previous value.
+        selection.commitGramsInput()
+
         if let existingEntry {
             DailyFoodLogCommands.updateLoggedEntry(
                 existingEntry,

@@ -76,15 +76,106 @@ struct PortionSelectionTests {
         #expect(portion.portionGrams == 333)
     }
 
-    // MARK: - Moving the wheels
+    // MARK: - Typing a weight
 
-    @Test("Moving the gram wheel sets the portion to that many grams")
-    func gramWheelSetsPortion() {
+    @Test("Typing a weight sets the portion to that many grams")
+    func typingSetsPortion() {
         var portion = selection(plainFood, grams: 100)
-        portion.gramStep = 250
-        portion.gramStepChanged()
+        portion.gramsInput = "250"
+        portion.commitGramsInput()
 
         #expect(portion.portionGrams == 250)
+    }
+
+    /// The wheel could only stop on a multiple of five. The whole point of
+    /// typing is that 137 is now reachable.
+    @Test("A typed weight is not rounded to a step")
+    func typedWeightIsNotRounded() {
+        var portion = selection(plainFood, grams: 100)
+        portion.gramsInput = "137"
+        portion.commitGramsInput()
+
+        #expect(portion.portionGrams == 137)
+    }
+
+    /// The calorie readout is the whole reason to type a number, so it has to
+    /// follow the keystrokes rather than wait for the keypad to be dismissed.
+    @Test("The portion follows each keystroke")
+    func portionFollowsTyping() {
+        var portion = selection(plainFood, grams: 100)
+
+        for (text, expected) in [("3", 3.0), ("34", 34.0), ("340", 340.0)] {
+            portion.gramsInput = text
+            portion.gramsInputChanged()
+            #expect(portion.portionGrams == expected)
+        }
+    }
+
+    /// Clearing the box to type a new number would otherwise blank the calorie
+    /// preview to zero on the way.
+    @Test("Clearing the box mid-edit does not zero the portion")
+    func clearingMidEditKeepsThePortion() {
+        var portion = selection(plainFood, grams: 100)
+
+        portion.gramsInput = ""
+        portion.gramsInputChanged()
+
+        #expect(portion.portionGrams == 100)
+        // And the half-typed text is left as it is, so the cursor is not fought.
+        #expect(portion.gramsInput == "")
+    }
+
+    @Test(
+        "A weight the field cannot mean leaves the portion alone",
+        arguments: ["", "   ", "abc", "-40", "12.5", "1e3"]
+    )
+    func unusableInputLeavesThePortion(text: String) {
+        var portion = selection(plainFood, grams: 100)
+        portion.gramsInput = text
+        portion.commitGramsInput()
+
+        #expect(portion.portionGrams == 100)
+        // And the field snaps back to what is actually logged.
+        #expect(portion.gramsInput == "100")
+    }
+
+    @Test(
+        "A typed weight is clamped to a loggable range",
+        arguments: [("0", 1.0), ("99999", 10_000.0), ("1", 1.0), ("10000", 10_000.0)]
+    )
+    func typedWeightIsClamped(text: String, expected: Double) {
+        var portion = selection(plainFood, grams: 100)
+        portion.gramsInput = text
+        portion.commitGramsInput()
+
+        #expect(portion.portionGrams == expected)
+    }
+
+    @Test("Tapping a shortcut sets the portion and the field together")
+    func quickOptionSetsPortion() {
+        var portion = selection(plainFood, grams: 100)
+        portion.quickGramOptionChosen(200)
+
+        #expect(portion.portionGrams == 200)
+        #expect(portion.gramsInput == "200")
+    }
+
+    /// A portion scaled in from a multi-add copy is not a whole number, and
+    /// displaying "137" for 137.5g would log a different amount than it shows.
+    /// The separator is the reader's, not this test's — half a gram is "137,5"
+    /// in a comma locale, which is where this first failed.
+    @Test("A fractional portion keeps its fraction in the field")
+    func fractionalPortionSurvives() {
+        var portion = selection(plainFood, grams: 137.5, isExistingEntry: true)
+
+        #expect(portion.gramsInput != "137")
+        #expect(portion.gramsInput.contains("137"))
+        #expect(portion.gramsInput.contains("5"))
+        #expect(portion.portionGrams == 137.5)
+
+        // And committing that text back does not round the half gram away.
+        portion.commitGramsInput()
+        #expect(portion.portionGrams == 137.5)
     }
 
     @Test("Changing the serving count multiplies out to grams")
@@ -105,21 +196,25 @@ struct PortionSelectionTests {
         #expect(portion.portionGrams == 400)
     }
 
-    @Test("A wheel that is not the active mode does not move the portion")
-    func inactiveWheelsAreIgnored() {
+    @Test("A control that is not the active mode does not move the portion")
+    func inactiveControlsAreIgnored() {
         var portion = selection(slicedFood, grams: 45)
         #expect(portion.mode == .serving)
 
-        portion.gramStep = 300
-        portion.gramStepChanged()
+        portion.gramsInput = "300"
+        portion.commitGramsInput()
+        portion.quickGramOptionChosen(300)
 
         #expect(portion.portionGrams == 45)
     }
 
     // MARK: - Switching modes
 
-    @Test("Switching to grams snaps the portion to the nearest 5g step")
-    func switchingToGramsSnaps() {
+    /// The gram wheel used to snap to a multiple of five on the way in, so a
+    /// mode switch could quietly move the portion. A field has no rows to land
+    /// on, so it cannot.
+    @Test("Switching to grams keeps the portion exactly")
+    func switchingToGramsKeepsThePortion() {
         var portion = selection(slicedFood, grams: 45)
         portion.servingCount = 3
         portion.servingCountChanged()
@@ -129,7 +224,23 @@ struct PortionSelectionTests {
         portion.modeChanged()
 
         #expect(portion.portionGrams == 135)
-        #expect(portion.gramStep == 135)
+        #expect(portion.gramsInput == "135")
+    }
+
+    @Test("Switching to grams from an odd serving does not round it away")
+    func switchingToGramsFromAnOddServing() {
+        let oddServing = PortionSelection.Shape(servingGramsPerUnit: 33, defaultServingGrams: 33)
+        var portion = selection(oddServing, grams: 33)
+        portion.servingCount = 2
+        portion.servingCountChanged()
+        #expect(portion.portionGrams == 66)
+
+        portion.mode = .grams
+        portion.modeChanged()
+
+        // The wheel would have shown 65 here, logging a gram less than chosen.
+        #expect(portion.portionGrams == 66)
+        #expect(portion.gramsInput == "66")
     }
 
     @Test("Switching to servings rounds to the nearest whole serving")
@@ -187,53 +298,66 @@ struct PortionSelectionTests {
         #expect(portion.portionGrams == 137)
     }
 
-    // MARK: - Wheel ranges
+    // MARK: - Shortcut amounts
 
-    @Test("The gram wheel always reaches at least 500g")
-    func gramWheelReachesFiveHundred() {
-        let options = selection(plainFood, grams: 100).gramOptions
-
-        #expect(options.first == 5)
-        #expect(options.contains(500))
+    @Test("A countable food's shortcuts are multiples of its serving")
+    func shortcutsFollowTheServing() {
+        #expect(selection(slicedFood, grams: 45).quickGramOptions == [45, 90, 135])
     }
 
-    @Test("A recipe's gram wheel reaches four whole recipes")
-    func recipeGramWheelCoversFourServings() {
-        let options = selection(recipe, grams: 800).gramOptions
-
-        #expect(options.contains(3_200))
+    @Test("A recipe's shortcuts are fractions of the whole recipe")
+    func recipeShortcutsAreFractions() {
+        #expect(selection(recipe, grams: 800).quickGramOptions == [200, 400, 800])
     }
 
-    /// A 50,000 kg serving is nonsense, but `defaultServingG` comes from the
-    /// food API and from a free-text field, so the wheel has to survive one.
-    /// Before the wheel was bounded this built ten million rows — and at
-    /// `1e12` grams, two hundred billion, which exhausts memory rather than
-    /// merely stalling. The moderate value is what this test uses so that a
-    /// failing run finishes.
-    @Test("The gram wheel stays a usable number of rows for an absurd serving size")
-    func gramWheelIsBoundedForAnAbsurdServing() {
-        let options = selection(
-            PortionSelection.Shape(defaultServingGrams: 50_000_000),
-            grams: 100
-        ).gramOptions
-
-        #expect(options.count <= PortionSelection.maximumGramOptionLimit / PortionSelection.gramStepSize)
-        #expect(options.last == PortionSelection.maximumGramOptionLimit)
+    @Test("A food that knows nothing about its serving gets round numbers")
+    func plainFoodGetsRoundShortcuts() {
+        #expect(
+            selection(plainFood, grams: 100).quickGramOptions
+                == PortionSelection.fallbackQuickGramOptions
+        )
     }
 
+    /// `defaultServingG` comes from the food API and from a free-text field, so
+    /// a nonsense serving reaches this. Every multiple would clamp to the same
+    /// ceiling, which is three identical chips — the round numbers are better.
     @Test(
-        "No serving size can widen the gram wheel past its ceiling",
-        arguments: [1e12, 1e30, Double.infinity, .nan, -1e30]
+        "An unusable serving size falls back to round shortcuts",
+        arguments: [1e12, 1e30, Double.infinity, .nan, -1e30, 0]
     )
-    func gramWheelCeilingHoldsForAnyServing(serving: Double) {
+    func absurdServingFallsBackToRoundShortcuts(serving: Double) {
         for isRecipe in [false, true] {
-            let shape = PortionSelection.Shape(isRecipe: isRecipe, defaultServingGrams: serving)
-            let options = PortionSelection(shape: shape, initialGrams: 100, isExistingEntry: false).gramOptions
+            let shape = PortionSelection.Shape(
+                isRecipe: isRecipe,
+                servingGramsPerUnit: isRecipe ? nil : serving,
+                defaultServingGrams: serving
+            )
+            let options = PortionSelection(
+                shape: shape,
+                initialGrams: 100,
+                isExistingEntry: false
+            ).quickGramOptions
 
-            #expect(options.count >= PortionSelection.minimumGramOptionLimit / PortionSelection.gramStepSize)
-            #expect(options.count <= PortionSelection.maximumGramOptionLimit / PortionSelection.gramStepSize)
+            #expect(options == PortionSelection.fallbackQuickGramOptions)
         }
     }
+
+    @Test("Every shortcut is a weight the field would accept")
+    func shortcutsAreAlwaysLoggable() {
+        for shape in [plainFood, slicedFood, recipe] {
+            let options = PortionSelection(
+                shape: shape,
+                initialGrams: 100,
+                isExistingEntry: false
+            ).quickGramOptions
+
+            #expect(options.count == PortionSelection.quickGramOptionCount)
+            #expect(options.allSatisfy { $0 >= PortionSelection.minimumGrams })
+            #expect(options.allSatisfy { $0 <= PortionSelection.maximumGrams })
+        }
+    }
+
+    // MARK: - Wheel ranges
 
     @Test("The serving wheel offers at least two counts, so it is never a wheel of one")
     func servingWheelOffersAChoice() {
@@ -275,26 +399,16 @@ struct PortionSelectionTests {
         )
     }
 
-    // MARK: - Gram snapping
-
-    @Test(
-        "Grams round to the nearest 5g step within the wheel's range",
-        arguments: [(0.0, 5), (2.0, 5), (7.0, 5), (8.0, 10), (137.0, 135), (10_000.0, 500)]
-    )
-    func gramsSnapToSteps(grams: Double, expected: Int) {
-        #expect(PortionSelection.normalizedGramStep(grams, limit: 500) == expected)
-    }
-
     // MARK: - Editing the food underneath
 
-    @Test("Editing the food's serving widens the gram wheel to match")
-    func editingTheFoodWidensTheWheel() {
+    @Test("Editing the food's serving re-scales the shortcuts to match")
+    func editingTheFoodRescalesShortcuts() {
         var portion = selection(plainFood, grams: 100)
-        #expect(!portion.gramOptions.contains(1_000))
+        #expect(portion.quickGramOptions == PortionSelection.fallbackQuickGramOptions)
 
-        portion.update(shape: PortionSelection.Shape(defaultServingGrams: 1_000))
+        portion.update(shape: PortionSelection.Shape(servingGramsPerUnit: 60, defaultServingGrams: 60))
 
-        #expect(portion.gramOptions.contains(1_000))
+        #expect(portion.quickGramOptions == [60, 120, 180])
     }
 
     /// Saving an inline edit clears the food's serving description, so a food
@@ -308,10 +422,10 @@ struct PortionSelectionTests {
         portion.update(shape: PortionSelection.Shape(defaultServingGrams: 45))
 
         #expect(portion.mode == .grams)
-        #expect(portion.gramStep == 90)
-        // And the wheel can move the portion again.
-        portion.gramStep = 120
-        portion.gramStepChanged()
+        #expect(portion.gramsInput == "90")
+        // And the field can move the portion again.
+        portion.gramsInput = "120"
+        portion.commitGramsInput()
         #expect(portion.portionGrams == 120)
     }
 
@@ -323,7 +437,7 @@ struct PortionSelectionTests {
         portion.update(shape: PortionSelection.Shape(defaultServingGrams: 800))
 
         #expect(portion.mode == .grams)
-        #expect(portion.gramStep == 400)
+        #expect(portion.gramsInput == "400")
     }
 
     /// The point of the whole exercise: correcting a food's calories must not
