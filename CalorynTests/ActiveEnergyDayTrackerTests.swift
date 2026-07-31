@@ -16,7 +16,7 @@ final class ActiveEnergyDayTrackerTests: XCTestCase {
     func testEnabledConfigurationReadsActiveEnergyForTheSelectedDay() async {
         var readDates: [Date] = []
         let selectedDate = Date(timeIntervalSinceReferenceDate: 100_000)
-        let tracker = ActiveEnergyDayTracker(dataSource: ActiveEnergyDataSource(
+        let tracker = ActiveEnergyDayTracker(reader: StubActiveEnergyReader(
             isHealthAvailable: { true },
             activeEnergyBurnedKcal: { date in
                 readDates.append(date)
@@ -40,7 +40,7 @@ final class ActiveEnergyDayTrackerTests: XCTestCase {
             authorizationRequested: true,
             message: nil
         )
-        let tracker = ActiveEnergyDayTracker(dataSource: ActiveEnergyDataSource(
+        let tracker = ActiveEnergyDayTracker(reader: StubActiveEnergyReader(
             isHealthAvailable: { true },
             activeEnergyBurnedKcal: { _ in 0 },
             dailyActiveEnergyBurnedKcal: { _, _ in [] },
@@ -65,12 +65,12 @@ final class ActiveEnergyDayTrackerTests: XCTestCase {
         )
 
         for _ in 0..<2 {
-            let tracker = ActiveEnergyDayTracker(dataSource: emptyActivityDataSource)
+            let tracker = ActiveEnergyDayTracker(reader: emptyActivityReader)
             await tracker.configure(date: .now, isEnabled: true)
             XCTAssertNil(tracker.emptyActivityNotice)
         }
 
-        let tracker = ActiveEnergyDayTracker(dataSource: emptyActivityDataSource)
+        let tracker = ActiveEnergyDayTracker(reader: emptyActivityReader)
         await tracker.configure(date: .now, isEnabled: true)
 
         XCTAssertEqual(tracker.emptyActivityNotice, AppleHealthAdjustmentSettings.emptyActivityAccessMessage)
@@ -86,7 +86,7 @@ final class ActiveEnergyDayTrackerTests: XCTestCase {
         let samples = [
             DailyActiveEnergySample(date: historySampleDate, activeEnergyKcal: 260)
         ]
-        let tracker = ActiveEnergyDayTracker(dataSource: ActiveEnergyDataSource(
+        let tracker = ActiveEnergyDayTracker(reader: StubActiveEnergyReader(
             isHealthAvailable: { true },
             activeEnergyBurnedKcal: { _ in 240 },
             dailyActiveEnergyBurnedKcal: { start, end in
@@ -113,7 +113,7 @@ final class ActiveEnergyDayTrackerTests: XCTestCase {
 
     func testDisabledConfigurationClearsEnergyAndStopsObservation() async {
         var stopCount = 0
-        let tracker = ActiveEnergyDayTracker(dataSource: ActiveEnergyDataSource(
+        let tracker = ActiveEnergyDayTracker(reader: StubActiveEnergyReader(
             isHealthAvailable: { true },
             activeEnergyBurnedKcal: { _ in 120 },
             dailyActiveEnergyBurnedKcal: { _, _ in [] },
@@ -141,7 +141,7 @@ final class ActiveEnergyDayTrackerTests: XCTestCase {
             authorizationRequested: true,
             message: nil
         )
-        let tracker = ActiveEnergyDayTracker(dataSource: ActiveEnergyDataSource(
+        let tracker = ActiveEnergyDayTracker(reader: StubActiveEnergyReader(
             isHealthAvailable: { true },
             activeEnergyBurnedKcal: { _ in throw TrackerError.denied },
             dailyActiveEnergyBurnedKcal: { _, _ in [] },
@@ -164,7 +164,7 @@ final class ActiveEnergyDayTrackerTests: XCTestCase {
             message: nil
         )
         var didStartObservation = false
-        let tracker = ActiveEnergyDayTracker(dataSource: ActiveEnergyDataSource(
+        let tracker = ActiveEnergyDayTracker(reader: StubActiveEnergyReader(
             isHealthAvailable: { false },
             activeEnergyBurnedKcal: { _ in
                 XCTFail("Active energy should not be read when Health data is unavailable.")
@@ -194,7 +194,7 @@ final class ActiveEnergyDayTrackerTests: XCTestCase {
         var readCount = 0
         let selectedDate = makeTestDate(year: 2026, month: 2, day: 14, hour: 8)
         let sameDayLater = makeTestDate(year: 2026, month: 2, day: 14, hour: 18)
-        let tracker = ActiveEnergyDayTracker(dataSource: ActiveEnergyDataSource(
+        let tracker = ActiveEnergyDayTracker(reader: StubActiveEnergyReader(
             isHealthAvailable: { true },
             activeEnergyBurnedKcal: { _ in
                 readCount += 1
@@ -216,7 +216,7 @@ final class ActiveEnergyDayTrackerTests: XCTestCase {
     func testObserverCallbackRefreshesTheActiveEnergyValue() async {
         var onActiveEnergyChange: (@MainActor () -> Void)?
         var nextActiveEnergy = 100.0
-        let tracker = ActiveEnergyDayTracker(dataSource: ActiveEnergyDataSource(
+        let tracker = ActiveEnergyDayTracker(reader: StubActiveEnergyReader(
             isHealthAvailable: { true },
             activeEnergyBurnedKcal: { _ in nextActiveEnergy },
             dailyActiveEnergyBurnedKcal: { _, _ in [] },
@@ -246,7 +246,7 @@ final class ActiveEnergyDayTrackerTests: XCTestCase {
         ]
         var activeReadCount = 0
         var historyReadCount = 0
-        let tracker = ActiveEnergyDayTracker(dataSource: ActiveEnergyDataSource(
+        let tracker = ActiveEnergyDayTracker(reader: StubActiveEnergyReader(
             isHealthAvailable: { true },
             activeEnergyBurnedKcal: { _ in
                 activeReadCount += 1
@@ -301,7 +301,7 @@ final class ActiveEnergyDayTrackerTests: XCTestCase {
         ]
         var activeReadCount = 0
         var historyReadCount = 0
-        let tracker = ActiveEnergyDayTracker(dataSource: ActiveEnergyDataSource(
+        let tracker = ActiveEnergyDayTracker(reader: StubActiveEnergyReader(
             isHealthAvailable: { true },
             activeEnergyBurnedKcal: { _ in
                 activeReadCount += 1
@@ -372,8 +372,8 @@ final class ActiveEnergyDayTrackerTests: XCTestCase {
         AppleHealthAdjustmentSettings.clearEmptyActiveEnergyTracking()
     }
 
-    private var emptyActivityDataSource: ActiveEnergyDataSource {
-        ActiveEnergyDataSource(
+    private var emptyActivityReader: StubActiveEnergyReader {
+        StubActiveEnergyReader(
             isHealthAvailable: { true },
             activeEnergyBurnedKcal: { _ in 0 },
             dailyActiveEnergyBurnedKcal: { _, _ in [] },

@@ -16,7 +16,7 @@ enum AppleHealthAdjustmentSettings {
     private static let emptyActivityWarningDelay: TimeInterval = 86_400
 
     static var isHealthAvailable: Bool {
-        HealthKitService.isHealthDataAvailable
+        HealthKitService.shared.isHealthDataAvailable
     }
 
     static var authorizationRequested: Bool {
@@ -57,19 +57,14 @@ enum AppleHealthAdjustmentSettings {
 
     @MainActor
     static func enable(
-        isHealthAvailable: () -> Bool = {
-            HealthKitService.isHealthDataAvailable
-        },
-        requestAuthorization: () async throws -> Void = {
-            try await HealthKitService.requestActiveEnergyAuthorization()
-        }
+        reader: any ActiveEnergyReading = HealthKitService.shared
     ) async -> AppleHealthAdjustmentUpdate {
-        guard isHealthAvailable() else {
+        guard reader.isHealthDataAvailable else {
             return persist(isEnabled: false, authorizationRequested: false, message: unavailableMessage)
         }
 
         do {
-            try await requestAuthorization()
+            try await reader.requestActiveEnergyAuthorization()
             clearEmptyActiveEnergyTracking()
             return persist(isEnabled: true, authorizationRequested: true, message: nil)
         } catch {

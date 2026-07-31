@@ -466,7 +466,7 @@ final class CalorynAppIntentsTests: XCTestCase {
                 activeEnergyKcal: 300
             )
         }
-        let dataSource = ActiveEnergyDataSource(
+        let reader = StubActiveEnergyReader(
             isHealthAvailable: { true },
             activeEnergyBurnedKcal: { _ in 500 },
             dailyActiveEnergyBurnedKcal: { _, _ in samples },
@@ -478,7 +478,7 @@ final class CalorynAppIntentsTests: XCTestCase {
             consumed: 1_200,
             now: now,
             calendar: .current,
-            dataSource: dataSource
+            reader: reader
         )
 
         XCTAssertEqual(budget?.activeEnergyKcal, 500)
