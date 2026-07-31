@@ -43,18 +43,6 @@ enum AppleHealthAdjustmentSettings {
         "No Active Energy found yet. This can happen if activity has not been recorded or Health access is off."
     }
 
-    static func footerText(isEnabled: Bool) -> String {
-        guard isHealthAvailable else {
-            return unavailableMessage
-        }
-
-        if isEnabled {
-            return "Uses Apple Health activity to adjust your daily calorie target."
-        }
-
-        return "Use Apple Health activity to update your daily calorie target."
-    }
-
     @MainActor
     static func enable(
         reader: any ActiveEnergyReading = HealthKitService.shared
