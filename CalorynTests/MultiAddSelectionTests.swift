@@ -197,6 +197,91 @@ final class MultiAddSelectionTests: XCTestCase {
         XCTAssertEqual(state.itemCount, 0)
     }
 
+    func testLazyToggleSelectsByBuildingTheGroupOnlyOnce() {
+        let food = makeTestFoodItem(name: "Oats")
+        let group = MultiAddSelectionGroup.savedFood(
+            food,
+            portionGrams: 80,
+            meal: .breakfast,
+            snackIndex: 0
+        )
+        var buildCount = 0
+        var state = MultiAddSelectionState()
+
+        state.toggle(group.id) {
+            buildCount += 1
+            return group
+        }
+
+        XCTAssertTrue(state.contains(group.id))
+        XCTAssertEqual(state.itemCount, 1)
+        XCTAssertEqual(buildCount, 1)
+    }
+
+    func testLazyToggleDeselectsWithoutBuildingTheGroup() {
+        let food = makeTestFoodItem(name: "Oats")
+        let group = MultiAddSelectionGroup.savedFood(
+            food,
+            portionGrams: 80,
+            meal: .breakfast,
+            snackIndex: 0
+        )
+        var state = MultiAddSelectionState()
+        state.toggle(group)
+        var buildCount = 0
+
+        state.toggle(group.id) {
+            buildCount += 1
+            return group
+        }
+
+        XCTAssertFalse(state.contains(group.id))
+        XCTAssertEqual(state.itemCount, 0)
+        XCTAssertEqual(buildCount, 0)
+    }
+
+    func testLazyToggleDeselectsEvenWhenBuildingTheGroupWouldFail() {
+        let food = makeTestFoodItem(name: "Oats")
+        let group = MultiAddSelectionGroup.savedFood(
+            food,
+            portionGrams: 80,
+            meal: .breakfast,
+            snackIndex: 0
+        )
+        var state = MultiAddSelectionState()
+        state.toggle(group)
+
+        XCTAssertNoThrow(
+            try state.toggle(group.id) { throw SelectionBuildFailure() }
+        )
+        XCTAssertFalse(state.contains(group.id))
+    }
+
+    func testLazyToggleLeavesSelectionUnchangedWhenBuildingFails() {
+        let existing = MultiAddSelectionGroup.savedFood(
+            makeTestFoodItem(name: "Oats"),
+            portionGrams: 80,
+            meal: .breakfast,
+            snackIndex: 0
+        )
+        let absent = MultiAddSelectionGroup.savedFood(
+            makeTestFoodItem(name: "Bread"),
+            portionGrams: 40,
+            meal: .breakfast,
+            snackIndex: 0
+        )
+        var state = MultiAddSelectionState()
+        state.toggle(existing)
+
+        XCTAssertThrowsError(
+            try state.toggle(absent.id) { throw SelectionBuildFailure() }
+        )
+        XCTAssertEqual(state.groups.map(\.id), [existing.id])
+        XCTAssertEqual(state.itemCount, 1)
+    }
+
+    private struct SelectionBuildFailure: Error {}
+
     private func makeRemoteProduct() throws -> OpenFoodFactsProduct {
         let json = """
         {

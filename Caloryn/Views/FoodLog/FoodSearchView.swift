@@ -843,6 +843,15 @@ struct FoodSearchView: View {
         }
     }
 
+    private func toggle(
+        _ id: MultiAddSelectionGroup.ID,
+        makeGroup: () throws -> MultiAddSelectionGroup
+    ) rethrows {
+        try withAnimation(selectionChangeAnimation) {
+            try multiAddSelection.toggle(id, makeGroup: makeGroup)
+        }
+    }
+
     private func toggleFoodSelection(_ food: FoodItem) {
         let portion = suggestionSnapshot
             .first { $0.foodID == food.id }?
@@ -865,22 +874,13 @@ struct FoodSearchView: View {
 
     private func toggleRemoteProductSelection(_ result: FoodSearchResult) {
         let product = result.product
-        let id = MultiAddSelectionGroup.ID.remoteProduct(product.id)
-        if multiAddSelection.contains(id) {
-            withAnimation(selectionChangeAnimation) {
-                multiAddSelection.remove(id)
-            }
-        } else {
-            withAnimation(selectionChangeAnimation) {
-                multiAddSelection.toggle(
-                    .remoteProduct(
-                        result,
-                        searchService: searchService,
-                        meal: mealType,
-                        snackIndex: snackIndex
-                    )
-                )
-            }
+        toggle(.remoteProduct(product.id)) {
+            .remoteProduct(
+                result,
+                searchService: searchService,
+                meal: mealType,
+                snackIndex: snackIndex
+            )
         }
     }
 
@@ -893,21 +893,13 @@ struct FoodSearchView: View {
     }
 
     private func toggleMealSelection(_ meal: MealTemplate) {
-        let id = MultiAddSelectionGroup.ID.meal(meal.id)
-        if multiAddSelection.contains(id) {
-            withAnimation(selectionChangeAnimation) {
-                multiAddSelection.remove(id)
-            }
-            return
-        }
-
         do {
-            toggle(
+            try toggle(.meal(meal.id)) {
                 .meal(
                     meal,
                     snapshots: try MealTemplateCommands.snapshots(for: meal)
                 )
-            )
+            }
         } catch {
             mealErrorMessage = error.localizedDescription
         }
