@@ -523,39 +523,17 @@ private struct EmptyFoodGroupRow: View {
 private struct RecipeLibraryRow: View {
     let recipe: FoodItem
 
-    private var totalGrams: Double {
-        recipe.defaultServingG ?? 0
-    }
-
-    private var ingredientCount: Int {
-        recipe.recipeIngredients?.count ?? 0
-    }
-
-    private var calories: Double {
-        recipe.calories(forGrams: totalGrams)
-    }
-
-    private var protein: Double {
-        recipe.protein(forGrams: totalGrams)
-    }
-
-    private var carbs: Double {
-        recipe.carbs(forGrams: totalGrams)
-    }
-
-    private var fat: Double {
-        recipe.fat(forGrams: totalGrams)
-    }
-
     var body: some View {
+        let summary = RecipeLibraryRowSummary(recipe: recipe)
+
         HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 6) {
-                Text(recipe.name)
+                Text(summary.name)
                     .font(CalorynTheme.itemTitle)
                     .foregroundStyle(CalorynTheme.textPrimary)
                     .lineLimit(1)
 
-                Text(recipeDetail)
+                Text(summary.detail)
                     .font(CalorynTheme.caption)
                     .foregroundStyle(CalorynTheme.textSecondary)
                     .lineLimit(1)
@@ -564,7 +542,7 @@ private struct RecipeLibraryRow: View {
             Spacer(minLength: 12)
 
             VStack(alignment: .trailing, spacing: 2) {
-                Text("\(calories.rounded().truncatedSafely)")
+                Text(summary.caloriesText)
                     .font(CalorynTheme.numericBody)
                     .foregroundStyle(CalorynTheme.textPrimary)
 
@@ -576,17 +554,6 @@ private struct RecipeLibraryRow: View {
         .padding(.vertical, 6)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
-    }
-
-    private var recipeDetail: String {
-        let ingredientLabel = ingredientCount == 1 ? "1 ingredient" : "\(ingredientCount) ingredients"
-        let macroLabel = "\(protein.macroFormatted) P · \(carbs.macroFormatted) C · \(fat.macroFormatted) F"
-
-        guard totalGrams > 0 else {
-            return "\(ingredientLabel) · \(macroLabel)"
-        }
-
-        return "\(ingredientLabel) · \(totalGrams.rounded().truncatedSafely)g · \(macroLabel)"
     }
 }
 
