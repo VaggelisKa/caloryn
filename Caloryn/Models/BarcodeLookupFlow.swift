@@ -73,6 +73,9 @@ struct BarcodeLookupFlow: Equatable {
     mutating func scanned(_ code: String) {
         guard let normalizedBarcode = BarcodeIdentity.normalized(code) else {
             isLookingUp = false
+            // Cleared like every other failure: leaving it set kept a lookup
+            // in flight that would overwrite this failure when it resolved.
+            pendingBarcode = nil
             error = .invalidRequest
             lastScannedBarcode = nil
             return
