@@ -72,6 +72,10 @@ struct GramAmountField: View {
             .calorynInputField(isFocused: isFocused)
             .contentShape(Rectangle())
             .onTapGesture { isFocused = true }
+            // The box is what takes the tap, not the field inside it — the
+            // field is at zero opacity until focused, and a journey cannot tap
+            // something invisible.
+            .accessibilityIdentifier("\(identifierPrefix).amountBox")
 
             HStack(spacing: 8) {
                 ForEach(quickOptions, id: \.self) { grams in

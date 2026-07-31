@@ -122,6 +122,83 @@ final class JourneyTests: UITestCase {
         }
     }
 
+    // MARK: Typing a portion
+
+    /// House Salad is 45 kcal per 100g and opens at its 180g serving, so every
+    /// figure below is arithmetic the user can check on screen: 180g is 81
+    /// calories, 300g is 135.
+    func testGivenAPortionInGramsWhenAnAmountIsTypedThenThatAmountIsWhatGetsLogged() {
+        let app = launch(fixture: .customFoods)
+        let today = TodayScreen(app: app)
+        let search = FoodSearchScreen(app: app)
+        let portion = PortionPickerScreen(app: app)
+
+        given("the portion screen for a food measured in grams") {
+            today.tap(today.mealHeader("lunch"))
+            search.awaitTappable(search.searchField)
+            search.searchField.typeText("Salad")
+            search.tap(search.result(named: "House Salad"))
+            portion.awaitCalories(81)
+        }
+
+        when("the user types a different amount") {
+            portion.typeGrams(300)
+        }
+
+        then("the calorie preview follows what was typed") {
+            portion.awaitCalories(135)
+        }
+
+        then("saving logs the typed amount, not the one the screen opened with") {
+            // Saved straight from the keypad, without the field ever losing
+            // focus — the path a user actually takes, and the one where a
+            // half-handled edit would log the opening 180g instead.
+            portion.tap(portion.save)
+
+            XCTAssertTrue(
+                today.entry(named: "House Salad").awaitExistence(),
+                "The food should be logged to the day"
+            )
+            XCTAssertTrue(
+                app.staticTexts["135"].awaitExistence(),
+                "Today should report the calories for the typed 300g, not the opening 180g"
+            )
+        }
+    }
+
+    /// The shortcuts exist so a common amount costs one tap. This is also the
+    /// only journey that proves the field and the chips agree: the chip has to
+    /// move the number the field shows, not just the portion behind it.
+    func testGivenAPortionInGramsWhenAShortcutIsTappedThenItSetsTheAmount() {
+        let app = launch(fixture: .customFoods)
+        let today = TodayScreen(app: app)
+        let search = FoodSearchScreen(app: app)
+        let portion = PortionPickerScreen(app: app)
+
+        given("the portion screen for a food measured in grams") {
+            today.tap(today.mealHeader("lunch"))
+            search.awaitTappable(search.searchField)
+            search.searchField.typeText("Salad")
+            search.tap(search.result(named: "House Salad"))
+            portion.awaitCalories(81)
+        }
+
+        when("the user taps a shortcut amount") {
+            // 50g is the first shortcut for a food with no countable serving.
+            portion.tap(portion.quickGrams(50))
+        }
+
+        then("the preview moves to that amount") {
+            // 50g of 45 kcal per 100g.
+            portion.awaitCalories(22)
+        }
+
+        then("a typed amount still overrides the shortcut afterwards") {
+            portion.typeGrams(400)
+            portion.awaitCalories(180)
+        }
+    }
+
     // MARK: My Foods
 
     func testGivenSavedCustomFoodsWhenMyFoodsOpensThenTheyAreListed() {
