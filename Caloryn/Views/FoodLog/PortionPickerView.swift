@@ -146,6 +146,7 @@ struct PortionPickerView: View {
                             .foregroundStyle(CalorynTheme.sage)
                     }
                     .accessibilityLabel("Back")
+                    .accessibilityIdentifier("portionPicker.back")
                 }
             }
 

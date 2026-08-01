@@ -147,6 +147,7 @@ struct PortionPickerScreen: Screen {
     var calories: XCUIElement { element("portionPicker.calories") }
     var save: XCUIElement { element("portionPicker.save") }
     var delete: XCUIElement { element("portionPicker.delete") }
+    var back: XCUIElement { element("portionPicker.back") }
 
     /// The tappable box around the grams field. The field itself is at zero
     /// opacity until focused, so this is what a journey taps to start typing.
