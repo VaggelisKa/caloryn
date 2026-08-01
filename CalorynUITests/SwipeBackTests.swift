@@ -98,7 +98,7 @@ final class SwipeBackTests: UITestCase {
         }
 
         then("the back button still pops it") {
-            portion.tap(app.buttons["Back"])
+            portion.tap(portion.back)
             XCTAssertTrue(
                 search.searchField.awaitExistence(),
                 "The tinted back button is what pops a screen pushed inside a sheet"
