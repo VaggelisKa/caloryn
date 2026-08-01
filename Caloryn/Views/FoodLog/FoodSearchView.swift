@@ -11,6 +11,15 @@ struct FoodSearchView: View {
         let groups: [MultiAddSelectionGroup]
     }
 
+    /// A saved food on its way to the portion picker, carrying the portion a
+    /// contextual suggestion came with when that is where the tap started.
+    struct PortionDestination: Identifiable, Hashable {
+        let food: FoodItem
+        var suggestedPortionGrams: Double?
+
+        var id: UUID { food.id }
+    }
+
     let mealType: MealType
     let logDate: Date
     var snackIndex: Int = 0
@@ -27,7 +36,7 @@ struct FoodSearchView: View {
     @State private var searchService = FoodSearchService()
     @State private var searchText = FoodSearchService.debugInitialSearchText
     @State private var selectedResult: FoodSearchResult?
-    @State private var selectedFoodItem: FoodItem?
+    @State var selectedFoodItem: PortionDestination?
     @State private var showingScanner = false
     @State private var hasPresentedInitialScanner = false
     @State private var showingCustomFoodForm = false
@@ -219,13 +228,14 @@ struct FoodSearchView: View {
                     snackIndex: snackIndex
                 ) { dismiss() }
             }
-            .navigationDestination(item: $selectedFoodItem) { food in
+            .navigationDestination(item: $selectedFoodItem) { destination in
                 PortionPickerView(
-                    foodItem: food,
+                    foodItem: destination.food,
                     mealType: mealType,
                     logDate: logDate,
                     isNewFood: false,
-                    snackIndex: snackIndex
+                    snackIndex: snackIndex,
+                    suggestedPortionGrams: destination.suggestedPortionGrams
                 ) { dismiss() }
             }
             .sheet(isPresented: $showingCustomFoodForm) {
@@ -843,7 +853,7 @@ struct FoodSearchView: View {
             if isSelectingMultiple {
                 toggleFoodSelection(food)
             } else {
-                selectedFoodItem = food
+                selectedFoodItem = PortionDestination(food: food)
             }
         case .ingredientSelection(let handler), .mealComponentSelection(let handler):
             handler(food)

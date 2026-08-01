@@ -91,11 +91,12 @@ struct PortionSelection: Equatable {
 
     /// Builds the opening state for a food.
     ///
-    /// A brand-new log starts in whichever expressive mode the food supports.
-    /// Re-opening a saved entry only does so when the saved grams still line up
-    /// with a whole serving — otherwise the entry is shown in grams, so that
-    /// editing "137 g" does not silently round it to "1 slice".
-    init(shape: Shape, initialGrams: Double, isExistingEntry: Bool) {
+    /// A log with nothing but a default behind it starts in whichever expressive
+    /// mode the food supports. Grams that came from somewhere specific — a saved
+    /// entry being re-opened, or a suggestion's own remembered portion — only do
+    /// so when they still line up with a whole serving; otherwise the picker
+    /// opens in grams, so that "137 g" is not silently rounded to "1 slice".
+    init(shape: Shape, initialGrams: Double, preservesExactGrams: Bool) {
         self.shape = shape
         portionGrams = initialGrams
         gramsInput = Self.formattedGrams(initialGrams)
@@ -111,16 +112,41 @@ struct PortionSelection: Equatable {
             )
             let matchesServing = Self.recipeServingOption(id: recipeServingID)
                 .map { Self.isApproximatelyEqual(total * $0.multiplier, initialGrams) } == true
-            mode = (!isExistingEntry || matchesServing) ? .recipeServing : .grams
+            mode = (!preservesExactGrams || matchesServing) ? .recipeServing : .grams
         } else if let gramsPerUnit = shape.servingGramsPerUnit {
             servingCount = Self.normalizedServingCount(for: initialGrams, shape: shape)
             let matchesServing = Self.isApproximatelyEqual(
                 Double(servingCount) * gramsPerUnit,
                 initialGrams
             )
-            mode = (!isExistingEntry || matchesServing) ? .serving : .grams
+            mode = (!preservesExactGrams || matchesServing) ? .serving : .grams
         }
     }
+
+    /// The portion a freshly opened picker starts on, and whether that number
+    /// is exact enough to keep.
+    ///
+    /// Three sources can name a portion and they rank: the entry being edited
+    /// is the real thing; a contextual suggestion knows what this user actually
+    /// logs; the food's own default serving is a guess. Only the first two are
+    /// specific to this log, so only those pin the grams — a default is free to
+    /// be re-expressed as a whole serving.
+    static func opening(
+        shape: Shape,
+        existingEntryGrams: Double? = nil,
+        suggestedGrams: Double? = nil,
+        defaultServingGrams: Double? = nil
+    ) -> PortionSelection {
+        let exactGrams = existingEntryGrams ?? suggestedGrams
+        return PortionSelection(
+            shape: shape,
+            initialGrams: exactGrams ?? defaultServingGrams ?? fallbackOpeningGrams,
+            preservesExactGrams: exactGrams != nil
+        )
+    }
+
+    /// What a food with no default serving opens on.
+    static let fallbackOpeningGrams: Double = 100
 
     // MARK: - Options
 

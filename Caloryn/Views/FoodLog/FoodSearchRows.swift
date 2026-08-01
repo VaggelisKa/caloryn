@@ -111,15 +111,13 @@ extension FoodSearchView {
             if isSelectingMultiple {
                 toggleFoodSelection(food)
             } else {
-                multiAddPresentation = MultiAddPresentation(
-                    groups: [
-                        .savedFood(
-                            food,
-                            portionGrams: suggestion.resolvedPortionGrams,
-                            meal: mealType,
-                            snackIndex: snackIndex
-                        ),
-                    ]
+                // A single tap goes where every other single tap goes — the
+                // portion picker, seeded with the suggested amount. The review
+                // sheet is for a batch, and reading as one for a single food
+                // was the confusion.
+                selectedFoodItem = PortionDestination(
+                    food: food,
+                    suggestedPortionGrams: suggestion.resolvedPortionGrams
                 )
             }
         } label: {
@@ -148,7 +146,7 @@ extension FoodSearchView {
         .accessibilityHint(
             isSelectingMultiple
                 ? "Double tap to \(isSelected(.food(food.id)) ? "remove" : "select") this item"
-                : "Double tap to review its portion"
+                : "Double tap to adjust its portion"
         )
         .accessibilityIdentifier("contextualSuggestions.food.\(food.id.uuidString)")
     }
