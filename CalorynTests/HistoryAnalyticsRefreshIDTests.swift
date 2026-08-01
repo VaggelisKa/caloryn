@@ -147,6 +147,18 @@ struct HistoryAnalyticsRefreshIDTests {
         #expect(HistoryEntrySignature(entry: entry) != before)
     }
 
+    @Test("given an entry with no stored name, when its saved food is renamed, then its signature changes so analytics rerun")
+    func renamingTheFoodBehindAnUnnamedEntryChangesTheSignature() {
+        let foodItem = makeTestFoodItem(name: "Greek Yogurt")
+        let entry = makeTestEntry(foodItem: foodItem)
+        entry.foodName = ""
+        let before = HistoryEntrySignature(entry: entry)
+
+        foodItem.name = "Skyr"
+
+        #expect(HistoryEntrySignature(entry: entry) != before)
+    }
+
     // MARK: - Profile fields trigger a recompute
 
     nonisolated private static let profileMutations: [FieldMutation<UserProfile>] = [
