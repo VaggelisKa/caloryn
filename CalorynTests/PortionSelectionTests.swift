@@ -25,9 +25,9 @@ struct PortionSelectionTests {
     private func selection(
         _ shape: PortionSelection.Shape,
         grams: Double,
-        isExistingEntry: Bool = false
+        preservesExactGrams: Bool = false
     ) -> PortionSelection {
-        PortionSelection(shape: shape, initialGrams: grams, isExistingEntry: isExistingEntry)
+        PortionSelection(shape: shape, initialGrams: grams, preservesExactGrams: preservesExactGrams)
     }
 
     // MARK: - Opening state
@@ -52,7 +52,7 @@ struct PortionSelectionTests {
 
     @Test("Reopening a saved entry that is a whole number of servings stays in servings")
     func savedWholeServingStaysInServings() {
-        let portion = selection(slicedFood, grams: 90, isExistingEntry: true)
+        let portion = selection(slicedFood, grams: 90, preservesExactGrams: true)
 
         #expect(portion.mode == .serving)
         #expect(portion.servingCount == 2)
@@ -62,7 +62,7 @@ struct PortionSelectionTests {
     /// what the user logged.
     @Test("Reopening a saved entry that is not a whole serving falls back to grams")
     func savedOddPortionFallsBackToGrams() {
-        let portion = selection(slicedFood, grams: 137, isExistingEntry: true)
+        let portion = selection(slicedFood, grams: 137, preservesExactGrams: true)
 
         #expect(portion.mode == .grams)
         #expect(portion.portionGrams == 137)
@@ -70,10 +70,90 @@ struct PortionSelectionTests {
 
     @Test("Reopening a saved recipe entry that is not a listed fraction falls back to grams")
     func savedOddRecipePortionFallsBackToGrams() {
-        let portion = selection(recipe, grams: 333, isExistingEntry: true)
+        let portion = selection(recipe, grams: 333, preservesExactGrams: true)
 
         #expect(portion.mode == .grams)
         #expect(portion.portionGrams == 333)
+    }
+
+    // MARK: - Opening portion precedence
+
+    @Test("A picker with nothing but a default opens on the default serving")
+    func openingFallsBackToDefaultServing() {
+        let portion = PortionSelection.opening(
+            shape: slicedFood,
+            defaultServingGrams: 45
+        )
+
+        #expect(portion.portionGrams == 45)
+    }
+
+    @Test("A picker for a food with no default serving opens on 100g")
+    func openingFallsBackToOneHundredGrams() {
+        #expect(PortionSelection.opening(shape: plainFood).portionGrams == 100)
+    }
+
+    /// The suggestion knows what this user actually logs; the default serving
+    /// is a guess printed on a package.
+    @Test("A suggested portion outranks the food's default serving")
+    func suggestedPortionOutranksDefaultServing() {
+        let portion = PortionSelection.opening(
+            shape: slicedFood,
+            suggestedGrams: 137,
+            defaultServingGrams: 45
+        )
+
+        #expect(portion.portionGrams == 137)
+    }
+
+    @Test("An entry being edited outranks a suggested portion")
+    func existingEntryOutranksSuggestedPortion() {
+        let portion = PortionSelection.opening(
+            shape: slicedFood,
+            existingEntryGrams: 90,
+            suggestedGrams: 137,
+            defaultServingGrams: 45
+        )
+
+        #expect(portion.portionGrams == 90)
+    }
+
+    /// Tapping a "135 g" suggestion has to open on 135 g, not round it up to
+    /// "3 slices" — the number the row promised is the number that gets logged.
+    @Test("A suggested portion that is not a whole serving opens in grams")
+    func suggestedOddPortionOpensInGrams() {
+        let portion = PortionSelection.opening(
+            shape: slicedFood,
+            suggestedGrams: 137,
+            defaultServingGrams: 45
+        )
+
+        #expect(portion.mode == .grams)
+        #expect(portion.portionGrams == 137)
+    }
+
+    @Test("A suggested portion that is a whole number of servings opens in servings")
+    func suggestedWholeServingOpensInServings() {
+        let portion = PortionSelection.opening(
+            shape: slicedFood,
+            suggestedGrams: 90,
+            defaultServingGrams: 45
+        )
+
+        #expect(portion.mode == .serving)
+        #expect(portion.servingCount == 2)
+    }
+
+    /// A default serving is not specific to this log, so it is free to be
+    /// re-expressed on whichever wheel the food supports.
+    @Test("A default serving still opens on its expressive wheel")
+    func defaultServingOpensInServings() {
+        let portion = PortionSelection.opening(
+            shape: recipe,
+            defaultServingGrams: 800
+        )
+
+        #expect(portion.mode == .recipeServing)
     }
 
     // MARK: - Typing a weight
@@ -166,7 +246,7 @@ struct PortionSelectionTests {
     /// in a comma locale, which is where this first failed.
     @Test("A fractional portion keeps its fraction in the field")
     func fractionalPortionSurvives() {
-        var portion = selection(plainFood, grams: 137.5, isExistingEntry: true)
+        var portion = selection(plainFood, grams: 137.5, preservesExactGrams: true)
 
         #expect(portion.gramsInput != "137")
         #expect(portion.gramsInput.contains("137"))
@@ -245,7 +325,7 @@ struct PortionSelectionTests {
 
     @Test("Switching to servings rounds to the nearest whole serving")
     func switchingToServingsRounds() {
-        var portion = selection(slicedFood, grams: 137, isExistingEntry: true)
+        var portion = selection(slicedFood, grams: 137, preservesExactGrams: true)
         #expect(portion.mode == .grams)
 
         portion.mode = .serving
@@ -258,7 +338,7 @@ struct PortionSelectionTests {
 
     @Test("Switching to recipe servings snaps to the nearest offered fraction")
     func switchingToRecipeServingsSnaps() {
-        var portion = selection(recipe, grams: 333, isExistingEntry: true)
+        var portion = selection(recipe, grams: 333, preservesExactGrams: true)
         #expect(portion.mode == .grams)
 
         portion.mode = .recipeServing
@@ -335,7 +415,7 @@ struct PortionSelectionTests {
             let options = PortionSelection(
                 shape: shape,
                 initialGrams: 100,
-                isExistingEntry: false
+                preservesExactGrams: false
             ).quickGramOptions
 
             #expect(options == PortionSelection.fallbackQuickGramOptions)
@@ -348,7 +428,7 @@ struct PortionSelectionTests {
             let options = PortionSelection(
                 shape: shape,
                 initialGrams: 100,
-                isExistingEntry: false
+                preservesExactGrams: false
             ).quickGramOptions
 
             #expect(options.count == PortionSelection.quickGramOptionCount)

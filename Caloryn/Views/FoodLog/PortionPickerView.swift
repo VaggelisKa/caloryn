@@ -8,6 +8,10 @@ struct PortionPickerView: View {
     let isNewFood: Bool
     let snackIndex: Int
     let existingEntry: FoodLogEntry?
+    /// The portion a contextual suggestion arrived with. Outranks the food's
+    /// default serving, because the suggestion knows what this user actually
+    /// logs; outranked by an existing entry, which is the real thing.
+    let suggestedPortionGrams: Double?
     var onLogged: (() -> Void)?
     var onDeleted: ((FoodLogEntry) -> Void)?
 
@@ -36,6 +40,7 @@ struct PortionPickerView: View {
         isNewFood: Bool,
         snackIndex: Int = 0,
         existingEntry: FoodLogEntry? = nil,
+        suggestedPortionGrams: Double? = nil,
         onLogged: (() -> Void)? = nil,
         onDeleted: ((FoodLogEntry) -> Void)? = nil
     ) {
@@ -45,16 +50,17 @@ struct PortionPickerView: View {
         self.isNewFood = isNewFood
         self.snackIndex = snackIndex
         self.existingEntry = existingEntry
+        self.suggestedPortionGrams = suggestedPortionGrams
         self.onLogged = onLogged
         self.onDeleted = onDeleted
         self._selectedMeal = State(initialValue: existingEntry?.mealType ?? mealType)
 
-        let initialPortion = existingEntry?.portionGrams ?? foodItem.defaultServingG ?? 100
         self._selection = State(
-            initialValue: PortionSelection(
+            initialValue: PortionSelection.opening(
                 shape: PortionSelection.Shape(foodItem: foodItem),
-                initialGrams: initialPortion,
-                isExistingEntry: existingEntry != nil
+                existingEntryGrams: existingEntry?.portionGrams,
+                suggestedGrams: suggestedPortionGrams,
+                defaultServingGrams: foodItem.defaultServingG
             )
         )
     }

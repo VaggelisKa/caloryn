@@ -119,7 +119,7 @@ final class NonFiniteNumberSafetyTests: XCTestCase {
         var selection = PortionSelection(
             shape: PortionSelection.Shape(servingGramsPerUnit: 0),
             initialGrams: 100,
-            isExistingEntry: false
+            preservesExactGrams: false
         )
         selection.mode = .serving
         selection.modeChanged()
@@ -130,7 +130,7 @@ final class NonFiniteNumberSafetyTests: XCTestCase {
 
     func testPortionSelectionSurvivesANonFiniteRecipeSize() {
         let shape = PortionSelection.Shape(isRecipe: true, defaultServingGrams: .infinity)
-        let selection = PortionSelection(shape: shape, initialGrams: 100, isExistingEntry: false)
+        let selection = PortionSelection(shape: shape, initialGrams: 100, preservesExactGrams: false)
 
         XCTAssertEqual(
             PortionSelection.quickGramOptions(for: shape),

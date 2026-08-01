@@ -11,6 +11,15 @@ struct FoodSearchView: View {
         let groups: [MultiAddSelectionGroup]
     }
 
+    /// A saved food on its way to the portion picker, carrying the portion a
+    /// contextual suggestion came with when that is where the tap started.
+    struct PortionDestination: Identifiable, Hashable {
+        let food: FoodItem
+        var suggestedPortionGrams: Double?
+
+        var id: UUID { food.id }
+    }
+
     let mealType: MealType
     let logDate: Date
     var snackIndex: Int = 0
@@ -27,7 +36,7 @@ struct FoodSearchView: View {
     @State private var searchService = FoodSearchService()
     @State private var searchText = FoodSearchService.debugInitialSearchText
     @State private var selectedResult: FoodSearchResult?
-    @State private var selectedFoodItem: FoodItem?
+    @State var selectedFoodItem: PortionDestination?
     @State private var showingScanner = false
     @State private var hasPresentedInitialScanner = false
     @State private var showingCustomFoodForm = false
@@ -219,13 +228,14 @@ struct FoodSearchView: View {
                     snackIndex: snackIndex
                 ) { dismiss() }
             }
-            .navigationDestination(item: $selectedFoodItem) { food in
+            .navigationDestination(item: $selectedFoodItem) { destination in
                 PortionPickerView(
-                    foodItem: food,
+                    foodItem: destination.food,
                     mealType: mealType,
                     logDate: logDate,
                     isNewFood: false,
-                    snackIndex: snackIndex
+                    snackIndex: snackIndex,
+                    suggestedPortionGrams: destination.suggestedPortionGrams
                 ) { dismiss() }
             }
             .sheet(isPresented: $showingCustomFoodForm) {
@@ -357,29 +367,13 @@ struct FoodSearchView: View {
             if mode.supportsMultiSelection, !mealTemplates.isEmpty {
                 foodSection(title: "Meals") {
                     ForEach(mealTemplates) { meal in
-                        Button {
-                            handleMealSelection(meal)
-                        } label: {
-                            selectionRow(
-                                isSelected: isSelected(.meal(meal.id))
-                            ) {
-                                MealTemplateLibraryRow(
-                                    template: meal,
-                                    showsIcon: false
-                                )
-                            }
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityValue(
-                            selectionAccessibilityValue(for: .meal(meal.id))
-                        )
-                        .accessibilityIdentifier("meal.select.\(meal.id.uuidString)")
+                        mealRow(for: meal)
                     }
                 }
             }
 
             if mode.isSelection, !recipes.isEmpty {
-                foodSection(title: "Recipes", stickyHeaderStyle: .system) {
+                foodSection(title: "Recipes") {
                     ForEach(recipes) { recipe in
                         recipeRow(for: recipe)
                     }
@@ -428,22 +422,7 @@ struct FoodSearchView: View {
             if !matchingMeals.isEmpty {
                 foodSection(title: "Meals") {
                     ForEach(matchingMeals) { meal in
-                        Button {
-                            handleMealSelection(meal)
-                        } label: {
-                            selectionRow(
-                                isSelected: isSelected(.meal(meal.id))
-                            ) {
-                                MealTemplateLibraryRow(
-                                    template: meal,
-                                    showsIcon: false
-                                )
-                            }
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityValue(
-                            selectionAccessibilityValue(for: .meal(meal.id))
-                        )
+                        mealRow(for: meal)
                     }
                 }
             }
@@ -496,10 +475,12 @@ struct FoodSearchView: View {
     /// the list (`usesNonStickySectionTitles == false`).
     ///
     /// Two styles exist because the two lists have never agreed: the resting
-    /// list's Recipes and Manual Entries sections use `Section(_:)`'s system
-    /// header, while every other pinned header is a caption-styled `Text`.
-    /// This is a rendering refactor, so the inconsistency is preserved, not
-    /// resolved.
+    /// list's Manual Entries section uses `Section(_:)`'s system header, while
+    /// every other pinned header is a caption-styled `Text`.
+    ///
+    /// Recipes used to ask for `.system` too, but headers only pin in
+    /// `.ingredientSelection`, and that mode's `includesRecipes == false`
+    /// keeps the recipes list empty — so the branch never rendered.
     private enum StickyHeaderStyle {
         case system
         case caption
@@ -664,7 +645,7 @@ struct FoodSearchView: View {
         }
     }
 
-    private func handleMealSelection(_ meal: MealTemplate) {
+    func handleMealSelection(_ meal: MealTemplate) {
         if isSelectingMultiple {
             toggleMealSelection(meal)
         } else {
@@ -843,7 +824,7 @@ struct FoodSearchView: View {
             if isSelectingMultiple {
                 toggleFoodSelection(food)
             } else {
-                selectedFoodItem = food
+                selectedFoodItem = PortionDestination(food: food)
             }
         case .ingredientSelection(let handler), .mealComponentSelection(let handler):
             handler(food)
