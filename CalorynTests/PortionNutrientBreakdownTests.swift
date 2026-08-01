@@ -125,11 +125,10 @@ struct PortionNutrientBreakdownTests {
 
     /// The flat table and `NutrientDetailGroup` describe the same domain, and
     /// used to do so in two hand-maintained copies. Every line a grouped card
-    /// can show must exist in the flat table with the same unit — and the same
-    /// label, with one deliberate exception: the grouped Salt card titles
-    /// itself "Salt" and calls its line "Salt equivalent", while the flat list
-    /// has no card title to lean on and says "Salt". If either side changes,
-    /// this fails and the divergence gets a decision instead of going unnoticed.
+    /// can show must exist in the flat table with the same unit and the same
+    /// label — including salt, which reads "Salt" on both sides (issue #131),
+    /// so the Salt card shows "Salt › Salt". If one side changes alone, this
+    /// fails and the divergence gets a decision instead of going unnoticed.
     @Test("Every grouped detail line exists in the flat table with a matching label and unit")
     func parityWithNutrientDetailGroup() {
         let flatItems = PortionNutrientBreakdown(nutrition: Self.everyNutrientRecorded).items
@@ -146,14 +145,13 @@ struct PortionNutrientBreakdownTests {
                 continue
             }
             #expect(flat.unit == grouped.unit, "Unit for \(grouped.id) differs between the two tables")
-
-            if grouped.id == "salt" {
-                #expect(grouped.label == "Salt equivalent")
-                #expect(flat.label == "Salt")
-            } else {
-                #expect(flat.label == grouped.label, "Label for \(grouped.id) differs between the two tables")
-            }
+            #expect(flat.label == grouped.label, "Label for \(grouped.id) differs between the two tables")
         }
+
+        // Salt used to be the one line worded differently on each side; both
+        // now say "Salt" (issue #131).
+        #expect(groupedItems.first { $0.id == "salt" }?.label == "Salt")
+        #expect(flatByID["salt"]?.label == "Salt")
     }
 
     // MARK: - Fixtures
