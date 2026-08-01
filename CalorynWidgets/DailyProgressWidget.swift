@@ -146,19 +146,27 @@ private struct SmallProgressView: View {
     }
 }
 
+/// The ring here is bound by the height of its column, not its width: the medium widget
+/// is about 158pt tall, and the header, footer and the gaps around them were taking
+/// roughly a third of it. So the gaps are deliberately uneven rather than a uniform
+/// `VStack` spacing — the header can sit close to the ring, but the footer cannot, or it
+/// reads as attached to the circle instead of below it. Measured at 338×158: ~83pt of
+/// ring before, ~85pt after — most of the gain goes to the ring, but not at the cost of
+/// the footer reading as part of it.
 private struct MediumProgressView: View {
     let entry: DailyProgressEntry
 
     var body: some View {
-        HStack(spacing: 16) {
-            VStack(alignment: .leading, spacing: 6) {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 0) {
                 WidgetHeader(isStale: entry.isStale)
 
                 ProgressRing(summary: entry.snapshot.calories, compact: false)
+                    .padding(.top, 2)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                 ConsumedFooter(calories: entry.snapshot.calories)
-                    .padding(.top, 3)
+                    .padding(.top, 9)
             }
             .frame(maxWidth: .infinity)
             .privacySensitive()
@@ -166,6 +174,7 @@ private struct MediumProgressView: View {
             .accessibilityLabel(WidgetAccessibility.summary(for: entry.snapshot.calories))
 
             QuickLogSection()
+                .frame(maxWidth: .infinity)
         }
     }
 }
@@ -281,16 +290,18 @@ private struct ProgressRing: View {
     let summary: WidgetCalorieSummary
     let compact: Bool
 
+    private var lineWidth: CGFloat { compact ? 8 : 9 }
+
     var body: some View {
         ZStack {
             Circle()
-                .stroke(WidgetTheme.ringTrack, lineWidth: compact ? 8 : 9)
+                .stroke(WidgetTheme.ringTrack, lineWidth: lineWidth)
 
             Circle()
                 .trim(from: 0, to: summary.progress)
                 .stroke(
                     summary.isOver ? WidgetTheme.terracotta : WidgetTheme.sage,
-                    style: StrokeStyle(lineWidth: compact ? 8 : 9, lineCap: .round)
+                    style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
                 )
                 .rotationEffect(.degrees(-90))
                 .widgetAccentable()
@@ -306,6 +317,10 @@ private struct ProgressRing: View {
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(.secondary)
             }
+            // Keeps the value off the stroke. Without it the text is laid out against the
+            // ring's full square, so a four-digit total sits right on the rim rather than
+            // scaling down — which is what it did on medium at every realistic target.
+            .padding(lineWidth + 2)
         }
         .aspectRatio(1, contentMode: .fit)
         .accessibilityHidden(true)
