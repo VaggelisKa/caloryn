@@ -14,10 +14,9 @@ import Foundation
 /// none of it. The core macros are the exception — they are always recorded,
 /// and a zero there is a real zero.
 ///
-/// One deliberate wording difference from the grouped view: the flat list
-/// labels `saltG` "Salt", while the Salt card calls its line "Salt equivalent"
-/// under a card already titled "Salt". The parity test pins both so neither
-/// drifts unnoticed.
+/// Every line the two views share is worded identically — `saltG` is "Salt" in
+/// both, so the Salt card reads "Salt › Salt". The parity test pins that, so a
+/// label changed on one side alone fails rather than drifting unnoticed.
 struct PortionNutrientBreakdown {
     /// The rows the picker shows for this nutrition, in display order.
     let items: [DetailNutrient]

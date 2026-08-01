@@ -135,7 +135,7 @@ enum NutrientDetailGroup: String, CaseIterable, Identifiable {
             ]
         case .salt:
             [
-                Definition(id: "salt", label: "Salt equivalent", keyPath: \.saltG)
+                Definition(id: "salt", label: "Salt", keyPath: \.saltG)
             ]
         }
     }
