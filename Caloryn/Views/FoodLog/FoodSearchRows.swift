@@ -9,6 +9,25 @@ import SwiftUI
 /// models and handlers the main file owns.
 extension FoodSearchView {
 
+    /// One saved meal, in either list.
+    ///
+    /// Both lists had their own copy of this and only the resting one carried
+    /// the identifier, so a journey could tick a meal from Recent but not from
+    /// search results. One builder is what keeps that from drifting apart
+    /// again.
+    func mealRow(for meal: MealTemplate) -> some View {
+        Button {
+            handleMealSelection(meal)
+        } label: {
+            selectionRow(isSelected: isSelected(.meal(meal.id))) {
+                MealTemplateLibraryRow(template: meal, showsIcon: false)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityValue(selectionAccessibilityValue(for: .meal(meal.id)))
+        .accessibilityIdentifier("meal.select.\(meal.id.uuidString)")
+    }
+
     func personalFoodRow(for food: FoodItem) -> some View {
         Button {
             handleFoodItemSelection(food)
@@ -49,6 +68,7 @@ extension FoodSearchView {
         }
         .buttonStyle(.plain)
         .accessibilityValue(selectionAccessibilityValue(for: .food(food.id)))
+        .accessibilityIdentifier("foodSearch.result.\(food.name)")
     }
 
     func savedFoodRow(for food: FoodItem) -> some View {

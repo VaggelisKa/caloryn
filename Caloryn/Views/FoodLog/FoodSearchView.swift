@@ -367,29 +367,13 @@ struct FoodSearchView: View {
             if mode.supportsMultiSelection, !mealTemplates.isEmpty {
                 foodSection(title: "Meals") {
                     ForEach(mealTemplates) { meal in
-                        Button {
-                            handleMealSelection(meal)
-                        } label: {
-                            selectionRow(
-                                isSelected: isSelected(.meal(meal.id))
-                            ) {
-                                MealTemplateLibraryRow(
-                                    template: meal,
-                                    showsIcon: false
-                                )
-                            }
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityValue(
-                            selectionAccessibilityValue(for: .meal(meal.id))
-                        )
-                        .accessibilityIdentifier("meal.select.\(meal.id.uuidString)")
+                        mealRow(for: meal)
                     }
                 }
             }
 
             if mode.isSelection, !recipes.isEmpty {
-                foodSection(title: "Recipes", stickyHeaderStyle: .system) {
+                foodSection(title: "Recipes") {
                     ForEach(recipes) { recipe in
                         recipeRow(for: recipe)
                     }
@@ -438,22 +422,7 @@ struct FoodSearchView: View {
             if !matchingMeals.isEmpty {
                 foodSection(title: "Meals") {
                     ForEach(matchingMeals) { meal in
-                        Button {
-                            handleMealSelection(meal)
-                        } label: {
-                            selectionRow(
-                                isSelected: isSelected(.meal(meal.id))
-                            ) {
-                                MealTemplateLibraryRow(
-                                    template: meal,
-                                    showsIcon: false
-                                )
-                            }
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityValue(
-                            selectionAccessibilityValue(for: .meal(meal.id))
-                        )
+                        mealRow(for: meal)
                     }
                 }
             }
@@ -506,10 +475,12 @@ struct FoodSearchView: View {
     /// the list (`usesNonStickySectionTitles == false`).
     ///
     /// Two styles exist because the two lists have never agreed: the resting
-    /// list's Recipes and Manual Entries sections use `Section(_:)`'s system
-    /// header, while every other pinned header is a caption-styled `Text`.
-    /// This is a rendering refactor, so the inconsistency is preserved, not
-    /// resolved.
+    /// list's Manual Entries section uses `Section(_:)`'s system header, while
+    /// every other pinned header is a caption-styled `Text`.
+    ///
+    /// Recipes used to ask for `.system` too, but headers only pin in
+    /// `.ingredientSelection`, and that mode's `includesRecipes == false`
+    /// keeps the recipes list empty — so the branch never rendered.
     private enum StickyHeaderStyle {
         case system
         case caption
@@ -674,7 +645,7 @@ struct FoodSearchView: View {
         }
     }
 
-    private func handleMealSelection(_ meal: MealTemplate) {
+    func handleMealSelection(_ meal: MealTemplate) {
         if isSelectingMultiple {
             toggleMealSelection(meal)
         } else {
