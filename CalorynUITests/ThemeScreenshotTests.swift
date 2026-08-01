@@ -48,6 +48,7 @@ final class ThemeScreenshotTests: UITestCase {
         captureHistoryDrillDown(appearance)
         captureCalorieTrendDrillDown(appearance)
         captureSettingsAndMyFoods(appearance)
+        captureEmptyMyFoods(appearance)
         captureCreationSheets(appearance)
     }
 
@@ -395,6 +396,25 @@ final class ThemeScreenshotTests: UITestCase {
         tabs.go(to: .myFoods)
         sleep(1)
         attach(app, "07-my-foods", appearance)
+    }
+
+    /// My Foods before anything is saved, which is a different view entirely — a
+    /// `ContentUnavailableView` rather than the grouped list — and so has none of the
+    /// list's canvas or row backgrounds to inherit. Every fixture that reached this tab
+    /// before had foods in it, so the state a new user sees first was the one state
+    /// nothing here captured.
+    private func captureEmptyMyFoods(_ appearance: Appearance) {
+        let app = launch(fixture: .profileOnly, appearance: appearance)
+        let tabs = TabBar(app: app)
+
+        XCTAssertTrue(tabs.isVisible, "Tab bar should render")
+        tabs.go(to: .myFoods)
+
+        let emptyState = app.descendants(matching: .any)
+            .matching(identifier: "myFoods.emptyLibrary").firstMatch
+        XCTAssertTrue(emptyState.awaitExistence(), "Empty My Foods state missing")
+        sleep(1)
+        attach(app, "07c-my-foods-empty", appearance)
     }
 
     // MARK: - Helpers
