@@ -12,9 +12,14 @@ struct MyFoodsListingTests {
 
     private func listing(
         foodItems: [FoodItem],
+        mealTemplateCount: Int = 0,
         showsAllFavorites: Bool = false
     ) -> MyFoodsListing {
-        MyFoodsListing(foodItems: foodItems, showsAllFavorites: showsAllFavorites)
+        MyFoodsListing(
+            foodItems: foodItems,
+            mealTemplateCount: mealTemplateCount,
+            showsAllFavorites: showsAllFavorites
+        )
     }
 
     private func manualEntry(name: String, favorite: Bool = false) -> FoodItem {
@@ -93,21 +98,54 @@ struct MyFoodsListingTests {
 
     // MARK: - Section visibility
 
-    @Test("An empty library shows the empty-state rows for recipes and manual entries")
-    func emptyLibraryShowsEmptyStates() {
+    @Test("An empty library hides every section in favour of the whole-screen empty state")
+    func emptyLibraryHidesEverySection() {
         let listing = listing(foodItems: [])
 
-        #expect(listing.showsEmptyRecipesSection)
+        #expect(listing.isEmptyLibrary)
+        #expect(!listing.showsFavoritesSection)
         #expect(!listing.showsRecipesSection)
-        #expect(listing.showsEmptyManualEntriesSection)
+        #expect(!listing.showsMealsSection)
         #expect(!listing.showsManualEntriesSection)
+        #expect(!listing.showsEditedProductCatalogSection)
+    }
+
+    @Test("Provider catalog foods the screen never lists do not keep the empty state away")
+    func catalogOnlyLibraryIsStillEmpty() {
+        let listing = listing(foodItems: [makeTestFoodItem(name: "Provider Yoghurt")])
+
+        #expect(listing.isEmptyLibrary)
+    }
+
+    @Test("Any one kind of saved food is enough to replace the empty state with the list")
+    func anySavedFoodEndsTheEmptyState() {
+        #expect(!listing(foodItems: [manualEntry(name: "Oats")]).isEmptyLibrary)
+        #expect(!listing(foodItems: [recipe(name: "Chili")]).isEmptyLibrary)
+        #expect(
+            !listing(
+                foodItems: [editedProduct(name: "Fixed Skyr", barcode: "5711953150388")]
+            ).isEmptyLibrary
+        )
+        #expect(!listing(foodItems: [], mealTemplateCount: 1).isEmptyLibrary)
+    }
+
+    @Test("Sections with nothing in them are hidden rather than shown with a placeholder row")
+    func emptySectionsAreHidden() {
+        let onlyAManualEntry = listing(foodItems: [manualEntry(name: "Oats")])
+
+        #expect(onlyAManualEntry.showsManualEntriesSection)
+        #expect(!onlyAManualEntry.showsFavoritesSection)
+        #expect(!onlyAManualEntry.showsRecipesSection)
+        #expect(!onlyAManualEntry.showsMealsSection)
+        #expect(!onlyAManualEntry.showsEditedProductCatalogSection)
     }
 
     @Test("Recipes that exist but are all favorited hide the dedicated section rather than showing it blank")
     func allFavoritedRecipesHideTheirSection() {
         let listing = listing(foodItems: [recipe(name: "Chili", favorite: true)])
 
-        #expect(!listing.showsEmptyRecipesSection)
+        #expect(!listing.isEmptyLibrary)
+        #expect(listing.showsFavoritesSection)
         #expect(!listing.showsRecipesSection)
     }
 
@@ -115,7 +153,7 @@ struct MyFoodsListingTests {
     func allFavoritedManualEntriesHideTheirSection() {
         let listing = listing(foodItems: [manualEntry(name: "Oats", favorite: true)])
 
-        #expect(!listing.showsEmptyManualEntriesSection)
+        #expect(listing.showsFavoritesSection)
         #expect(!listing.showsManualEntriesSection)
     }
 
@@ -127,6 +165,19 @@ struct MyFoodsListingTests {
 
         #expect(listing.showsRecipesSection)
         #expect(listing.showsManualEntriesSection)
+    }
+
+    @Test("Meals and the edited product catalog appear only once they hold something")
+    func mealsAndCatalogAppearOnlyWhenPopulated() {
+        let withMeal = listing(foodItems: [], mealTemplateCount: 2)
+        let withEditedProduct = listing(
+            foodItems: [editedProduct(name: "Fixed Skyr", barcode: "5711953150388")]
+        )
+
+        #expect(withMeal.showsMealsSection)
+        #expect(withEditedProduct.showsEditedProductCatalogSection)
+        #expect(!withEditedProduct.showsMealsSection)
+        #expect(!withMeal.showsEditedProductCatalogSection)
     }
 
     // MARK: - Favorites disclosure

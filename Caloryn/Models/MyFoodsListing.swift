@@ -15,10 +15,16 @@ import Foundation
 @MainActor
 struct MyFoodsListing {
     var foodItems: [FoodItem]
+    var mealTemplateCount: Int
     var showsAllFavorites: Bool
 
-    init(foodItems: [FoodItem], showsAllFavorites: Bool = false) {
+    init(
+        foodItems: [FoodItem],
+        mealTemplateCount: Int = 0,
+        showsAllFavorites: Bool = false
+    ) {
         self.foodItems = foodItems
+        self.mealTemplateCount = mealTemplateCount
         self.showsAllFavorites = showsAllFavorites
     }
 
@@ -61,30 +67,53 @@ struct MyFoodsListing {
 
     // MARK: - Section visibility
 
-    /// Whether the library has no recipes at all, in which case the section
-    /// shows an empty-state row instead of a list.
-    var showsEmptyRecipesSection: Bool {
-        recipes.isEmpty
+    /// A section with nothing in it is left out entirely rather than shown
+    /// with a placeholder row: the toolbar's create menu already names every
+    /// kind of food you can make, so a card that says "No Recipes" only
+    /// repeats a control that is permanently on screen, at the cost of a full
+    /// row of space between the things the user actually saved.
+
+    /// Favorites is derived rather than created — there is no "new favorite"
+    /// action to point at — so at zero it is simply absent.
+    var showsFavoritesSection: Bool {
+        !favorites.isEmpty
     }
 
-    /// Recipes exist, but every one of them is already shown under
-    /// Favorites, so the dedicated section would be empty and is hidden
-    /// rather than shown blank.
+    /// Hidden both when no recipes exist and when every one of them is
+    /// already shown under Favorites, which would leave the section blank.
     var showsRecipesSection: Bool {
-        !recipes.isEmpty && !nonFavoriteRecipes.isEmpty
+        !nonFavoriteRecipes.isEmpty
     }
 
-    /// Whether the library has no manual entries at all, in which case the
-    /// section shows an empty-state row instead of a list.
-    var showsEmptyManualEntriesSection: Bool {
-        manualEntries.isEmpty
+    var showsMealsSection: Bool {
+        mealTemplateCount > 0
     }
 
-    /// Manual entries exist, but every one of them is already shown under
-    /// Favorites, so the dedicated section would be empty and is hidden
-    /// rather than shown blank.
+    /// Hidden both when no manual entries exist and when every one of them is
+    /// already shown under Favorites, which would leave the section blank.
     var showsManualEntriesSection: Bool {
-        !manualEntries.isEmpty && !nonFavoriteManualEntries.isEmpty
+        !nonFavoriteManualEntries.isEmpty
+    }
+
+    /// The catalog row is a drill-down whose destination would itself be
+    /// empty at zero, so it is not offered until there is something to open.
+    var showsEditedProductCatalogSection: Bool {
+        !editedProducts.isEmpty
+    }
+
+    /// Nothing this screen can show exists yet, so the whole list is replaced
+    /// by a single empty state. This is the one moment the user has no other
+    /// signal about what the tab is for, and the only one where teaching it
+    /// is not in the way of real content.
+    ///
+    /// Deliberately not `foodItems.isEmpty` — the query holds provider
+    /// catalog foods that this screen never lists, and those must not keep
+    /// the empty state away.
+    var isEmptyLibrary: Bool {
+        manualEntries.isEmpty
+            && recipes.isEmpty
+            && editedProducts.isEmpty
+            && mealTemplateCount == 0
     }
 
     /// Whether there are more favorites than the collapsed view shows, so the

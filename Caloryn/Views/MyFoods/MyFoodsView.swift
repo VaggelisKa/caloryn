@@ -17,38 +17,16 @@ struct MyFoodsView: View {
     @State private var showsAllFavorites = false
 
     private var listing: MyFoodsListing {
-        MyFoodsListing(foodItems: foodItems, showsAllFavorites: showsAllFavorites)
+        MyFoodsListing(
+            foodItems: foodItems,
+            mealTemplateCount: mealTemplates.count,
+            showsAllFavorites: showsAllFavorites
+        )
     }
 
     var body: some View {
         NavigationStack {
-            List {
-                favoritesSection
-                    .listRowBackground(CalorynTheme.cardBackground)
-
-                if listing.showsEmptyRecipesSection {
-                    emptyRecipesSection
-                        .listRowBackground(CalorynTheme.cardBackground)
-                } else if listing.showsRecipesSection {
-                    recipesSection
-                        .listRowBackground(CalorynTheme.cardBackground)
-                }
-
-                mealsSection
-                    .listRowBackground(CalorynTheme.cardBackground)
-
-                if listing.showsEmptyManualEntriesSection {
-                    emptyManualEntriesSection
-                        .listRowBackground(CalorynTheme.cardBackground)
-                } else if listing.showsManualEntriesSection {
-                    manualEntriesSection
-                        .listRowBackground(CalorynTheme.cardBackground)
-                }
-
-                editedProductCatalogSection
-                    .listRowBackground(CalorynTheme.cardBackground)
-            }
-            .calorynGroupedListStyle()
+            libraryContent
             .navigationTitle("My Foods")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
@@ -103,28 +81,83 @@ struct MyFoodsView: View {
         .calorynPageCanvas()
     }
 
+    /// An empty section is dropped rather than filled with a placeholder, so
+    /// a library with one manual entry is one section with one row. When
+    /// there is nothing at all the list gives way to a single empty state.
+    @ViewBuilder
+    private var libraryContent: some View {
+        let listing = listing
+
+        if listing.isEmptyLibrary {
+            emptyLibraryView
+        } else {
+            List {
+                if listing.showsFavoritesSection {
+                    favoritesSection
+                        .listRowBackground(CalorynTheme.cardBackground)
+                }
+
+                if listing.showsRecipesSection {
+                    recipesSection
+                        .listRowBackground(CalorynTheme.cardBackground)
+                }
+
+                if listing.showsMealsSection {
+                    mealsSection
+                        .listRowBackground(CalorynTheme.cardBackground)
+                }
+
+                if listing.showsManualEntriesSection {
+                    manualEntriesSection
+                        .listRowBackground(CalorynTheme.cardBackground)
+                }
+
+                if listing.showsEditedProductCatalogSection {
+                    editedProductCatalogSection
+                        .listRowBackground(CalorynTheme.cardBackground)
+                }
+            }
+            .calorynGroupedListStyle()
+        }
+    }
+
+    /// No buttons: the + already sits in the toolbar above this text, and a stack of
+    /// three CTAs duplicating its menu would make the emptiest screen in the app the
+    /// busiest one. The copy says what the tab holds rather than narrating the control
+    /// — the + is a foot away from the sentence and does not need naming.
+    ///
+    /// The explicit background is load-bearing. `ContentUnavailableView` paints its own
+    /// system background *over* `calorynPageCanvas()`, exactly as a `List` does — this
+    /// shipped at 77.8% pure white in light mode with every test green, and only the
+    /// colour census caught it.
+    private var emptyLibraryView: some View {
+        ContentUnavailableView {
+            Label("Your Food Library Is Empty", systemImage: "takeoutbag.and.cup.and.straw")
+        } description: {
+            Text("Foods, recipes and meals you save appear here, ready to log in one tap.")
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background {
+            CalorynTheme.pageBackground
+                .ignoresSafeArea()
+        }
+        .accessibilityIdentifier("myFoods.emptyLibrary")
+    }
+
     private var mealsSection: some View {
         Section {
-            if mealTemplates.isEmpty {
-                EmptyFoodGroupRow(
-                    title: "No Meals",
-                    message: "Create a meal from foods, manual entries, or recipes.",
-                    systemImage: "fork.knife"
-                )
-            } else {
-                ForEach(mealTemplates) { meal in
-                    Button {
-                        editingMeal = meal
+            ForEach(mealTemplates) { meal in
+                Button {
+                    editingMeal = meal
+                } label: {
+                    MealTemplateLibraryRow(template: meal)
+                }
+                .buttonStyle(.plain)
+                .swipeActions(edge: .trailing) {
+                    Button(role: .destructive) {
+                        delete(meal)
                     } label: {
-                        MealTemplateLibraryRow(template: meal)
-                    }
-                    .buttonStyle(.plain)
-                    .swipeActions(edge: .trailing) {
-                        Button(role: .destructive) {
-                            delete(meal)
-                        } label: {
-                            Label("Delete", systemImage: "trash")
-                        }
+                        Label("Delete", systemImage: "trash")
                     }
                 }
             }
@@ -138,39 +171,31 @@ struct MyFoodsView: View {
     private var favoritesSection: some View {
         let listing = listing
         return Section {
-            if listing.favorites.isEmpty {
-                EmptyFoodGroupRow(
-                    title: "No Favorites",
-                    message: "Favorite recipes or manual entries for quick access.",
-                    systemImage: "star"
-                )
-            } else {
-                ForEach(listing.visibleFavorites) { food in
-                    libraryButton(for: food)
-                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                            deleteButton(for: food)
-                            favoriteButton(for: food)
-                        }
-                }
-
-                if listing.showsFavoritesDisclosure {
-                    Button(action: toggleFavoritesDisclosure) {
-                        HStack {
-                            Text(showsAllFavorites ? "Show less" : "Show all \(listing.favorites.count)")
-                            Spacer()
-                            Image(systemName: showsAllFavorites ? "chevron.up" : "chevron.down")
-                        }
-                        .font(CalorynTheme.caption)
-                        .foregroundStyle(CalorynTheme.sage)
-                        .contentShape(Rectangle())
+            ForEach(listing.visibleFavorites) { food in
+                libraryButton(for: food)
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        deleteButton(for: food)
+                        favoriteButton(for: food)
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(
-                        showsAllFavorites
-                            ? "Show fewer favorites"
-                            : "Show all \(listing.favorites.count) favorites"
-                    )
+            }
+
+            if listing.showsFavoritesDisclosure {
+                Button(action: toggleFavoritesDisclosure) {
+                    HStack {
+                        Text(showsAllFavorites ? "Show less" : "Show all \(listing.favorites.count)")
+                        Spacer()
+                        Image(systemName: showsAllFavorites ? "chevron.up" : "chevron.down")
+                    }
+                    .font(CalorynTheme.caption)
+                    .foregroundStyle(CalorynTheme.sage)
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel(
+                    showsAllFavorites
+                        ? "Show fewer favorites"
+                        : "Show all \(listing.favorites.count) favorites"
+                )
             }
         } header: {
             HStack {
@@ -268,34 +293,6 @@ struct MyFoodsView: View {
             )
         } header: {
             Text("Edited Product Catalog")
-                .font(CalorynTheme.caption)
-                .foregroundStyle(CalorynTheme.textSecondary)
-        }
-    }
-
-    private var emptyManualEntriesSection: some View {
-        Section {
-            EmptyFoodGroupRow(
-                title: "No Manual Entries",
-                message: "Create foods you enter yourself.",
-                systemImage: "pencil.and.list.clipboard"
-            )
-        } header: {
-            Text("Manual Entries")
-                .font(CalorynTheme.caption)
-                .foregroundStyle(CalorynTheme.textSecondary)
-        }
-    }
-
-    private var emptyRecipesSection: some View {
-        Section {
-            EmptyFoodGroupRow(
-                title: "No Recipes",
-                message: "Create recipes from reusable ingredients.",
-                systemImage: "list.bullet.rectangle"
-            )
-        } header: {
-            Text("Recipes")
                 .font(CalorynTheme.caption)
                 .foregroundStyle(CalorynTheme.textSecondary)
         }
@@ -490,33 +487,6 @@ private struct EditedProductCatalogView: View {
                 .presentationDragIndicator(.visible)
         }
         .calorynPageCanvas()
-    }
-}
-
-private struct EmptyFoodGroupRow: View {
-    let title: String
-    let message: String
-    let systemImage: String
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: systemImage)
-                .font(CalorynTheme.inlineIcon)
-                .foregroundStyle(CalorynTheme.textSecondary)
-                .frame(width: 28, height: 28)
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(CalorynTheme.itemTitle)
-                    .foregroundStyle(CalorynTheme.textPrimary)
-
-                Text(message)
-                    .font(CalorynTheme.caption)
-                    .foregroundStyle(CalorynTheme.textSecondary)
-            }
-        }
-        .padding(.vertical, 8)
-        .accessibilityElement(children: .combine)
     }
 }
 
