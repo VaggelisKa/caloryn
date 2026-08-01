@@ -474,9 +474,7 @@ struct HistoryRecurringCaloriePatternEngine {
         var accumulators: [String: FoodAccumulator] = [:]
 
         for entry in entries {
-            let storedName = entry.foodName.trimmingCharacters(in: .whitespacesAndNewlines)
-            let liveName = entry.foodItem?.name.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            let name = storedName.isEmpty ? (liveName.isEmpty ? "Unnamed food" : liveName) : storedName
+            let name = entry.historicalFoodName
             let key = name
                 .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
                 .lowercased()
