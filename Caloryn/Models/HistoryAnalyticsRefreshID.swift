@@ -56,8 +56,10 @@ struct HistoryProfileSignature: Equatable {
 }
 
 /// The facts of a `FoodLogEntry` that History's summaries, patterns and quality
-/// charts depend on. Quality fields go through the `historical*` reads so a
-/// legacy entry's live-food fallback is re-evaluated on every comparison.
+/// charts depend on. The name and the quality fields go through the
+/// `historical*` reads so an entry's live-food fallback is re-evaluated on
+/// every comparison — the analytics read those same fallbacks, so capturing
+/// only the stored value would leave History stale after a food is renamed.
 struct HistoryEntrySignature: Equatable {
     let id: UUID
     let date: Date
@@ -85,7 +87,7 @@ struct HistoryEntrySignature: Equatable {
         date = entry.date
         mealTypeRaw = entry.mealType.rawValue
         snackIndex = entry.snackIndex
-        foodName = entry.foodName
+        foodName = entry.historicalFoodName
         portionGrams = entry.portionGrams
         calories = entry.calories
         proteinG = entry.proteinG

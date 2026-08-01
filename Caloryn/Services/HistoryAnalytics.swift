@@ -556,7 +556,7 @@ struct HistoryDayDetail: Identifiable {
         var foods: [String: HistoryFoodAccumulator] = [:]
 
         for entry in entries {
-            let name = foodName(for: entry)
+            let name = entry.historicalFoodName
             let key = normalizedFoodKey(name)
             guard !key.isEmpty else { continue }
 
@@ -575,14 +575,6 @@ struct HistoryDayDetail: Identifiable {
                 }
                 return $0.calories > $1.calories
             }
-    }
-
-    private static func foodName(for entry: FoodLogEntry) -> String {
-        let storedName = entry.foodName.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !storedName.isEmpty { return storedName }
-
-        let foodItemName = entry.foodItem?.name.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        return foodItemName.isEmpty ? "Unnamed food" : foodItemName
     }
 
     private static func normalizedFoodKey(_ name: String) -> String {

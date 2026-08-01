@@ -350,6 +350,17 @@ final class FoodLogEntry {
         }
     }
 
+    /// Display name for historical reads: the name stored on the entry at log
+    /// time; entries stored without one fall back to the live saved-food
+    /// relationship and read as "Unnamed food" once that food is gone.
+    var historicalFoodName: String {
+        let storedName = foodName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !storedName.isEmpty { return storedName }
+
+        let liveName = foodItem?.name.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return liveName.isEmpty ? "Unnamed food" : liveName
+    }
+
     /// Nutri-Score grade for historical reads: the snapshot when available;
     /// legacy entries fall back to the live saved-food relationship and
     /// report nil (unknown) once that food is gone.
