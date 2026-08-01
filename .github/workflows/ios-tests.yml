@@ -105,12 +105,21 @@ jobs:
       # at start-up differs between models, so if a run falls back to a
       # different device it simply finds no baseline and reports without
       # gating, rather than comparing two unlike measurements.
+      #
+      # The commit sha makes each main build write a *new* key. Cache entries are
+      # immutable — saving to an existing key is a silent no-op — so a fixed key
+      # froze the baseline at whatever the first main build measured. The exact
+      # `key` here can never hit (no baseline is stored under a PR's own sha), so
+      # it always falls through to `restore-keys`, which prefix-matches the most
+      # recently created baseline for this device.
       - name: Restore coverage baseline
         if: github.event_name == 'pull_request'
         uses: actions/cache/restore@v4
         with:
           path: coverage-baseline.txt
-          key: coverage-baseline-main-${{ steps.simulator.outputs.device }}
+          key: coverage-baseline-main-${{ steps.simulator.outputs.device }}-${{ github.sha }}
+          restore-keys: |
+            coverage-baseline-main-${{ steps.simulator.outputs.device }}-
 
       - name: Check coverage ratchet
         if: github.event_name == 'pull_request'
@@ -144,7 +153,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: coverage-baseline.txt
-          key: coverage-baseline-main-${{ steps.simulator.outputs.device }}
+          key: coverage-baseline-main-${{ steps.simulator.outputs.device }}-${{ github.sha }}
 
       - name: Upload results
         if: always()
