@@ -27,6 +27,50 @@ final class JourneyTests: UITestCase {
         }
     }
 
+    func testGivenTheActivityLevelStepWhenACardIsTappedAwayFromItsTextThenThatLevelIsSelected() {
+        let app = launch(fixture: .empty)
+        let onboarding = OnboardingScreen(app: app)
+        let veryActive = onboarding.activityLevel("veryActive")
+
+        given("the activity level step, with another level selected") {
+            onboarding.tap(onboarding.getStarted)
+            onboarding.tap(onboarding.element("onboarding.personalInfo.continue"))
+            XCTAssertEqual(
+                onboarding.awaitTappable(veryActive).label,
+                "Very Active, not selected"
+            )
+        }
+
+        then("the whole row is a tap target, not just its text") {
+            // The card was once only as tappable as its glyphs were wide, which
+            // left it under Apple's 44pt minimum and missed every tap aimed at
+            // the row's empty right-hand side. This bites on iOS 26, which is
+            // what ships; iOS 27 hit-tests the whole row either way, so run
+            // this on the pinned simulator for it to mean anything.
+            XCTAssertGreaterThanOrEqual(
+                veryActive.frame.height,
+                44,
+                "A selectable row must offer at least a 44pt tap target"
+            )
+        }
+
+        when("the user taps the row well right of its text") {
+            veryActive.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+        }
+
+        then("that level becomes the selected one") {
+            let selected = XCTNSPredicateExpectation(
+                predicate: NSPredicate(format: "label == %@", "Very Active, selected"),
+                object: veryActive
+            )
+            XCTAssertEqual(
+                XCTWaiter().wait(for: [selected], timeout: UITestCase.defaultTimeout),
+                .completed,
+                "Tapping anywhere on the row should select it"
+            )
+        }
+    }
+
     // MARK: Today
 
     func testGivenADayWithALoggedEntryWhenTodayOpensThenTheEntryAndRingAreShown() {

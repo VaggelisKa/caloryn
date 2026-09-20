@@ -343,6 +343,12 @@ private struct EnergyCalculationModeCard: View {
             }
             .padding(CalorynTheme.cardPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
+            // Same hit-area fix as the activity level cards: the label's
+            // glyphs, not the card, would otherwise be the tap target.
+            .contentShape(
+                [.interaction, .accessibility],
+                .rect(cornerRadius: CalorynTheme.smallCornerRadius)
+            )
             .adaptiveSelectableGlass(
                 isSelected: isSelected,
                 cornerRadius: CalorynTheme.smallCornerRadius

@@ -103,6 +103,12 @@ private struct ActivityLevelCard: View {
             }
             .padding(CalorynTheme.cardPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
+            // The label's own shape is the union of its glyphs, so without
+            // this the card is only tappable on the icon and the text.
+            .contentShape(
+                [.interaction, .accessibility],
+                .rect(cornerRadius: CalorynTheme.smallCornerRadius)
+            )
             .adaptiveSelectableGlass(
                 isSelected: isSelected,
                 cornerRadius: CalorynTheme.smallCornerRadius
@@ -110,6 +116,8 @@ private struct ActivityLevelCard: View {
             .animation(.smooth(duration: 0.25), value: isSelected)
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("onboarding.activityLevel.option.\(level.rawValue)")
+        .accessibilityLabel("\(level.displayName), \(isSelected ? "selected" : "not selected")")
     }
 }
 

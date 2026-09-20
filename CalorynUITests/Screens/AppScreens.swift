@@ -39,6 +39,12 @@ struct OnboardingScreen: Screen {
     var goalTarget: XCUIElement { element("onboarding.goalSummary.target") }
     var startTracking: XCUIElement { element("onboarding.startTracking") }
 
+    /// One activity level choice. Its label carries the selected state, which is
+    /// what a user hears and therefore what tests assert on.
+    func activityLevel(_ level: String) -> XCUIElement {
+        element("onboarding.activityLevel.option.\(level)")
+    }
+
     /// Every step of the flow, in the order `OnboardingStep` pushes them, paired
     /// with the control that both proves the step is on screen and moves past it.
     ///
