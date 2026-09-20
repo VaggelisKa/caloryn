@@ -117,7 +117,10 @@ private struct ActivityLevelCard: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("onboarding.activityLevel.option.\(level.rawValue)")
-        .accessibilityLabel("\(level.displayName), \(isSelected ? "selected" : "not selected")")
+        // The description is what tells the levels apart, so it stays in the
+        // spoken label; selection is a trait rather than words in that label.
+        .accessibilityLabel("\(level.displayName), \(level.description)")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 

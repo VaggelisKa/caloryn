@@ -39,8 +39,8 @@ struct OnboardingScreen: Screen {
     var goalTarget: XCUIElement { element("onboarding.goalSummary.target") }
     var startTracking: XCUIElement { element("onboarding.startTracking") }
 
-    /// One activity level choice. Its label carries the selected state, which is
-    /// what a user hears and therefore what tests assert on.
+    /// One activity level choice. Which one is chosen shows up as the element's
+    /// selected trait, the same thing VoiceOver announces.
     func activityLevel(_ level: String) -> XCUIElement {
         element("onboarding.activityLevel.option.\(level)")
     }

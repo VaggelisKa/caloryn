@@ -35,9 +35,15 @@ final class JourneyTests: UITestCase {
         given("the activity level step, with another level selected") {
             onboarding.tap(onboarding.getStarted)
             onboarding.tap(onboarding.element("onboarding.personalInfo.continue"))
-            XCTAssertEqual(
-                onboarding.awaitTappable(veryActive).label,
-                "Very Active, not selected"
+            XCTAssertFalse(
+                onboarding.awaitTappable(veryActive).isSelected,
+                "Very Active should not be the starting choice"
+            )
+            // What a level means is the description, not the name, so it has
+            // to reach VoiceOver too.
+            XCTAssertTrue(
+                veryActive.label.contains("Hard exercise"),
+                "The row should speak its description, not just its name: \(veryActive.label)"
             )
         }
 
@@ -60,7 +66,9 @@ final class JourneyTests: UITestCase {
 
         then("that level becomes the selected one") {
             let selected = XCTNSPredicateExpectation(
-                predicate: NSPredicate(format: "label == %@", "Very Active, selected"),
+                predicate: NSPredicate { element, _ in
+                    (element as? XCUIElement)?.isSelected == true
+                },
                 object: veryActive
             )
             XCTAssertEqual(
