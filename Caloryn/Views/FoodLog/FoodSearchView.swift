@@ -397,6 +397,7 @@ struct FoodSearchView: View {
             }
         }
         .calorynPlainListStyle()
+        .scrollDismissesKeyboard(.immediately)
     }
 
     private var matchingManualEntries: [FoodItem] { listing.matchingManualEntries }
@@ -469,6 +470,7 @@ struct FoodSearchView: View {
             }
         }
         .calorynPlainListStyle()
+        .scrollDismissesKeyboard(.immediately)
     }
 
     /// How a section labels itself when the mode pins headers to the top of
