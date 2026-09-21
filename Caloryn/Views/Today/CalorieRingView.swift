@@ -10,7 +10,6 @@ struct CalorieRingView: View {
     @State private var animatedRingProgress: Double = 0
     @State private var hasAppeared = false
     @State private var fadeInTask: Task<Void, Never>?
-    @State private var isDetailsPressing = false
     @ScaledMetric private var numberSize: CGFloat = 44
 
     private var summary: CalorieRingSummary {
@@ -46,6 +45,19 @@ struct CalorieRingView: View {
 
     var body: some View {
         Group {
+            if onDetailsRequested != nil {
+                Button(action: requestDetails) {
+                    ringVisual
+                }
+                .buttonStyle(CalorieRingButtonStyle())
+            } else {
+                ringVisual
+            }
+        }
+    }
+
+    private var ringVisual: some View {
+        Group {
             if accessibilityReduceMotion {
                 ringSurface(progress: calorieBudget.displayedRingProgress)
                     .transaction { transaction in
@@ -55,8 +67,6 @@ struct CalorieRingView: View {
             } else {
                 ringSurface(progress: animatedRingProgress)
                     .opacity(hasAppeared ? 1 : 0)
-                    .scaleEffect(isDetailsPressing ? 0.94 : 1)
-                    .animation(detailsPressAnimation, value: isDetailsPressing)
                     .animation(ringUpdateAnimation, value: calorieBudget.dynamicAdjustment)
                     .animation(ringUpdateAnimation, value: calorieBudget.adjustedTarget)
                     .animation(ringUpdateAnimation, value: calorieBudget.isActivityLoading)
@@ -66,17 +76,6 @@ struct CalorieRingView: View {
         .accessibilityLabel(summary.accessibilityLabel)
         .accessibilityValue(summary.accessibilityValue)
         .accessibilityHint(CalorieRingSummary.accessibilityHint(isInteractive: onDetailsRequested != nil))
-        .accessibilityAddTraits(onDetailsRequested == nil ? [] : .isButton)
-        .accessibilityAction(named: Text("Show nutrition details")) {
-            requestDetails()
-        }
-        .onTapGesture(perform: requestDetails)
-        .onLongPressGesture(
-            minimumDuration: 0.45,
-            maximumDistance: 24,
-            pressing: setDetailsPressing,
-            perform: requestDetails
-        )
         .onAppear {
             hasAppeared = false
             var transaction = Transaction()
@@ -119,7 +118,6 @@ struct CalorieRingView: View {
             withTransaction(transaction) {
                 animatedRingProgress = calorieBudget.displayedRingProgress
                 hasAppeared = true
-                isDetailsPressing = false
             }
         }
     }
@@ -192,10 +190,6 @@ struct CalorieRingView: View {
         accessibilityReduceMotion ? .identity : .numericText()
     }
 
-    private var detailsPressAnimation: Animation? {
-        accessibilityReduceMotion ? nil : .smooth(duration: 0.2)
-    }
-
     private var ringUpdateAnimation: Animation? {
         accessibilityReduceMotion ? nil : .smooth(duration: 0.35)
     }
@@ -265,23 +259,24 @@ struct CalorieRingView: View {
             .accessibilityLabel(summary.cue.accessibilityLabel ?? "")
     }
 
-    private func setDetailsPressing(_ pressing: Bool) {
-        guard onDetailsRequested != nil else { return }
-        guard isDetailsPressing != pressing else { return }
-        if pressing {
-            let generator = UIImpactFeedbackGenerator(style: .light)
-            generator.prepare()
-            generator.impactOccurred(intensity: 0.55)
-        }
-        isDetailsPressing = pressing
-    }
-
     private func requestDetails() {
         guard let onDetailsRequested else { return }
         let generator = UIImpactFeedbackGenerator(style: .medium)
         generator.impactOccurred(intensity: 0.75)
-        isDetailsPressing = false
         onDetailsRequested()
+    }
+}
+
+private struct CalorieRingButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(accessibilityReduceMotion ? 1 : (configuration.isPressed ? 0.94 : 1))
+            .animation(
+                accessibilityReduceMotion ? nil : .smooth(duration: 0.2),
+                value: configuration.isPressed
+            )
     }
 }
 
