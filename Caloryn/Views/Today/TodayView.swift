@@ -29,7 +29,7 @@ struct TodayView: View {
 
     @AppStorage("showNutriscore") private var showNutriscore = true
     @State private var activeEnergyTracker = ActiveEnergyDayTracker()
-    @ScaledMetric private var ringSize: CGFloat = 180
+    private let ringSize: CGFloat = 180
 
     private var profile: UserProfile? { profiles.first }
     private func calorieBudget(consumed: Double) -> ActivityCalorieBudget {
