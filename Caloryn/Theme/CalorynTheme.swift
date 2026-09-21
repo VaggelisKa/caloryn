@@ -16,6 +16,12 @@ enum CalorynTheme {
     static let cardBackground = Color(.cardBackground)
     static let cardSeparator = stone.opacity(0.3)
 
+    /// Skeleton loaders. Both are the neutral at two weights rather than two colours:
+    /// an opacity on a Color Set keeps a single declaration answering for both
+    /// appearances, where a second asset would be one more dark variant to forget.
+    static let skeletonBase = stone.opacity(0.22)
+    static let skeletonHighlight = stone.opacity(0.30)
+
     static let textPrimary = Color(.textPrimary)
     static let textSecondary = Color(.textSecondary)
 

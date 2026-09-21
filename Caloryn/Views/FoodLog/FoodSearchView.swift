@@ -117,8 +117,7 @@ struct FoodSearchView: View {
                 case .recent:
                     recentFoodsList
                 case .searchProgress:
-                    ProgressView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    FoodSearchSkeletonList()
                 case .searchFailure:
                     if let failure = searchService.failure {
                         FoodLookupFailureView(presentation: failure.presentation) {
@@ -460,13 +459,9 @@ struct FoodSearchView: View {
             }
 
             if searchService.isSearching {
-                HStack {
-                    Spacer()
-                    ProgressView()
-                    Spacer()
-                }
-                .listRowSeparator(.hidden)
-                .listRowBackground(Color.clear)
+                FoodSearchSkeletonRows()
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
             }
         }
         .calorynPlainListStyle()

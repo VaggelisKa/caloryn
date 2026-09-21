@@ -42,6 +42,7 @@ final class ThemeScreenshotTests: UITestCase {
     private func captureAllSurfaces(appearance: Appearance) {
         captureOnboarding(appearance)
         captureTodayAndSearch(appearance)
+        captureSearchSkeleton(appearance)
         captureSearchInFlight(appearance)
         capturePortionPicker(appearance)
         captureMultiAddReview(appearance)
@@ -119,15 +120,45 @@ final class ThemeScreenshotTests: UITestCase {
         attach(app, "03-food-search-results", appearance)
     }
 
+    /// The full-screen skeleton: a query in flight with nothing local to show beside it.
+    ///
+    /// `loggedDay` seeds only Oats, so the fixture's "salad" query matches nothing locally
+    /// and the sheet resolves to `.searchProgress` — the state `captureSearchInFlight`
+    /// below deliberately avoids. Both are wanted: a height or inset mismatch between a
+    /// skeleton row and a food row only shows in the other one.
+    private func captureSearchSkeleton(_ appearance: Appearance) {
+        let app = launch(
+            fixture: .loggedDay,
+            appearance: appearance,
+            lookupFixture: "search-loading"
+        )
+        let today = TodayScreen(app: app)
+
+        XCTAssertTrue(today.isVisible, "Today should render")
+        let addBreakfast = today.mealHeader("breakfast")
+        XCTAssertTrue(addBreakfast.awaitExistence(), "Breakfast add button missing")
+        addBreakfast.tap()
+
+        let skeleton = app.descendants(matching: .any)
+            .matching(identifier: "foodSearch.loading").firstMatch
+        XCTAssertTrue(
+            skeleton.awaitExistence(),
+            "The sheet is not on the loading skeleton, so this photographs some other state"
+        )
+        sleep(1)
+        attach(app, "03d-food-search-skeleton", appearance)
+    }
+
     /// Results with the search still running, which no other capture can show.
     ///
-    /// The list keeps a trailing spinner row while more results are on the way, and that row
-    /// painted its own white background over the sheet canvas. `03-food-search-results` above
-    /// cannot catch it: it waits for the search to settle, by which time the row is gone. The
-    /// `search-loading` lookup fixture pins the search in flight so the row stays on screen.
+    /// The list keeps a trailing run of skeleton rows while more results are on the way, and
+    /// that row painted its own white background over the sheet canvas back when it was a
+    /// spinner. `03-food-search-results` above cannot catch it: it waits for the search to
+    /// settle, by which time the row is gone. The `search-loading` lookup fixture pins the
+    /// search in flight so it stays on screen.
     private func captureSearchInFlight(_ appearance: Appearance) {
         // `customFoods` seeds the manual entry the fixture's query matches. Without a local
-        // match the view shows a full-screen spinner and never builds the list at all.
+        // match the view shows the full-screen skeleton and never builds the list at all.
         let app = launch(
             fixture: .customFoods,
             appearance: appearance,
@@ -144,18 +175,22 @@ final class ThemeScreenshotTests: UITestCase {
         XCTAssertTrue(searchField(in: app).awaitExistence(), "Food search sheet did not present")
 
         // Waiting for the search field alone would photograph any state of this sheet, and
-        // the two states this capture is *not* about — the full-screen spinner and recent
-        // foods — both photograph clean. The trailing spinner row only exists on the list
+        // the two states this capture is *not* about — the full-screen skeleton and recent
+        // foods — both photograph clean. The trailing skeleton rows only exist on the list
         // that carries a local match and a provider result at once, so assert on one of
         // each: the seeded manual entry, and a product only the pinned fixture supplies.
         XCTAssertTrue(
             result(named: "House Salad", in: app).awaitExistence(),
-            "No local match, so this is the full-screen spinner rather than the results list"
+            "No local match, so this is the full-screen skeleton rather than the results list"
         )
         XCTAssertTrue(
             result(named: "Caloryn Greek Yogurt", in: app).exists,
-            "No provider result, so the list has no trailing spinner row to photograph"
+            "No provider result, so the list has no trailing skeleton rows to photograph"
         )
+        // The keyboard comes up with the pre-filled query and covers exactly where the
+        // trailing placeholder rows are — this capture photographed a keyboard for as long
+        // as it existed. The list sets `scrollDismissesKeyboard(.immediately)`.
+        app.swipeUp()
         sleep(2)
         attach(app, "03c-food-search-in-flight", appearance)
     }
