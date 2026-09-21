@@ -518,9 +518,10 @@ final class FoodSearchService {
         guard ProcessInfo.processInfo.environment["CALORYN_LOOKUP_FIXTURE"]?.hasPrefix("search-") == true else {
             return ""
         }
-        // The in-flight fixture wants the list that shows *results and* a spinner, which
-        // needs a local match: with none, the view shows a full-screen spinner instead.
-        // "salad" matches the `customFoods` seed.
+        // The in-flight fixture wants the list that shows *results and* skeleton rows,
+        // which needs a local match: with none, the view shows the full-screen skeleton
+        // instead. "salad" matches the `customFoods` seed — and matches nothing in
+        // `loggedDay`, which is how the full-screen state gets photographed too.
         return pinsSearchInFlight ? "salad" : "fixture"
     }
 
@@ -539,10 +540,10 @@ final class FoodSearchService {
             .hasPrefix("barcode-") == true ? "5711953150388" : nil
     }
 
-    /// Holds the search spinner on screen instead of letting it resolve. The trailing
-    /// "still searching" row is only visible for a few hundred milliseconds in a real
-    /// search, so every settled capture misses it — which is how it painted its own
-    /// white background over the sheet canvas unnoticed.
+    /// Holds the loading skeleton on screen instead of letting it resolve. The trailing
+    /// "still searching" rows are only visible for a few hundred milliseconds in a real
+    /// search, so every settled capture misses them — which is how the spinner they
+    /// replaced painted its own white background over the sheet canvas unnoticed.
     static var pinsSearchInFlight: Bool {
         ProcessInfo.processInfo.environment["CALORYN_LOOKUP_FIXTURE"] == "search-loading"
     }
