@@ -6,6 +6,7 @@ struct CalorieRingView: View {
     let ringSize: CGFloat
     var onDetailsRequested: (() -> Void)? = nil
 
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
     @State private var animatedRingProgress: Double = 0
     @State private var hasAppeared = false
     @State private var fadeInTask: Task<Void, Never>?
@@ -66,7 +67,7 @@ struct CalorieRingView: View {
                     Text("\(summary.centerValue)")
                         .font(CalorynTheme.ringNumber(size: numberSize))
                         .foregroundStyle(CalorynTheme.terracotta)
-                        .contentTransition(.numericText())
+                        .contentTransition(centerValueTransition)
 
                     Text(summary.centerCaption)
                         .font(CalorynTheme.caption)
@@ -75,7 +76,7 @@ struct CalorieRingView: View {
                     Text("\(summary.centerValue)")
                         .font(CalorynTheme.ringNumber(size: numberSize))
                         .foregroundStyle(CalorynTheme.textPrimary)
-                        .contentTransition(.numericText())
+                        .contentTransition(centerValueTransition)
 
                     Text(summary.centerCaption)
                         .font(CalorynTheme.caption)
@@ -105,11 +106,11 @@ struct CalorieRingView: View {
         .clipShape(Circle())
         .contentShape(Circle())
         .opacity(hasAppeared ? 1 : 0)
-        .scaleEffect(isDetailsPressing ? 0.94 : 1)
-        .animation(.smooth(duration: 0.2), value: isDetailsPressing)
-        .animation(.smooth(duration: 0.35), value: calorieBudget.dynamicAdjustment)
-        .animation(.smooth(duration: 0.35), value: calorieBudget.adjustedTarget)
-        .animation(.smooth(duration: 0.35), value: calorieBudget.isActivityLoading)
+        .scaleEffect(accessibilityReduceMotion ? 1 : (isDetailsPressing ? 0.94 : 1))
+        .animation(detailsPressAnimation, value: isDetailsPressing)
+        .animation(ringUpdateAnimation, value: calorieBudget.dynamicAdjustment)
+        .animation(ringUpdateAnimation, value: calorieBudget.adjustedTarget)
+        .animation(ringUpdateAnimation, value: calorieBudget.isActivityLoading)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(summary.accessibilityLabel)
         .accessibilityValue(summary.accessibilityValue)
@@ -134,6 +135,11 @@ struct CalorieRingView: View {
             }
 
             fadeInTask?.cancel()
+            guard !accessibilityReduceMotion else {
+                hasAppeared = true
+                return
+            }
+
             fadeInTask = Task { @MainActor in
                 await Task.yield()
                 guard !Task.isCancelled else { return }
@@ -150,9 +156,45 @@ struct CalorieRingView: View {
             hasAppeared = false
         }
         .onChange(of: calorieBudget.displayedRingProgress) { _, newProgress in
-            withAnimation(.smooth(duration: 0.45)) {
+            updateRingProgress(newProgress)
+        }
+        .onChange(of: accessibilityReduceMotion) { _, reduceMotion in
+            guard reduceMotion else { return }
+
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                animatedRingProgress = calorieBudget.displayedRingProgress
+                hasAppeared = true
+                isDetailsPressing = false
+            }
+        }
+    }
+
+    private var centerValueTransition: ContentTransition {
+        accessibilityReduceMotion ? .identity : .numericText()
+    }
+
+    private var detailsPressAnimation: Animation? {
+        accessibilityReduceMotion ? nil : .smooth(duration: 0.2)
+    }
+
+    private var ringUpdateAnimation: Animation? {
+        accessibilityReduceMotion ? nil : .smooth(duration: 0.35)
+    }
+
+    private func updateRingProgress(_ newProgress: Double) {
+        guard !accessibilityReduceMotion else {
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
                 animatedRingProgress = newProgress
             }
+            return
+        }
+
+        withAnimation(.smooth(duration: 0.45)) {
+            animatedRingProgress = newProgress
         }
     }
 

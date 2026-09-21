@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct WelcomeCardsGraphic: View {
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
     @State private var showBack = false
     @State private var showMiddle = false
     @State private var showFront = false
@@ -32,6 +33,11 @@ struct WelcomeCardsGraphic: View {
         }
         .frame(height: 250)
         .onAppear {
+            guard !accessibilityReduceMotion else {
+                showFinalArrangement()
+                return
+            }
+
             withAnimation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.1)) {
                 showBack = true
             }
@@ -46,6 +52,22 @@ struct WelcomeCardsGraphic: View {
             withAnimation(.spring(response: 0.7, dampingFraction: 0.75).delay(1.5)) {
                 expandToList = true
             }
+        }
+        .onChange(of: accessibilityReduceMotion) { _, reduceMotion in
+            if reduceMotion {
+                showFinalArrangement()
+            }
+        }
+    }
+
+    private func showFinalArrangement() {
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            showBack = true
+            showMiddle = true
+            showFront = true
+            expandToList = true
         }
     }
 }
