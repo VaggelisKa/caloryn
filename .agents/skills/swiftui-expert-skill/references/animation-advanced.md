@@ -1,12 +1,13 @@
 # SwiftUI Advanced Animations
 
-Transactions, phase animations (iOS 17+), keyframe animations (iOS 17+), and completion handlers (iOS 17+).
+Transactions, phase animations (iOS 17+), keyframe animations (iOS 17+), completion handlers (iOS 17+), and `@Animatable` macro (iOS 26+).
 
 ## Table of Contents
 - [Transactions](#transactions)
 - [Phase Animations (iOS 17+)](#phase-animations-ios-17)
 - [Keyframe Animations (iOS 17+)](#keyframe-animations-ios-17)
 - [Animation Completion Handlers (iOS 17+)](#animation-completion-handlers-ios-17)
+- [@Animatable Macro (iOS 26+)](#animatable-macro-ios-26)
 
 ---
 
@@ -322,6 +323,78 @@ Circle()
 
 ---
 
+## @Animatable Macro (iOS 26+)
+
+The `@Animatable` macro auto-synthesizes `animatableData` from all animatable stored properties, eliminating verbose manual conformance. Use `@AnimatableIgnored` to exclude properties that should not animate.
+
+### Before (Manual)
+
+```swift
+struct Wedge: Shape {
+    var startAngle: Angle
+    var endAngle: Angle
+    var drawClockwise: Bool
+
+    var animatableData: AnimatablePair<Double, Double> {
+        get { AnimatablePair(startAngle.radians, endAngle.radians) }
+        set {
+            startAngle = .radians(newValue.first)
+            endAngle = .radians(newValue.second)
+        }
+    }
+
+    func path(in rect: CGRect) -> Path { /* ... */ }
+}
+```
+
+### After (@Animatable)
+
+```swift
+@Animatable
+struct Wedge: Shape {
+    var startAngle: Angle
+    var endAngle: Angle
+    @AnimatableIgnored var drawClockwise: Bool
+
+    func path(in rect: CGRect) -> Path { /* ... */ }
+}
+```
+
+### When to Use
+- **Prefer `@Animatable`** for any custom `Shape` or type conforming to `Animatable` with multiple properties
+- **Conform `ViewModifier` types to `Animatable` directly** — not `AnimatableModifier` (soft-deprecated in SDK 27)
+- **Use `@AnimatableIgnored`** for properties that control behavior but should not interpolate (e.g., directions, flags, identifiers)
+- The macro works with any type conforming to `Animatable`, not just `Shape`
+
+> Source: "What's new in SwiftUI" (WWDC25, session 256)
+
+### When to Implement `animatableData` Manually
+
+Reach for an explicit `animatableData` (instead of the macro) when the interpolated value needs custom logic that doesn't map 1:1 to a stored property — normalization, clamping, or driving a derived value. For a deployment target of iOS 26+, use `AnimatableValues`; for earlier targets, use `AnimatablePair`.
+
+```swift
+// iOS 26+: keep phase in 0..<2π and clamp amplitude during interpolation
+struct WaveShape: Shape {
+    var amplitude: CGFloat
+    var phase: CGFloat
+    var maxAmplitude: CGFloat
+
+    var animatableData: AnimatableValues<CGFloat, CGFloat> {
+        get { AnimatableValues(amplitude, phase) }
+        set {
+            amplitude = min(max(newValue.value.0, 0), maxAmplitude)
+            phase = newValue.value.1.truncatingRemainder(dividingBy: 2 * .pi)
+        }
+    }
+
+    func path(in rect: CGRect) -> Path { /* ... */ }
+}
+```
+
+On earlier deployment targets, the same logic uses `AnimatablePair` with `newValue.first` / `newValue.second`.
+
+---
+
 ## Quick Reference
 
 ### Transactions (All iOS versions)
@@ -349,3 +422,8 @@ Circle()
 - Use `withAnimation(.animation) { } completion: { }` for one-shot completion handlers
 - Use `.transaction(value:)` for handlers that should refire on every value change
 - Without `value:` parameter, completion only fires once
+
+### @Animatable Macro (iOS 26+)
+- Use `@Animatable` to auto-synthesize `animatableData` from stored properties
+- Use `@AnimatableIgnored` to exclude non-animatable properties
+- Replaces verbose manual `animatableData` getters/setters

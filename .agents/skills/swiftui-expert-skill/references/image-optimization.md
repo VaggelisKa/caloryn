@@ -1,5 +1,14 @@
 # SwiftUI Image Optimization Reference
 
+## Table of Contents
+
+- [AsyncImage Best Practices](#asyncimage-best-practices)
+- [SDK 27 Caching and Request Control](#sdk-27-caching-and-request-control)
+- [Image Decoding and Downsampling (Optional Optimization)](#image-decoding-and-downsampling-optional-optimization)
+- [UIImage Loading and Memory](#uiimage-loading-and-memory)
+- [SF Symbols](#sf-symbols)
+- [Summary Checklist](#summary-checklist)
+
 ## AsyncImage Best Practices
 
 ### Basic AsyncImage with Phase Handling
@@ -24,59 +33,45 @@ AsyncImage(url: imageURL) { phase in
 .frame(width: 200, height: 200)
 ```
 
-### AsyncImage with Custom Placeholder
+For custom placeholders, replace `ProgressView()` in the `.empty` case with your placeholder view. Add `.transition(.opacity)` to the success case and `.animation(.easeInOut, value: imageURL)` to the container for fade-in transitions.
+
+## SDK 27 Caching and Request Control
+
+On aligned 27 runtimes, `AsyncImage(url:)` uses standard HTTP caching according to response headers, with no code change. The runtime behavior also benefits apps built with an older SDK. Do not add custom caching merely to obtain that default. If images still reload, first check the server's cache headers.
+
+SDK 27 adds three `AsyncImage(request:)` initializer shapes (remaining labels match the `URL` initializers):
+
+- Bare `AsyncImage(request:)` — renders the loaded image directly, like `AsyncImage(url:)`
+- `content:` / `placeholder:` pair
+- `transaction:` plus a `content:` closure that receives `AsyncImagePhase`
+
+The request carries a per-image `URLRequest`, including `cachePolicy` (`.returnCacheDataElseLoad`, `.returnCacheDataDontLoad`, `.reloadIgnoringLocalCacheData`, `.reloadRevalidatingCacheData`, `.useProtocolCachePolicy`). `asyncImageURLSession(_:)` supplies a configured `URLSession` and `URLCache` to a subtree.
 
 ```swift
-struct ImageView: View {
-    let url: URL?
-    
+struct GalleryView: View {
+    private static let imageSession: URLSession = {
+        let configuration = URLSessionConfiguration.default
+        configuration.urlCache = URLCache(
+            memoryCapacity: 64 * 1024 * 1024,
+            diskCapacity: 256 * 1024 * 1024
+        )
+        return URLSession(configuration: configuration)
+    }()
+
     var body: some View {
-        AsyncImage(url: url) { phase in
-            switch phase {
-            case .empty:
-                ZStack {
-                    Color.gray.opacity(0.2)
-                    ProgressView()
-                }
-            case .success(let image):
-                image
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-            case .failure:
-                ZStack {
-                    Color.gray.opacity(0.2)
-                    Image(systemName: "exclamationmark.triangle")
-                        .foregroundStyle(.secondary)
-                }
-            @unknown default:
-                EmptyView()
-            }
+        AsyncImage(
+            request: URLRequest(url: imageURL, cachePolicy: .returnCacheDataElseLoad)
+        ) { image in
+            image.resizable().scaledToFit()
+        } placeholder: {
+            ProgressView()
         }
-        .clipShape(.rect(cornerRadius: 12))
+        .asyncImageURLSession(Self.imageSession)
     }
 }
 ```
 
-### AsyncImage with Transition
-
-```swift
-AsyncImage(url: imageURL) { phase in
-    switch phase {
-    case .empty:
-        ProgressView()
-    case .success(let image):
-        image
-            .resizable()
-            .aspectRatio(contentMode: .fit)
-            .transition(.opacity)
-    case .failure:
-        Image(systemName: "photo")
-    @unknown default:
-        EmptyView()
-    }
-}
-.animation(.easeInOut, value: imageURL)
-```
+The request initializers and `asyncImageURLSession(_:)` require the aligned OS 27 releases (iOS, macOS, watchOS, tvOS, visionOS 27). Gate them for older deployment targets and retain `AsyncImage(url:)` as the fallback.
 
 ## Image Decoding and Downsampling (Optional Optimization)
 
@@ -145,56 +140,55 @@ OptimizedImageView(
 )
 ```
 
-### Reusable Image Downsampling Helper
+### Reusable Downsampling Actor
+
+For production use, wrap the logic in an `actor` with scale-aware sizing and cache-disabled source options. Apply this pattern when the processor converts a target measured in SwiftUI points into pixels. Display scale belongs to the view's environment because it can differ by scene and display. Read it in the SwiftUI view and pass it into the processor; the actor should not consult global screen state. If the caller already supplies pixel dimensions, do not multiply by display scale again.
 
 ```swift
 actor ImageProcessor {
-    func downsample(data: Data, to targetSize: CGSize) -> UIImage? {
-        guard let source = CGImageSourceCreateWithData(data as CFData, nil) else {
-            return nil
-        }
-        
-        let maxDimension = max(targetSize.width, targetSize.height) * UIScreen.main.scale
-        
-        let options: [CFString: Any] = [
-            kCGImageSourceThumbnailMaxPixelSize: maxDimension,
+    func downsample(data: Data, targetSize: CGSize, scale: CGFloat) -> UIImage? {
+        let maxPixel = max(targetSize.width, targetSize.height) * scale
+        let sourceOptions: [CFString: Any] = [kCGImageSourceShouldCache: false]
+        guard let source = CGImageSourceCreateWithData(data as CFData, sourceOptions as CFDictionary) else { return nil }
+        let downsampleOptions: [CFString: Any] = [
             kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxPixel,
             kCGImageSourceCreateThumbnailWithTransform: true,
-            kCGImageSourceShouldCache: false
+            kCGImageSourceShouldCacheImmediately: true
         ]
-        
-        guard let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
-            return nil
-        }
-        
+        guard let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, downsampleOptions as CFDictionary) else { return nil }
         return UIImage(cgImage: cgImage)
     }
 }
 
-// Usage in view
-struct ImageView: View {
-    let imageData: Data
+struct ProcessedImageView: View {
+    let data: Data
     let targetSize: CGSize
+    let processor: ImageProcessor
+
+    @Environment(\.displayScale) private var displayScale
     @State private var image: UIImage?
-    
-    private let processor = ImageProcessor()
-    
+
     var body: some View {
         Group {
             if let image {
-                Image(uiImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
+                Image(uiImage: image).resizable().scaledToFit()
             } else {
                 ProgressView()
             }
         }
-        .task {
-            image = await processor.downsample(data: imageData, to: targetSize)
+        .task(id: displayScale) {
+            image = await processor.downsample(
+                data: data,
+                targetSize: targetSize,
+                scale: displayScale
+            )
         }
     }
 }
 ```
+
+Key details: `kCGImageSourceShouldCache: false` on the source prevents the full-resolution image from being cached in memory. Multiplying the point target size by the view's `displayScale` produces the required pixel size and updates correctly if the scene moves to a display with a different scale. `kCGImageSourceShouldCacheImmediately: true` on the thumbnail forces decoding at creation time rather than at first render.
 
 ### When to Suggest This Optimization
 
@@ -248,47 +242,27 @@ struct ImageCache {
 
 ## SF Symbols
 
-### Using SF Symbols
-
 ```swift
-// Basic symbol
 Image(systemName: "star.fill")
     .foregroundStyle(.yellow)
-
-// With rendering mode
-Image(systemName: "heart.fill")
-    .symbolRenderingMode(.multicolor)
-
-// With variable color
-Image(systemName: "speaker.wave.3.fill")
-    .symbolRenderingMode(.hierarchical)
-    .foregroundStyle(.blue)
+    .symbolRenderingMode(.multicolor)     // or .hierarchical, .palette, .monochrome
 
 // Animated symbols (iOS 17+)
 Image(systemName: "antenna.radiowaves.left.and.right")
     .symbolEffect(.variableColor)
 ```
 
-### SF Symbol Variants
-
-```swift
-// Circle variant
-Image(systemName: "star.circle.fill")
-
-// Square variant
-Image(systemName: "star.square.fill")
-
-// With badge
-Image(systemName: "folder.badge.plus")
-```
+Variants are available via naming convention: `star.circle.fill`, `star.square.fill`, `folder.badge.plus`.
 
 ## Summary Checklist
 
 - [ ] Use `AsyncImage` with proper phase handling
 - [ ] Handle empty, success, and failure states
+- [ ] On OS 27, rely on default HTTP caching unless a custom cache policy or `URLSession` is needed
 - [ ] Consider downsampling for `UIImage(data:)` in performance-sensitive scenarios
 - [ ] Decode and downsample images off the main thread
-- [ ] Use appropriate target sizes for downsampling
+- [ ] Convert point target sizes to pixels with the view's `@Environment(\.displayScale)`
+- [ ] Pass display scale into processors; do not read global screen state from an actor
 - [ ] Consider image caching for frequently accessed images
 - [ ] Use SF Symbols with appropriate rendering modes
 

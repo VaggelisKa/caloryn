@@ -1,6 +1,6 @@
 # Caloryn — agent instructions
 
-SwiftUI + SwiftData iOS app. Deployment target **iOS 18.6**, built against the iOS 26 SDK —
+SwiftUI + SwiftData iOS app. Deployment target **iOS 18.6**, built against the iOS 27 SDK —
 so `#available(iOS 26.0, *)` checks are live and their `else` branches ship. Do not delete
 them as dead code.
 
