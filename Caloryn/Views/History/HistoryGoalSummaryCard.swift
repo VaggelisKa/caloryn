@@ -128,6 +128,8 @@ struct HistoryGoalSummaryCard: View {
                 .minimumScaleFactor(dynamicTypeSize.isAccessibilitySize ? 1 : 0.8)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("history.goalSummary.metric.\(label.replacingOccurrences(of: " ", with: "-"))")
     }
 
     private var comparisonText: String {
