@@ -79,7 +79,7 @@ Current project settings in the checked-in Xcode project:
 
 - Deployment target: **iOS 18.6**, built against the iOS 27 SDK — `#available(iOS 26.0, *)` checks are live in the codebase
 - Swift version: `5.0`
-- App version: `1.15.1`
+- App version: `1.16.0`
 - Bundle identifier: `www.caloryn`
 
 ## Contributing
