@@ -124,9 +124,8 @@ final class ThemeScreenshotTests: UITestCase {
     ///
     /// `loggedDay` seeds only Oats, so the fixture's "salad" query matches nothing locally
     /// and the sheet resolves to `.searchProgress` — the state `captureSearchInFlight`
-    /// below deliberately avoids. Both are wanted: this one is all placeholder, that one is
-    /// placeholder rows sitting under real ones, and a height or inset mismatch between a
-    /// skeleton row and a food row only shows in the second.
+    /// below deliberately avoids. Both are wanted: a height or inset mismatch between a
+    /// skeleton row and a food row only shows in the other one.
     private func captureSearchSkeleton(_ appearance: Appearance) {
         let app = launch(
             fixture: .loggedDay,
@@ -188,10 +187,9 @@ final class ThemeScreenshotTests: UITestCase {
             result(named: "Caloryn Greek Yogurt", in: app).exists,
             "No provider result, so the list has no trailing skeleton rows to photograph"
         )
-        // The keyboard comes up with the pre-filled query and covers the bottom of the
-        // list, which is exactly where the trailing placeholder rows are — this capture
-        // photographed a keyboard for as long as it existed. The results list sets
-        // `scrollDismissesKeyboard(.immediately)`, so a swipe is what puts them on screen.
+        // The keyboard comes up with the pre-filled query and covers exactly where the
+        // trailing placeholder rows are — this capture photographed a keyboard for as long
+        // as it existed. The list sets `scrollDismissesKeyboard(.immediately)`.
         app.swipeUp()
         sleep(2)
         attach(app, "03c-food-search-in-flight", appearance)

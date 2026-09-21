@@ -1,10 +1,8 @@
 import SwiftUI
 
-/// One placeholder block — a rounded bar in the theme's neutral.
-///
-/// `maxWidth` rather than `width`: the bar takes its nominal width when the row
-/// has room and gives it back when it does not, which is what keeps a large
-/// Dynamic Type calorie block from being squeezed out by a placeholder.
+/// `maxWidth` rather than `width`: the bar gives its width back under pressure,
+/// which is what keeps a large Dynamic Type calorie block from being squeezed
+/// out by a placeholder.
 struct SkeletonBar: View {
     let width: CGFloat
     let height: CGFloat
@@ -20,23 +18,20 @@ struct SkeletonBar: View {
 /// Sweeps a highlight across its content, masked to the content's own shape so
 /// only the placeholder bars light up and the gaps between them stay empty.
 ///
-/// The sweep is driven by `TimelineView(.animation)` rather than a
-/// `repeatForever` animation on purpose: an animation that never ends is the
-/// classic way to hang XCUITest, which waits for the app to stop animating
-/// before it will interact with it, and the food search sheet is on the path of
-/// most of the E2E journeys.
+/// `TimelineView(.animation)` rather than a `repeatForever` animation: an
+/// animation that never ends is the classic way to hang XCUITest, which waits
+/// for the app to stop animating before it will interact with it, and this
+/// sheet is on the path of most of the E2E journeys.
 ///
-/// Wrap a whole group of rows in one of these, not each row: a single band
-/// crossing the whole block is what reads as one surface loading, where a band
-/// per row reads as a stack of unrelated spinners.
+/// Wrap a whole group of rows in one of these, not each row — a band per row
+/// reads as a stack of unrelated spinners.
 struct ShimmeringPlaceholder<Content: View>: View {
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
 
     @ViewBuilder var content: Content
 
-    /// One sweep plus the pause that follows it. The band crosses in the first
-    /// `sweepFraction` of the cycle and the rest is rest — a continuous sweep
-    /// with no gap reads as frantic.
+    /// The band crosses in the first `sweepFraction` of the cycle and the rest
+    /// is rest — a continuous sweep with no gap reads as frantic.
     private static var cycle: TimeInterval { 1.75 }
     private static var sweepFraction: Double { 0.68 }
 
@@ -64,11 +59,11 @@ struct ShimmeringPlaceholder<Content: View>: View {
         }
     }
 
-    /// How far across the band is, 0 at its entry edge and 1 once it has left.
+    /// How far across the band is: 0 at its entry edge, 1 once it has left.
     ///
     /// Anchored to absolute time rather than to an `onAppear`, so rows that
-    /// appear late — the trailing group, once local matches land — join the
-    /// sweep already in progress instead of starting their own.
+    /// appear late join the sweep already in progress instead of starting their
+    /// own.
     static func sweep(at date: Date) -> Double {
         let elapsed = date.timeIntervalSinceReferenceDate
             .truncatingRemainder(dividingBy: cycle)
