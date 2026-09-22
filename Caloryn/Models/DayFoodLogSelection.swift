@@ -1,5 +1,50 @@
 import Foundation
 
+/// The selected day's display data, derived in one pass over the live log.
+///
+/// `TodayView` needs the selected day, the previous day, and each meal section.
+/// Keeping those results together avoids independently filtering the complete
+/// SwiftData query for every total and section on each body evaluation.
+struct DayFoodLogProjection<Entry> {
+    let today: [Entry]
+    let yesterday: [Entry]
+
+    private let entriesByMeal: [MealType: [Entry]]
+
+    init(
+        _ entries: [Entry],
+        on day: Date,
+        calendar: Calendar = .current,
+        date: (Entry) -> Date,
+        mealType: (Entry) -> MealType,
+        createdAt: (Entry) -> Date
+    ) {
+        let previousDay = calendar.date(byAdding: .day, value: -1, to: day) ?? day
+        var today: [Entry] = []
+        var yesterday: [Entry] = []
+
+        for entry in entries {
+            let entryDate = date(entry)
+            if calendar.isDate(entryDate, inSameDayAs: day) {
+                today.append(entry)
+            } else if calendar.isDate(entryDate, inSameDayAs: previousDay) {
+                yesterday.append(entry)
+            }
+        }
+
+        self.today = today
+        self.yesterday = yesterday
+        self.entriesByMeal = Dictionary(grouping: today, by: mealType)
+            .mapValues { entries in
+                entries.sorted { createdAt($0) < createdAt($1) }
+            }
+    }
+
+    func entries(for meal: MealType) -> [Entry] {
+        entriesByMeal[meal] ?? []
+    }
+}
+
 /// Which of the log's entries belong to the day on screen, and in what order.
 ///
 /// The rules are generic over the entry so they can be exercised without a

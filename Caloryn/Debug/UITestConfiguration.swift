@@ -22,6 +22,8 @@ enum UITestConfiguration {
         case profileOnly
         /// A profile plus one breakfast entry logged today.
         case loggedDay
+        /// A profile plus one breakfast entry logged yesterday.
+        case loggedYesterday
         /// A profile plus reusable custom foods, one of them favorited.
         case customFoods
         /// A profile plus thirty days of entries, for History assertions.

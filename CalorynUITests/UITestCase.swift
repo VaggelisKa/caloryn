@@ -36,6 +36,7 @@ class UITestCase: XCTestCase {
         case empty
         case profileOnly
         case loggedDay
+        case loggedYesterday
         case customFoods
         case history
         case historyPattern
