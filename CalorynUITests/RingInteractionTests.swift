@@ -16,10 +16,11 @@ final class RingInteractionTests: UITestCase {
             "The details sheet should have one title"
         )
 
-        app.descendants(matching: .any)
-            .matching(identifier: "nutritionDetails.close")
-            .firstMatch
-            .tap()
+        today.tap(
+            app.descendants(matching: .any)
+                .matching(identifier: "nutritionDetails.close")
+                .firstMatch
+        )
         let dismissed = XCTNSPredicateExpectation(
             predicate: NSPredicate(format: "exists == false"),
             object: details.title
