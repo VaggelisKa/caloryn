@@ -92,6 +92,7 @@ struct NutritionDetailsView: View {
                             .foregroundStyle(CalorynTheme.sage)
                     }
                     .accessibilityLabel("Close")
+                    .accessibilityIdentifier("nutritionDetails.close")
                 }
             }
         }
