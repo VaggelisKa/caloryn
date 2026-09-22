@@ -41,7 +41,7 @@ final class AdaptiveSummaryTests: UITestCase {
         assertFitsHorizontally(calorieSummary, in: window)
 
         TabBar(app: app).go(to: .history)
-        let goalSummary = app.descendants(matching: .any)["history.goalSummary.card"]
+        let goalSummary = TodayScreen(app: app).element("history.goalSummary.card")
         XCTAssertTrue(goalSummary.awaitExistence())
         for _ in 0..<4 where goalSummary.frame.minY >= window.frame.maxY {
             app.swipeUp()
@@ -57,7 +57,7 @@ final class AdaptiveSummaryTests: UITestCase {
             "history.goalSummary.metric.kcal/day-avg",
             "history.goalSummary.metric.coverage"
         ] {
-            let metric = app.descendants(matching: .any)[identifier]
+            let metric = TodayScreen(app: app).element(identifier)
             XCTAssertTrue(metric.awaitExistence(), "The large-text summary should show \(identifier)")
             XCTAssertFalse(metric.label.isEmpty, "The large-text metric should remain readable")
             assertFitsHorizontally(metric, in: window)

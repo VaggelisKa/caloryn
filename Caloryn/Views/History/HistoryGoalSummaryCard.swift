@@ -20,8 +20,8 @@ struct HistoryGoalSummaryCard: View {
             }
         }
         .historyCard()
-        .accessibilityIdentifier("history.goalSummary.card")
         .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("history.goalSummary.card")
     }
 
     private var header: some View {
