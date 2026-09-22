@@ -1,25 +1,31 @@
 import XCTest
 
 final class AdaptiveSummaryTests: UITestCase {
-    func testXXXLKeepsTheTodayRingReadableAndInteractive() {
+    func testXXXLKeepsTheTodayRingReadableAndInteractive() throws {
         let app = launch(fixture: .history, contentSizeCategory: "UICTContentSizeCategoryXXXL")
+        let today = TodayScreen(app: app)
         let window = app.windows.firstMatch
-        let calorieSummary = TodayScreen(app: app).calorieRing
+        let calorieSummary = today.calorieRing
 
         XCTAssertTrue(calorieSummary.awaitExistence())
         XCTAssertTrue(calorieSummary.isHittable, "The large-text calorie ring should remain tappable")
         XCTAssertFalse(calorieSummary.label.isEmpty, "The ring should expose its calorie summary")
-        XCTAssertFalse((calorieSummary.value as? String ?? "").isEmpty, "The ring should expose its calorie values")
+        let calorieValue = try XCTUnwrap(calorieSummary.value as? String)
+        XCTAssertFalse(calorieValue.isEmpty, "The ring should expose its calorie values")
         assertFitsHorizontally(calorieSummary, in: window)
 
-        calorieSummary.tap()
+        today.tap(calorieSummary)
         XCTAssertTrue(
             NutritionDetailsScreen(app: app).title.awaitExistence(),
             "The large-text ring should still open nutrition details"
         )
+        let closeButton = today.element("nutritionDetails.close")
+        XCTAssertTrue(closeButton.awaitExistence(), "Nutrition details should provide a close button")
+        today.tap(closeButton)
+        XCTAssertTrue(calorieSummary.awaitExistence(), "Closing nutrition details should return to Today")
     }
 
-    func testAccessibilityXXXLKeepsTodayAndHistorySummariesWithinTheScreen() {
+    func testAccessibilityXXXLKeepsTodayAndHistorySummariesWithinTheScreen() throws {
         let app = launch(
             fixture: .history,
             contentSizeCategory: "UICTContentSizeCategoryAccessibilityXXXL"
@@ -30,7 +36,8 @@ final class AdaptiveSummaryTests: UITestCase {
         XCTAssertTrue(calorieSummary.awaitExistence())
         XCTAssertTrue(calorieSummary.isHittable, "The large-text calorie summary should remain available")
         XCTAssertFalse(calorieSummary.label.isEmpty, "The summary should expose its calorie status")
-        XCTAssertFalse((calorieSummary.value as? String ?? "").isEmpty, "The summary should expose its calorie values")
+        let calorieValue = try XCTUnwrap(calorieSummary.value as? String)
+        XCTAssertFalse(calorieValue.isEmpty, "The summary should expose its calorie values")
         assertFitsHorizontally(calorieSummary, in: window)
 
         TabBar(app: app).go(to: .history)
