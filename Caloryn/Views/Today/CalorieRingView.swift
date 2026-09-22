@@ -255,6 +255,8 @@ struct CalorieRingView: View {
     }
 
     private func setCurrentValuesWithoutAnimation() {
+        fadeInTask?.cancel()
+        fadeInTask = nil
         var transaction = Transaction()
         transaction.disablesAnimations = true
         withTransaction(transaction) {
