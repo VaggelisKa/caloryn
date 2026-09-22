@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct HistoryGoalSummaryCard: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     let range: HistoryRange
     let summary: HistoryPeriodSummary
     let comparison: HistoryGoalComparison
@@ -19,6 +21,7 @@ struct HistoryGoalSummaryCard: View {
         }
         .historyCard()
         .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("history.goalSummary.card")
     }
 
     private var header: some View {
@@ -62,7 +65,21 @@ struct HistoryGoalSummaryCard: View {
     }
 
     private var metricRow: some View {
-        HStack(alignment: .top, spacing: 14) {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 14) {
+                    metrics
+                }
+            } else {
+                HStack(alignment: .top, spacing: 14) {
+                    metrics
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var metrics: some View {
             compactMetric(
                 value: "\(summary.loggedDayCount)/\(summary.totalDayCount)",
                 label: "days logged"
@@ -70,7 +87,8 @@ struct HistoryGoalSummaryCard: View {
 
             if summary.loggedDayCount > 0 {
                 Divider()
-                    .frame(height: 34)
+                    .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : nil)
+                    .frame(height: dynamicTypeSize.isAccessibilitySize ? nil : 34)
 
                 compactMetric(
                     value: "\(summary.averageCaloriesPerLoggedDay.rounded().truncatedSafely)",
@@ -80,14 +98,14 @@ struct HistoryGoalSummaryCard: View {
 
             if summary.loggedDayCount > 0 {
                 Divider()
-                    .frame(height: 34)
+                    .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : nil)
+                    .frame(height: dynamicTypeSize.isAccessibilitySize ? nil : 34)
 
                 compactMetric(
                     value: summary.coverageLevel.label.replacingOccurrences(of: " confidence", with: ""),
                     label: "coverage"
                 )
             }
-        }
     }
 
     private var loggedDaySupportText: String {
@@ -100,16 +118,18 @@ struct HistoryGoalSummaryCard: View {
             Text(value)
                 .font(CalorynTheme.numericBody)
                 .foregroundStyle(CalorynTheme.textPrimary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                .minimumScaleFactor(dynamicTypeSize.isAccessibilitySize ? 1 : 0.8)
 
             Text(label)
                 .font(CalorynTheme.caption)
                 .foregroundStyle(CalorynTheme.textSecondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                .minimumScaleFactor(dynamicTypeSize.isAccessibilitySize ? 1 : 0.8)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("history.goalSummary.metric.\(label.replacingOccurrences(of: " ", with: "-"))")
     }
 
     private var comparisonText: String {

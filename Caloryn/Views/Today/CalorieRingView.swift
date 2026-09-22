@@ -2,6 +2,8 @@ import SwiftUI
 import UIKit
 
 struct CalorieRingView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     let calorieBudget: ActivityCalorieBudget
     let ringSize: CGFloat
     var onDetailsRequested: (() -> Void)? = nil
@@ -59,13 +61,13 @@ struct CalorieRingView: View {
     private var ringVisual: some View {
         Group {
             if accessibilityReduceMotion {
-                ringSurface(progress: calorieBudget.displayedRingProgress)
+                summarySurface(progress: calorieBudget.displayedRingProgress)
                     .transaction { transaction in
                         transaction.animation = nil
                         transaction.disablesAnimations = true
                     }
             } else {
-                ringSurface(progress: animatedRingProgress)
+                summarySurface(progress: animatedRingProgress)
                     .opacity(hasAppeared ? 1 : 0)
                     .animation(ringUpdateAnimation, value: calorieBudget.dynamicAdjustment)
                     .animation(ringUpdateAnimation, value: calorieBudget.adjustedTarget)
@@ -76,49 +78,23 @@ struct CalorieRingView: View {
         .accessibilityLabel(summary.accessibilityLabel)
         .accessibilityValue(summary.accessibilityValue)
         .accessibilityHint(CalorieRingSummary.accessibilityHint(isInteractive: onDetailsRequested != nil))
-        .onAppear {
-            hasAppeared = false
-            var transaction = Transaction()
-            transaction.disablesAnimations = true
-            withTransaction(transaction) {
-                animatedRingProgress = calorieBudget.displayedRingProgress
-            }
-
-            fadeInTask?.cancel()
-            guard !accessibilityReduceMotion else {
-                hasAppeared = true
-                return
-            }
-
-            fadeInTask = Task { @MainActor in
-                await Task.yield()
-                guard !Task.isCancelled else { return }
-
-                withAnimation(.smooth(duration: 0.28)) {
-                    hasAppeared = true
-                }
-                fadeInTask = nil
-            }
-        }
-        .onDisappear {
-            fadeInTask?.cancel()
-            fadeInTask = nil
-            hasAppeared = false
-        }
+        .onAppear(perform: appear)
+        .onDisappear(perform: disappear)
         .onChange(of: calorieBudget.displayedRingProgress) { _, newProgress in
             updateRingProgress(newProgress)
         }
         .onChange(of: accessibilityReduceMotion) { _, reduceMotion in
             guard reduceMotion else { return }
+            setCurrentValuesWithoutAnimation()
+        }
+    }
 
-            fadeInTask?.cancel()
-            fadeInTask = nil
-            var transaction = Transaction()
-            transaction.disablesAnimations = true
-            withTransaction(transaction) {
-                animatedRingProgress = calorieBudget.displayedRingProgress
-                hasAppeared = true
-            }
+    @ViewBuilder
+    private func summarySurface(progress: Double) -> some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            accessibilitySummary
+        } else {
+            ringSurface(progress: progress)
         }
     }
 
@@ -147,6 +123,9 @@ struct CalorieRingView: View {
                         .font(CalorynTheme.ringNumber(size: numberSize))
                         .foregroundStyle(CalorynTheme.terracotta)
                         .contentTransition(centerValueTransition)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                        .frame(maxWidth: centerContentWidth)
 
                     Text(summary.centerCaption)
                         .font(CalorynTheme.caption)
@@ -156,6 +135,9 @@ struct CalorieRingView: View {
                         .font(CalorynTheme.ringNumber(size: numberSize))
                         .foregroundStyle(CalorynTheme.textPrimary)
                         .contentTransition(centerValueTransition)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                        .frame(maxWidth: centerContentWidth)
 
                     Text(summary.centerCaption)
                         .font(CalorynTheme.caption)
@@ -184,6 +166,103 @@ struct CalorieRingView: View {
         .compositingGroup()
         .clipShape(Circle())
         .contentShape(Circle())
+    }
+
+    private var accessibilitySummary: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Calorie summary")
+                .font(CalorynTheme.sectionEyebrow)
+                .foregroundStyle(CalorynTheme.textSecondary)
+                .textCase(.uppercase)
+
+            Text("\(summary.centerValue)")
+                .font(CalorynTheme.largeNumber)
+                .foregroundStyle(summary.isOver ? CalorynTheme.terracotta : CalorynTheme.textPrimary)
+                .contentTransition(centerValueTransition)
+
+            Text(summary.centerCaption)
+                .font(CalorynTheme.itemTitle)
+                .foregroundStyle(summary.isOver ? CalorynTheme.terracotta : CalorynTheme.textPrimary)
+
+            Text(summary.eatenText)
+                .font(CalorynTheme.caption)
+                .foregroundStyle(CalorynTheme.textSecondary)
+
+            accessibilityCue
+        }
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(20)
+        .background {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(CalorynTheme.cardBackground.opacity(0.82))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .stroke(CalorynTheme.cardSeparator.opacity(0.7), lineWidth: 0.8)
+                }
+        }
+        .contentShape(Rectangle())
+    }
+
+    @ViewBuilder
+    private var accessibilityCue: some View {
+        switch summary.cue {
+        case .none:
+            EmptyView()
+        case .updating:
+            HStack(spacing: 8) {
+                ProgressView().controlSize(.small)
+                Text("Updating calorie target")
+            }
+            .font(CalorynTheme.caption)
+            .foregroundStyle(CalorynTheme.textSecondary)
+        case .increase:
+            Label(summary.cue.accessibilityLabel ?? "", systemImage: "flame.fill")
+                .font(CalorynTheme.caption)
+                .foregroundStyle(dynamicTargetColor)
+        case .reduction:
+            Label(summary.cue.accessibilityLabel ?? "", systemImage: "arrow.down.circle.fill")
+                .font(CalorynTheme.caption)
+                .foregroundStyle(CalorynTheme.textSecondary)
+        }
+    }
+
+    private func appear() {
+        hasAppeared = false
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            animatedRingProgress = calorieBudget.displayedRingProgress
+        }
+        fadeInTask?.cancel()
+        guard !accessibilityReduceMotion else {
+            hasAppeared = true
+            return
+        }
+
+        fadeInTask = Task { @MainActor in
+            await Task.yield()
+            guard !Task.isCancelled else { return }
+            withAnimation(.smooth(duration: 0.28)) { hasAppeared = true }
+            fadeInTask = nil
+        }
+    }
+
+    private func disappear() {
+        fadeInTask?.cancel()
+        fadeInTask = nil
+        hasAppeared = false
+    }
+
+    private func setCurrentValuesWithoutAnimation() {
+        fadeInTask?.cancel()
+        fadeInTask = nil
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            animatedRingProgress = calorieBudget.displayedRingProgress
+            hasAppeared = true
+        }
     }
 
     private var centerValueTransition: ContentTransition {
