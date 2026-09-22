@@ -57,6 +57,78 @@ final class DayFoodLogSelectionTests: XCTestCase {
         XCTAssertTrue(DayFoodLogSelection.entries([Entry](), on: day, date: \.date).isEmpty)
     }
 
+    func testSelectedDayKeepsYesterdaySeparateAndOrdersEachMealOldestFirst() {
+        let day = makeDate(year: 2026, month: 3, day: 14)
+        let entries = [
+            makeEntry("tomorrow", date: day.addingTimeInterval(26 * 3_600)),
+            makeEntry("late-lunch", date: day, mealType: .lunch, createdAt: day.addingTimeInterval(60)),
+            makeEntry("yesterday", date: day.addingTimeInterval(-2 * 3_600)),
+            makeEntry("early-lunch", date: day, mealType: .lunch, createdAt: day)
+        ]
+
+        let projection = DayFoodLogProjection(
+            entries,
+            on: day,
+            date: \.date,
+            mealType: \.mealType,
+            createdAt: \.createdAt
+        )
+
+        XCTAssertEqual(projection.today.map(\.name), ["late-lunch", "early-lunch"])
+        XCTAssertEqual(projection.yesterday.map(\.name), ["yesterday"])
+        XCTAssertEqual(projection.entries(for: .lunch).map(\.name), ["early-lunch", "late-lunch"])
+        XCTAssertTrue(projection.entries(for: .dinner).isEmpty)
+    }
+
+    func testProjectionKeepsBothDaysCorrectAcrossSpringDaylightSavingChange() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "Europe/Copenhagen") ?? .gmt
+        let springForward = makeDate(year: 2026, month: 3, day: 29, calendar: calendar)
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: springForward)!
+        let entries = [
+            makeEntry("yesterday-last-hour", date: yesterday.addingTimeInterval(23 * 3_600)),
+            makeEntry("today-last-hour", date: springForward.addingTimeInterval(22 * 3_600)),
+            makeEntry("tomorrow", date: springForward.addingTimeInterval(23 * 3_600))
+        ]
+
+        let projection = DayFoodLogProjection(
+            entries,
+            on: springForward,
+            calendar: calendar,
+            date: \.date,
+            mealType: \.mealType,
+            createdAt: \.createdAt
+        )
+
+        XCTAssertEqual(projection.yesterday.map(\.name), ["yesterday-last-hour"])
+        XCTAssertEqual(projection.today.map(\.name), ["today-last-hour"])
+    }
+
+    func testProjectionUsesCalendarDaysForANonMidnightSelectionAcrossFallDaylightSavingChange() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "Europe/Copenhagen") ?? .gmt
+        let fallBack = makeDate(year: 2026, month: 10, day: 25, calendar: calendar)
+        let selectedAfternoon = fallBack.addingTimeInterval(15 * 3_600)
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: fallBack)!
+        let entries = [
+            makeEntry("yesterday", date: yesterday.addingTimeInterval(23 * 3_600)),
+            makeEntry("today-after-fallback", date: fallBack.addingTimeInterval(24 * 3_600)),
+            makeEntry("tomorrow", date: fallBack.addingTimeInterval(25 * 3_600))
+        ]
+
+        let projection = DayFoodLogProjection(
+            entries,
+            on: selectedAfternoon,
+            calendar: calendar,
+            date: \.date,
+            mealType: \.mealType,
+            createdAt: \.createdAt
+        )
+
+        XCTAssertEqual(projection.yesterday.map(\.name), ["yesterday"])
+        XCTAssertEqual(projection.today.map(\.name), ["today-after-fallback"])
+    }
+
     // MARK: - Picking a meal
 
     func testAMealTakesOnlyItsOwnEntries() {

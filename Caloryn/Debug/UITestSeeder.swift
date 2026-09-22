@@ -20,6 +20,13 @@ enum UITestSeeder {
             context.insert(
                 FoodLogEntry(date: today, mealType: .breakfast, foodItem: oats, portionGrams: 100)
             )
+        case .loggedYesterday:
+            insertProfile(into: context)
+            let oats = insertOats(into: context)
+            let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: today) ?? today
+            context.insert(
+                FoodLogEntry(date: yesterday, mealType: .breakfast, foodItem: oats, portionGrams: 100)
+            )
         case .customFoods:
             insertProfile(into: context)
             let smoothie = FoodItem(

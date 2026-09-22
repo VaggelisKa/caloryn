@@ -32,10 +32,10 @@ struct TodayView: View {
     @ScaledMetric private var ringSize: CGFloat = 180
 
     private var profile: UserProfile? { profiles.first }
-    private var calorieBudget: ActivityCalorieBudget {
+    private func calorieBudget(consumed: Double) -> ActivityCalorieBudget {
         guard let profile else {
             return ActivityCalorieBudget(
-                consumed: totalCalories,
+                consumed: consumed,
                 staticTarget: 2_000,
                 bmr: 1_700,
                 calorieDeficit: 0,
@@ -50,7 +50,7 @@ struct TodayView: View {
         }
 
         return profile.activityBudget(
-            consumed: totalCalories,
+            consumed: consumed,
             activeEnergyKcal: activeEnergyTracker.activeEnergyKcal,
             recentActiveEnergySamples: activeEnergyTracker.recentActiveEnergySamples,
             isActivityLoading: activeEnergyTracker.isLoading,
@@ -62,65 +62,47 @@ struct TodayView: View {
         "\(selectedDate.timeIntervalSinceReferenceDate)-\(profile?.effectiveEnergyCalculationMode.rawValue ?? EnergyCalculationMode.lifestyleEstimate.rawValue)"
     }
 
-    private var todayEntries: [FoodLogEntry] {
-        DayFoodLogSelection.entries(allEntries, on: selectedDate, date: \.date)
-    }
-
-    private var totalCalories: Double {
-        todayEntries.reduce(0) { $0 + $1.calories }
-    }
-
-    private var todayNutriscoreGrades: [String?] {
-        todayEntries.map(\.historicalNutriscoreGrade)
-    }
-
-    private var nutriscoreDistribution: [(grade: String, count: Int)] {
-        NutriscoreDayDistribution.distribution(of: todayNutriscoreGrades)
-    }
-
-    private var hasNutriscoreData: Bool {
-        NutriscoreDayDistribution.hasData(todayNutriscoreGrades)
-    }
-
     private var coreMeals: [MealType] {
         DayFoodLogSelection.coreMeals
     }
 
-    private var yesterdayEntries: [FoodLogEntry] {
-        DayFoodLogSelection.entries(allEntries, on: selectedDate.yesterday, date: \.date)
-    }
-
-    private var canCopyYesterday: Bool {
-        DayFoodLogSelection.canCopyYesterday(
-            loggedTodayCount: todayEntries.count,
-            loggedYesterdayCount: yesterdayEntries.count
-        )
-    }
-
-    private func entries(for meal: MealType) -> [FoodLogEntry] {
-        DayFoodLogSelection.entries(
-            todayEntries,
-            inMeal: meal,
+    private var dayProjection: DayFoodLogProjection<FoodLogEntry> {
+        DayFoodLogProjection(
+            allEntries,
+            on: selectedDate,
+            date: \.date,
             mealType: \.mealType,
             createdAt: \.createdAt
         )
     }
 
     var body: some View {
+        let projection = dayProjection
+        let nutriscoreGrades = projection.today.map(\.historicalNutriscoreGrade)
+        let nutriscoreDistribution = NutriscoreDayDistribution.distribution(of: nutriscoreGrades)
+        let hasNutriscoreData = NutriscoreDayDistribution.hasData(nutriscoreGrades)
+        let calorieBudget = calorieBudget(
+            consumed: projection.today.reduce(0) { $0 + $1.calories }
+        )
+        let canCopyYesterday = DayFoodLogSelection.canCopyYesterday(
+            loggedTodayCount: projection.today.count,
+            loggedYesterdayCount: projection.yesterday.count
+        )
+
         NavigationStack {
             VStack(spacing: 0) {
                 dateNavigator
                     .padding(.horizontal, CalorynTheme.pagePadding)
 
                 List {
-                    dashboardSection
+                    dashboardSection(calorieBudget: calorieBudget)
                         .listRowInsets(EdgeInsets(top: 14, leading: 0, bottom: 12, trailing: 0))
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
 
                     if showNutriscore, hasNutriscoreData {
                         Section {
-                            nutriscoreSection
+                            nutriscoreSection(distribution: nutriscoreDistribution)
                         }
                         .listRowBackground(CalorynTheme.cardBackground)
                     }
@@ -128,7 +110,7 @@ struct TodayView: View {
                     ForEach(coreMeals) { meal in
                         MealSectionView(
                             mealType: meal,
-                            entries: entries(for: meal),
+                            entries: projection.entries(for: meal),
                             onAdd: {
                                 presentFoodSearch(mealType: meal, snackIndex: 0)
                             },
@@ -141,7 +123,7 @@ struct TodayView: View {
 
                     MealSectionView(
                         mealType: .snack,
-                        entries: entries(for: .snack),
+                        entries: projection.entries(for: .snack),
                         snackIndex: 1,
                         titleOverride: "Snacks",
                         onAdd: {
@@ -154,7 +136,7 @@ struct TodayView: View {
                     )
 
                     if canCopyYesterday {
-                        actionsSection
+                        actionsSection(yesterdayEntries: projection.yesterday)
                     }
                 }
                 .calorynGroupedListStyle()
@@ -198,7 +180,10 @@ struct TodayView: View {
                 }
             }
             .sheet(isPresented: $showingNutritionDetails) {
-                nutritionDetailsSheet
+                nutritionDetailsSheet(
+                    entries: projection.today,
+                    calorieBudget: calorieBudget
+                )
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
             }
@@ -214,7 +199,7 @@ struct TodayView: View {
             handlePendingRoute()
         }
         .task(id: calorieBudget) {
-            recordDailyGoalSnapshotIfNeeded()
+            recordDailyGoalSnapshotIfNeeded(calorieBudget: calorieBudget)
         }
         .onDisappear {
             activeEnergyTracker.stopObserving()
@@ -283,7 +268,7 @@ struct TodayView: View {
         .padding(.vertical, 8)
     }
 
-    private var dashboardSection: some View {
+    private func dashboardSection(calorieBudget: ActivityCalorieBudget) -> some View {
         HStack {
             Spacer()
             CalorieRingView(
@@ -300,10 +285,13 @@ struct TodayView: View {
     }
 
     @ViewBuilder
-    private var nutritionDetailsSheet: some View {
+    private func nutritionDetailsSheet(
+        entries: [FoodLogEntry],
+        calorieBudget: ActivityCalorieBudget
+    ) -> some View {
         let content = NutritionDetailsView(
             date: selectedDate,
-            entries: todayEntries,
+            entries: entries,
             calorieBudget: calorieBudget,
             nutrientTargets: profile?.nutrientTargets(forCalorieTarget: calorieBudget.adjustedTarget) ?? [:],
             nutrientGoalKinds: profile?.nutrientGoalKinds ?? [:]
@@ -318,14 +306,14 @@ struct TodayView: View {
         }
     }
 
-    private var nutriscoreSection: some View {
-        NutriscoreDaySummary(distribution: nutriscoreDistribution, usesCard: false)
+    private func nutriscoreSection(distribution: [(grade: String, count: Int)]) -> some View {
+        NutriscoreDaySummary(distribution: distribution, usesCard: false)
             .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .center)))
     }
 
-    private var copyYesterdayButton: some View {
+    private func copyYesterdayButton(yesterdayEntries: [FoodLogEntry]) -> some View {
         Button {
-            copyYesterday()
+            copyYesterday(yesterdayEntries)
         } label: {
             Label("Copy Yesterday's Meals", systemImage: "doc.on.doc")
                 .font(CalorynTheme.buttonLabel)
@@ -336,9 +324,9 @@ struct TodayView: View {
         .accessibilityIdentifier("today.copyYesterday")
     }
 
-    private var actionsSection: some View {
+    private func actionsSection(yesterdayEntries: [FoodLogEntry]) -> some View {
         Section {
-            copyYesterdayButton
+            copyYesterdayButton(yesterdayEntries: yesterdayEntries)
         } header: {
             Color.clear
                 .frame(height: 10)
@@ -358,7 +346,7 @@ struct TodayView: View {
         )
     }
 
-    private func copyYesterday() {
+    private func copyYesterday(_ yesterdayEntries: [FoodLogEntry]) {
         let orderedEntries = DayFoodLogSelection.copyOrdered(
             yesterdayEntries,
             mealType: \.mealType,
@@ -411,7 +399,7 @@ struct TodayView: View {
         lastKnownToday = Date.now.startOfDay
     }
 
-    private func recordDailyGoalSnapshotIfNeeded() {
+    private func recordDailyGoalSnapshotIfNeeded(calorieBudget: ActivityCalorieBudget) {
         guard let profile else { return }
         // Skip transient budgets while Health data is still loading so a
         // dynamic day is not momentarily snapshotted without its adjustment.

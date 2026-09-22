@@ -109,6 +109,47 @@ struct TodayScreen: Screen {
     var isVisible: Bool {
         calorieRing.waitForExistence(timeout: UITestCase.defaultTimeout)
     }
+
+    /// Today is a lazy `List`, so rows below the fold do not enter the
+    /// accessibility tree until the user scrolls toward them.
+    @discardableResult
+    func revealTowardBottom(
+        _ element: XCUIElement,
+        maximumScrolls: Int = 6,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        reveal(element, maximumScrolls: maximumScrolls, swipe: app.swipeUp, file: file, line: line)
+    }
+
+    /// Returns from the bottom actions row to meal entries near the top.
+    @discardableResult
+    func revealTowardTop(
+        _ element: XCUIElement,
+        maximumScrolls: Int = 6,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        reveal(element, maximumScrolls: maximumScrolls, swipe: app.swipeDown, file: file, line: line)
+    }
+
+    private func reveal(
+        _ element: XCUIElement,
+        maximumScrolls: Int,
+        swipe: () -> Void,
+        file: StaticString,
+        line: UInt
+    ) -> XCUIElement {
+        var scrolls = 0
+        while !(element.exists && element.isHittable), scrolls < maximumScrolls {
+            swipe()
+            scrolls += 1
+        }
+        if !(element.exists && element.isHittable) {
+            XCTFail("Never scrolled to \(element)", file: file, line: line)
+        }
+        return element
+    }
 }
 
 // MARK: - My Foods
