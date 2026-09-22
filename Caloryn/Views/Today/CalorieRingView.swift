@@ -13,10 +13,6 @@ struct CalorieRingView: View {
     @State private var isDetailsPressing = false
     @ScaledMetric private var numberSize: CGFloat = 44
 
-    private var ringProgress: CalorieRingProgress {
-        CalorieRingProgress(budget: calorieBudget, animatedProgress: animatedRingProgress)
-    }
-
     private var summary: CalorieRingSummary {
         CalorieRingSummary(budget: calorieBudget)
     }
@@ -49,7 +45,92 @@ struct CalorieRingView: View {
     }
 
     var body: some View {
-        ZStack {
+        Group {
+            if accessibilityReduceMotion {
+                ringSurface(progress: calorieBudget.displayedRingProgress)
+                    .transaction { transaction in
+                        transaction.animation = nil
+                        transaction.disablesAnimations = true
+                    }
+            } else {
+                ringSurface(progress: animatedRingProgress)
+                    .opacity(hasAppeared ? 1 : 0)
+                    .scaleEffect(isDetailsPressing ? 0.94 : 1)
+                    .animation(detailsPressAnimation, value: isDetailsPressing)
+                    .animation(ringUpdateAnimation, value: calorieBudget.dynamicAdjustment)
+                    .animation(ringUpdateAnimation, value: calorieBudget.adjustedTarget)
+                    .animation(ringUpdateAnimation, value: calorieBudget.isActivityLoading)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(summary.accessibilityLabel)
+        .accessibilityValue(summary.accessibilityValue)
+        .accessibilityHint(CalorieRingSummary.accessibilityHint(isInteractive: onDetailsRequested != nil))
+        .accessibilityAddTraits(onDetailsRequested == nil ? [] : .isButton)
+        .accessibilityAction(named: Text("Show nutrition details")) {
+            requestDetails()
+        }
+        .onTapGesture(perform: requestDetails)
+        .onLongPressGesture(
+            minimumDuration: 0.45,
+            maximumDistance: 24,
+            pressing: setDetailsPressing,
+            perform: requestDetails
+        )
+        .onAppear {
+            hasAppeared = false
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                animatedRingProgress = calorieBudget.displayedRingProgress
+            }
+
+            fadeInTask?.cancel()
+            guard !accessibilityReduceMotion else {
+                hasAppeared = true
+                return
+            }
+
+            fadeInTask = Task { @MainActor in
+                await Task.yield()
+                guard !Task.isCancelled else { return }
+
+                withAnimation(.smooth(duration: 0.28)) {
+                    hasAppeared = true
+                }
+                fadeInTask = nil
+            }
+        }
+        .onDisappear {
+            fadeInTask?.cancel()
+            fadeInTask = nil
+            hasAppeared = false
+        }
+        .onChange(of: calorieBudget.displayedRingProgress) { _, newProgress in
+            updateRingProgress(newProgress)
+        }
+        .onChange(of: accessibilityReduceMotion) { _, reduceMotion in
+            guard reduceMotion else { return }
+
+            fadeInTask?.cancel()
+            fadeInTask = nil
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                animatedRingProgress = calorieBudget.displayedRingProgress
+                hasAppeared = true
+                isDetailsPressing = false
+            }
+        }
+    }
+
+    private func ringSurface(progress: Double) -> some View {
+        let ringProgress = CalorieRingProgress(
+            budget: calorieBudget,
+            animatedProgress: progress
+        )
+
+        return ZStack {
             Circle()
                 .stroke(
                     CalorynTheme.sage.opacity(0.18),
@@ -105,70 +186,6 @@ struct CalorieRingView: View {
         .compositingGroup()
         .clipShape(Circle())
         .contentShape(Circle())
-        .opacity(hasAppeared ? 1 : 0)
-        .scaleEffect(accessibilityReduceMotion ? 1 : (isDetailsPressing ? 0.94 : 1))
-        .animation(detailsPressAnimation, value: isDetailsPressing)
-        .animation(ringUpdateAnimation, value: calorieBudget.dynamicAdjustment)
-        .animation(ringUpdateAnimation, value: calorieBudget.adjustedTarget)
-        .animation(ringUpdateAnimation, value: calorieBudget.isActivityLoading)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(summary.accessibilityLabel)
-        .accessibilityValue(summary.accessibilityValue)
-        .accessibilityHint(CalorieRingSummary.accessibilityHint(isInteractive: onDetailsRequested != nil))
-        .accessibilityAddTraits(onDetailsRequested == nil ? [] : .isButton)
-        .accessibilityAction(named: Text("Show nutrition details")) {
-            requestDetails()
-        }
-        .onTapGesture(perform: requestDetails)
-        .onLongPressGesture(
-            minimumDuration: 0.45,
-            maximumDistance: 24,
-            pressing: setDetailsPressing,
-            perform: requestDetails
-        )
-        .onAppear {
-            hasAppeared = false
-            var transaction = Transaction()
-            transaction.disablesAnimations = true
-            withTransaction(transaction) {
-                animatedRingProgress = calorieBudget.displayedRingProgress
-            }
-
-            fadeInTask?.cancel()
-            guard !accessibilityReduceMotion else {
-                hasAppeared = true
-                return
-            }
-
-            fadeInTask = Task { @MainActor in
-                await Task.yield()
-                guard !Task.isCancelled else { return }
-
-                withAnimation(.smooth(duration: 0.28)) {
-                    hasAppeared = true
-                }
-                fadeInTask = nil
-            }
-        }
-        .onDisappear {
-            fadeInTask?.cancel()
-            fadeInTask = nil
-            hasAppeared = false
-        }
-        .onChange(of: calorieBudget.displayedRingProgress) { _, newProgress in
-            updateRingProgress(newProgress)
-        }
-        .onChange(of: accessibilityReduceMotion) { _, reduceMotion in
-            guard reduceMotion else { return }
-
-            var transaction = Transaction()
-            transaction.disablesAnimations = true
-            withTransaction(transaction) {
-                animatedRingProgress = calorieBudget.displayedRingProgress
-                hasAppeared = true
-                isDetailsPressing = false
-            }
-        }
     }
 
     private var centerValueTransition: ContentTransition {

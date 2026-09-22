@@ -2,11 +2,87 @@ import SwiftUI
 
 struct WelcomeCardsGraphic: View {
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
+    @State private var preserveFinalArrangement = false
+
+    var body: some View {
+        Group {
+            if accessibilityReduceMotion || preserveFinalArrangement {
+                WelcomeCardsArrangement(
+                    showBack: true,
+                    showMiddle: true,
+                    showFront: true,
+                    expandToList: true
+                )
+                .transaction { transaction in
+                    transaction.animation = nil
+                    transaction.disablesAnimations = true
+                }
+            } else {
+                AnimatedWelcomeCardsGraphic()
+            }
+        }
+        .onAppear {
+            preserveFinalArrangement = accessibilityReduceMotion
+        }
+        .onChange(of: accessibilityReduceMotion) { _, reduceMotion in
+            if reduceMotion {
+                // Keep the final arrangement if Reduce Motion is later disabled;
+                // replaying an entrance sequence would be an unexpected motion burst.
+                preserveFinalArrangement = true
+            }
+        }
+    }
+}
+
+private struct AnimatedWelcomeCardsGraphic: View {
     @State private var showBack = false
     @State private var showMiddle = false
     @State private var showFront = false
     @State private var expandToList = false
-    
+
+    var body: some View {
+        WelcomeCardsArrangement(
+            showBack: showBack,
+            showMiddle: showMiddle,
+            showFront: showFront,
+            expandToList: expandToList
+        )
+        .task {
+            do {
+                try await Task.sleep(for: .milliseconds(100))
+                withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                    showBack = true
+                }
+
+                try await Task.sleep(for: .milliseconds(150))
+                withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                    showMiddle = true
+                }
+
+                try await Task.sleep(for: .milliseconds(150))
+                withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                    showFront = true
+                }
+
+                try await Task.sleep(for: .milliseconds(1_100))
+                withAnimation(.spring(response: 0.7, dampingFraction: 0.75)) {
+                    expandToList = true
+                }
+            } catch is CancellationError {
+                // SwiftUI cancels the task when Reduce Motion replaces this subtree.
+            } catch {
+                assertionFailure("Unexpected welcome animation error: \(error)")
+            }
+        }
+    }
+}
+
+private struct WelcomeCardsArrangement: View {
+    let showBack: Bool
+    let showMiddle: Bool
+    let showFront: Bool
+    let expandToList: Bool
+
     var body: some View {
         ZStack {
             // Back card (Dinner)
@@ -32,43 +108,6 @@ struct WelcomeCardsGraphic: View {
                 .zIndex(3)
         }
         .frame(height: 250)
-        .onAppear {
-            guard !accessibilityReduceMotion else {
-                showFinalArrangement()
-                return
-            }
-
-            withAnimation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.1)) {
-                showBack = true
-            }
-            withAnimation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.25)) {
-                showMiddle = true
-            }
-            withAnimation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.4)) {
-                showFront = true
-            }
-            
-            // Pause, then slide them out into a list
-            withAnimation(.spring(response: 0.7, dampingFraction: 0.75).delay(1.5)) {
-                expandToList = true
-            }
-        }
-        .onChange(of: accessibilityReduceMotion) { _, reduceMotion in
-            if reduceMotion {
-                showFinalArrangement()
-            }
-        }
-    }
-
-    private func showFinalArrangement() {
-        var transaction = Transaction()
-        transaction.disablesAnimations = true
-        withTransaction(transaction) {
-            showBack = true
-            showMiddle = true
-            showFront = true
-            expandToList = true
-        }
     }
 }
 
