@@ -203,8 +203,8 @@ struct HistoryCalorieTrendChartLayoutTests {
         )
     }
 
-    @Test("given a selection, when drawing every other bar, then they recede")
-    func unselectedBarsRecede() {
+    @Test("given a selection, when drawing every other bar, then it is not the selection")
+    func unselectedBarsAreNotTheSelection() {
         #expect(
             HistoryCalorieTrendChartLayout.barEmphasis(pointID: "day-2", selectedPointID: "day-1") == .muted
         )

@@ -115,6 +115,25 @@ final class ComponentSnapshotTests: XCTestCase {
         )
     }
 
+    /// The two-line figure the Add Food rows are built around: "95" over "kcal a pot" — 94.5
+    /// rounded, as the Portion preview and the logged row on Today read the same pot.
+    func testFoodRowWithACountableServing() {
+        assertSnapshot(
+            of: row(
+                FoodRowView(
+                    name: "Skyr",
+                    brand: "Arla",
+                    caloriesPer100g: 63,
+                    nutriscoreGrade: "a",
+                    servingDescription: "1 pot (150g)",
+                    caloriesPerServing: 94.5,
+                    servingUnitName: "pot"
+                )
+            ),
+            as: .image(precision: precision, perceptualPrecision: perceptualPrecision, layout: rowLayout, traits: .reference)
+        )
+    }
+
     // MARK: - Nutri-Score day summary
 
     func testNutriScoreSummaryWithAMixedDay() {
@@ -199,25 +218,26 @@ final class ComponentSnapshotTests: XCTestCase {
         )
     }
 
-    // MARK: - Card surface
+    // MARK: - Group surface
 
-    // `solidCardSurface` fills with `cardBackground` and strokes with `cardSeparator`.
-    // Nothing else in this suite renders either, so before this test the card surface
-    // could change colour — as it just did, from pure white to #FAFAF7 — without a
-    // single reference image moving.
+    // `calorynGroupSurface` is the surface the Plate screens use (the History insight, the
+    // Portion completeness note, the creation-form groups, onboarding): `cardBackground`,
+    // a 22pt continuous corner and a `hairline` border. This test rendered the retired
+    // `solidCardSurface` until no screen used it any more, so the real surface could have
+    // changed colour without a reference image moving.
 
-    func testCardSurfaceOnPageBackgroundAcrossAppearances() {
+    func testGroupSurfaceOnPageBackgroundAcrossAppearances() {
         let card = VStack(alignment: .leading, spacing: 6) {
-            Text("Today")
-                .font(CalorynTheme.sectionTitle)
+            Text("Lunch runs heavy on weekdays")
+                .font(CalorynTheme.sectionHeaderTitle)
                 .foregroundStyle(CalorynTheme.textPrimary)
-            Text("1,840 kcal remaining")
+            Text("1.840 kcal remaining")
                 .font(CalorynTheme.numericBody)
                 .foregroundStyle(CalorynTheme.textSecondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(CalorynTheme.cardPadding)
-        .solidCardSurface(cornerRadius: CalorynTheme.cornerRadius)
+        .calorynGroupSurface()
 
         assertAppearances(
             of: card
@@ -226,6 +246,138 @@ final class ComponentSnapshotTests: XCTestCase {
                 .background(CalorynTheme.pageBackground),
             layout: .fixed(width: 390, height: 160)
         )
+    }
+
+    // MARK: - Meal vocabulary
+
+    // The meal palette's three roles, each drawn by a component nothing else here renders:
+    // the section header (the name in the meal's ink, the total in secondary or tertiary
+    // text, the plus in the meal's on-fill on its fill) and the meal chips (selected: fill
+    // with on-fill text; unselected: hairline with the meal's ink).
+
+    func testMealSectionHeadersAcrossAppearances() {
+        let headers = VStack(spacing: 14) {
+            ForEach(MealType.allCases) { meal in
+                CalorynMealSectionHeader(
+                    meal: meal,
+                    totalText: meal == .dinner ? "nothing yet" : "382 kcal",
+                    isEmpty: meal == .dinner,
+                    addAccessibilityIdentifier: "snapshot.\(meal.rawValue)",
+                    addAccessibilityLabel: "Add to \(meal.displayName)",
+                    onAdd: {}
+                )
+            }
+        }
+        .padding(CalorynTheme.pagePadding)
+        .frame(width: 390, height: 230)
+        .background(CalorynTheme.pageBackground)
+
+        assertAppearances(of: headers, layout: .fixed(width: 390, height: 230))
+    }
+
+    func testMealChipsSelectedAndUnselectedAcrossAppearances() {
+        let chips = VStack(alignment: .leading, spacing: 10) {
+            ForEach([true, false], id: \.self) { isSelected in
+                HStack(spacing: 6) {
+                    ForEach(MealType.allCases) { meal in
+                        Text(meal.displayName)
+                            .calorynChip(isSelected: isSelected, meal: meal)
+                            .fixedSize()
+                    }
+                }
+            }
+        }
+        .padding(CalorynTheme.pagePadding)
+        .frame(width: 440, height: 130)
+        .background(CalorynTheme.cardBackground)
+
+        // Wider than a phone: four chips a row is a fixture, not a layout under test.
+        // Drawn in the key window: the default layer render drew each chip's capsule with
+        // flat sides and stray ticks beside it, which the app never shows.
+        assertSnapshots(
+            of: chips,
+            as: [
+                "light": .image(
+                    drawHierarchyInKeyWindow: true,
+                    precision: precision,
+                    perceptualPrecision: perceptualPrecision,
+                    layout: .fixed(width: 440, height: 130),
+                    traits: .reference
+                ),
+                "dark": .image(
+                    drawHierarchyInKeyWindow: true,
+                    precision: precision,
+                    perceptualPrecision: perceptualPrecision,
+                    layout: .fixed(width: 440, height: 130),
+                    traits: .referenceDark
+                ),
+            ]
+        )
+    }
+
+    // MARK: - Calorie donut
+
+    // `animated: false` draws the final state on the first frame, so neither image races an
+    // animation clock. Under and over side by side cover both of the ring's wholes — the
+    // budget, and everything eaten — and both non-meal sectors: hairline for what is left,
+    // ink for the overshoot.
+
+    func testCalorieDonutUnderAndOverAcrossAppearances() {
+        let donuts = HStack(spacing: 22) {
+            CalorieDonutView(
+                summary: CalorieDonutSummary(
+                    mealTotals: [.breakfast: 382, .lunch: 463, .snack: 118],
+                    budget: 2_000,
+                    isOver: false
+                ),
+                animated: false
+            )
+            CalorieDonutView(
+                summary: CalorieDonutSummary(
+                    mealTotals: [.breakfast: 382, .lunch: 463, .dinner: 1_377, .snack: 118],
+                    budget: 2_000,
+                    isOver: true
+                ),
+                animated: false
+            )
+        }
+        .frame(width: 390, height: 200)
+        .background(CalorynTheme.pageBackground)
+
+        assertAppearances(of: donuts, layout: .fixed(width: 390, height: 200))
+    }
+
+    // History's day plates: one uniform eaten fill, and the three outlines that tell an
+    // over day and today apart from the rest. The last plate keeps each meal's own fill.
+
+    func testCalorieMiniDonutOutlinesAcrossAppearances() {
+        let plates = HStack(spacing: 12) {
+            CalorieMiniDonutView(
+                summary: CalorieDonutSummary(mealTotals: [.dinner: 2_300], budget: 2_000, isOver: true),
+                outline: .over,
+                uniformFill: CalorynTheme.historyEaten
+            )
+            CalorieMiniDonutView(
+                summary: CalorieDonutSummary(mealTotals: [.dinner: 1_690], budget: 2_000, isOver: false),
+                uniformFill: CalorynTheme.historyEaten
+            )
+            CalorieMiniDonutView(
+                summary: CalorieDonutSummary(mealTotals: [.dinner: 963], budget: 2_000, isOver: false),
+                outline: .today,
+                uniformFill: CalorynTheme.historyEaten
+            )
+            CalorieMiniDonutView(
+                summary: CalorieDonutSummary(
+                    mealTotals: [.breakfast: 500, .lunch: 600, .dinner: 700, .snack: 200],
+                    budget: 2_000,
+                    isOver: false
+                )
+            )
+        }
+        .frame(width: 390, height: 72)
+        .background(CalorynTheme.pageBackground)
+
+        assertAppearances(of: plates, layout: .fixed(width: 390, height: 72))
     }
 
     // MARK: - Nutri-Score badge
@@ -263,12 +415,12 @@ final class ComponentSnapshotTests: XCTestCase {
                 servingDescription: "170 g"
             )
             .padding(.horizontal, 16)
-            .frame(width: 390, height: 220)
+            .frame(width: 390, height: 300)
             .background(CalorynTheme.pageBackground),
             as: .image(
                 precision: precision,
                 perceptualPrecision: perceptualPrecision,
-                layout: .fixed(width: 390, height: 220),
+                layout: .fixed(width: 390, height: 300),
                 traits: .referenceAccessibility
             )
         )

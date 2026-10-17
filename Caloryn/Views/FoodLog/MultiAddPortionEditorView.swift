@@ -15,9 +15,9 @@ struct MultiAddPortionEditorView: View {
         var formattedValue: String {
             switch unit {
             case .grams:
-                value.macroFormatted
+                value.spacedMacroFormatted
             case .milligramsFromGrams:
-                "\((value * 1000).rounded().truncatedSafely)mg"
+                "\((value * 1000).rounded().truncatedSafely.formatted()) mg"
             }
         }
     }
@@ -26,6 +26,8 @@ struct MultiAddPortionEditorView: View {
 
     @Binding private var item: MultiAddDraftItem
     private let destinationDescription: String
+    /// The meal the batch lands in, whose ink the calorie figure takes.
+    private let destinationMeal: MealType
     private let originalSnapshot: FoodLogEntrySnapshot
     private let quickGramOptions: [Int]
 
@@ -38,10 +40,12 @@ struct MultiAddPortionEditorView: View {
 
     init(
         item: Binding<MultiAddDraftItem>,
-        destinationDescription: String
+        destinationDescription: String,
+        destinationMeal: MealType
     ) {
         _item = item
         self.destinationDescription = destinationDescription
+        self.destinationMeal = destinationMeal
         let snapshot = item.wrappedValue.snapshot
         originalSnapshot = snapshot
         quickGramOptions = Self.quickGramOptions(around: snapshot.portionGrams)
@@ -51,14 +55,15 @@ struct MultiAddPortionEditorView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 24) {
+            VStack(alignment: .leading, spacing: 22) {
                 foodHeader
                 caloriePreview
                 portionPicker
                 nutritionPreview
             }
             .padding(.horizontal, CalorynTheme.pagePadding)
-            .padding(.bottom, 100)
+            .padding(.top, 8)
+            .padding(.bottom, 24)
             .dismissesGramKeypadOnTap($isGramsFieldFocused)
         }
         // See `PortionPickerView` — interactive dismissal ignores a drag that
@@ -66,23 +71,19 @@ struct MultiAddPortionEditorView: View {
         .scrollDismissesKeyboard(.immediately)
         .calorynSheetCanvas()
         .calorynDrillDownNavigation()
-        .navigationTitle("Edit Portion")
+        .navigationTitle("Edit portion")
         .navigationBarTitleDisplayMode(.inline)
-        .safeAreaInset(edge: .bottom) {
-            VStack(spacing: 0) {
-                Button(action: save) {
-                    Text("Save Portion")
-                        .font(CalorynTheme.buttonLabel)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                }
-                .adaptiveGlassProminentButton()
-                .padding(.horizontal, CalorynTheme.pagePadding)
-                .padding(.top, 10)
-                .padding(.bottom, 16)
-                .accessibilityIdentifier("multiAdd.editor.save")
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                FoodLogSheetTitle(title: "Edit portion")
             }
-            .background(.regularMaterial)
+        }
+        .foodLogBottomAction {
+            Button(action: save) {
+                Text("Save portion")
+            }
+            .calorynPrimaryButton()
+            .accessibilityIdentifier("multiAdd.editor.save")
         }
     }
 
@@ -91,58 +92,24 @@ struct MultiAddPortionEditorView: View {
     }
 
     private var foodHeader: some View {
-        VStack(spacing: 4) {
-            Text(originalSnapshot.foodName)
-                .font(CalorynTheme.sectionTitle)
-                .foregroundStyle(CalorynTheme.textPrimary)
-                .multilineTextAlignment(.center)
-
-            Text(destinationDescription)
-                .font(CalorynTheme.caption)
-                .foregroundStyle(CalorynTheme.textSecondary)
-
-            if let mealName = item.originMealName {
-                Text("From Meal: \(mealName)")
-                    .font(CalorynTheme.caption)
-                    .foregroundStyle(CalorynTheme.textSecondary)
-            }
-        }
-        .padding(.top, 8)
-        .accessibilityElement(children: .combine)
+        FoodLogSheetHeader(
+            name: originalSnapshot.foodName,
+            lines: [destinationDescription] + (item.originMealName.map { ["Part of \($0)"] } ?? [])
+        )
     }
 
     private var caloriePreview: some View {
-        VStack(spacing: 4) {
-            Text("\(editedSnapshot.nutrition.calories.rounded().truncatedSafely)")
-                .font(CalorynTheme.displayNumber)
-                .foregroundStyle(CalorynTheme.sage)
-                .contentTransition(.numericText())
-                .animation(
-                    .smooth(duration: 0.3),
-                    value: editedSnapshot.nutrition.calories.rounded().truncatedSafely
-                )
-
-            Text("calories")
-                .font(CalorynTheme.bodyText)
-                .foregroundStyle(CalorynTheme.textSecondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 20)
-        .glassCard()
-        .accessibilityElement(children: .combine)
+        FoodLogCaloriePreview(
+            calories: editedSnapshot.nutrition.calories.rounded().truncatedSafely,
+            tint: destinationMeal.ink,
+            detail: "\(editedSnapshot.nutrition.proteinG.spacedMacroFormatted) protein",
+            identifier: "multiAdd.editor.calories"
+        )
     }
 
     private var portionPicker: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("PORTION SIZE")
-
-                Spacer()
-
-                Text("GRAMS")
-            }
-            .font(CalorynTheme.sectionEyebrow)
-            .foregroundStyle(CalorynTheme.textSecondary)
+        VStack(alignment: .leading, spacing: 10) {
+            FoodLogSectionTitle("How much")
 
             GramAmountField(
                 text: $gramsInput,
@@ -160,44 +127,30 @@ struct MultiAddPortionEditorView: View {
                 onQuickOption: { grams in
                     portionGrams = Double(grams)
                     gramsInput = PortionSelection.formattedGrams(portionGrams)
+                },
+                onStep: { step in
+                    portionGrams = PortionSelection.stepped(portionGrams, step)
+                    gramsInput = PortionSelection.formattedGrams(portionGrams)
                 }
             )
         }
-        .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
         .accessibilityIdentifier("multiAdd.editor.portion")
     }
 
     private var nutritionPreview: some View {
-        let nutrients = nutritionDetails
+        VStack(alignment: .leading, spacing: 6) {
+            FoodLogSectionTitle("In this portion")
 
-        return VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("NUTRITION")
-                    .font(CalorynTheme.sectionEyebrow)
-                    .foregroundStyle(CalorynTheme.textSecondary)
-
-                Spacer()
-
-                Text("\(PortionSelection.formattedGrams(portionGrams))g")
-                    .font(CalorynTheme.caption)
-                    .foregroundStyle(CalorynTheme.textSecondary)
-                    .contentTransition(.numericText())
-                    .animation(.smooth(duration: 0.3), value: portionGrams)
-            }
-
-            VStack(spacing: 0) {
-                ForEach(nutrients) { nutrient in
-                    nutrientRow(nutrient)
-                        .padding(.vertical, 7)
-
-                    if nutrient.id != nutrients.last?.id {
-                        Divider()
-                            .foregroundStyle(CalorynTheme.stone.opacity(0.3))
-                    }
+            FoodLogValueRows(
+                rows: nutritionDetails.map { nutrient in
+                    FoodLogValueRows.Row(
+                        id: nutrient.id,
+                        label: nutrient.label,
+                        value: nutrient.formattedValue
+                    )
                 }
-            }
+            )
         }
-        .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
     }
 
     private var nutritionDetails: [Nutrient] {
@@ -216,23 +169,6 @@ struct MultiAddPortionEditorView: View {
                 unit: .milligramsFromGrams
             )
         ].compactMap { $0 }
-    }
-
-    private func nutrientRow(_ nutrient: Nutrient) -> some View {
-        HStack {
-            Text(nutrient.label)
-                .font(CalorynTheme.bodyText)
-                .foregroundStyle(CalorynTheme.textPrimary)
-
-            Spacer()
-
-            Text(nutrient.formattedValue)
-                .font(CalorynTheme.numericBody)
-                .foregroundStyle(CalorynTheme.textPrimary)
-                .contentTransition(.numericText())
-                .animation(.smooth(duration: 0.3), value: nutrient.formattedValue)
-        }
-        .accessibilityElement(children: .combine)
     }
 
     private func nutrient(

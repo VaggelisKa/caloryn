@@ -1,39 +1,82 @@
 import SwiftUI
 
-/// A placeholder shaped like `FoodRowView`.
+/// A placeholder shaped like `FoodRowView`: the name over its brand-and-serving line on
+/// the left, the two-line kcal figure on the right.
 ///
-/// The heights are `@ScaledMetric` against the same text styles the real row
-/// uses, so the placeholder grows with Dynamic Type at the rate the content it
-/// stands in for does.
+/// Each bar sits in a line as tall as the `FoodRowTypography` style it stands in for, with
+/// the real row's spacings, so the placeholder is the height of the row that replaces it
+/// and grows with Dynamic Type at the same rate.
 private struct FoodSearchSkeletonRow: View {
     let row: FoodSearchSkeleton.Row
 
-    @ScaledMetric(relativeTo: .headline) private var titleHeight: CGFloat = 13
-    @ScaledMetric(relativeTo: .caption) private var subtitleHeight: CGFloat = 10
-    @ScaledMetric(relativeTo: .body) private var calorieHeight: CGFloat = 13
-    @ScaledMetric(relativeTo: .caption2) private var calorieUnitHeight: CGFloat = 9
-    @ScaledMetric(relativeTo: .headline) private var lineSpacing: CGFloat = 9
-    /// Measured, not guessed: a `FoodRowView` in the plain results `List` sits on a
-    /// ~75pt pitch once the list has added its own row insets, and these rows are all
-    /// one cell, so they get none of that for free. Without this the trailing group
-    /// read as a denser list stapled to the bottom of the real one.
-    @ScaledMetric(relativeTo: .headline) private var rowPadding: CGFloat = 21
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    // Line heights of the four `FoodRowTypography` styles at the default size.
+    @ScaledMetric(relativeTo: .callout) private var nameLine: CGFloat = 21
+    @ScaledMetric(relativeTo: .footnote) private var detailLine: CGFloat = 18
+    @ScaledMetric(relativeTo: .callout) private var figureLine: CGFloat = 21
+    @ScaledMetric(relativeTo: .caption2) private var captionLine: CGFloat = 13
+
+    // Bars about the cap height of each style, so a line reads as text, not a block.
+    @ScaledMetric(relativeTo: .callout) private var nameBar: CGFloat = 11
+    @ScaledMetric(relativeTo: .footnote) private var detailBar: CGFloat = 9
+    @ScaledMetric(relativeTo: .callout) private var figureBar: CGFloat = 11
+    @ScaledMetric(relativeTo: .caption2) private var captionBar: CGFloat = 7
+    @ScaledMetric(relativeTo: .caption2) private var captionWidth: CGFloat = 44
+
+    /// The plain list's own vertical row inset, which a `FoodRowView` gets for free and
+    /// these rows — all one cell — do not.
+    @ScaledMetric(relativeTo: .callout) private var rowPadding: CGFloat = 12.5
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            VStack(alignment: .leading, spacing: lineSpacing) {
-                SkeletonBar(width: row.titleWidth, height: titleHeight)
-                SkeletonBar(width: row.subtitleWidth, height: subtitleHeight)
-            }
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                // `FoodRowView` stacks at these sizes, the figure reading inline below.
+                VStack(alignment: .leading, spacing: 4) {
+                    SkeletonBar(width: row.titleWidth, height: nameBar, lineHeight: nameLine)
+                    SkeletonBar(width: row.subtitleWidth, height: detailBar, lineHeight: detailLine)
+                    SkeletonBar(width: row.calorieWidth + captionWidth, height: figureBar, lineHeight: figureLine)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                HStack(alignment: .center, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        SkeletonBar(width: row.titleWidth, height: nameBar, lineHeight: nameLine)
+                        SkeletonBar(width: row.subtitleWidth, height: detailBar, lineHeight: detailLine)
+                    }
 
-            Spacer(minLength: 8)
+                    Spacer(minLength: 8)
 
-            VStack(alignment: .trailing, spacing: lineSpacing) {
-                SkeletonBar(width: row.calorieWidth, height: calorieHeight)
-                SkeletonBar(width: 52, height: calorieUnitHeight)
+                    VStack(alignment: .trailing, spacing: 1) {
+                        SkeletonBar(width: row.calorieWidth, height: figureBar, lineHeight: figureLine)
+                        SkeletonBar(width: captionWidth, height: captionBar, lineHeight: captionLine)
+                    }
+                }
             }
         }
         .padding(.vertical, rowPadding)
+    }
+}
+
+/// Placeholder rows divided by the list's hairline, as `calorynHairlineSeparators()` divides
+/// real ones. `separatorAfterLast` is for the full-screen block, whose last row runs on into
+/// more; the trailing group ends where the list does.
+private struct FoodSearchSkeletonStack: View {
+    let rows: [FoodSearchSkeleton.Row]
+    var separatorAfterLast = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(rows) { row in
+                FoodSearchSkeletonRow(row: row)
+
+                if separatorAfterLast || row.id != rows.last?.id {
+                    Rectangle()
+                        .fill(CalorynTheme.hairline)
+                        .frame(height: CalorynTheme.hairlineWidth)
+                }
+            }
+        }
     }
 }
 
@@ -45,13 +88,15 @@ struct FoodSearchSkeletonRows: View {
     var rowCount = FoodSearchSkeleton.trailingRowCount
     var startingAt = 0
 
+    /// No vertical inset — each placeholder row carries the list's own — and the 16pt
+    /// margin the real rows and their section titles share.
+    static let listRowInsets = EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16)
+
     var body: some View {
         ShimmeringPlaceholder {
-            VStack(spacing: 0) {
-                ForEach(FoodSearchSkeleton.rows(count: rowCount, startingAt: startingAt)) { row in
-                    FoodSearchSkeletonRow(row: row)
-                }
-            }
+            FoodSearchSkeletonStack(
+                rows: FoodSearchSkeleton.rows(count: rowCount, startingAt: startingAt)
+            )
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Searching for more results")
@@ -63,6 +108,9 @@ struct FoodSearchSkeletonRows: View {
 /// The whole area below the search field while a query is in flight and nothing
 /// local matched it.
 ///
+/// No stand-in for a section title: with nothing local to show, the results that replace
+/// this arrive untitled, so a title bar here would only make the rows jump.
+///
 /// A scroll-disabled `ScrollView` rather than a bare `VStack`: the rows are
 /// deliberately more than fit, and a `VStack` cannot shrink below its content —
 /// it pushed the overflow out both ends and shoved the search field up behind
@@ -71,18 +119,11 @@ struct FoodSearchSkeletonList: View {
     var body: some View {
         ScrollView {
             ShimmeringPlaceholder {
-                VStack(alignment: .leading, spacing: 0) {
-                    // Stands in for the "Search Results" section header, so the
-                    // rows below it do not shift up when the results arrive.
-                    SkeletonBar(width: 92, height: 11)
-                        .padding(.bottom, 14)
-
-                    ForEach(FoodSearchSkeleton.rows(count: FoodSearchSkeleton.fullScreenRowCount)) { row in
-                        FoodSearchSkeletonRow(row: row)
-                    }
-                }
-                .padding(.horizontal, CalorynTheme.pagePadding)
-                .padding(.top, 20)
+                FoodSearchSkeletonStack(
+                    rows: FoodSearchSkeleton.rows(count: FoodSearchSkeleton.fullScreenRowCount),
+                    separatorAfterLast: true
+                )
+                .padding(.horizontal, 16)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
@@ -104,9 +145,13 @@ struct FoodSearchSkeletonList: View {
 
 #Preview("Trailing rows") {
     List {
+        FoodRowView(name: "Skyr", brand: "Arla", caloriesPer100g: 63)
+            .calorynHairlineSeparators()
         FoodSearchSkeletonRows()
-            .listRowSeparator(.hidden)
-            .listRowBackground(Color.clear)
+            .listRowInsets(FoodSearchSkeletonRows.listRowInsets)
+            .listRowSeparator(.hidden, edges: .bottom)
+            .listRowSeparatorTint(CalorynTheme.hairline)
+            .calorynClearRowBackground()
     }
     .calorynPlainListStyle()
     .calorynSheetCanvas()

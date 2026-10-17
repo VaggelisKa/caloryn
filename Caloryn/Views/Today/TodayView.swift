@@ -5,6 +5,7 @@ import SwiftData
 struct TodayView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(AppRouter.self) private var router
     @Query(sort: \UserProfile.updatedAt, order: .reverse) private var profiles: [UserProfile]
     @Query private var allEntries: [FoodLogEntry]
@@ -12,6 +13,8 @@ struct TodayView: View {
     /// Apple's minimum touch target; a bare chevron glyph is smaller than this and the
     /// accessibility audit reports "Hit area is too small".
     private static let minimumHitTarget: CGFloat = 44
+    /// The glass circle drawn inside each day button's hit target.
+    private static let dayButtonSize: CGFloat = 36
 
     private struct FoodSearchPresentation: Identifiable {
         let id = UUID()
@@ -29,7 +32,6 @@ struct TodayView: View {
 
     @AppStorage("showNutriscore") private var showNutriscore = true
     @State private var activeEnergyTracker = ActiveEnergyDayTracker()
-    private let ringSize: CGFloat = 180
 
     private var profile: UserProfile? { profiles.first }
     private func calorieBudget(consumed: Double) -> ActivityCalorieBudget {
@@ -95,22 +97,28 @@ struct TodayView: View {
                     .padding(.horizontal, CalorynTheme.pagePadding)
 
                 List {
-                    dashboardSection(calorieBudget: calorieBudget)
-                        .listRowInsets(EdgeInsets(top: 14, leading: 0, bottom: 12, trailing: 0))
-                        .listRowBackground(Color.clear)
+                    dashboardSection(entries: projection.today, calorieBudget: calorieBudget)
+                        .todayPlateRowLayout(top: 12, bottom: 4)
+                        .calorynClearRowBackground()
                         .listRowSeparator(.hidden)
 
                     if showNutriscore, hasNutriscoreData {
-                        Section {
-                            nutriscoreSection(distribution: nutriscoreDistribution)
-                        }
-                        .listRowBackground(CalorynTheme.cardBackground)
+                        nutriscoreSection(distribution: nutriscoreDistribution)
+                            .todayPlateRowLayout(top: 10)
+                            .calorynClearRowBackground()
+                            .listRowSeparator(.hidden)
+                    } else if canCopyYesterday {
+                        copyYesterdayButton(yesterdayEntries: projection.yesterday)
+                            .todayPlateRowLayout(top: 10)
+                            .calorynClearRowBackground()
+                            .listRowSeparator(.hidden)
                     }
 
                     ForEach(coreMeals) { meal in
                         MealSectionView(
                             mealType: meal,
                             entries: projection.entries(for: meal),
+                            canCopyYesterday: canCopyYesterday,
                             onAdd: {
                                 presentFoodSearch(mealType: meal, snackIndex: 0)
                             },
@@ -126,6 +134,7 @@ struct TodayView: View {
                         entries: projection.entries(for: .snack),
                         snackIndex: 1,
                         titleOverride: "Snacks",
+                        canCopyYesterday: canCopyYesterday,
                         onAdd: {
                             presentFoodSearch(mealType: .snack, snackIndex: 1)
                         },
@@ -134,12 +143,11 @@ struct TodayView: View {
                         },
                         onDelete: deleteEntry
                     )
-
-                    if canCopyYesterday {
-                        actionsSection(yesterdayEntries: projection.yesterday)
-                    }
                 }
-                .calorynGroupedListStyle()
+                .calorynPlainListStyle()
+                // Rows size to the board's 41pt rather than the system's 44pt minimum; each
+                // is still a full-width tap target.
+                .environment(\.defaultMinListRowHeight, 0)
                 .contentMargins(.top, 0, for: .scrollContent)
                 .id(selectedDate)
                 .animation(.smooth(duration: 0.35), value: hasNutriscoreData)
@@ -224,64 +232,102 @@ struct TodayView: View {
         }
     }
 
+    /// "Friday 17 October" on the left, previous and next day as glass circles on the right.
+    ///
+    /// One line, as the board draws it, until accessibility sizes: there the chevrons leave
+    /// the title about 246pt, and "Wednesday 30 September" would need to shrink below the
+    /// 0.7 floor and truncate. The title wraps instead.
     private var dateNavigator: some View {
-        HStack {
-            Button {
-                withAnimation {
-                    selectedDate = selectedDate.yesterday
-                }
-            } label: {
-                Image(systemName: "chevron.left")
-                    .font(CalorynTheme.inlineIcon)
-                    .foregroundStyle(CalorynTheme.sage)
-                    .frame(minWidth: Self.minimumHitTarget, minHeight: Self.minimumHitTarget, alignment: .leading)
-                    .contentShape([.interaction, .accessibility], .rect)
-            }
-            .accessibilityLabel("Previous day")
-            .accessibilityIdentifier("today.previousDay")
-
-            Spacer()
-
-            Text(selectedDate.shortFormatted)
-                .font(CalorynTheme.sectionTitle)
+        HStack(spacing: 12) {
+            Text(DayTitle.text(for: selectedDate))
+                .font(TodayPlateFont.dateTitle)
+                .tracking(-0.44)
                 .foregroundStyle(CalorynTheme.textPrimary)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 1)
+                .minimumScaleFactor(0.7)
                 .contentTransition(.numericText())
+                .accessibilityLabel(DayTitle.accessibilityLabel(for: selectedDate))
                 .accessibilityAddTraits(.isHeader)
 
-            Spacer()
+            Spacer(minLength: 8)
 
-            Button {
-                withAnimation {
+            HStack(spacing: 0) {
+                dayButton(
+                    systemImage: "chevron.left",
+                    label: "Previous day",
+                    identifier: "today.previousDay",
+                    isEnabled: true
+                ) {
+                    selectedDate = selectedDate.yesterday
+                }
+
+                dayButton(
+                    systemImage: "chevron.right",
+                    label: "Next day",
+                    identifier: "today.nextDay",
+                    isEnabled: !selectedDate.isAtFutureLogLimit
+                ) {
                     selectedDate = selectedDate.tomorrow
                 }
-            } label: {
-                Image(systemName: "chevron.right")
-                    .font(CalorynTheme.inlineIcon)
-                    .foregroundStyle(selectedDate.isAtFutureLogLimit ? CalorynTheme.textSecondary.opacity(0.3) : CalorynTheme.sage)
-                    .frame(minWidth: Self.minimumHitTarget, minHeight: Self.minimumHitTarget, alignment: .trailing)
-                    .contentShape([.interaction, .accessibility], .rect)
             }
-            .disabled(selectedDate.isAtFutureLogLimit)
-            .accessibilityLabel("Next day")
-            .accessibilityIdentifier("today.nextDay")
+            // The 44pt hit targets overhang the 36pt circles by 4pt each side; pull the pair
+            // back so the right-hand circle sits on the page margin as the board draws it.
+            .padding(.trailing, -(Self.minimumHitTarget - Self.dayButtonSize) / 2)
         }
-        .padding(.vertical, 8)
+        .padding(.top, 4)
+        .padding(.bottom, 4)
     }
 
-    private func dashboardSection(calorieBudget: ActivityCalorieBudget) -> some View {
-        HStack {
-            Spacer()
-            CalorieRingView(
-                calorieBudget: calorieBudget,
-                ringSize: ringSize
-            ) {
-                withAnimation(.smooth(duration: 0.2)) {
-                    showingNutritionDetails = true
-                }
+    /// A 36pt glass circle inside a 44pt hit target — Apple's minimum; the accessibility audit
+    /// reports a bare 36pt control as "Hit area is too small".
+    private func dayButton(
+        systemImage: String,
+        label: String,
+        identifier: String,
+        isEnabled: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button {
+            withAnimation {
+                action()
             }
-            .accessibilityIdentifier("today.calorieRing")
-            Spacer()
+        } label: {
+            Image(systemName: systemImage)
+                .font(CalorynTheme.inlineIcon)
+                .imageScale(.small)
+                .foregroundStyle(isEnabled ? CalorynTheme.textPrimary : CalorynTheme.textTertiary)
+                .frame(width: Self.dayButtonSize, height: Self.dayButtonSize)
+                // Tinted with the card colour, as PlateDark draws filled discs: clear glass
+                // on the dark page showed nothing but its rim.
+                .adaptiveCircleInteractiveGlass(tint: CalorynTheme.cardBackground)
+                .frame(width: Self.minimumHitTarget, height: Self.minimumHitTarget)
+                .contentShape([.interaction, .accessibility], .rect)
         }
+        .buttonStyle(.plain)
+        .disabled(!isEnabled)
+        .accessibilityLabel(label)
+        .accessibilityIdentifier(identifier)
+    }
+
+    private func dashboardSection(
+        entries: [FoodLogEntry],
+        calorieBudget: ActivityCalorieBudget
+    ) -> some View {
+        CalorieHeroView(
+            summary: TodayHeroSummary(
+                mealTotals: TodayHeroSummary.mealTotals(
+                    entries,
+                    mealType: \.mealType,
+                    calories: \.calories
+                ),
+                budget: calorieBudget
+            )
+        ) {
+            withAnimation(.smooth(duration: 0.2)) {
+                showingNutritionDetails = true
+            }
+        }
+        .accessibilityIdentifier("today.calorieRing")
     }
 
     @ViewBuilder
@@ -307,30 +353,24 @@ struct TodayView: View {
     }
 
     private func nutriscoreSection(distribution: [(grade: String, count: Int)]) -> some View {
-        NutriscoreDaySummary(distribution: distribution, usesCard: false)
-            .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .center)))
+        NutriscoreDaySummary(distribution: distribution)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .leading)))
     }
 
+    /// Copies all of yesterday's log onto an empty day. Shown under the hero, in the slot the
+    /// Nutri-Score chips take once anything is logged, because it is only ever offered while
+    /// the day is empty — and every empty meal row points at it ("or copy yesterday's").
     private func copyYesterdayButton(yesterdayEntries: [FoodLogEntry]) -> some View {
         Button {
             copyYesterday(yesterdayEntries)
         } label: {
-            Label("Copy Yesterday's Meals", systemImage: "doc.on.doc")
-                .font(CalorynTheme.buttonLabel)
-                .foregroundStyle(CalorynTheme.sage)
+            Text("Copy yesterday's meals")
+                .calorynChip(isSelected: false)
         }
         .buttonStyle(.plain)
-        .padding(.vertical, 4)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityIdentifier("today.copyYesterday")
-    }
-
-    private func actionsSection(yesterdayEntries: [FoodLogEntry]) -> some View {
-        Section {
-            copyYesterdayButton(yesterdayEntries: yesterdayEntries)
-        } header: {
-            Color.clear
-                .frame(height: 10)
-        }
     }
 
     private func presentFoodSearch(

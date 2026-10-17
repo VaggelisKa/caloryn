@@ -54,6 +54,9 @@ struct FoodSearchView: View {
     @State var multiAddPresentation: MultiAddPresentation?
     @ScaledMetric(relativeTo: .body)
     var selectionIndicatorWidth: CGFloat = 22
+    /// The search well and the scanner button beside it share one height, the board's 46pt.
+    @ScaledMetric(relativeTo: .body)
+    private var searchControlHeight: CGFloat = 46
     @FocusState private var isSearchFocused: Bool
 
     /// Every rule about what this screen lists lives in `FoodSearchListing`.
@@ -125,37 +128,54 @@ struct FoodSearchView: View {
                         }
                     }
                 case .noResults:
-                    ContentUnavailableView(
-                        "No Results",
-                        systemImage: "magnifyingglass",
-                        description: Text("Try a different search term.")
-                    )
+                    ContentUnavailableView {
+                        Label {
+                            Text("No results")
+                                .foregroundStyle(CalorynTheme.textPrimary)
+                        } icon: {
+                            Image(systemName: "magnifyingglass")
+                                .foregroundStyle(CalorynTheme.textSecondary)
+                        }
+                    } description: {
+                        Text("Try a different search term.")
+                            .foregroundStyle(CalorynTheme.textSecondary)
+                    }
                 case .results:
                     searchResultsList
                 }
             }
             .calorynSheetCanvas()
-            .navigationTitle(mode.title)
+            .navigationTitle(sheetTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    sheetTitleView
+                }
                 ToolbarItem(placement: .cancellationAction) {
                     Button {
                         dismiss()
                     } label: {
                         Image(systemName: "xmark")
                             .font(CalorynTheme.toolbarIcon)
-                            .foregroundStyle(CalorynTheme.sage)
+                            .foregroundStyle(CalorynTheme.textPrimary)
                     }
                     .accessibilityLabel("Close")
                 }
                 if mode.supportsMultiSelection {
                     ToolbarItem(placement: .primaryAction) {
+                        let isEnabled = mode.isMultiSelectionControlEnabled(
+                            isSelectingMultiple: isSelectingMultiple,
+                            selectableOptionCount: selectableOptionCount
+                        )
                         Button {
                             toggleMultiSelectionMode()
                         } label: {
                             Text(isSelectingMultiple ? "Cancel" : "Select")
+                                .font(CalorynTheme.toolbarAction)
                                 .contentTransition(.opacity)
-                                .foregroundStyle(CalorynTheme.sage)
+                                .foregroundStyle(
+                                    isEnabled ? CalorynTheme.textPrimary : CalorynTheme.textSecondary
+                                )
                                 .animation(
                                     selectionModeAnimation,
                                     value: isSelectingMultiple
@@ -166,12 +186,7 @@ struct FoodSearchView: View {
                                 ? "Cancel multiple selection"
                                 : "Select multiple items"
                         )
-                        .disabled(
-                            !mode.isMultiSelectionControlEnabled(
-                                isSelectingMultiple: isSelectingMultiple,
-                                selectableOptionCount: selectableOptionCount
-                            )
-                        )
+                        .disabled(!isEnabled)
                     }
                 } else if mode.allowsManualEntryCreation {
                     ToolbarItem(placement: .primaryAction) {
@@ -181,7 +196,7 @@ struct FoodSearchView: View {
                         } label: {
                             Image(systemName: "plus")
                                 .font(CalorynTheme.toolbarIcon)
-                                .foregroundStyle(CalorynTheme.sage)
+                                .foregroundStyle(CalorynTheme.textPrimary)
                         }
                         .accessibilityLabel("Create Manual Entry")
                     }
@@ -195,19 +210,16 @@ struct FoodSearchView: View {
                                 groups: multiAddSelection.groups
                             )
                         } label: {
-                            Label {
-                                Text(reviewButtonTitle)
-                                    .contentTransition(.numericText())
-                            } icon: {
-                                Image(systemName: "checkmark.circle.fill")
-                            }
-                            .frame(maxWidth: .infinity)
+                            Text(reviewButtonTitle)
+                                .contentTransition(.numericText())
                         }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.large)
+                        .calorynPrimaryButton()
                         .padding(.horizontal, CalorynTheme.pagePadding)
-                        .padding(.vertical, 10)
-                        .background(.bar)
+                        .padding(.top, 12)
+                        .padding(.bottom, 8)
+                        .background {
+                            FoodLogBottomFade()
+                        }
                         .transition(
                             .move(edge: .bottom)
                                 .combined(with: .opacity)
@@ -270,6 +282,9 @@ struct FoodSearchView: View {
                 Text(mealErrorMessage ?? "Please try again.")
             }
             .onAppear {
+                #if DEBUG
+                applyDebugPresentationIfRequested()
+                #endif
                 captureSuggestionsIfNeeded()
                 if startsWithScanner, !hasPresentedInitialScanner {
                     hasPresentedInitialScanner = true
@@ -286,19 +301,57 @@ struct FoodSearchView: View {
         }
     }
 
+    /// "Add to Lunch" while logging, the meal word in its own ink; the mode's own title
+    /// for every other way the sheet is opened.
+    private var sheetTitle: String {
+        guard case .logging = mode else { return mode.title }
+        return "Add to \(mealType.displayName)"
+    }
+
+    @ViewBuilder
+    private var sheetTitleView: some View {
+        if case .logging = mode {
+            HStack(spacing: 6) {
+                Text("Add to")
+                    .foregroundStyle(CalorynTheme.textPrimary)
+                Text(mealType.displayName)
+                    .foregroundStyle(mealType.ink)
+            }
+            .font(CalorynTheme.sectionHeaderTitle)
+            .lineLimit(1)
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isHeader)
+        } else {
+            Text(mode.title)
+                .font(CalorynTheme.sectionHeaderTitle)
+                .foregroundStyle(CalorynTheme.textPrimary)
+                .lineLimit(1)
+                .accessibilityAddTraits(.isHeader)
+        }
+    }
+
     private var searchBar: some View {
         HStack(spacing: 10) {
             HStack(spacing: 10) {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(CalorynTheme.textSecondary)
+                    .accessibilityHidden(true)
 
-                TextField("Search foods...", text: $searchText)
-                    .font(CalorynTheme.bodyText)
-                    .focused($isSearchFocused)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .onSubmit { searchService.search(query: searchText) }
-                    .accessibilityIdentifier("foodSearch.searchField")
+                TextField(
+                    text: $searchText,
+                    prompt: Text("Search foods")
+                        .foregroundStyle(CalorynTheme.textSecondary)
+                ) {
+                    Text("Search foods")
+                }
+                .font(CalorynTheme.bodyText)
+                .foregroundStyle(CalorynTheme.textPrimary)
+                .textFieldStyle(.plain)
+                .focused($isSearchFocused)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .onSubmit { searchService.search(query: searchText) }
+                .accessibilityIdentifier("foodSearch.searchField")
 
                 if !searchText.isEmpty {
                     Button {
@@ -308,22 +361,15 @@ struct FoodSearchView: View {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundStyle(CalorynTheme.textSecondary)
                     }
+                    .accessibilityLabel("Clear search")
                 }
             }
-            .padding(12)
-            .adaptiveCapsuleGlass()
-            .overlay {
-                Capsule()
-                    .stroke(
-                        isSearchFocused
-                            ? CalorynTheme.sage.opacity(0.42)
-                            : CalorynTheme.textSecondary.opacity(0.10),
-                        lineWidth: isSearchFocused ? 1 : 0.5
-                    )
-                    .allowsHitTesting(false)
-            }
-            .animation(.smooth(duration: 0.18), value: isSearchFocused)
+            // The well: a `surface` capsule beside the round scanner, as the board draws it.
+            .foodSearchWell(isFocused: isSearchFocused, height: searchControlHeight)
 
+            // Glass, like the close and Select circles above it: chrome stays glass. Tinted
+            // with the well's `surface` and edged with its hairline, as the board draws the
+            // circle beside the well: clear glass on the white sheet showed no edge at all.
             Button {
                 isSearchFocused = false
                 barcodeFlow.scannerOpened()
@@ -331,13 +377,15 @@ struct FoodSearchView: View {
             } label: {
                 Image(systemName: "barcode.viewfinder")
                     .font(CalorynTheme.inlineIcon)
-                    .foregroundStyle(CalorynTheme.sage)
-                    .frame(width: 44, height: 44)
+                    .foregroundStyle(CalorynTheme.textPrimary)
+                    .frame(width: searchControlHeight, height: searchControlHeight)
             }
-            .adaptiveCircleInteractiveGlass()
+            .adaptiveCircleInteractiveGlass(tint: CalorynTheme.surface, edge: CalorynTheme.hairline)
+            .accessibilityLabel("Scan a barcode")
         }
         .padding(.horizontal, CalorynTheme.pagePadding)
-        .padding(.vertical, 10)
+        .padding(.top, 8)
+        .padding(.bottom, 6)
         .onChange(of: searchText) {
             if FoodSearchScreenContent.dismissesBarcodeFailure(
                 forSearchText: searchText,
@@ -351,9 +399,11 @@ struct FoodSearchView: View {
     }
 
     private var recentFoodsList: some View {
+        // The sections and their order are the app's own, unchanged by the restyle:
+        // suggestions, the saved meals, the user's own foods when picking one, then Recent.
         List {
             if !contextualSuggestions.isEmpty {
-                foodSection(title: "Suggested for This Meal") {
+                foodSection(title: FoodLogSheetCopy.suggestionsTitle(for: mealType)) {
                     ForEach(contextualSuggestions, id: \.1.id) { pair in
                         contextualSuggestionRow(
                             food: pair.0,
@@ -380,7 +430,7 @@ struct FoodSearchView: View {
             }
 
             if mode.isSelection, !manualEntries.isEmpty {
-                foodSection(title: "Manual Entries", stickyHeaderStyle: .system) {
+                foodSection(title: "Your own entries") {
                     ForEach(manualEntries) { food in
                         personalFoodRow(for: food)
                     }
@@ -436,7 +486,7 @@ struct FoodSearchView: View {
             }
 
             if !matchingManualEntries.isEmpty {
-                foodSection(title: "Manual Entries") {
+                foodSection(title: "Your own entries") {
                     ForEach(matchingManualEntries) { food in
                         personalFoodRow(for: food)
                     }
@@ -445,7 +495,7 @@ struct FoodSearchView: View {
 
             if hasProductSearchResults {
                 foodSection(
-                    title: "Search Results",
+                    title: "Search results",
                     showsTitle: hasCategorizedLocalMatches
                 ) {
                     ForEach(matchingEditedProducts) { food in
@@ -459,37 +509,30 @@ struct FoodSearchView: View {
             }
 
             if searchService.isSearching {
+                // The previous row's hairline is this cell's top separator, so only the
+                // bottom one goes; the skeleton draws its own between its rows.
                 FoodSearchSkeletonRows()
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
+                    .listRowInsets(FoodSearchSkeletonRows.listRowInsets)
+                    .listRowSeparator(.hidden, edges: .bottom)
+                    .listRowSeparatorTint(CalorynTheme.hairline)
+                    .calorynClearRowBackground()
             }
         }
         .calorynPlainListStyle()
         .scrollDismissesKeyboard(.immediately)
     }
 
-    /// How a section labels itself when the mode pins headers to the top of
-    /// the list (`usesNonStickySectionTitles == false`).
-    ///
-    /// Two styles exist because the two lists have never agreed: the resting
-    /// list's Manual Entries section uses `Section(_:)`'s system header, while
-    /// every other pinned header is a caption-styled `Text`.
-    ///
-    /// Recipes used to ask for `.system` too, but headers only pin in
-    /// `.ingredientSelection`, and that mode's `includesRecipes == false`
-    /// keeps the recipes list empty — so the branch never rendered.
-    private enum StickyHeaderStyle {
-        case system
-        case caption
-    }
-
     /// The one shape every section of both lists shares: a title that either
     /// scrolls away with its rows or pins to the top, per the mode, above
     /// rows on a clear background.
+    ///
+    /// A pinned header (`usesNonStickySectionTitles == false`, ingredient selection) is the
+    /// same 17pt bold ink title as a scrolling one, with the same hairline under it. The
+    /// resting list's own-entries section used to take `Section(_:)`'s system header
+    /// instead, which drew in the system's grey.
     @ViewBuilder
     private func foodSection<Rows: View>(
         title: String,
-        stickyHeaderStyle: StickyHeaderStyle = .caption,
         showsTitle: Bool = true,
         @ViewBuilder rows: () -> Rows
     ) -> some View {
@@ -499,26 +542,35 @@ struct FoodSearchView: View {
             }
 
             rows()
-                .listRowBackground(Color.clear)
+                .calorynHairlineSeparators()
         } else {
-            switch stickyHeaderStyle {
-            case .system:
-                Section(title) {
-                    rows()
-                        .listRowBackground(Color.clear)
-                }
-            case .caption:
-                Section {
-                    rows()
-                        .listRowBackground(Color.clear)
-                } header: {
-                    if showsTitle {
-                        Text(title)
-                            .font(CalorynTheme.caption)
-                            .foregroundStyle(CalorynTheme.textSecondary)
-                    }
+            Section {
+                rows()
+                    .calorynHairlineSeparators()
+            } header: {
+                // Before iOS 26 a plain list paints a pinned header's band in a system grey
+                // (My Foods' `LibrarySectionHeader` covers it the same way). The header
+                // covers that band with the sheet's own colour, edge to edge, and keeps
+                // its title on the rows' 16pt system margin with padding instead of row
+                // insets, as `LibraryRowStyle.headerPadding` does.
+                if showsTitle {
+                    Text(title)
+                        .font(CalorynTheme.sectionHeaderTitle)
+                        .foregroundStyle(CalorynTheme.textPrimary)
+                        .textCase(nil)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 6)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(CalorynTheme.cardBackground)
+                        .listRowInsets(EdgeInsets())
+                        .accessibilityAddTraits(.isHeader)
                 }
             }
+            // The section's own top separator is the hairline under a pinned title, the one
+            // a scrolling title draws as its row separator (My Foods' sections keep it the
+            // same way), so both lists open a section alike.
+            .listSectionSeparator(showsTitle ? .visible : .automatic, edges: .top)
+            .listSectionSeparatorTint(CalorynTheme.hairline)
         }
     }
 
@@ -663,14 +715,16 @@ struct FoodSearchView: View {
         }
     }
 
+    /// A 17pt bold ink title that scrolls with its rows. Only its top separator is hidden,
+    /// so the hairline under it opens the section the way the board draws it.
     private func nonStickySectionTitle(_ title: String) -> some View {
         Text(title)
-            .font(CalorynTheme.caption)
-            .foregroundStyle(CalorynTheme.textSecondary)
+            .font(CalorynTheme.sectionHeaderTitle)
+            .foregroundStyle(CalorynTheme.textPrimary)
             .accessibilityAddTraits(.isHeader)
-            .listRowSeparator(.hidden)
-            .listRowBackground(Color.clear)
-            .padding(.top, 8)
+            .padding(.top, 14)
+            .listRowSeparator(.hidden, edges: .top)
+            .calorynHairlineSeparators()
     }
 
     private func addMeal(_ meal: MealTemplate) {
@@ -712,15 +766,18 @@ struct FoodSearchView: View {
             }
             .ignoresSafeArea()
 
+            // Over live video, not over the theme: the glyph stays white in both
+            // appearances, on a glass circle the camera shows through.
             Button {
                 showingScanner = false
             } label: {
                 Image(systemName: "xmark")
                     .font(CalorynTheme.toolbarIcon)
                     .foregroundStyle(.white)
-                    .frame(width: 36, height: 36)
-                    .background(.ultraThinMaterial, in: Circle())
+                    .frame(width: 40, height: 40)
+                    .adaptiveCircleInteractiveGlass()
             }
+            .accessibilityLabel("Close")
             .padding(.top, 56)
             .padding(.leading, 20)
         }
@@ -737,13 +794,14 @@ struct FoodSearchView: View {
                     onCreateManually: openManualBarcodeRecovery
                 )
             } else {
-                VStack(spacing: 16) {
+                VStack(spacing: 14) {
                     Spacer()
-                ProgressView()
-                    .controlSize(.large)
-                Text("Looking up product...")
-                    .font(CalorynTheme.bodyText)
-                    .foregroundStyle(CalorynTheme.textSecondary)
+                    ProgressView()
+                        .controlSize(.large)
+                        .tint(CalorynTheme.textPrimary)
+                    Text("Looking up the product…")
+                        .font(CalorynTheme.bodyText)
+                        .foregroundStyle(CalorynTheme.textSecondary)
                     Spacer()
                 }
             }
@@ -829,6 +887,42 @@ struct FoodSearchView: View {
         }
     }
 
+    #if DEBUG
+    /// Seeds the demo foods and puts the sheet in the state `-uitest-present` asks for, once
+    /// per launch. See `FoodLogDebugPresentation`.
+    private func applyDebugPresentationIfRequested() {
+        guard case .logging = mode,
+              let request = FoodLogDebugPresentation.takeRequest() else { return }
+        let foods = FoodLogDebugPresentation.seedDemoFoods(into: modelContext)
+
+        // After the first frame: by then the query has caught up with the seeded foods, so
+        // the suggestions are captured again, and a push or a sheet requested during the
+        // sheet's own appearance would be dropped.
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(600))
+            hasCapturedSuggestions = false
+            captureSuggestionsIfNeeded()
+            isSearchFocused = false
+            switch request {
+            case .addFood:
+                break
+            case .portion:
+                // A remembered 160 g is not a whole pot, so the sheet opens on the
+                // grams stepper rather than the pot wheel.
+                selectedFoodItem = PortionDestination(food: foods.skyr, suggestedPortionGrams: 160)
+            case .portionServing:
+                selectedFoodItem = PortionDestination(food: foods.rugbrod)
+            case .select, .multiAdd:
+                isSelectingMultiple = true
+                toggleFoodSelection(foods.skyr)
+                toggleFoodSelection(foods.rugbrod)
+                if request == .multiAdd {
+                    multiAddPresentation = MultiAddPresentation(groups: multiAddSelection.groups)
+                }
+            }
+        }
+    }
+    #endif
 }
 
 private struct FoodLookupFailureView: View {
@@ -837,15 +931,32 @@ private struct FoodLookupFailureView: View {
 
     var body: some View {
         ContentUnavailableView {
-            Label(presentation.title, systemImage: presentation.systemImage)
+            FoodLookupFailureLabel(presentation: presentation)
         } description: {
             Text(presentation.message)
+                .foregroundStyle(CalorynTheme.textSecondary)
         } actions: {
             if let retryTitle = presentation.retryTitle {
                 Button(retryTitle, action: onRetry)
-                    .buttonStyle(.borderedProminent)
+                    .adaptiveGlassProminentButton()
                     .controlSize(.large)
             }
+        }
+    }
+}
+
+/// A lookup failure's title in ink over its symbol in the secondary text colour, rather
+/// than the system's own greys.
+private struct FoodLookupFailureLabel: View {
+    let presentation: FoodLookupFailurePresentation
+
+    var body: some View {
+        Label {
+            Text(presentation.title)
+                .foregroundStyle(CalorynTheme.textPrimary)
+        } icon: {
+            Image(systemName: presentation.systemImage)
+                .foregroundStyle(CalorynTheme.textSecondary)
         }
     }
 }
@@ -859,22 +970,23 @@ private struct BarcodeLookupFailureView: View {
 
     var body: some View {
         ContentUnavailableView {
-            Label(presentation.title, systemImage: presentation.systemImage)
+            FoodLookupFailureLabel(presentation: presentation)
         } description: {
             VStack(spacing: 6) {
                 Text(presentation.message)
+                    .foregroundStyle(CalorynTheme.textSecondary)
                 if offersManualCreation, let normalizedBarcode {
                     Text("Barcode \(normalizedBarcode)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(CalorynTheme.numericCaption)
+                        .foregroundStyle(CalorynTheme.textSecondary)
                         .textSelection(.enabled)
                 }
             }
         } actions: {
             VStack(spacing: 10) {
                 if offersManualCreation, normalizedBarcode != nil {
-                    Button("Create Manual Food", action: onCreateManually)
-                        .buttonStyle(.borderedProminent)
+                    Button("Create manual food", action: onCreateManually)
+                        .adaptiveGlassProminentButton()
                         .controlSize(.large)
                         .accessibilityHint("Opens a private food with this barcode already filled in")
                 }
@@ -882,6 +994,7 @@ private struct BarcodeLookupFailureView: View {
                 if let retryTitle = presentation.retryTitle {
                     Button(retryTitle, action: onRetry)
                         .buttonStyle(.bordered)
+                        .tint(CalorynTheme.textPrimary)
                         .controlSize(.large)
                 }
             }

@@ -32,17 +32,6 @@ struct OnboardingGoalSummaryDraft: Equatable {
         var calculatedTarget: Int {
             NutritionCalculator.defaultTarget(tdee: tdee, deficit: calorieDeficit)
         }
-
-        /// The slider reads as a deficit in one direction and a surplus in the
-        /// other, so the sign is spelled out rather than shown as a minus.
-        var deficitLabel: String {
-            if calorieDeficit > 0 {
-                return "-\(calorieDeficit.truncatedSafely) kcal/day (lose weight)"
-            } else if calorieDeficit < 0 {
-                return "+\(abs(calorieDeficit).truncatedSafely) kcal/day (gain weight)"
-            }
-            return "Maintenance (no change)"
-        }
     }
 
     var manualTargetText: String = ""

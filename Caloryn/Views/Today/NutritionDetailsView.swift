@@ -1,5 +1,12 @@
 import SwiftUI
 
+/// The day's nutrition, opened from Today's hero: the big number, the nutrients that have a
+/// target as ink bars, fruit and veg variety, the day's Nutri-Scores, everything else as
+/// hairline rows, and a note on where the figures come from.
+///
+/// Sections and their wording come from `NutritionDetailsSections`, the calorie rules from
+/// `NutritionDetailsSummary` and the day's `ActivityCalorieBudget`; this view only lays them
+/// out on the white sheet canvas.
 struct NutritionDetailsView: View {
     let date: Date
     let entries: [FoodLogEntry]
@@ -8,6 +15,12 @@ struct NutritionDetailsView: View {
     let nutrientGoalKinds: [TrackedNutrient: NutrientGoalKind]
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @AppStorage("showNutriscore") private var showNutriscore = true
+
+    @ScaledMetric(relativeTo: .largeTitle) private var numberSize: CGFloat = 52
+    @ScaledMetric(relativeTo: .subheadline) private var barHeight: CGFloat = 8
+    @ScaledMetric(relativeTo: .footnote) private var chipHeight: CGFloat = 30
 
     private var summary: NutritionDetailsSummary {
         NutritionDetailsSummary(
@@ -18,10 +31,6 @@ struct NutritionDetailsView: View {
                 )
             }
         )
-    }
-
-    private var calorieAccentColor: Color {
-        color(for: NutritionDetailsSummary.calorieAccent(isOver: calorieBudget.isOver))
     }
 
     private var shouldShowDynamicTDEE: Bool {
@@ -43,53 +52,69 @@ struct NutritionDetailsView: View {
         ProduceVarietySummary(entries: entries)
     }
 
-    private func color(for accent: NutritionDetailsSummary.CalorieAccent) -> Color {
-        switch accent {
-        case .withinBudget:
-            CalorynTheme.sage
-        case .overBudget:
-            CalorynTheme.terracotta
-        }
-    }
-
-    private func color(for group: NutrientDetailGroup) -> Color {
-        switch group {
-        case .protein:
-            CalorynTheme.proteinColor
-        case .carbs:
-            CalorynTheme.carbColor
-        case .fat:
-            CalorynTheme.fatColor
-        case .salt:
-            CalorynTheme.stone
-        }
+    private var nutriscoreGrades: [String?] {
+        entries.map(\.historicalNutriscoreGrade)
     }
 
     var body: some View {
+        let summary = summary
+        let sections = NutritionDetailsSections(
+            metrics: allNutrientMetrics,
+            details: NutrientDetailGroup.populatedGroups(in: summary.totalNutrition)
+        )
+
         NavigationStack {
             ScrollView {
-                VStack(spacing: CalorynTheme.cardSpacing) {
-                    calorieSummary
+                VStack(alignment: .leading, spacing: 24) {
+                    calorieSummary(summary)
                     dynamicTDEESummary
-                    produceVarietyCard
-                    allStatsGrid
-                    detailSections
+
+                    if !sections.targets.isEmpty {
+                        targetsSection(sections.targets)
+                    }
+
+                    produceSection
+
+                    if showNutriscore, NutriscoreDayDistribution.hasData(nutriscoreGrades) {
+                        nutriscoreSection
+                    }
+
+                    if !sections.amounts.isEmpty {
+                        amountSection("Also in today's food", rows: sections.amounts)
+                    }
+
+                    ForEach(sections.breakdowns) { breakdown in
+                        amountSection(breakdown.title, rows: breakdown.rows)
+                    }
+
                     dataQualityNote
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, CalorynTheme.pagePadding)
-                .padding(.vertical, CalorynTheme.cardSpacing)
+                .padding(.top, 22)
+                .padding(.bottom, 32)
             }
             .calorynSheetCanvas()
-            .navigationTitle("Nutrition Details")
+            .navigationTitle(DayTitle.text(for: date))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text(DayTitle.text(for: date))
+                        .font(CalorynTheme.sectionHeaderTitle)
+                        .foregroundStyle(CalorynTheme.textPrimary)
+                        .lineLimit(1)
+                        .accessibilityLabel("Nutrition details, \(DayTitle.accessibilityLabel(for: date))")
+                        .accessibilityAddTraits(.isHeader)
+                        .accessibilityIdentifier("nutritionDetails.title")
+                }
+
                 ToolbarItem(placement: .confirmationAction) {
                     Button {
                         dismiss()
                     } label: {
                         Image(systemName: "xmark")
                             .font(CalorynTheme.toolbarIcon)
-                            .foregroundStyle(CalorynTheme.sage)
+                            .foregroundStyle(CalorynTheme.textPrimary)
                     }
                     .accessibilityLabel("Close")
                     .accessibilityIdentifier("nutritionDetails.close")
@@ -98,140 +123,97 @@ struct NutritionDetailsView: View {
         }
     }
 
-    private var calorieSummary: some View {
-        let summary = summary
+    // MARK: - Calories
 
-        return VStack(alignment: .leading, spacing: 14) {
-            Text("Daily Nutrition")
-                .font(CalorynTheme.sectionTitle)
+    /// The big number with the target and the food amount beside it, or under it at the
+    /// accessibility text sizes: there a four-digit total took most of the row and the two
+    /// lines beside it were cut off. One layout swapped for the other, so the figure keeps its
+    /// identity and still rolls when it changes.
+    private func calorieSummary(_ summary: NutritionDetailsSummary) -> some View {
+        let isStacked = dynamicTypeSize.isAccessibilitySize
+        let layout = isStacked
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4))
+            : AnyLayout(HStackLayout(alignment: .bottom, spacing: 10))
+
+        return layout {
+            Text("\(calorieBudget.roundedConsumed)")
+                .font(CalorynTheme.heroNumber(size: numberSize))
+                .tracking(-numberSize * 0.035)
                 .foregroundStyle(CalorynTheme.textPrimary)
-                .accessibilityIdentifier("nutritionDetails.title")
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+                .contentTransition(.numericText())
+                .accessibilityLabel("\(calorieBudget.roundedConsumed) kcal eaten")
+                .accessibilityIdentifier("nutritionDetails.consumedCalories")
 
-            HStack(alignment: .firstTextBaseline) {
-                Text("\(calorieBudget.roundedConsumed)")
-                    .font(CalorynTheme.displayNumber)
-                    .foregroundStyle(calorieAccentColor)
-                    .contentTransition(.numericText())
-                    .accessibilityIdentifier("nutritionDetails.consumedCalories")
+            VStack(alignment: .leading, spacing: 2) {
+                Text(
+                    NutritionDetailsSections.calorieTargetText(
+                        adjustedTarget: calorieBudget.adjustedTarget,
+                        isOver: calorieBudget.isOver,
+                        overAmount: calorieBudget.overAmount
+                    )
+                )
+                .font(TodayPlateFont.detailsNumberCaption)
+                .foregroundStyle(CalorynTheme.textPrimary)
 
-                Text("/ \(calorieBudget.adjustedTarget) kcal")
-                    .font(CalorynTheme.numericBody)
+                Text(NutritionDetailsSections.foodAmountText(summary: summary))
+                    .font(TodayPlateFont.detailsNote)
                     .foregroundStyle(CalorynTheme.textSecondary)
             }
-
-            progressBar(
-                current: summary.totalCalories,
-                target: Double(calorieBudget.adjustedTarget),
-                color: calorieAccentColor
-            )
-
-            Divider()
-                .foregroundStyle(CalorynTheme.stone.opacity(0.3))
-
-            HStack(alignment: .top, spacing: 10) {
-                summaryStat(
-                    label: NutritionDetailsSummary.calorieSummaryLabel(isOver: calorieBudget.isOver),
-                    value: "\(calorieBudget.isOver ? calorieBudget.overAmount : calorieBudget.remaining)",
-                    detail: "kcal",
-                    color: calorieAccentColor
-                )
-
-                verticalDivider
-
-                summaryStat(
-                    label: "Logged",
-                    value: "\(summary.loggedItemCount)",
-                    detail: summary.loggedItemsUnitText
-                )
-
-                verticalDivider
-
-                summaryStat(
-                    label: "Food Weight",
-                    value: summary.totalPortionGramsText,
-                    detail: "total"
-                )
-            }
+            .lineLimit(isStacked ? nil : 2)
+            .fixedSize(horizontal: false, vertical: isStacked)
+            .padding(.bottom, isStacked ? 0 : 4)
         }
-        .glassCard()
     }
+
+    // MARK: - Auto-adjusted calories
 
     @ViewBuilder
     private var dynamicTDEESummary: some View {
         if shouldShowDynamicTDEE {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .center, spacing: 12) {
-                    ZStack {
-                        Circle()
-                            .fill(CalorynTheme.carbColor.opacity(0.16))
-
-                        Image(systemName: "flame.fill")
-                            .font(CalorynTheme.inlineIcon)
-                            .foregroundStyle(CalorynTheme.carbColor)
-                    }
-                    .frame(width: 42, height: 42)
-                    .accessibilityHidden(true)
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Auto-adjusted calories")
-                            .font(CalorynTheme.itemTitle)
-                            .foregroundStyle(CalorynTheme.textPrimary)
-
-                        Text(ActivityCalorieBudget.dynamicEnergyPolicyText)
-                            .font(CalorynTheme.caption)
-                            .foregroundStyle(CalorynTheme.textSecondary)
-                    }
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    sectionTitle("Auto-adjusted calories")
 
                     Spacer(minLength: 8)
 
-                    HStack(spacing: 8) {
-                        if calorieBudget.isActivityLoading {
-                            ProgressView()
-                        }
-
-                        Text(dynamicAdjustmentText)
-                            .font(CalorynTheme.numericBody)
-                            .foregroundStyle(
-                                NutritionDetailsSummary.isDynamicAdjustmentMuted(calorieBudget.dynamicAdjustment)
-                                    ? CalorynTheme.textSecondary
-                                    : CalorynTheme.carbColor
-                            )
-                            .contentTransition(.numericText())
+                    if calorieBudget.isActivityLoading {
+                        ProgressView()
+                            .controlSize(.small)
                     }
+
+                    Text(dynamicAdjustmentText)
+                        .font(TodayPlateFont.detailsRowValue)
+                        .foregroundStyle(
+                            NutritionDetailsSummary.isDynamicAdjustmentMuted(calorieBudget.dynamicAdjustment)
+                                ? CalorynTheme.textSecondary
+                                : CalorynTheme.textPrimary
+                        )
+                        .contentTransition(.numericText())
                 }
+
+                Text(ActivityCalorieBudget.dynamicEnergyPolicyText)
+                    .font(TodayPlateFont.detailsNote)
+                    .foregroundStyle(CalorynTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 if let dynamicMessage = calorieBudget.dynamicStatusText {
                     dynamicStatusNotice(dynamicMessage)
                 }
 
-                Divider()
-                    .foregroundStyle(CalorynTheme.stone.opacity(0.3))
-
-                HStack(alignment: .top, spacing: 10) {
-                    compactActivityStat(
-                        label: "Baseline",
-                        value: baselineText
-                    )
-
-                    verticalDivider
-
-                    compactActivityStat(
+                VStack(spacing: 0) {
+                    amountRow(label: "Baseline", value: baselineText)
+                    amountRow(
                         label: "Today",
                         value: NutritionDetailsSummary.activeEnergyText(
                             activeEnergyKcal: calorieBudget.activeEnergyKcal
-                        ),
-                        color: CalorynTheme.carbColor
+                        )
                     )
-
-                    verticalDivider
-
-                    compactActivityStat(
-                        label: "Target",
-                        value: calorieBudget.baseTarget.kcalFormatted
-                    )
+                    amountRow(label: "Target", value: calorieBudget.baseTarget.kcalFormatted)
                 }
+                .padding(.top, 4)
             }
-            .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
             .accessibilityElement(children: .combine)
             .accessibilityLabel("Auto-adjusted calories, \(baselineText) baseline, \(calorieBudget.activeEnergyKcal.kcalFormatted) today, \(dynamicAdjustmentText) adjustment, \(calorieBudget.adjustedTarget.kcalFormatted) target")
         }
@@ -247,283 +229,224 @@ struct NutritionDetailsView: View {
         NutritionDetailsSummary.dynamicAdjustmentText(calorieBudget.dynamicAdjustment)
     }
 
+    /// Ink when auto-adjust cannot run at all, secondary otherwise. Weight, not colour: red
+    /// means lunch on this palette.
     private var dynamicStatusNoticeColor: Color {
         switch NutritionDetailsSummary.statusNoticeStyle(for: calorieBudget.dynamicStatus) {
         case .warning:
-            CalorynTheme.terracotta
-        case .informational:
-            CalorynTheme.carbColor
-        case .neutral:
+            CalorynTheme.textPrimary
+        case .informational, .neutral:
             CalorynTheme.textSecondary
         }
     }
 
     private func dynamicStatusNotice(_ message: String) -> some View {
-        HStack(alignment: .top, spacing: 8) {
-            Image(systemName: "info.circle.fill")
-                .font(CalorynTheme.compactIcon)
-                .foregroundStyle(dynamicStatusNoticeColor)
-                .padding(.top, 1)
-                .accessibilityHidden(true)
-
-            Text(message)
-                .font(CalorynTheme.caption)
-                .foregroundStyle(CalorynTheme.textSecondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(dynamicStatusNoticeColor.opacity(0.10), in: .rect(cornerRadius: CalorynTheme.smallCornerRadius))
+        Text(message)
+            .font(TodayPlateFont.detailsNote)
+            .foregroundStyle(dynamicStatusNoticeColor)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                CalorynTheme.surface,
+                in: RoundedRectangle(cornerRadius: CalorynTheme.smallCornerRadius, style: .continuous)
+            )
     }
 
-    private func compactActivityStat(
-        label: String,
-        value: String,
-        color: Color = CalorynTheme.textPrimary
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(label)
-                .font(CalorynTheme.microCaption)
-                .foregroundStyle(CalorynTheme.textSecondary)
-                .lineLimit(1)
+    // MARK: - Targets
 
-            Text(value)
-                .font(CalorynTheme.numericCaption)
-                .foregroundStyle(color)
-                .contentTransition(.numericText())
-                .lineLimit(1)
-                .minimumScaleFactor(0.72)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
-    }
+    private func targetsSection(_ rows: [NutritionDetailsSections.TargetRow]) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionTitle("Against your targets")
 
-    private var produceVarietyCard: some View {
-        let summary = produceSummary
-        let countColor = summary.totalCount > 0 ? CalorynTheme.fiberColor : CalorynTheme.textSecondary
+            ForEach(rows) { row in
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(row.name)
+                            .font(TodayPlateFont.detailsRow)
+                            .foregroundStyle(CalorynTheme.textPrimary)
+                            .lineLimit(1)
+                            .layoutPriority(1)
 
-        return HStack(alignment: .center, spacing: 14) {
-            ZStack {
-                Circle()
-                    .fill(CalorynTheme.fiberColor.opacity(0.16))
+                        Spacer(minLength: 0)
 
-                Image(systemName: "carrot.fill")
-                    .font(CalorynTheme.inlineIcon)
-                    .foregroundStyle(CalorynTheme.fiberColor)
+                        targetFigures(row)
+                            .multilineTextAlignment(.trailing)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .contentTransition(.numericText())
+                    }
+
+                    progressBar(row.progress)
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(row.accessibilityLabel)
             }
-            .frame(width: 42, height: 42)
-            .accessibilityHidden(true)
+        }
+    }
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Fruit & veg variety")
-                    .font(CalorynTheme.itemTitle)
-                    .foregroundStyle(CalorynTheme.textPrimary)
+    /// "46g of 150g min", and past a maximum "34.8g of 20g max, 14.8g over" with the amount
+    /// bold and the overshoot in ink: weight and words, not colour, because red means lunch on
+    /// this palette. One `Text`, so a long line wraps under itself instead of truncating.
+    private func targetFigures(_ row: NutritionDetailsSections.TargetRow) -> Text {
+        let value = Text(row.valueText)
+            .font(TodayPlateFont.detailsRowValue)
+            .fontWeight(row.isOverMaximum ? .bold : .semibold)
+            .foregroundStyle(CalorynTheme.textPrimary)
+        let target = Text(row.targetText)
+            .font(TodayPlateFont.detailsRow)
+            .foregroundStyle(CalorynTheme.textSecondary)
 
-                Text(summary.breakdownText)
-                    .font(CalorynTheme.caption)
-                    .foregroundStyle(CalorynTheme.textSecondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.82)
+        guard let overText = row.overText else {
+            return Text("\(value) \(target)")
+        }
+        let over = Text(", \(overText)")
+            .font(TodayPlateFont.detailsRowValue)
+            .foregroundStyle(CalorynTheme.textPrimary)
+        return Text("\(value) \(target)\(over)")
+    }
 
-                if let preview = summary.previewText {
-                    Text(preview)
-                        .font(CalorynTheme.microCaption)
+    private func progressBar(_ progress: Double) -> some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(CalorynTheme.hairline)
+
+                Capsule()
+                    .fill(CalorynTheme.textPrimary)
+                    .frame(width: geo.size.width * progress)
+            }
+        }
+        .frame(height: barHeight)
+        .clipShape(Capsule())
+        .accessibilityHidden(true)
+    }
+
+    // MARK: - Fruit and veg
+
+    private var produceSection: some View {
+        let produce = produceSummary
+
+        return VStack(alignment: .leading, spacing: 10) {
+            sectionHeader(
+                "Fruit and veg",
+                trailing: NutritionDetailsSections.produceCountText(produce.totalCount)
+            )
+
+            ChipFlowLayout(spacing: 6, lineSpacing: 6) {
+                ForEach(produce.items) { item in
+                    Text(item.name)
+                        .font(CalorynTheme.chipLabel)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(CalorynTheme.mealSnackInk)
+                        .lineLimit(1)
+                        .padding(.horizontal, 12)
+                        .frame(minHeight: chipHeight)
+                        .background(CalorynTheme.mealSnack.opacity(0.16), in: Capsule())
+                }
+
+                if let remaining = NutritionDetailsSections.produceRemainingText(produce.totalCount) {
+                    Text(remaining)
+                        .font(CalorynTheme.chipLabel)
                         .foregroundStyle(CalorynTheme.textSecondary)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.82)
+                        .padding(.horizontal, 12)
+                        .frame(minHeight: chipHeight)
+                        .overlay {
+                            Capsule()
+                                .strokeBorder(
+                                    CalorynTheme.textPrimary.opacity(0.25),
+                                    style: StrokeStyle(lineWidth: 1, dash: [3, 3])
+                                )
+                        }
                 }
             }
-
-            Spacer(minLength: 8)
-
-            VStack(alignment: .trailing, spacing: 2) {
-                Text("\(summary.totalCount)")
-                    .font(CalorynTheme.compactNumber)
-                    .foregroundStyle(countColor)
-                    .contentTransition(.numericText())
-
-                Text("unique")
-                    .font(CalorynTheme.microCaption)
-                    .foregroundStyle(CalorynTheme.textSecondary)
-            }
-            .accessibilityHidden(true)
         }
-        .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
-            "Fruit and veg variety, \(summary.totalCount) unique, \(summary.breakdownText)"
+            "Fruit and veg variety, \(produce.totalCount) unique, \(produce.breakdownText)"
         )
     }
 
-    private var verticalDivider: some View {
-        Divider()
-            .foregroundStyle(CalorynTheme.stone.opacity(0.3))
-            .frame(height: 42)
-    }
+    // MARK: - Nutri-Score
 
-    private func summaryStat(
-        label: String,
-        value: String,
-        detail: String,
-        color: Color = CalorynTheme.textPrimary
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(label)
-                .font(CalorynTheme.microCaption)
-                .foregroundStyle(CalorynTheme.textSecondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.72)
+    private var nutriscoreSection: some View {
+        let distribution = NutriscoreDayDistribution.distribution(of: nutriscoreGrades)
+        let graded = distribution.reduce(0) { $0 + $1.count }
 
-            Text(value)
-                .font(CalorynTheme.numericBody)
-                .foregroundStyle(color)
-                .contentTransition(.numericText())
-                .lineLimit(1)
-                .minimumScaleFactor(0.72)
+        return VStack(alignment: .leading, spacing: 10) {
+            sectionHeader(
+                "Nutri-Score today",
+                trailing: NutritionDetailsSections.nutriscoreGradedText(graded: graded, total: entries.count)
+            )
 
-            Text(detail)
-                .font(CalorynTheme.microCaption)
-                .foregroundStyle(CalorynTheme.textSecondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.72)
+            NutriscoreDaySummary(distribution: distribution)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
     }
 
-    private var allStatsGrid: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
-                Image(systemName: "chart.bar.fill")
-                    .foregroundStyle(CalorynTheme.sage)
+    // MARK: - Amounts
 
-                Text("All Stats")
-                    .font(CalorynTheme.itemTitle)
+    private func amountSection(_ title: String, rows: [NutritionDetailsSections.AmountRow]) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            sectionTitle(title)
+                .padding(.bottom, 6)
+
+            ForEach(rows) { row in
+                amountRow(label: row.label, value: row.valueText)
+            }
+        }
+    }
+
+    /// A hairline above, label left, figure right: the board's rows, drawn by the stack
+    /// itself because this is a scroll view, not a `List`.
+    private func amountRow(label: String, value: String) -> some View {
+        VStack(spacing: 0) {
+            Rectangle()
+                .fill(CalorynTheme.hairline)
+                .frame(height: CalorynTheme.hairlineWidth)
+
+            HStack {
+                Text(label)
+                    .foregroundStyle(CalorynTheme.textPrimary)
+
+                Spacer(minLength: 8)
+
+                Text(value)
                     .foregroundStyle(CalorynTheme.textPrimary)
             }
-            .padding(.horizontal, 4)
-
-            LazyVGrid(
-                columns: [
-                    GridItem(.adaptive(minimum: 142), spacing: 10)
-                ],
-                spacing: 10
-            ) {
-                ForEach(allNutrientMetrics) { metric in
-                    nutrientTile(metric)
-                }
-            }
+            .font(TodayPlateFont.detailsRow)
+            .padding(.vertical, 8)
         }
-    }
-
-    private var detailSections: some View {
-        ForEach(NutrientDetailGroup.populatedGroups(in: summary.totalNutrition)) { populated in
-            detailSection(
-                populated.title,
-                systemImage: populated.systemImage,
-                color: color(for: populated.group),
-                items: populated.items
-            )
-        }
+        .accessibilityElement(children: .combine)
     }
 
     private var dataQualityNote: some View {
-        HStack(alignment: .top, spacing: 8) {
-            Image(systemName: "info.circle")
-                .font(CalorynTheme.compactIcon)
-                .foregroundStyle(CalorynTheme.textSecondary)
-
-            Text("Detailed nutrients come from product data and may be missing or inaccurate for some foods.")
-                .font(CalorynTheme.caption)
-                .foregroundStyle(CalorynTheme.textSecondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 4)
+        Text("Detailed nutrients come from product data and may be missing or inaccurate for some foods.")
+            .font(TodayPlateFont.detailsFootnote)
+            .foregroundStyle(CalorynTheme.textSecondary)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityIdentifier("nutritionDetails.dataQualityNote")
     }
 
-    private func detailSection(_ title: String, systemImage: String, color: Color, items: [DetailNutrient]) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
-                Image(systemName: systemImage)
-                    .font(CalorynTheme.compactIcon)
-                    .foregroundStyle(color)
+    // MARK: - Section headings
 
-                Text(title)
-                    .font(CalorynTheme.caption)
-                    .foregroundStyle(CalorynTheme.textPrimary)
-            }
-
-            VStack(spacing: 0) {
-                ForEach(items) { item in
-                    detailRow(label: item.label, value: item.formattedValue)
-                        .padding(.vertical, 5)
-
-                    if item.id != items.last?.id {
-                        Divider()
-                            .foregroundStyle(CalorynTheme.stone.opacity(0.3))
-                    }
-                }
-            }
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .adaptiveGlassCard(cornerRadius: CalorynTheme.smallCornerRadius)
+    private func sectionTitle(_ title: String) -> some View {
+        Text(title)
+            .font(TodayPlateFont.detailsSectionTitle)
+            .foregroundStyle(CalorynTheme.textPrimary)
+            .accessibilityAddTraits(.isHeader)
     }
 
-    private func detailRow(label: String, value: String) -> some View {
-        HStack {
-            Text(label)
-                .font(CalorynTheme.caption)
-                .foregroundStyle(CalorynTheme.textPrimary)
+    private func sectionHeader(_ title: String, trailing: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            sectionTitle(title)
 
-            Spacer()
+            Spacer(minLength: 8)
 
-            Text(value)
-                .font(CalorynTheme.numericCaption)
+            Text(trailing)
+                .font(TodayPlateFont.detailsNote)
                 .foregroundStyle(CalorynTheme.textSecondary)
+                .lineLimit(1)
         }
-        .accessibilityElement(children: .combine)
-    }
-
-    private func nutrientTile(_ metric: TrackedNutrientMetric) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                Image(systemName: metric.nutrient.systemImage)
-                    .font(CalorynTheme.compactIcon)
-                    .foregroundStyle(metric.accentColor)
-
-                Text(metric.nutrient.compactName)
-                    .font(CalorynTheme.caption)
-                    .foregroundStyle(CalorynTheme.textSecondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.72)
-            }
-
-            Text(metric.formattedValue)
-                .font(CalorynTheme.numericBody)
-                .foregroundStyle(metric.accentColor)
-                .contentTransition(.numericText())
-
-            if let target = metric.target, target > 0 {
-                progressBar(current: metric.value, target: target, color: metric.accentColor)
-
-                Text(metric.targetSummary ?? "of \(metric.nutrient.unit.formatted(target))")
-                    .font(CalorynTheme.microCaption)
-                    .foregroundStyle(CalorynTheme.textSecondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            } else {
-                Text("today")
-                    .font(CalorynTheme.microCaption)
-                    .foregroundStyle(CalorynTheme.textSecondary)
-            }
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, minHeight: 112, alignment: .leading)
-        .adaptiveGlassCard(cornerRadius: CalorynTheme.smallCornerRadius)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(metric.accessibilityLabel)
     }
 
     private func metric(for nutrient: TrackedNutrient, value: Double) -> TrackedNutrientMetric {
@@ -534,25 +457,6 @@ struct NutritionDetailsView: View {
             goalKind: nutrientTargets[nutrient] == nil ? nil : nutrientGoalKinds[nutrient, default: nutrient.defaultGoalKind]
         )
     }
-
-    private func progressBar(current: Double, target: Double, color: Color) -> some View {
-        let progress = NutritionDetailsSummary.progressFraction(current: current, target: target)
-
-        return GeometryReader { geo in
-            ZStack(alignment: .leading) {
-                Capsule()
-                    .fill(color.opacity(0.15))
-
-                Capsule()
-                    .fill(color)
-                    .frame(width: geo.size.width * progress)
-            }
-        }
-        .frame(height: 7)
-        .clipShape(Capsule())
-        .accessibilityHidden(true)
-    }
-
 }
 
 #Preview("Nutrition Details - Auto-adjust") {

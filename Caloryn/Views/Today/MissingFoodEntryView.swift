@@ -15,7 +15,9 @@ struct MissingFoodEntryView: View {
     @State private var snackIndex: Int
     @State private var portionGrams: Double
     @State private var showingDeleteConfirmation = false
+    @State private var isPickingDate = false
     @State private var errorMessage: String?
+    @FocusState private var isPortionFocused: Bool
 
     init(entry: FoodLogEntry, onDelete: @escaping () -> Void) {
         self.entry = entry
@@ -30,48 +32,81 @@ struct MissingFoodEntryView: View {
         NavigationStack {
             Form {
                 Section {
-                    Label {
-                        Text("The original saved food is missing. Editing uses the nutrition and quality values recorded in this log entry.")
-                    } icon: {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundStyle(CalorynTheme.terracotta)
-                    }
+                    Text("The original saved food is missing. Editing uses the nutrition and quality values recorded in this log entry.")
+                        .font(TodayPlateFont.detailsNote)
+                        .foregroundStyle(CalorynTheme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 .listRowBackground(CalorynTheme.cardBackground)
+                .listRowSeparatorTint(CalorynTheme.hairline)
 
-                Section("Entry") {
-                    LabeledContent("Food", value: entry.foodName)
+                Section {
+                    LabeledContent("Food") {
+                        Text(entry.foodName)
+                            .foregroundStyle(CalorynTheme.textSecondary)
+                    }
 
-                    TextField("Portion (g)", value: $portionGrams, format: .number)
-                        .keyboardType(.decimalPad)
-                        .accessibilityLabel("Portion in grams")
-                        .accessibilityIdentifier("missingEntry.portion")
+                    LabeledContent("Portion") {
+                        HStack(spacing: 6) {
+                            TextField("Portion (g)", value: $portionGrams, format: .number)
+                                .keyboardType(.decimalPad)
+                                .multilineTextAlignment(.trailing)
+                                .monospacedDigit()
+                                .focused($isPortionFocused)
+                                .accessibilityLabel("Portion in grams")
+                                .accessibilityIdentifier("missingEntry.portion")
+                                .frame(maxWidth: 96)
+                                .calorynInputField(isFocused: isPortionFocused)
 
-                    DatePicker(
-                        "Date",
-                        selection: $date,
-                        in: ...Date.now.tomorrow,
-                        displayedComponents: .date
-                    )
-
-                    Picker("Meal", selection: $mealType) {
-                        ForEach(MealType.allCases) { meal in
-                            Text(meal.displayName).tag(meal)
+                            Text("g")
+                                .foregroundStyle(CalorynTheme.textSecondary)
+                                .accessibilityHidden(true)
                         }
                     }
 
-                    if mealType == .snack {
-                        Stepper("Snack slot: \(snackIndex)", value: $snackIndex, in: 1...20)
-                            .accessibilityIdentifier("missingEntry.snackSlot")
+                    dateRow
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Meal")
+
+                        mealChips
                     }
+                    .padding(.vertical, 4)
+
+                    if mealType == .snack {
+                        HStack(spacing: 12) {
+                            Text("Snack slot")
+                                .accessibilityHidden(true)
+
+                            Spacer(minLength: 8)
+
+                            CalorynStepperPill(
+                                accessibilityTitle: "Snack slot",
+                                value: "\(snackIndex)",
+                                size: .compact,
+                                canDecrement: snackIndex > Self.snackSlots.lowerBound,
+                                canIncrement: snackIndex < Self.snackSlots.upperBound,
+                                onDecrement: { snackIndex = max(Self.snackSlots.lowerBound, snackIndex - 1) },
+                                onIncrement: { snackIndex = min(Self.snackSlots.upperBound, snackIndex + 1) }
+                            )
+                            .accessibilityIdentifier("missingEntry.snackSlot")
+                        }
+                    }
+                } header: {
+                    sectionHeader("Entry")
                 }
+                .foregroundStyle(CalorynTheme.textPrimary)
                 .listRowBackground(CalorynTheme.cardBackground)
+                .listRowSeparatorTint(CalorynTheme.hairline)
 
                 Section {
+                    // Ink, not red: red is lunch now. The confirmation dialog that follows
+                    // is where the destructive colour belongs, as on the Portion sheet.
                     Button(role: .destructive) {
                         showingDeleteConfirmation = true
                     } label: {
-                        Label("Delete Log Entry", systemImage: "trash")
+                        Text("Delete log entry")
+                            .foregroundStyle(CalorynTheme.textPrimary)
                             .frame(maxWidth: .infinity)
                     }
                 }
@@ -79,7 +114,7 @@ struct MissingFoodEntryView: View {
             }
             .calorynFormStyle()
             .calorynSheetCanvas()
-            .navigationTitle("Edit Portion")
+            .navigationTitle("Edit portion")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -88,7 +123,7 @@ struct MissingFoodEntryView: View {
                     } label: {
                         Image(systemName: "xmark")
                             .font(CalorynTheme.toolbarIcon)
-                            .foregroundStyle(CalorynTheme.sage)
+                            .foregroundStyle(CalorynTheme.textPrimary)
                     }
                     .accessibilityLabel("Close")
                 }
@@ -101,15 +136,15 @@ struct MissingFoodEntryView: View {
                             .font(CalorynTheme.toolbarAction)
                             .foregroundStyle(
                                 FavoriteFoodLogging.isSafePortion(portionGrams)
-                                    ? CalorynTheme.sage
-                                    : CalorynTheme.textSecondary
+                                    ? CalorynTheme.textPrimary
+                                    : CalorynTheme.textTertiary
                             )
                     }
                     .disabled(!FavoriteFoodLogging.isSafePortion(portionGrams))
                     .accessibilityIdentifier("missingEntry.save")
                 }
             }
-            .confirmationDialog("Delete Log Entry", isPresented: $showingDeleteConfirmation) {
+            .confirmationDialog("Delete log entry", isPresented: $showingDeleteConfirmation) {
                 Button("Delete", role: .destructive) {
                     onDelete()
                     dismiss()
@@ -117,12 +152,84 @@ struct MissingFoodEntryView: View {
             } message: {
                 Text("Remove \(entry.foodName) from your log?")
             }
-            .alert("Couldn’t Update Entry", isPresented: errorIsPresented) {
+            .alert("Couldn’t update entry", isPresented: errorIsPresented) {
                 Button("OK", role: .cancel) { errorMessage = nil }
             } message: {
                 Text(errorMessage ?? "Please try again.")
             }
         }
+    }
+
+    private static let snackSlots = 1...20
+
+    /// The date as a value, like the rows above it; tapping it opens a calendar under the
+    /// row. A compact `DatePicker` drew its date in a system-grey pill beside the
+    /// `surface` portion well, and no token reaches that fill.
+    @ViewBuilder
+    private var dateRow: some View {
+        Button {
+            withAnimation(.smooth(duration: 0.25)) {
+                isPickingDate.toggle()
+            }
+        } label: {
+            HStack(spacing: 12) {
+                Text("Date")
+                    .foregroundStyle(CalorynTheme.textPrimary)
+
+                Spacer(minLength: 8)
+
+                Text(date, format: .dateTime.day().month(.abbreviated).year())
+                    .foregroundStyle(isPickingDate ? CalorynTheme.textPrimary : CalorynTheme.textSecondary)
+                    .monospacedDigit()
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Date")
+        .accessibilityValue(Text(date, format: .dateTime.day().month(.wide).year()))
+        .accessibilityHint(isPickingDate ? "Double tap to close the calendar" : "Double tap to choose a date")
+        .accessibilityIdentifier("missingEntry.date")
+
+        if isPickingDate {
+            DatePicker(
+                "Date",
+                selection: $date,
+                in: ...Date.now.tomorrow,
+                displayedComponents: .date
+            )
+            .datePickerStyle(.graphical)
+            .labelsHidden()
+            // Not ink: the selected day is drawn white on the tint, and ink is near-white
+            // in dark mode.
+            .tint(CalorynTheme.controlTint)
+        }
+    }
+
+    /// The meal as chips in each meal's own colour — the Portion sheet's vocabulary — rather
+    /// than a menu picker. They wrap onto a second line rather than truncating once larger
+    /// text or a narrower phone stops all four fitting on one.
+    private var mealChips: some View {
+        ChipFlowLayout(spacing: 6, lineSpacing: 6) {
+            ForEach(MealType.allCases) { meal in
+                Button {
+                    mealType = meal
+                } label: {
+                    Text(meal.displayName)
+                        .calorynChip(isSelected: mealType == meal, meal: meal)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(meal.displayName)
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Meal")
+    }
+
+    private func sectionHeader(_ title: String) -> some View {
+        Text(title)
+            .font(CalorynTheme.sectionHeaderTitle)
+            .foregroundStyle(CalorynTheme.textPrimary)
+            .textCase(nil)
     }
 
     private func save() {

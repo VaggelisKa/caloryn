@@ -69,7 +69,7 @@ private struct CalorynDrillDownNavigationModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .tint(CalorynTheme.sage)
+            .tint(CalorynTheme.textPrimary)
             .navigationBarBackButtonHidden()
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -78,7 +78,7 @@ private struct CalorynDrillDownNavigationModifier: ViewModifier {
                     } label: {
                         Image(systemName: "chevron.left")
                             .font(CalorynTheme.toolbarIcon)
-                            .foregroundStyle(CalorynTheme.sage)
+                            .foregroundStyle(CalorynTheme.textPrimary)
                     }
                     .accessibilityLabel("Back")
                 }
@@ -92,8 +92,8 @@ private struct CalorynPlainListStyleModifier: ViewModifier {
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
         // Deliberately paints no background of its own: the surrounding canvas supplies
-        // the colour, so the same list reads correctly on a page (#F3F1EC) and in a sheet
-        // (#FAFAF7). Rows still need `.listRowBackground(Color.clear)` — hiding the scroll
+        // the colour, so the same list reads correctly on a page (#F6F5F1) and in a sheet
+        // (#FFFFFF). Rows still need `.listRowBackground(Color.clear)` — hiding the scroll
         // background does not stop a row drawing its own.
     }
 }

@@ -51,12 +51,12 @@ struct CustomFoodFormView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 24) {
+                VStack(alignment: .leading, spacing: 28) {
                     nameSection
 
                     produceTrackingSection
 
-                    caloriePreviewCard
+                    caloriePreview
 
                     nutritionSection
 
@@ -69,21 +69,18 @@ struct CustomFoodFormView: View {
                     }
                 }
                 .padding(.horizontal, CalorynTheme.pagePadding)
+                .padding(.top, 8)
                 .padding(.bottom, 24)
             }
+            .scrollDismissesKeyboard(.interactively)
             .calorynSheetCanvas()
             .navigationTitle(formTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button {
+                    CreationFormCloseButton {
                         dismiss()
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(CalorynTheme.toolbarIcon)
-                            .foregroundStyle(CalorynTheme.sage)
                     }
-                    .accessibilityLabel("Close")
                 }
                 if showsFavoriteControl,
                    let existingFood,
@@ -92,13 +89,7 @@ struct CustomFoodFormView: View {
                         Button {
                             toggleFavorite(existingFood)
                         } label: {
-                            Image(systemName: existingFood.isFavorite ? "star.fill" : "star")
-                                .font(CalorynTheme.toolbarIcon)
-                                .foregroundStyle(
-                                    existingFood.isFavorite
-                                        ? CalorynTheme.terracotta
-                                        : CalorynTheme.sage
-                                )
+                            CreationFormFavoriteGlyph(isFavorite: existingFood.isFavorite)
                         }
                         .accessibilityLabel(
                             existingFood.isFavorite
@@ -116,9 +107,7 @@ struct CustomFoodFormView: View {
                     Button {
                         saveFood()
                     } label: {
-                        Image(systemName: "checkmark")
-                            .font(CalorynTheme.toolbarIcon)
-                            .foregroundStyle(CalorynTheme.sage)
+                        CreationFormSaveGlyph(isEnabled: canSave)
                     }
                     .accessibilityLabel("Save")
                     .accessibilityIdentifier("customFood.save")
@@ -143,41 +132,46 @@ struct CustomFoodFormView: View {
     }
 
     private var nameSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("FOOD DETAILS")
-                .font(CalorynTheme.sectionEyebrow)
-                .foregroundStyle(CalorynTheme.textSecondary)
+        CreationFormSection("Food details") {
+            VStack(alignment: .leading, spacing: 10) {
+                TextField("Food name (e.g. Nick's Pizza)", text: $draft.name)
+                    .font(CalorynTheme.bodyText)
+                    .textInputAutocapitalization(.words)
+                    .focused($focusedField, equals: .name)
+                    .calorynInputField(isFocused: focusedField == .name)
+                    .accessibilityIdentifier("customFood.name")
 
-            TextField("Food name (e.g. Nick's Pizza)", text: $draft.name)
-                .font(CalorynTheme.bodyText)
-                .textInputAutocapitalization(.words)
-                .focused($focusedField, equals: .name)
-                .calorynInputField(isFocused: focusedField == .name)
-                .accessibilityIdentifier("customFood.name")
-
-            TextField("Brand (optional)", text: $draft.brand)
-                .font(CalorynTheme.bodyText)
-                .textInputAutocapitalization(.words)
-                .focused($focusedField, equals: .brand)
-                .calorynInputField(isFocused: focusedField == .brand)
+                TextField("Brand (optional)", text: $draft.brand)
+                    .font(CalorynTheme.bodyText)
+                    .textInputAutocapitalization(.words)
+                    .focused($focusedField, equals: .brand)
+                    .calorynInputField(isFocused: focusedField == .brand)
+            }
 
             if let recoveryBarcode {
-                if dynamicTypeSize.isAccessibilitySize {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Barcode")
-                            .font(CalorynTheme.bodyText)
+                CreationFormSheetRow {
+                    if dynamicTypeSize.isAccessibilitySize {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Barcode")
+                                .font(CreationFormTypography.rowLabel)
+                                .foregroundStyle(CalorynTheme.textPrimary)
 
-                        barcodeValue(recoveryBarcode)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                } else {
-                    LabeledContent("Barcode") {
-                        barcodeValue(recoveryBarcode)
+                            barcodeValue(recoveryBarcode)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    } else {
+                        LabeledContent {
+                            barcodeValue(recoveryBarcode)
+                        } label: {
+                            Text("Barcode")
+                                .font(CreationFormTypography.rowLabel)
+                                .foregroundStyle(CalorynTheme.textPrimary)
+                        }
                     }
                 }
+                .padding(.top, 14)
             }
         }
-        .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
     }
 
     private func barcodeValue(_ barcode: String) -> some View {
@@ -191,54 +185,42 @@ struct CustomFoodFormView: View {
             .accessibilityLabel("Barcode \(barcode)")
     }
 
+    /// Three options, so chips rather than a segmented control. They wrap rather than
+    /// truncate when the text is too large for one line.
     private var produceTrackingSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("FRUIT & VEG VARIETY")
-                .font(CalorynTheme.sectionEyebrow)
-                .foregroundStyle(CalorynTheme.textSecondary)
-
-            HStack {
+        CreationFormSection("Fruit and veg variety") {
+            VStack(alignment: .leading, spacing: 10) {
                 Text("Count as")
-                    .font(CalorynTheme.bodyText)
+                    .font(CreationFormTypography.rowLabel)
                     .foregroundStyle(CalorynTheme.textPrimary)
 
-                Spacer()
-            }
-
-            Picker("Count as", selection: $draft.produceKind) {
-                ForEach(ProduceKind.manualCases) { kind in
-                    Text(kind.displayName)
-                        .tag(kind)
+                WrappingChipFlow {
+                    ForEach(ProduceKind.manualCases) { kind in
+                        Button {
+                            withAnimation(.smooth(duration: 0.2)) {
+                                draft.produceKind = kind
+                            }
+                        } label: {
+                            Text(kind.displayName)
+                                .calorynChip(isSelected: draft.produceKind == kind)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Count as \(kind.fullDisplayName)")
+                    }
                 }
             }
-            .pickerStyle(.segmented)
         }
-        .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
     }
 
-    private var caloriePreviewCard: some View {
-        VStack(spacing: 4) {
-            Text("\(previewCalories.truncatedSafely)")
-                .font(CalorynTheme.displayNumber)
-                .foregroundStyle(CalorynTheme.sage)
-                .contentTransition(.numericText())
-                .animation(.smooth(duration: 0.3), value: previewCalories.truncatedSafely)
-
-            Text("calories per serving")
-                .font(CalorynTheme.bodyText)
-                .foregroundStyle(CalorynTheme.textSecondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 20)
-        .glassCard()
+    private var caloriePreview: some View {
+        CreationFormTotal(
+            kcal: previewCalories.truncatedSafely,
+            caption: "kcal per serving"
+        )
     }
 
     private var nutritionSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("NUTRITION PER SERVING")
-                .font(CalorynTheme.sectionEyebrow)
-                .foregroundStyle(CalorynTheme.textSecondary)
-
+        CreationFormSection("Nutrition per serving") {
             nutritionField(
                 label: "Calories",
                 text: $draft.caloriesPerServing,
@@ -247,21 +229,18 @@ struct CustomFoodFormView: View {
                 required: true,
                 identifier: "customFood.calories"
             )
-
             nutritionField(
                 label: "Protein",
                 text: $draft.proteinPerServing,
                 unit: "g",
                 focus: .protein
             )
-
             nutritionField(
                 label: "Carbs",
                 text: $draft.carbsPerServing,
                 unit: "g",
                 focus: .carbs
             )
-
             nutritionField(
                 label: "Fat",
                 text: $draft.fatPerServing,
@@ -269,19 +248,10 @@ struct CustomFoodFormView: View {
                 focus: .fat
             )
         }
-        .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
     }
 
     private var optionalNutritionSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("OPTIONAL STATS PER SERVING")
-                .font(CalorynTheme.sectionEyebrow)
-                .foregroundStyle(CalorynTheme.textSecondary)
-
-            Text("Leave unknown values blank.")
-                .font(CalorynTheme.caption)
-                .foregroundStyle(CalorynTheme.textSecondary)
-
+        CreationFormSection("Optional, per serving", footer: "Leave unknown values blank.") {
             nutritionField(
                 label: "Fiber",
                 text: $draft.fiberPerServing,
@@ -289,7 +259,6 @@ struct CustomFoodFormView: View {
                 focus: .fiber,
                 placeholder: ""
             )
-
             nutritionField(
                 label: "Sugars",
                 text: $draft.sugarsPerServing,
@@ -297,23 +266,20 @@ struct CustomFoodFormView: View {
                 focus: .sugars,
                 placeholder: ""
             )
-
             nutritionField(
-                label: "Added Sugar",
+                label: "Added sugar",
                 text: $draft.addedSugarsPerServing,
                 unit: "g",
                 focus: .addedSugars,
                 placeholder: ""
             )
-
             nutritionField(
-                label: "Sat Fat",
+                label: "Saturated fat",
                 text: $draft.saturatedFatPerServing,
                 unit: "g",
                 focus: .saturatedFat,
                 placeholder: ""
             )
-
             nutritionField(
                 label: "Sodium",
                 text: $draft.sodiumPerServing,
@@ -321,7 +287,6 @@ struct CustomFoodFormView: View {
                 focus: .sodium,
                 placeholder: ""
             )
-
             nutritionField(
                 label: "Cholesterol",
                 text: $draft.cholesterolPerServing,
@@ -329,7 +294,6 @@ struct CustomFoodFormView: View {
                 focus: .cholesterol,
                 placeholder: ""
             )
-
             nutritionField(
                 label: "Alcohol",
                 text: $draft.alcoholPerServing,
@@ -338,7 +302,6 @@ struct CustomFoodFormView: View {
                 placeholder: ""
             )
         }
-        .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
     }
 
     private func nutritionField(
@@ -350,70 +313,102 @@ struct CustomFoodFormView: View {
         placeholder: String = "0",
         identifier: String? = nil
     ) -> some View {
-        HStack {
-            HStack(spacing: 4) {
-                Text(label)
-                    .font(CalorynTheme.bodyText)
-                    .foregroundStyle(CalorynTheme.textPrimary)
-                if required {
-                    Text("*")
-                        .font(CalorynTheme.bodyText)
-                        .foregroundStyle(CalorynTheme.terracotta)
+        CreationFormSheetRow {
+            fieldRow(labelWidth: 112) {
+                HStack(spacing: 3) {
+                    Text(label)
+                        .font(CreationFormTypography.rowLabel)
+                        .foregroundStyle(CalorynTheme.textPrimary)
+                    if required {
+                        Text("*")
+                            .font(CreationFormTypography.rowLabel.weight(.semibold))
+                            .foregroundStyle(CalorynTheme.textSecondary)
+                            .accessibilityLabel("required")
+                    }
                 }
+            } field: {
+                TextField(placeholder, text: text)
+                    .font(CalorynTheme.numericBody)
+                    .keyboardType(.decimalPad)
+                    .focused($focusedField, equals: focus)
+                    .calorynInputField(isFocused: focusedField == focus)
+                    // On the field itself, not the row: an identifier on the row
+                    // resolves to the label, which a test can see but not type in.
+                    .accessibilityIdentifier(ifPresent: identifier)
+            } unit: {
+                Text(unit)
             }
-            .frame(width: 112, alignment: .leading)
-
-            TextField(placeholder, text: text)
-                .font(CalorynTheme.numericBody)
-                .keyboardType(.decimalPad)
-                .focused($focusedField, equals: focus)
-                .calorynInputField(isFocused: focusedField == focus)
-                // On the field itself, not the row: an identifier on the row
-                // resolves to the label, which a test can see but not type in.
-                .accessibilityIdentifier(ifPresent: identifier)
-
-            Text(unit)
-                .font(CalorynTheme.caption)
-                .foregroundStyle(CalorynTheme.textSecondary)
-                .frame(width: 44, alignment: .leading)
         }
     }
 
     private var servingSizeSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("SERVING SIZE")
-                .font(CalorynTheme.sectionEyebrow)
-                .foregroundStyle(CalorynTheme.textSecondary)
-
-            HStack {
-                Text("One serving")
-                    .font(CalorynTheme.bodyText)
-                    .foregroundStyle(CalorynTheme.textPrimary)
-
-                Spacer()
-
-                TextField("100", text: $draft.servingSizeGrams)
-                    .font(CalorynTheme.numericBody)
-                    .keyboardType(.decimalPad)
-                    .focused($focusedField, equals: .servingSize)
-                    .calorynInputField(isFocused: focusedField == .servingSize)
-                    .frame(width: 80)
-                    .accessibilityIdentifier("customFood.servingSize")
-
-                Text("g")
-                    .font(CalorynTheme.caption)
-                    .foregroundStyle(CalorynTheme.textSecondary)
+        CreationFormSection(
+            "Serving size",
+            footer: "The nutrition values above are for one serving of this size."
+        ) {
+            CreationFormSheetRow {
+                fieldRow(fieldWidth: 88) {
+                    Text("One serving")
+                        .font(CreationFormTypography.rowLabel)
+                        .foregroundStyle(CalorynTheme.textPrimary)
+                } field: {
+                    TextField("100", text: $draft.servingSizeGrams)
+                        .font(CalorynTheme.numericBody)
+                        .keyboardType(.decimalPad)
+                        .focused($focusedField, equals: .servingSize)
+                        .calorynInputField(isFocused: focusedField == .servingSize)
+                        .accessibilityIdentifier("customFood.servingSize")
+                } unit: {
+                    Text("g")
+                }
             }
-
-            Text("The nutrition values above are for one serving of this size.")
-                .font(CalorynTheme.caption)
-                .foregroundStyle(CalorynTheme.textSecondary)
         }
-        .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
+    }
+
+    /// A label, a well and its unit on one line; at accessibility sizes the label goes above
+    /// the well, so neither the label nor the unit is broken mid-word in a fixed column.
+    @ViewBuilder
+    private func fieldRow<Label: View, FieldView: View, Unit: View>(
+        labelWidth: CGFloat? = nil,
+        fieldWidth: CGFloat? = nil,
+        @ViewBuilder label: () -> Label,
+        @ViewBuilder field: () -> FieldView,
+        @ViewBuilder unit: () -> Unit
+    ) -> some View {
+        let unitText = unit()
+            .font(CreationFormTypography.detail)
+            .foregroundStyle(CalorynTheme.textSecondary)
+
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 6) {
+                label()
+                HStack(spacing: 10) {
+                    field()
+                    unitText
+                        .fixedSize()
+                }
+            }
+        } else {
+            HStack(spacing: 10) {
+                if let labelWidth {
+                    label()
+                        .frame(width: labelWidth, alignment: .leading)
+                } else {
+                    label()
+                    Spacer()
+                }
+
+                field()
+                    .frame(width: fieldWidth)
+
+                unitText
+                    .frame(width: 32, alignment: .leading)
+            }
+        }
     }
 
     private var deleteSection: some View {
-        DestructiveGlassButton("Delete Manual Entry") {
+        CreationFormDeleteButton("Delete manual entry") {
             showingDeleteConfirmation = true
         }
     }
@@ -518,10 +513,10 @@ struct CustomFoodFormView: View {
     private var formTitle: String {
         if isEditing {
             return existingFood?.isCatalogProduct == true
-                ? "Edit Product"
-                : "Edit Manual Entry"
+                ? "Edit product"
+                : "Edit manual entry"
         }
-        return recoveryBarcode != nil ? "Create Manual Food" : "Create Manual Entry"
+        return recoveryBarcode != nil ? "Create manual food" : "Create manual entry"
     }
 
     private func deleteFood() {

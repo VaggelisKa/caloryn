@@ -8,7 +8,7 @@ import Foundation
 enum MultiAddSelectionLabels {
     /// The title of the button that opens the review sheet.
     static func reviewButtonTitle(selectedItemCount: Int) -> String {
-        let noun = selectedItemCount == 1 ? "Item" : "Items"
+        let noun = selectedItemCount == 1 ? "item" : "items"
         return "Review \(selectedItemCount) \(noun)"
     }
 

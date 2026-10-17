@@ -86,22 +86,24 @@ final class NutrientDetailGroupTests: XCTestCase {
 
     // MARK: - Formatting
 
+    private static let us = Locale(identifier: "en_US")
+
     func testGramLinesAreFormattedAsGrams() {
         let nutrient = DetailNutrient(id: "starch", label: "Starch", value: 55.28, unit: .grams)
 
-        XCTAssertEqual(nutrient.formattedValue, "55.3g")
+        XCTAssertEqual(nutrient.spacedFormattedValue(locale: Self.us), "55.3 g")
     }
 
     func testAWholeNumberOfGramsDropsItsDecimal() {
         let nutrient = DetailNutrient(id: "starch", label: "Starch", value: 55, unit: .grams)
 
-        XCTAssertEqual(nutrient.formattedValue, "55g")
+        XCTAssertEqual(nutrient.spacedFormattedValue(locale: Self.us), "55 g")
     }
 
     func testMilligramLinesAreScaledUpFromGrams() {
         let nutrient = DetailNutrient(id: "salt", label: "Salt", value: 0.0204, unit: .milligramsFromGrams)
 
-        XCTAssertEqual(nutrient.formattedValue, "20mg")
+        XCTAssertEqual(nutrient.spacedFormattedValue(locale: Self.us), "20 mg")
     }
 
     /// Nothing bounds a nutrient value on the way in, and the milligram branch
@@ -110,7 +112,7 @@ final class NutrientDetailGroupTests: XCTestCase {
     func testAnUnboundedNutrientValueIsRenderedRatherThanCrashing() {
         let huge = DetailNutrient(id: "salt", label: "Salt", value: 1e30, unit: .milligramsFromGrams)
 
-        XCTAssertEqual(huge.formattedValue, "\(Int.max)mg")
+        XCTAssertEqual(huge.spacedFormattedValue(locale: Self.us), "\(Int.max.formatted(.number.locale(Self.us))) mg")
     }
 }
 

@@ -211,21 +211,26 @@ final class ScannerViewController: UIViewController, AVCaptureMetadataOutputObje
         label.textColor = .white
         label.font = .preferredFont(forTextStyle: .headline)
 
+        // The primary button's shape (`calorynPrimaryButton`: a 54pt capsule, 17pt bold),
+        // drawn white on the black camera view rather than in ink: this sits over video,
+        // not over the theme, like the scanner's white close glyph.
         var buttonConfiguration = UIButton.Configuration.filled()
         buttonConfiguration.title = "Open Settings"
         buttonConfiguration.baseBackgroundColor = .white
         buttonConfiguration.baseForegroundColor = .black
-        buttonConfiguration.contentInsets = NSDirectionalEdgeInsets(top: 12, leading: 24, bottom: 12, trailing: 24)
-        buttonConfiguration.cornerStyle = .fixed
-        buttonConfiguration.background.cornerRadius = 12
+        buttonConfiguration.contentInsets = NSDirectionalEdgeInsets(top: 14, leading: 32, bottom: 14, trailing: 32)
+        buttonConfiguration.cornerStyle = .capsule
         buttonConfiguration.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
             var attributes = attributes
-            attributes.font = .preferredFont(forTextStyle: .headline)
+            let headline = UIFont.preferredFont(forTextStyle: .headline)
+            attributes.font = headline.fontDescriptor.withSymbolicTraits(.traitBold)
+                .map { UIFont(descriptor: $0, size: 0) } ?? headline
             return attributes
         }
 
         let button = UIButton(configuration: buttonConfiguration)
         button.addTarget(self, action: #selector(openSettings), for: .touchUpInside)
+        button.heightAnchor.constraint(greaterThanOrEqualToConstant: CalorynPrimaryButtonMetrics.height).isActive = true
 
         container.addArrangedSubview(label)
         container.addArrangedSubview(button)

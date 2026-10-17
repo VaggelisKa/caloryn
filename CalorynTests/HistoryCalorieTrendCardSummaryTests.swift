@@ -2,22 +2,12 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// The headline numbers above the calorie-trend chart: what the two stat
-/// columns say, how they are toned, and how the chart describes itself when
-/// there is nothing to describe.
+/// The numbers around the calorie-trend chart: the figures, the section's support line,
+/// and how the chart describes itself when there is nothing to describe.
 @Suite("History calorie trend card summary")
 struct HistoryCalorieTrendCardSummaryTests {
 
     // MARK: - Empty range
-
-    @Test("given nothing logged, when laying out the card, then the stat columns are hidden rather than zeroed")
-    func anEmptyRangeHidesTheStatColumns() {
-        let summary = makeSummary(loggedDayCount: 0, hasLoggedData: false)
-
-        #expect(summary.showsStatColumns == false)
-        #expect(summary.averageDifferenceTone == .neutral)
-        #expect(summary.totalDifferenceTone == .neutral)
-    }
 
     @Test("given nothing logged, when describing the chart, then it says zero days rather than an average")
     func anEmptyRangeIsSpokenWithoutAnAverage() {
@@ -84,64 +74,25 @@ struct HistoryCalorieTrendCardSummaryTests {
         #expect(summary.onTrackRatioText == "3/5")
     }
 
-    // MARK: - Tone
+    // MARK: - Section support line
 
-    @Test("given no target at all, when toning a difference, then there is nothing to compare against")
-    func noTargetIsNeutral() {
-        let summary = makeSummary(
-            averageCaloriesPerLoggedDay: 1_800,
-            averageTargetPerLoggedDay: 0,
-            totalCalories: 9_000,
-            loggedDayTargetTotal: 0
-        )
+    @Test(
+        "given a logged total, when supporting the section title, then it is set against the same days' goals",
+        arguments: [
+            (12_800.0, 12_000, "\(12_800.formatted()) kcal logged, 800 over your goals"),
+            (11_500.0, 12_000, "\(11_500.formatted()) kcal logged, 500 under your goals"),
+            (12_000.4, 12_000, "\(12_000.formatted()) kcal logged, right on your goals")
+        ]
+    )
+    func theSupportLineComparesTheTotalWithItsGoals(total: Double, goals: Int, expected: String) {
+        let summary = makeSummary(totalCalories: total, loggedDayTargetTotal: goals)
 
-        #expect(summary.averageDifferenceTone == .neutral)
-        #expect(summary.totalDifferenceTone == .neutral)
+        #expect(summary.totalSupportText == expected)
     }
 
-    @Test("given an average inside the tolerance band, when toning it, then it reads as on track")
-    func anAverageInsideTheBandIsOnTrack() {
-        let summary = makeSummary(
-            averageCaloriesPerLoggedDay: 2_050,
-            averageTargetPerLoggedDay: 2_000
-        )
-
-        #expect(summary.averageDifferenceTone == .status(.onTrack))
-    }
-
-    @Test("given an average well past the band, when toning it, then it reads as over")
-    func anAverageWellPastTheBandIsOver() {
-        let summary = makeSummary(
-            averageCaloriesPerLoggedDay: 2_400,
-            averageTargetPerLoggedDay: 2_000
-        )
-
-        #expect(summary.averageDifferenceTone == .status(.over))
-    }
-
-    @Test("given a total well short of the band, when toning it, then it reads as under")
-    func aTotalWellShortOfTheBandIsUnder() {
-        let summary = makeSummary(
-            totalCalories: 8_000,
-            loggedDayTargetTotal: 10_000
-        )
-
-        #expect(summary.totalDifferenceTone == .status(.under))
-    }
-
-    @Test("given a value that rounds onto the band edge, when toning it, then the displayed number decides")
-    func theDisplayedNumberDecidesTheBand() {
-        let onEdge = makeSummary(
-            averageCaloriesPerLoggedDay: 2_100.4,
-            averageTargetPerLoggedDay: 2_000
-        )
-        let pastEdge = makeSummary(
-            averageCaloriesPerLoggedDay: 2_100.6,
-            averageTargetPerLoggedDay: 2_000
-        )
-
-        #expect(onEdge.averageDifferenceTone == .status(.onTrack))
-        #expect(pastEdge.averageDifferenceTone == .status(.over))
+    @Test("given nothing logged, when supporting the section title, then there is no line")
+    func anEmptyRangeHasNoSupportLine() {
+        #expect(makeSummary(loggedDayCount: 0, hasLoggedData: false).totalSupportText == nil)
     }
 
     // MARK: - Helpers

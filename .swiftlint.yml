@@ -44,7 +44,7 @@ custom_rules:
     # its reticle are white against video, not against the theme, so they are correctly
     # appearance-independent.
     excluded: ".*BarcodeScannerView\\.swift"
-    message: "Use CalorynTheme.warmWhite or CalorynTheme.cardBackground. Pure white reads as a stark block against the warm page background."
+    message: "Use a CalorynTheme colour: cardBackground for the white of a sheet or group, mealOnFill(_:) for a label on a meal fill. A literal white has no dark appearance, so it turns into a glaring block in dark mode."
     severity: error
 
   # Not the whole trap class: `Int(someDouble)` in general is indistinguishable by regex

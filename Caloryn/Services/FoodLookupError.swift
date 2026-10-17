@@ -43,59 +43,59 @@ enum FoodLookupError: LocalizedError, Equatable, Sendable {
         switch self {
         case .cancelled:
             FoodLookupFailurePresentation(
-                title: "Lookup Cancelled",
+                title: "Lookup cancelled",
                 message: "The lookup was cancelled.",
                 systemImage: "xmark.circle",
                 retryTitle: nil
             )
         case .offline:
             FoodLookupFailurePresentation(
-                title: "You’re Offline",
+                title: "You’re offline",
                 message: "Reconnect to the internet, then try again.",
                 systemImage: "wifi.slash",
-                retryTitle: "Try Again"
+                retryTitle: "Try again"
             )
         case .invalidRequest:
             FoodLookupFailurePresentation(
-                title: "Invalid Lookup",
+                title: "Invalid lookup",
                 message: "Check the search or scan another barcode.",
                 systemImage: "exclamationmark.magnifyingglass",
                 retryTitle: nil
             )
         case .unauthorized:
             FoodLookupFailurePresentation(
-                title: "Food Search Unavailable",
+                title: "Food search unavailable",
                 message: "Caloryn cannot access the food database right now. Try again later.",
                 systemImage: "lock.trianglebadge.exclamationmark",
                 retryTitle: nil
             )
         case .rateLimited:
             FoodLookupFailurePresentation(
-                title: "Search Paused",
+                title: "Search paused",
                 message: "The food database is receiving too many requests. Try again in a few minutes.",
                 systemImage: "hourglass",
                 retryTitle: nil
             )
         case .notFound:
             FoodLookupFailurePresentation(
-                title: "No Results",
+                title: "No results",
                 message: "Try a different search term or scan another barcode.",
                 systemImage: "magnifyingglass",
                 retryTitle: nil
             )
         case .invalidData:
             FoodLookupFailurePresentation(
-                title: "Nutrition Details Missing",
+                title: "Nutrition details missing",
                 message: "The product was found, but its nutrition data could not be used. Try another result.",
                 systemImage: "exclamationmark.triangle",
-                retryTitle: "Try Again"
+                retryTitle: "Try again"
             )
         case .unavailable:
             FoodLookupFailurePresentation(
-                title: "Food Search Unavailable",
+                title: "Food search unavailable",
                 message: "The food databases did not respond. Try again in a moment.",
                 systemImage: "server.rack",
-                retryTitle: "Try Again"
+                retryTitle: "Try again"
             )
         }
     }
@@ -104,14 +104,14 @@ enum FoodLookupError: LocalizedError, Equatable, Sendable {
         switch (operation, self) {
         case (.barcode, .notFound):
             FoodLookupFailurePresentation(
-                title: "Barcode Not Found",
+                title: "Barcode not found",
                 message: "This barcode isn’t in our food database.",
                 systemImage: "barcode.viewfinder",
                 retryTitle: nil
             )
         case (.barcode, .invalidRequest):
             FoodLookupFailurePresentation(
-                title: "Barcode Couldn’t Be Read",
+                title: "Barcode couldn’t be read",
                 message: "This doesn’t appear to be a valid product barcode.",
                 systemImage: "barcode.viewfinder",
                 retryTitle: nil

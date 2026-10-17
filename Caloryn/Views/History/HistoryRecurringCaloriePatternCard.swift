@@ -1,43 +1,44 @@
 import SwiftUI
 
+/// The recurring-pattern insight: History's one grouped surface, a white bordered callout
+/// that opens the evidence behind it. The basis ("Based on 30 logged days…") lives on the
+/// details screen it opens, which leads with it.
 struct HistoryRecurringCaloriePatternCard: View {
     let pattern: HistoryRecurringCaloriePattern
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(alignment: .firstTextBaseline, spacing: 10) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text(pattern.headline)
-                        .font(CalorynTheme.itemTitle)
+                        .font(CalorynTheme.sectionHeaderTitle)
+                        .tracking(-0.17)
                         .foregroundStyle(CalorynTheme.textPrimary)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
 
-                    Spacer(minLength: 8)
-
-                    Image(systemName: "chevron.right")
-                        .font(CalorynTheme.compactIcon)
+                    Text(pattern.comparisonText)
+                        .font(CalorynTheme.cardSubtitle)
                         .foregroundStyle(CalorynTheme.textSecondary)
-                        .accessibilityHidden(true)
+                        .lineSpacing(3)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-                Text(pattern.comparisonText)
-                    .font(CalorynTheme.bodyText)
-                    .foregroundStyle(CalorynTheme.textPrimary)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                Text(pattern.basisText)
-                    .font(CalorynTheme.microCaption)
+                Image(systemName: "chevron.right")
+                    .font(CalorynTheme.compactIcon)
                     .foregroundStyle(CalorynTheme.textSecondary)
-                    .multilineTextAlignment(.leading)
+                    .padding(.top, 4)
+                    .accessibilityHidden(true)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(.rect)
+            .padding(.vertical, 16)
+            .padding(.horizontal, 18)
+            .calorynGroupSurface()
+            .contentShape(.rect(cornerRadius: CalorynTheme.groupCornerRadius))
         }
         .buttonStyle(.plain)
-        .historyCard()
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("history.recurringPattern.card")
         .accessibilityHint("Shows the evidence behind this pattern")

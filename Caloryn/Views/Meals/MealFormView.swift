@@ -31,9 +31,9 @@ struct MealFormView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 24) {
+                VStack(alignment: .leading, spacing: 28) {
                     nameSection
-                    summaryCard
+                    summary
                     componentsSection
 
                     if isEditing {
@@ -41,34 +41,25 @@ struct MealFormView: View {
                     }
                 }
                 .padding(.horizontal, CalorynTheme.pagePadding)
+                .padding(.top, 8)
                 .padding(.bottom, 24)
             }
+            .scrollDismissesKeyboard(.interactively)
             .calorynSheetCanvas()
-            .navigationTitle(isEditing ? "Edit Meal" : "Create Meal")
+            .navigationTitle(isEditing ? "Edit meal" : "Create meal")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button {
+                    CreationFormCloseButton {
                         dismiss()
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(CalorynTheme.toolbarIcon)
-                            .foregroundStyle(CalorynTheme.sage)
                     }
-                    .accessibilityLabel("Close")
                 }
 
                 ToolbarItem(placement: .confirmationAction) {
                     Button {
                         saveMeal()
                     } label: {
-                        if isSaving {
-                            ProgressView()
-                        } else {
-                            Image(systemName: "checkmark")
-                                .font(CalorynTheme.toolbarIcon)
-                                .foregroundStyle(CalorynTheme.sage)
-                        }
+                        CreationFormSaveGlyph(isEnabled: draft.canSave && !isSaving, isSaving: isSaving)
                     }
                     .accessibilityLabel("Save Meal")
                     .disabled(!draft.canSave || isSaving)
@@ -110,104 +101,56 @@ struct MealFormView: View {
     }
 
     private var nameSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("MEAL DETAILS")
-                .font(CalorynTheme.sectionEyebrow)
-                .foregroundStyle(CalorynTheme.textSecondary)
-
+        CreationFormSection("Meal details") {
             TextField("Meal name (e.g. Weekday Breakfast)", text: $draft.name)
                 .font(CalorynTheme.bodyText)
                 .textInputAutocapitalization(.words)
                 .focused($nameIsFocused)
                 .calorynInputField(isFocused: nameIsFocused)
         }
-        .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
     }
 
-    private var summaryCard: some View {
-        VStack(spacing: 14) {
-            VStack(spacing: 4) {
-                Text(draft.totalNutrition.calories.kcalFormatted)
-                    .font(CalorynTheme.displayNumber)
-                    .foregroundStyle(CalorynTheme.sage)
-                    .contentTransition(.numericText())
-                    .animation(.smooth(duration: 0.3), value: draft.totalNutrition.calories)
-
-                Text(draft.components.count == 1 ? "1 item" : "\(draft.components.count) items")
-                    .font(CalorynTheme.bodyText)
-                    .foregroundStyle(CalorynTheme.textSecondary)
-            }
-
-            HStack(spacing: CalorynTheme.cardSpacing) {
-                summaryMetric("Protein", value: draft.totalNutrition.proteinG, color: CalorynTheme.proteinColor)
-                summaryMetric("Carbs", value: draft.totalNutrition.carbsG, color: CalorynTheme.carbColor)
-                summaryMetric("Fat", value: draft.totalNutrition.fatG, color: CalorynTheme.fatColor)
-                summaryMetric("Fiber", value: draft.totalNutrition.fiberG, color: CalorynTheme.fiberColor)
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 20)
-        .glassCard()
-    }
-
-    private func summaryMetric(_ label: String, value: Double, color: Color) -> some View {
-        VStack(spacing: 3) {
-            Text(label)
-                .font(CalorynTheme.caption)
-                .foregroundStyle(CalorynTheme.textSecondary)
-            Text(value.macroFormatted)
-                .font(CalorynTheme.numericBody)
-                .foregroundStyle(color)
-        }
-        .frame(maxWidth: .infinity)
+    private var summary: some View {
+        CreationFormTotal(
+            kcal: draft.totalNutrition.calories.truncatedSafely,
+            caption: draft.components.count == 1 ? "kcal in 1 item" : "kcal in \(draft.components.count) items",
+            macros: [
+                ("Protein", draft.totalNutrition.proteinG.spacedMacroFormatted),
+                ("Carbs", draft.totalNutrition.carbsG.spacedMacroFormatted),
+                ("Fat", draft.totalNutrition.fatG.spacedMacroFormatted),
+                ("Fiber", draft.totalNutrition.fiberG.spacedMacroFormatted),
+            ]
+        )
     }
 
     private var componentsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("ITEMS")
-                    .font(CalorynTheme.sectionEyebrow)
-                    .foregroundStyle(CalorynTheme.textSecondary)
-
-                Spacer()
-
-                Button {
-                    showingFoodSearch = true
-                } label: {
-                    Label("Add Item", systemImage: "plus.circle")
-                        .font(CalorynTheme.buttonLabel)
-                }
+        CreationFormSection("Items", surface: .group) {
+            CreationFormAddButton(title: "Add item") {
+                showingFoodSearch = true
             }
-
+        } content: {
             if draft.components.isEmpty {
-                ContentUnavailableView(
-                    "No Items",
-                    systemImage: "fork.knife",
-                    description: Text("Add foods, manual entries, or recipes.")
+                CreationFormEmptyRow(
+                    title: "No items yet",
+                    detail: "Add foods, manual entries, or recipes."
                 )
-                .frame(minHeight: 160)
             } else {
-                VStack(spacing: 0) {
-                    ForEach(draft.components) { component in
-                        MealComponentRow(
-                            component: component,
-                            onEdit: { componentForAmount = component },
-                            onDelete: { draft.delete(component) }
-                        )
-
-                        if component.id != draft.components.last?.id {
-                            Divider()
-                                .foregroundStyle(CalorynTheme.stone.opacity(0.3))
-                        }
+                ForEach(draft.components) { component in
+                    if component.id != draft.components.first?.id {
+                        CreationFormDivider()
                     }
+                    MealComponentRow(
+                        component: component,
+                        onEdit: { componentForAmount = component },
+                        onDelete: { draft.delete(component) }
+                    )
                 }
             }
         }
-        .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
     }
 
     private var deleteSection: some View {
-        DestructiveGlassButton("Delete Meal") {
+        CreationFormDeleteButton("Delete meal") {
             showingDeleteConfirmation = true
         }
     }
@@ -267,44 +210,14 @@ private struct MealComponentRow: View {
     let onDelete: () -> Void
 
     var body: some View {
-        HStack {
-            Button(action: onEdit) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(component.snapshot.foodName)
-                            .font(CalorynTheme.bodyText)
-                            .foregroundStyle(CalorynTheme.textPrimary)
-                            .lineLimit(1)
-
-                        Text("\(component.snapshot.portionGrams.rounded().truncatedSafely)g")
-                            .font(CalorynTheme.caption)
-                            .foregroundStyle(CalorynTheme.textSecondary)
-                    }
-
-                    Spacer()
-
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text(component.snapshot.nutrition.calories.kcalFormatted)
-                            .font(CalorynTheme.numericCaption)
-                            .foregroundStyle(CalorynTheme.textPrimary)
-                        Text("\(component.snapshot.nutrition.proteinG.macroFormatted) P")
-                            .font(CalorynTheme.numericCaption)
-                            .foregroundStyle(CalorynTheme.proteinColor)
-                    }
-                }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-
-            Button(role: .destructive, action: onDelete) {
-                Image(systemName: "minus.circle")
-                    .font(CalorynTheme.compactIcon)
-                    .foregroundStyle(CalorynTheme.terracotta.opacity(0.7))
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Delete \(component.snapshot.foodName)")
-        }
-        .padding(.vertical, 8)
+        CreationFormItemRow(
+            name: component.snapshot.foodName,
+            detail: "\(component.snapshot.portionGrams.rounded().spacedMacroFormatted), "
+                + "\(component.snapshot.nutrition.proteinG.spacedMacroFormatted) protein",
+            kcal: component.snapshot.nutrition.calories.truncatedSafely,
+            onEdit: onEdit,
+            onDelete: onDelete
+        )
     }
 }
 

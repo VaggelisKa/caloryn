@@ -20,8 +20,9 @@ extension FoodSearchView {
             handleMealSelection(meal)
         } label: {
             selectionRow(isSelected: isSelected(.meal(meal.id))) {
-                MealTemplateLibraryRow(template: meal, showsIcon: false)
+                savedMealRow(meal)
             }
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityValue(selectionAccessibilityValue(for: .meal(meal.id)))
@@ -33,14 +34,18 @@ extension FoodSearchView {
             handleFoodItemSelection(food)
         } label: {
             selectionRow(isSelected: isSelected(.food(food.id))) {
+                let serving = declaredServing(of: food)
                 FoodRowView(
                     name: food.name,
                     brand: food.brand,
                     caloriesPer100g: food.caloriesPer100g,
                     nutriscoreGrade: food.nutriscoreGrade,
                     servingDescription: food.servingDescription,
+                    caloriesPerServing: serving?.calories,
                     isCustom: true,
-                    showsTypeBadge: false
+                    showsTypeBadge: false,
+                    servingUnitName: serving?.unitName,
+                    servingUnitCount: serving?.unitCount
                 )
             }
             .contentShape(Rectangle())
@@ -76,12 +81,16 @@ extension FoodSearchView {
             handleFoodItemSelection(food)
         } label: {
             selectionRow(isSelected: isSelected(.food(food.id))) {
+                let serving = declaredServing(of: food)
                 FoodRowView(
                     name: food.name,
                     brand: food.brand,
                     caloriesPer100g: food.caloriesPer100g,
                     nutriscoreGrade: food.nutriscoreGrade,
-                    servingDescription: food.servingDescription
+                    servingDescription: food.servingDescription,
+                    caloriesPerServing: serving?.calories,
+                    servingUnitName: serving?.unitName,
+                    servingUnitCount: serving?.unitCount
                 )
             }
             .contentShape(Rectangle())
@@ -145,17 +154,20 @@ extension FoodSearchView {
                 isSelected: isSelected(.food(food.id)),
                 spacing: 12
             ) {
-                Text(food.name)
-                    .font(CalorynTheme.itemTitle)
-                    .foregroundStyle(CalorynTheme.textPrimary)
-
-                Spacer(minLength: 8)
-
-                Text("\(suggestion.resolvedPortionGrams.rounded().truncatedSafely)g")
-                    .font(CalorynTheme.numericBody)
-                    .foregroundStyle(CalorynTheme.textPrimary)
+                FoodRowView(
+                    name: food.name,
+                    brand: food.brand,
+                    caloriesPer100g: food.caloriesPer100g,
+                    nutriscoreGrade: food.nutriscoreGrade,
+                    isCustom: food.isManualEntry,
+                    isRecipe: food.isRecipe,
+                    detail: FoodLogSheetCopy.suggestionDetail(
+                        brand: food.isRecipe ? nil : food.brand,
+                        portionGrams: suggestion.resolvedPortionGrams
+                    ),
+                    portionCalories: food.calories(forGrams: suggestion.resolvedPortionGrams)
+                )
             }
-            .padding(.vertical, 4)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -197,6 +209,10 @@ extension FoodSearchView {
 
             content()
         }
+        // Every hairline runs from the row's leading margin. Left to itself the separator
+        // starts under the first text, which in selection mode is the name after the tick,
+        // and only the rows laid out after the mode changed moved over.
+        .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
         .animation(selectionModeAnimation, value: isSelectingMultiple)
     }
 
@@ -204,11 +220,37 @@ extension FoodSearchView {
         Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
             .font(CalorynTheme.inlineIcon)
             .foregroundStyle(
-                isSelected ? CalorynTheme.sage : CalorynTheme.textSecondary
+                isSelected ? CalorynTheme.textPrimary : CalorynTheme.textSecondary
             )
             .contentTransition(.symbolEffect(.replace))
             .scaleEffect(isSelected ? 1 : 0.94)
             .animation(selectionChangeAnimation, value: isSelected)
             .accessibilityHidden(true)
+    }
+
+    /// A saved meal as a food row: its name, "Saved meal, 3 items", and what logging the
+    /// whole meal adds.
+    private func savedMealRow(_ meal: MealTemplate) -> some View {
+        let snapshots = (try? MealTemplateCommands.snapshots(for: meal)) ?? []
+
+        return FoodRowView(
+            name: meal.name,
+            brand: nil,
+            caloriesPer100g: 0,
+            detail: FoodLogSheetCopy.savedMealDetail(itemCount: snapshots.count),
+            portionCalories: snapshots.reduce(0) { $0 + $1.nutrition.calories }
+        )
+    }
+
+    /// The serving the row's subtitle describes: what it adds, the unit it is counted in and
+    /// how many of them it is — 94 kcal and one pot for "1 pot (150g)", 118 kcal and two
+    /// squares for "2 squares (20g)". The same serving the Portion sheet opens on, so the
+    /// row and the sheet agree. `nil` for a food with no countable serving, which keeps its
+    /// per-100 g figure. `FoodRowSummary` decides the caption.
+    private func declaredServing(
+        of food: FoodItem
+    ) -> (calories: Double, unitName: String, unitCount: Double)? {
+        guard let info = food.servingInfo, let grams = food.defaultServingG else { return nil }
+        return (food.calories(forGrams: grams), info.unitName, grams / info.gramsPerUnit)
     }
 }

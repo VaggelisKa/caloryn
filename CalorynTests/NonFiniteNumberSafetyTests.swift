@@ -164,7 +164,9 @@ final class NonFiniteNumberSafetyTests: XCTestCase {
             draft.calorieDeficit = deficit
 
             XCTAssertFalse(draft.deficitLabel.isEmpty)
-            XCTAssertFalse(SettingsGoalSummary.adjustmentLabel(calorieDeficit: deficit).isEmpty)
+            XCTAssertFalse(
+                SettingsGoalSummary.goalSubtitle(calorieDeficit: deficit, isManualOverride: false).isEmpty
+            )
         }
     }
 

@@ -255,9 +255,9 @@ final class JourneyTests: UITestCase {
 
         then("the field still works afterwards") {
             portion.typeGrams(250)
-            // 250g of 45 kcal per 100g is 112.5, and the readout truncates
-            // rather than rounds.
-            portion.awaitCalories(112)
+            // 250g of 45 kcal per 100g is 112.5, and the readout rounds, as the
+            // logged row on Today does.
+            portion.awaitCalories(113)
         }
     }
 
@@ -284,8 +284,8 @@ final class JourneyTests: UITestCase {
         }
 
         then("the preview moves to that amount") {
-            // 50g of 45 kcal per 100g.
-            portion.awaitCalories(22)
+            // 50g of 45 kcal per 100g is 22.5, rounded.
+            portion.awaitCalories(23)
         }
 
         then("a typed amount still overrides the shortcut afterwards") {
@@ -481,14 +481,16 @@ final class JourneyTests: UITestCase {
         let app = launch(fixture: .profileOnly)
         let tabs = TabBar(app: app)
         let settings = SettingsScreen(app: app)
+        // The headline groups the figure for the locale ("2.400", "2,400"), like every
+        // kcal figure; the app and this runner share the simulator's locale.
+        let typedTarget = 2400.formatted(.number)
 
         given("Settings showing a calculated calorie target") {
             XCTAssertTrue(tabs.isVisible)
             tabs.go(to: .settings)
             XCTAssertTrue(settings.calorieTarget.awaitExistence())
-            XCTAssertNotEqual(
-                settings.calorieTarget.label,
-                "2400 kcal",
+            XCTAssertFalse(
+                settings.calorieTarget.label.contains(typedTarget),
                 "The fixture should not already sit on the target this test types"
             )
         }
@@ -501,7 +503,7 @@ final class JourneyTests: UITestCase {
         }
 
         then("Settings reports the target the user typed") {
-            XCTAssertTrue(settings.calorieTarget.awaitLabel(containing: "2400"))
+            XCTAssertTrue(settings.calorieTarget.awaitLabel(containing: typedTarget))
         }
     }
 

@@ -5,7 +5,7 @@ import Foundation
 /// The screen has seven mutually exclusive states and the order they are tried
 /// in is the whole rule: a barcode overlay outranks anything the query would
 /// have produced, and a local match outranks the spinner, the provider's
-/// failure *and* "No Results" — so a user who has the food in their own library
+/// failure *and* "No results" — so a user who has the food in their own library
 /// still sees it when the network is down. That precedence used to be spelled
 /// out as two nested `if`/`else if` chains inside `body`, where nothing could
 /// check it.

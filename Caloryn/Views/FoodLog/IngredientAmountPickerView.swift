@@ -7,6 +7,8 @@ struct IngredientAmountPickerView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var amount: IngredientAmountDraft
     @FocusState private var isAmountFocused: Bool
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .body) private var amountFieldWidth: CGFloat = 104
 
     init(ingredient: RecipeIngredientDraft, onSave: @escaping (RecipeIngredientDraft) -> Void) {
         self.ingredient = ingredient
@@ -22,26 +24,31 @@ struct IngredientAmountPickerView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 24) {
+                VStack(alignment: .leading, spacing: 22) {
                     ingredientHeader
                     caloriePreview
                     amountSection
                     macroPreview
                 }
                 .padding(.horizontal, CalorynTheme.pagePadding)
+                .padding(.top, 8)
                 .padding(.bottom, 24)
             }
             .calorynSheetCanvas()
-            .navigationTitle("Ingredient Amount")
+            .navigationTitle("Ingredient amount")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    FoodLogSheetTitle(title: "Ingredient amount")
+                }
+
                 ToolbarItem(placement: .cancellationAction) {
                     Button {
                         dismiss()
                     } label: {
                         Image(systemName: "xmark")
                             .font(CalorynTheme.toolbarIcon)
-                            .foregroundStyle(CalorynTheme.sage)
+                            .foregroundStyle(CalorynTheme.textPrimary)
                     }
                     .accessibilityLabel("Close")
                 }
@@ -53,11 +60,11 @@ struct IngredientAmountPickerView: View {
                         // A `Button("Save")` has no label view to colour, and a toolbar
                         // button takes neither the AccentColor asset nor `.tint()` under
                         // Liquid Glass — only `.foregroundStyle` on the label works. The
-                        // ternary keeps the disabled state visible, which a flat sage
+                        // ternary keeps the disabled state visible, which a flat ink
                         // would silently throw away.
                         Text("Save")
                             .font(CalorynTheme.toolbarAction)
-                            .foregroundStyle(amount.canSave ? CalorynTheme.sage : CalorynTheme.textSecondary)
+                            .foregroundStyle(amount.canSave ? CalorynTheme.textPrimary : CalorynTheme.textSecondary)
                     }
                     .disabled(!amount.canSave)
                 }
@@ -70,88 +77,72 @@ struct IngredientAmountPickerView: View {
     }
 
     private var ingredientHeader: some View {
-        VStack(spacing: 4) {
-            Text(ingredient.name)
-                .font(CalorynTheme.sectionTitle)
-                .foregroundStyle(CalorynTheme.textPrimary)
-                .multilineTextAlignment(.center)
-
-            if let brand = ingredient.brand, !brand.isEmpty {
-                Text(brand)
-                    .font(CalorynTheme.caption)
-                    .foregroundStyle(CalorynTheme.textSecondary)
-            }
-        }
-        .padding(.top, 8)
+        FoodLogSheetHeader(
+            name: ingredient.name,
+            lines: [ingredient.brand]
+                .compactMap { $0?.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty }
+        )
     }
 
     private var caloriePreview: some View {
-        VStack(spacing: 4) {
-            Text("\(amount.previewCalories.truncatedSafely)")
-                .font(CalorynTheme.displayNumber)
-                .foregroundStyle(CalorynTheme.sage)
-                .contentTransition(.numericText())
-                .animation(.smooth(duration: 0.3), value: amount.previewCalories.truncatedSafely)
-
-            Text("calories")
-                .font(CalorynTheme.bodyText)
-                .foregroundStyle(CalorynTheme.textSecondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 20)
-        .glassCard()
+        FoodLogCaloriePreview(
+            calories: amount.previewCalories.rounded().truncatedSafely,
+            tint: CalorynTheme.textPrimary,
+            identifier: "ingredientAmount.calories"
+        )
     }
 
+    /// The weight that goes into the recipe, typed into a `surface` well.
+    /// The label and the well share a line, until accessibility sizes: there the label
+    /// goes above, and the well, sized with the text (a fixed 104pt left about 80pt for a
+    /// number that needs 99pt at AX5), takes the line under it. One layout swapped with
+    /// `AnyLayout`, so the field keeps its identity and focus across the switch.
     private var amountSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("AMOUNT")
-                .font(CalorynTheme.sectionEyebrow)
-                .foregroundStyle(CalorynTheme.textSecondary)
+        let stacks = dynamicTypeSize.isAccessibilitySize
+        let layout = stacks
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+            : AnyLayout(HStackLayout(spacing: 10))
 
-            HStack {
+        return VStack(alignment: .leading, spacing: 10) {
+            FoodLogSectionTitle("How much")
+
+            layout {
                 Text("Measured amount")
                     .font(CalorynTheme.bodyText)
                     .foregroundStyle(CalorynTheme.textPrimary)
+                    .frame(maxWidth: stacks ? nil : .infinity, alignment: .leading)
 
-                Spacer()
+                HStack(spacing: 10) {
+                    TextField("100", text: $amount.gramsText)
+                        .font(CalorynTheme.numericBody)
+                        .foregroundStyle(CalorynTheme.textPrimary)
+                        .multilineTextAlignment(.trailing)
+                        .keyboardType(.decimalPad)
+                        .focused($isAmountFocused)
+                        .calorynInputField(isFocused: isAmountFocused)
+                        .frame(width: min(amountFieldWidth, 220))
 
-                TextField("100", text: $amount.gramsText)
-                    .font(CalorynTheme.numericBody)
-                    .keyboardType(.decimalPad)
-                    .focused($isAmountFocused)
-                    .calorynInputField(isFocused: isAmountFocused)
-                    .frame(width: 92)
-
-                Text("g")
-                    .font(CalorynTheme.caption)
-                    .foregroundStyle(CalorynTheme.textSecondary)
+                    Text("g")
+                        .font(CalorynTheme.bodyText)
+                        .foregroundStyle(CalorynTheme.textSecondary)
+                }
             }
         }
-        .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
     }
 
     private var macroPreview: some View {
-        HStack(spacing: CalorynTheme.cardSpacing) {
-            macroPill("Protein", value: amount.previewProtein, color: CalorynTheme.proteinColor)
-            macroPill("Carbs", value: amount.previewCarbs, color: CalorynTheme.carbColor)
-            macroPill("Fat", value: amount.previewFat, color: CalorynTheme.fatColor)
-        }
-    }
+        VStack(alignment: .leading, spacing: 6) {
+            FoodLogSectionTitle("In this amount")
 
-    private func macroPill(_ label: String, value: Double, color: Color) -> some View {
-        VStack(spacing: 4) {
-            Text(label)
-                .font(CalorynTheme.caption)
-                .foregroundStyle(CalorynTheme.textSecondary)
-            Text(value.macroFormatted)
-                .font(CalorynTheme.numericBody)
-                .foregroundStyle(color)
-                .contentTransition(.numericText())
-                .animation(.smooth(duration: 0.3), value: value.macroFormatted)
+            FoodLogValueRows(
+                rows: [
+                    FoodLogValueRows.Row(id: "protein", label: "Protein", value: amount.previewProtein.spacedMacroFormatted),
+                    FoodLogValueRows.Row(id: "carbs", label: "Carbs", value: amount.previewCarbs.spacedMacroFormatted),
+                    FoodLogValueRows.Row(id: "fat", label: "Fat", value: amount.previewFat.spacedMacroFormatted),
+                ]
+            )
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
-        .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
     }
 
     private func save() {

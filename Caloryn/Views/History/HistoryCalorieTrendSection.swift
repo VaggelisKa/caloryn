@@ -1,7 +1,10 @@
 import SwiftUI
 import Charts
 
-struct HistoryCalorieTrendCard: View {
+/// "Calorie trend": the range's logged total and one bar per day (per week at 90 days) —
+/// over days in ink, on track in `historyEaten`, under a step lighter — against the goal line.
+/// The whole section opens the drill-down once there is enough logged to inspect.
+struct HistoryCalorieTrendSection: View {
     let projection: HistoryCalorieTrendProjection
     let drillDownAction: (() -> Void)?
 
@@ -51,32 +54,29 @@ struct HistoryCalorieTrendCard: View {
     }
 
     private var content: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 10) {
             header
             chart
+                .padding(.top, 4)
 
             if let estimatedTargetNoteText = projection.estimatedTargetNoteText {
                 Text(estimatedTargetNoteText)
-                    .font(CalorynTheme.microCaption)
+                    .font(CalorynTheme.caption)
                     .foregroundStyle(CalorynTheme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .historyCard()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(.rect)
         .accessibilityElement(children: .contain)
     }
 
     private var header: some View {
-        let summary = summary
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                HistorySectionTitle("Calorie trend")
 
-        return VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .center, spacing: 8) {
-                Text("Calorie Trend")
-                    .font(CalorynTheme.sectionEyebrow)
-                    .foregroundStyle(CalorynTheme.textSecondary)
-                    .textCase(.uppercase)
-
-                Spacer()
+                Spacer(minLength: 8)
 
                 if drillDownAction != nil {
                     Image(systemName: "chevron.right")
@@ -86,56 +86,13 @@ struct HistoryCalorieTrendCard: View {
                 }
             }
 
-            if summary.showsStatColumns {
-                HStack(alignment: .top, spacing: 0) {
-                    statColumn(
-                        value: summary.averageValueText,
-                        unit: "kcal/day avg",
-                        detail: projection.averageDifferenceText,
-                        detailColor: color(for: summary.averageDifferenceTone)
-                    )
-
-                    Spacer(minLength: 16)
-
-                    statColumn(
-                        value: summary.totalValueText,
-                        unit: "kcal logged",
-                        detail: projection.totalDifferenceText,
-                        detailColor: color(for: summary.totalDifferenceTone)
-                    )
-                }
-            }
-        }
-    }
-
-    private func statColumn(
-        value: String,
-        unit: String,
-        detail: String,
-        detailColor: Color
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text(value)
-                    .font(CalorynTheme.compactNumber)
-                    .foregroundStyle(CalorynTheme.textPrimary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-
-                Text(unit)
-                    .font(CalorynTheme.caption)
+            if let totalSupportText = summary.totalSupportText {
+                Text(totalSupportText)
+                    .font(CalorynTheme.cardSubtitle.monospacedDigit())
                     .foregroundStyle(CalorynTheme.textSecondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-
-            Text(detail)
-                .font(CalorynTheme.numericCaption)
-                .foregroundStyle(detailColor)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var chart: some View {
@@ -166,8 +123,8 @@ struct HistoryCalorieTrendCard: View {
             }
 
             RuleMark(y: .value("Target", projection.dailyCalorieTarget))
-                .lineStyle(StrokeStyle(lineWidth: 1.8, lineCap: .round))
-                .foregroundStyle(CalorynTheme.textPrimary.opacity(0.62))
+                .lineStyle(StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [4, 3]))
+                .foregroundStyle(CalorynTheme.textSecondary)
         }
         .chartXAxis {
             AxisMarks(values: projection.points.map(\.index)) { value in
@@ -175,7 +132,7 @@ struct HistoryCalorieTrendCard: View {
                     if let index = value.as(Double.self),
                        let chartPoint = projection.point(for: index) {
                         Text(chartPoint.xAxisLabel)
-                            .font(CalorynTheme.chartAxisLabel)
+                            .font(CalorynTheme.trendChartXAxisLabel(pointCount: projection.points.count))
                             .foregroundStyle(.clear)
                             .accessibilityHidden(true)
                     }
@@ -190,7 +147,7 @@ struct HistoryCalorieTrendCard: View {
                     ForEach(projection.points) { chartPoint in
                         if let xPosition = proxy.position(forX: chartPoint.index) {
                             Text(chartPoint.xAxisLabel)
-                                .font(CalorynTheme.chartAxisLabel)
+                                .font(CalorynTheme.trendChartXAxisLabel(pointCount: projection.points.count))
                                 .foregroundStyle(CalorynTheme.textSecondary)
                                 .position(
                                     x: plotRect.minX + xPosition,
@@ -206,8 +163,10 @@ struct HistoryCalorieTrendCard: View {
         .chartYAxis {
             AxisMarks(position: .leading) { _ in
                 AxisGridLine()
+                    .foregroundStyle(CalorynTheme.hairline)
                 AxisValueLabel()
                     .font(CalorynTheme.chartAxisLabel)
+                    .foregroundStyle(CalorynTheme.textSecondary)
             }
         }
         .chartYScale(domain: 0 ... projection.yAxisUpperBound)
@@ -215,35 +174,26 @@ struct HistoryCalorieTrendCard: View {
         .frame(height: layout.chartHeight)
         .accessibilityLabel(summary.chartAccessibilityLabel)
     }
-
-    private func color(
-        for tone: HistoryCalorieTrendCardSummary.DifferenceTone
-    ) -> Color {
-        switch tone {
-        case .neutral:
-            CalorynTheme.textSecondary
-        case .status(let status):
-            status.tint
-        }
-    }
 }
 
 #if DEBUG
 #Preview("Calorie Trend - 7 Days") {
     let history = HistoryPreviewFixtures.analytics(for: .mostlyOnTrack)
 
-    return HistoryCalorieTrendCard(
+    return HistoryCalorieTrendSection(
         projection: HistoryPatternDiscovery(analytics: history).calorieTrend
     )
     .padding()
+    .calorynPageCanvas()
 }
 
 #Preview("Calorie Trend - Empty") {
     let history = HistoryPreviewFixtures.analytics(for: .empty)
 
-    return HistoryCalorieTrendCard(
+    return HistoryCalorieTrendSection(
         projection: HistoryPatternDiscovery(analytics: history).calorieTrend
     )
     .padding()
+    .calorynPageCanvas()
 }
 #endif

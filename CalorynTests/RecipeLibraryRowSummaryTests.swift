@@ -85,7 +85,7 @@ final class RecipeLibraryRowSummaryTests: XCTestCase {
 
     // MARK: - Detail line
 
-    func testTheDetailLineNamesTheIngredientsWeightAndMacros() {
+    func testTheDetailLineNamesTheIngredientsAndWeight() {
         let summary = makeSummary(
             servingGrams: 450,
             ingredientCount: 3,
@@ -95,11 +95,11 @@ final class RecipeLibraryRowSummaryTests: XCTestCase {
             fatPer100g: 6
         )
 
-        XCTAssertEqual(summary.detail, "3 ingredients · 450g · 37.8g P · 99g C · 27g F")
+        XCTAssertEqual(summary.detail, "3 ingredients, 450 g")
     }
 
     /// A recipe that weighs nothing skips the gram figure rather than claiming
-    /// "0g".
+    /// "0 g".
     func testARecipeWithNoWeightLeavesTheGramFigureOut() {
         let summary = makeSummary(
             servingGrams: 0,
@@ -110,17 +110,17 @@ final class RecipeLibraryRowSummaryTests: XCTestCase {
             fatPer100g: 6
         )
 
-        XCTAssertEqual(summary.detail, "1 ingredient · 0g P · 0g C · 0g F")
+        XCTAssertEqual(summary.detail, "1 ingredient")
     }
 
     func testARecipeWithNoRecordedServingLeavesTheGramFigureOut() {
         let summary = makeSummary(servingGrams: nil, ingredientCount: 2)
 
-        XCTAssertEqual(summary.detail, "2 ingredients · 0g P · 0g C · 0g F")
+        XCTAssertEqual(summary.detail, "2 ingredients")
     }
 
     func testTheWeightIsRoundedToWholeGrams() {
-        XCTAssertEqual(makeSummary(servingGrams: 312.6).gramsText, "313g")
+        XCTAssertEqual(makeSummary(servingGrams: 312.6).gramsText, "313 g")
     }
 
     // MARK: - Name

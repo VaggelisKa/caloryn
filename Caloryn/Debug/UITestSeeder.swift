@@ -73,6 +73,8 @@ enum UITestSeeder {
             HistoryPreviewFixtures.seedRecurringInsight(in: context)
         case .historyNoPattern:
             HistoryPreviewFixtures.seedNoRecurringInsight(in: context)
+        case .overBudgetDay:
+            TodayDebugFixtures.seedOverBudgetDay(profile: insertProfile(into: context), in: context)
         }
 
         try context.save()

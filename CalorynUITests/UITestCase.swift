@@ -41,6 +41,9 @@ class UITestCase: XCTestCase {
         case history
         case historyPattern
         case historyNoPattern
+        /// Today over budget, with a Nutri-Score day and an entry whose food was deleted.
+        /// Only the theme harness reaches for it.
+        case overBudgetDay
     }
 }
 

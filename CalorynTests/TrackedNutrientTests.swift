@@ -22,9 +22,14 @@ final class TrackedNutrientTests: XCTestCase {
     }
 
     func testUnitFormattingConvertsStoredGramValuesToMilligramInputs() {
-        XCTAssertEqual(TrackedNutrientUnit.grams.formatted(12), "12g")
-        XCTAssertEqual(TrackedNutrientUnit.grams.formatted(12.25), "12.2g")
-        XCTAssertEqual(TrackedNutrientUnit.milligramsFromGrams.formatted(0.0015), "2mg")
+        let us = Locale(identifier: "en_US")
+        XCTAssertEqual(TrackedNutrientUnit.grams.formatted(12, locale: us), "12 g")
+        XCTAssertEqual(TrackedNutrientUnit.grams.formatted(12.24, locale: us), "12.2 g")
+        XCTAssertEqual(TrackedNutrientUnit.milligramsFromGrams.formatted(0.0015, locale: us), "2 mg")
+        XCTAssertEqual(
+            TrackedNutrientUnit.milligramsFromGrams.formatted(2.3, locale: Locale(identifier: "da_DK")),
+            "2.300 mg"
+        )
         XCTAssertEqual(TrackedNutrientUnit.milligramsFromGrams.inputFormatted(1.5), "1500")
         XCTAssertEqual(TrackedNutrientUnit.milligramsFromGrams.storedValue(fromInput: 1_500), 1.5)
     }
@@ -89,11 +94,11 @@ final class TrackedNutrientTests: XCTestCase {
             goalKind: .maximum
         )
 
-        XCTAssertEqual(metric.formattedValue, "2mg")
-        XCTAssertEqual(metric.formattedTarget, "2mg max")
-        XCTAssertEqual(metric.targetSummary, "at most 2mg")
+        XCTAssertEqual(metric.formattedValue, "2 mg")
+        XCTAssertEqual(metric.formattedTarget, "2 mg max")
+        XCTAssertEqual(metric.targetSummary, "at most 2 mg")
         XCTAssertEqual(metric.progress, 1.0, accuracy: 0.001)
-        XCTAssertEqual(metric.accessibilityLabel, "Sodium: 2mg, at most 2mg")
+        XCTAssertEqual(metric.accessibilityLabel, "Sodium: 2 mg, at most 2 mg")
     }
 
     /// A nutrient goal is parsed with `Double(_:)` and only checked for being
@@ -101,7 +106,11 @@ final class TrackedNutrientTests: XCTestCase {
     /// and save. Both of these formatters then converted it with a bare
     /// `Int(_:)`, which traps rather than rendering.
     func testUnboundedGoalTargetsFormatWithoutTrapping() {
-        XCTAssertEqual(TrackedNutrientUnit.milligramsFromGrams.formatted(1e30), "\(Int.max)mg")
+        let us = Locale(identifier: "en_US")
+        XCTAssertEqual(
+            TrackedNutrientUnit.milligramsFromGrams.formatted(1e30, locale: us),
+            "\(Int.max.formatted(.number.locale(us))) mg"
+        )
         XCTAssertEqual(TrackedNutrientUnit.grams.inputFormatted(1e30), "\(Int.max)")
         XCTAssertEqual(TrackedNutrientUnit.milligramsFromGrams.inputFormatted(1e30), "\(Int.max)")
     }

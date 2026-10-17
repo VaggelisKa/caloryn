@@ -54,17 +54,19 @@ enum TrackedNutrientUnit {
         }
     }
 
-    func formatted(_ value: Double) -> String {
+    /// "66.7 g", "2.300 mg": a space before the unit and the number in the reader's locale,
+    /// as the Portion sheet writes a weight. `locale` exists for tests.
+    func formatted(_ value: Double, locale: Locale = .current) -> String {
         switch self {
         case .grams:
-            value.macroFormatted
+            value.spacedMacroFormatted(locale: locale)
         case .milligramsFromGrams:
-            "\((value * 1000).rounded().truncatedSafely)mg"
+            "\((value * 1000).rounded().truncatedSafely.formatted(.number.locale(locale))) mg"
         }
     }
 
     /// The same number as `formatted`, with the unit spelled out so VoiceOver says
-    /// "66.7 grams" rather than reading the bare glyph in "66.7g".
+    /// "66.7 grams" rather than reading the bare glyph in "66.7 g".
     func spokenFormatted(_ value: Double) -> String {
         switch self {
         case .grams:
@@ -280,13 +282,22 @@ struct TrackedNutrientMetric: Identifiable {
     var id: String { nutrient.id }
 
     var formattedValue: String {
-        nutrient.unit.formatted(value)
+        formattedValue(locale: .current)
+    }
+
+    func formattedValue(locale: Locale) -> String {
+        nutrient.unit.formatted(value, locale: locale)
     }
 
     var formattedTarget: String? {
+        formattedTarget(locale: .current)
+    }
+
+    func formattedTarget(locale: Locale) -> String? {
         guard let target, target > 0 else { return nil }
-        guard let goalKind else { return nutrient.unit.formatted(target) }
-        return "\(nutrient.unit.formatted(target)) \(goalKind.shortLabel)"
+        let formatted = nutrient.unit.formatted(target, locale: locale)
+        guard let goalKind else { return formatted }
+        return "\(formatted) \(goalKind.shortLabel)"
     }
 
     var targetSummary: String? {

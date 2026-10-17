@@ -49,3 +49,6 @@ Pods/
 
 # Local Open Food Facts snapshots and generated databases
 .local-data/
+
+# Local screenshot captures taken while verifying UI work
+Screenshots/

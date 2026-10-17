@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// A typed weight in grams, with a row of shortcut amounts beneath it.
+/// A typed weight in grams inside a stepper pill (minus and plus move it ten grams),
+/// with a row of shortcut amounts beneath it.
 ///
 /// This replaced a wheel of 5g steps. Reaching 340g from 100g there was
 /// forty-eight rows of spinning, which users reported as the single most
@@ -27,61 +28,64 @@ struct GramAmountField: View {
     let onTextChange: () -> Void
     let onCommit: () -> Void
     let onQuickOption: (Int) -> Void
+    /// The stepper's minus and plus. The step itself is `PortionSelection.gramStepSize`.
+    let onStep: (PortionSelection.GramStep) -> Void
+    /// A shortcut's label: its weight, or the food's own serving with it ("1 pot, 150 g").
+    /// The chip's identifier stays keyed on the grams.
+    var quickOptionLabel: (Int) -> String = { "\($0) g" }
+
+    @ScaledMetric(relativeTo: .largeTitle) private var numberSize: CGFloat = 36
+    @ScaledMetric(relativeTo: .title3) private var unitSize: CGFloat = 20
+    @ScaledMetric(relativeTo: .body) private var stepperHeight: CGFloat = 68
+    @ScaledMetric(relativeTo: .body) private var stepButtonSize: CGFloat = 48
+
+    // The pill grows with Dynamic Type, but only so far: both buttons and the amount have
+    // to share one line on a phone. Uncapped, the buttons alone reached about 110pt each at
+    // the accessibility sizes and covered the "g" beside the number.
+    private var pillHeight: CGFloat { min(stepperHeight, 80) }
+    private var buttonDiameter: CGFloat { min(stepButtonSize, 60) }
+    private var amountFontSize: CGFloat { min(numberSize, 52) }
+    private var unitFontSize: CGFloat { min(unitSize, 28) }
 
     var body: some View {
-        VStack(spacing: 16) {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                // A `TextField` cannot roll its digits — `contentTransition`
-                // has no effect on one. So the number is a `Text` whenever the
-                // field is not being typed into, and tapping a shortcut rolls
-                // it the way the calorie readout above rolls. The real field is
-                // still in the hierarchy, merely invisible: focus cannot be
-                // moved to a view that does not exist, so it cannot be swapped
-                // in only once tapped.
-                ZStack(alignment: .trailing) {
-                    TextField("0", text: $text)
-                        .keyboardType(.numberPad)
-                        .multilineTextAlignment(.trailing)
-                        .textFieldStyle(.plain)
-                        .focused($isFocused)
-                        .onSubmit(onCommit)
-                        .opacity(isFocused ? 1 : 0)
-                        .accessibilityIdentifier("\(identifierPrefix).gramsField")
-                        .accessibilityLabel("Portion in grams")
-
-                    Text(text.isEmpty ? "0" : text)
-                        .contentTransition(.numericText())
-                        .animation(.smooth(duration: 0.3), value: text)
-                        .opacity(isFocused ? 0 : 1)
-                        .allowsHitTesting(false)
-                        .accessibilityHidden(true)
-                }
-                .font(CalorynTheme.displayNumber)
-                .foregroundStyle(CalorynTheme.textPrimary)
-                .fixedSize()
-
-                Text("g")
-                    .font(CalorynTheme.sectionTitle)
-                    .foregroundStyle(CalorynTheme.textSecondary)
+        VStack(alignment: .leading, spacing: 10) {
+            // The stepper pill: a `surface` capsule with round minus and plus buttons at
+            // its ends and the typed amount between them. The buttons are siblings of
+            // the amount box, not children of it — an identifier on a container is
+            // inherited by everything inside, so the box's would have named the buttons
+            // too, and a journey tapping "amountBox" could have landed on minus.
+            HStack(spacing: 0) {
+                stepButton(.less)
+                amountBox
+                stepButton(.more)
             }
-            .frame(maxWidth: .infinity)
-            // The same chrome as every other field in the app — the material
-            // fill, the focus ring and its timing all come from there rather
-            // than being restated. Only the padding is this field's own: the
-            // shared one is sized for body text, and the number here is display
-            // sized.
-            .padding(.vertical, 6)
-            .calorynInputField(isFocused: isFocused)
-            .contentShape(Rectangle())
-            .onTapGesture { isFocused = true }
-            // The box is what takes the tap, not the field inside it — the
-            // field is at zero opacity until focused, and a journey cannot tap
-            // something invisible.
-            .accessibilityIdentifier("\(identifierPrefix).amountBox")
+            .padding(.horizontal, 10)
+            .frame(minHeight: pillHeight)
+            .background(CalorynTheme.surface, in: Capsule())
+            .overlay {
+                // A well, not a card: a hairline edge, and ink while it is being typed in.
+                Capsule()
+                    .strokeBorder(
+                        isFocused ? CalorynTheme.textPrimary : CalorynTheme.hairline,
+                        lineWidth: isFocused ? 1.2 : CalorynTheme.hairlineWidth
+                    )
+                    .allowsHitTesting(false)
+            }
+            .animation(.smooth(duration: 0.18), value: isFocused)
 
-            HStack(spacing: 8) {
-                ForEach(quickOptions, id: \.self) { grams in
-                    quickOption(grams)
+            // One row of shortcuts, or one per line when a large text size will not fit
+            // them side by side.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 8) {
+                    ForEach(quickOptions, id: \.self) { grams in
+                        quickOption(grams)
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(quickOptions, id: \.self) { grams in
+                        quickOption(grams)
+                    }
                 }
             }
         }
@@ -89,6 +93,84 @@ struct GramAmountField: View {
         .onChange(of: isFocused) { _, focused in
             if !focused { onCommit() }
         }
+    }
+
+    private var amountBox: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 4) {
+            // A `TextField` cannot roll its digits — `contentTransition`
+            // has no effect on one. So the number is a `Text` whenever the
+            // field is not being typed into, and tapping a shortcut rolls
+            // it the way the calorie readout above rolls. The real field is
+            // still in the hierarchy, merely invisible: focus cannot be
+            // moved to a view that does not exist, so it cannot be swapped
+            // in only once tapped.
+            ZStack(alignment: .trailing) {
+                TextField("0", text: $text)
+                    .keyboardType(.numberPad)
+                    .multilineTextAlignment(.trailing)
+                    .textFieldStyle(.plain)
+                    .focused($isFocused)
+                    .onSubmit(onCommit)
+                    .opacity(isFocused ? 1 : 0)
+                    .accessibilityIdentifier("\(identifierPrefix).gramsField")
+                    .accessibilityLabel("Portion in grams")
+
+                Text(text.isEmpty ? "0" : text)
+                    .contentTransition(.numericText())
+                    .animation(.smooth(duration: 0.3), value: text)
+                    .opacity(isFocused ? 0 : 1)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
+            .font(CalorynTheme.heroNumber(size: amountFontSize))
+            .tracking(-amountFontSize * 0.03)
+            .foregroundStyle(CalorynTheme.textPrimary)
+            .fixedSize()
+
+            // Left visible to accessibility on purpose: the box's identifier is inherited
+            // by its children, the field keeps its own, and this label is what then
+            // carries `amountBox` for a journey to tap.
+            Text("g")
+                .font(.system(size: unitFontSize, weight: .semibold))
+                .foregroundStyle(CalorynTheme.textSecondary)
+        }
+        .frame(maxWidth: .infinity, minHeight: buttonDiameter)
+        .contentShape(Rectangle())
+        .onTapGesture { isFocused = true }
+        // The box is what takes the tap, not the field inside it — the
+        // field is at zero opacity until focused, and a journey cannot tap
+        // something invisible.
+        .accessibilityIdentifier("\(identifierPrefix).amountBox")
+    }
+
+    private func stepButton(_ step: PortionSelection.GramStep) -> some View {
+        Button {
+            // Focus goes first, as for a shortcut: the rolling number is the unfocused
+            // `Text`, and the step should land on it rather than on the hidden field.
+            isFocused = false
+            onStep(step)
+        } label: {
+            // The board's round white button on the pill, not glass: the stepper is content,
+            // and glass on the `surface` pill read as a dark hole in dark mode. The hairline
+            // ring is what still separates it from the pill there, where the card and the
+            // surface are the same colour.
+            Image(systemName: step == .more ? "plus" : "minus")
+                .font(CalorynTheme.inlineIcon)
+                .foregroundStyle(CalorynTheme.textPrimary)
+                .frame(width: buttonDiameter, height: buttonDiameter)
+                .background(CalorynTheme.cardBackground, in: Circle())
+                .overlay {
+                    Circle()
+                        .strokeBorder(CalorynTheme.hairline, lineWidth: CalorynTheme.hairlineWidth)
+                }
+                .shadow(color: CalorynTheme.hairline, radius: 4, y: 2)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(
+            "\(PortionSelection.gramStepSize.truncatedSafely) grams \(step == .more ? "more" : "less")"
+        )
+        .accessibilityIdentifier("\(identifierPrefix).\(step == .more ? "stepUp" : "stepDown")")
     }
 
     private func quickOption(_ grams: Int) -> some View {
@@ -99,26 +181,15 @@ struct GramAmountField: View {
             isFocused = false
             onQuickOption(grams)
         } label: {
-            // Sage marks the chosen chip and nothing else here — the calorie
-            // readout is what should catch the eye on this screen, and three
-            // green capsules under a green number competed with it.
-            Text("\(grams)")
-                .font(CalorynTheme.numericCaption)
-                .foregroundStyle(isSelected(grams) ? CalorynTheme.warmWhite : CalorynTheme.textSecondary)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
-                .background(
-                    Capsule()
-                        .fill(
-                            isSelected(grams)
-                                ? AnyShapeStyle(CalorynTheme.sage)
-                                : AnyShapeStyle(.thinMaterial)
-                        )
-                )
+            // Ink marks the chosen chip and nothing else here: the calorie readout
+            // above, in the meal's colour, is what should catch the eye.
+            Text(quickOptionLabel(grams))
+                .calorynChip(isSelected: isSelected(grams))
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("\(identifierPrefix).quickGrams.\(grams)")
         .accessibilityLabel("\(grams) grams")
+        .accessibilityAddTraits(isSelected(grams) ? .isSelected : [])
     }
 
     private func isSelected(_ grams: Int) -> Bool {

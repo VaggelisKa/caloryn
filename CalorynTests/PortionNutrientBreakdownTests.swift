@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import Caloryn
 
@@ -7,6 +8,7 @@ import Testing
 /// describe the same domain for the Nutrition Details sheet.
 @Suite("Portion nutrient breakdown")
 struct PortionNutrientBreakdownTests {
+    private static let us = Locale(identifier: "en_US")
 
     // MARK: - Core rows
 
@@ -22,8 +24,8 @@ struct PortionNutrientBreakdownTests {
         let nutrition = NutritionValues(calories: 884, proteinG: 0, carbsG: 0, fatG: 100, fiberG: 0)
         let items = PortionNutrientBreakdown(nutrition: nutrition).items
 
-        #expect(items.first { $0.id == "protein" }?.formattedValue == "0g")
-        #expect(items.first { $0.id == "fat" }?.formattedValue == "100g")
+        #expect(items.first { $0.id == "protein" }?.spacedFormattedValue(locale: Self.us) == "0 g")
+        #expect(items.first { $0.id == "fat" }?.spacedFormattedValue(locale: Self.us) == "100 g")
     }
 
     // MARK: - Optional rows
@@ -108,8 +110,8 @@ struct PortionNutrientBreakdownTests {
         let nutrition = NutritionValues(calories: 63, sodiumG: 0.05, cholesterolG: 0.0104)
         let items = PortionNutrientBreakdown(nutrition: nutrition).items
 
-        #expect(items.first { $0.id == "sodium" }?.formattedValue == "50mg")
-        #expect(items.first { $0.id == "cholesterol" }?.formattedValue == "10mg")
+        #expect(items.first { $0.id == "sodium" }?.spacedFormattedValue(locale: Self.us) == "50 mg")
+        #expect(items.first { $0.id == "cholesterol" }?.spacedFormattedValue(locale: Self.us) == "10 mg")
     }
 
     @Test("Every other row is formatted as grams")
@@ -118,7 +120,7 @@ struct PortionNutrientBreakdownTests {
         let milligramRows = items.filter { $0.unit == .milligramsFromGrams }
 
         #expect(milligramRows.map(\.id) == ["sodium", "cholesterol"])
-        #expect(items.first { $0.id == "sugars" }?.formattedValue == "1.5g")
+        #expect(items.first { $0.id == "sugars" }?.spacedFormattedValue(locale: Self.us) == "1.5 g")
     }
 
     // MARK: - Parity with the grouped breakdown

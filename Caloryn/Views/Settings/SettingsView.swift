@@ -20,6 +20,8 @@ struct SettingsView: View {
     @State private var isRequestingHealthAuthorization = false
     @State private var healthStatusMessage: String?
     @State private var settingsEnergyTracker = ActiveEnergyDayTracker()
+    @State private var isEditingGoal = false
+    @State private var isEditingProfile = false
 
     private let isHealthAvailableProvider: () -> Bool
 
@@ -43,19 +45,19 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationStack {
+            // The board's order: the goal first, because it is what Settings is opened for.
+            // The calorie estimate is part of the goal group (its toggle is the board's
+            // "adjust" row), and the profile the estimate is worked out from follows it.
             List {
-                appearanceSection
-                    .listRowBackground(CalorynTheme.cardBackground)
-
                 if let profile {
                     goalSection(profile)
-                        .listRowBackground(CalorynTheme.cardBackground)
-                    calorieEstimateSection(profile)
                         .listRowBackground(CalorynTheme.cardBackground)
                     profileSection(profile)
                         .listRowBackground(CalorynTheme.cardBackground)
                 }
 
+                appearanceSection
+                    .listRowBackground(CalorynTheme.cardBackground)
                 DailyReminderSettingsSection()
                     .listRowBackground(CalorynTheme.cardBackground)
                 dataSection
@@ -65,7 +67,17 @@ struct SettingsView: View {
             }
             .calorynGroupedListStyle()
             .calorynPageCanvas()
-            .navigationTitle("Settings")
+            .calorynLargeTitle("Settings")
+            .navigationDestination(isPresented: $isEditingGoal) {
+                if let profile {
+                    GoalEditView(profile: profile)
+                }
+            }
+            .navigationDestination(isPresented: $isEditingProfile) {
+                if let profile {
+                    ProfileEditView(profile: profile)
+                }
+            }
             .sheet(isPresented: $showExportSheet) {
                 if let url = exportURL {
                     ShareSheet(url: url)
@@ -90,110 +102,99 @@ struct SettingsView: View {
         }
     }
 
-    private func calorieEstimateSection(_ profile: UserProfile) -> some View {
+    /// The calorie estimate's rows, which close the goal group: the auto-adjust toggle (the
+    /// board's "Adjust with Apple Health"), the Health figures while it is on, and any notice.
+    @ViewBuilder
+    private func calorieEstimateRows(_ profile: UserProfile) -> some View {
         let budget = settingsBudget(for: profile)
         let estimate = calorieEstimate(for: profile)
 
-        return Section {
-            if estimate.isToggleBound {
-                Toggle(isOn: dynamicEnergyBinding(for: profile)) {
-                    calorieEstimateModeToggleLabel(estimate)
-                }
-                .disabled(estimate.isToggleDisabled)
-            } else {
-                Toggle(isOn: .constant(estimate.isToggleOn)) {
-                    calorieEstimateModeToggleLabel(estimate)
-                }
-                .disabled(estimate.isToggleDisabled)
+        if estimate.isToggleBound {
+            Toggle(isOn: dynamicEnergyBinding(for: profile)) {
+                calorieEstimateModeToggleLabel(estimate)
             }
-
-            if estimate.showsDynamicMetrics {
-                CalorieEstimateMetricRow(
-                    title: "Valid Days",
-                    description: SettingsCalorieEstimate.validActivityDaysDescription,
-                    value: SettingsCalorieEstimate.validActivityDaysText(validActivityDays: budget.validActivityDays)
-                )
-                CalorieEstimateMetricRow(
-                    title: "Baseline",
-                    description: "Your typical Active Energy from recent valid days.",
-                    value: SettingsCalorieEstimate.baselineText(activityBaselineKcal: budget.activityBaselineKcal)
-                )
-                CalorieEstimateMetricRow(
-                    title: "Today",
-                    description: "Active Energy read from Apple Health for today.",
-                    value: SettingsCalorieEstimate.todayText(
-                        activeEnergyKcal: settingsEnergyTracker.activeEnergyKcal
-                    )
-                )
-
-                if let lastRefresh = settingsEnergyTracker.lastRefresh {
-                    CalorieEstimateMetricRow(
-                        title: "Updated",
-                        description: "When Health data was last refreshed.",
-                        value: lastRefresh.shortFormatted
-                    )
-                }
+            .disabled(estimate.isToggleDisabled)
+        } else {
+            Toggle(isOn: .constant(estimate.isToggleOn)) {
+                calorieEstimateModeToggleLabel(estimate)
             }
+            .disabled(estimate.isToggleDisabled)
+        }
 
-            if isRequestingHealthAuthorization {
-                HStack(spacing: 8) {
-                    ProgressView()
+        if estimate.showsDynamicMetrics {
+            CalorieEstimateMetricRow(
+                title: "Valid days",
+                description: SettingsCalorieEstimate.validActivityDaysDescription,
+                value: SettingsCalorieEstimate.validActivityDaysText(validActivityDays: budget.validActivityDays)
+            )
+            CalorieEstimateMetricRow(
+                title: "Baseline",
+                description: "Your typical Active Energy from recent valid days.",
+                value: SettingsCalorieEstimate.baselineText(activityBaselineKcal: budget.activityBaselineKcal)
+            )
+            CalorieEstimateMetricRow(
+                title: "Today",
+                description: "Active Energy read from Apple Health for today.",
+                value: SettingsCalorieEstimate.todayText(
+                    activeEnergyKcal: settingsEnergyTracker.activeEnergyKcal
+                )
+            )
 
-                    Text("Requesting Apple Health access")
-                        .foregroundStyle(CalorynTheme.textSecondary)
-                }
+            if let lastRefresh = settingsEnergyTracker.lastRefresh {
+                CalorieEstimateMetricRow(
+                    title: "Updated",
+                    description: "When Health data was last refreshed.",
+                    value: lastRefresh.shortFormatted
+                )
             }
+        }
 
-            if let emptyActivityNotice = settingsEnergyTracker.emptyActivityNotice {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text(emptyActivityNotice)
-                        .font(CalorynTheme.caption)
-                        .foregroundStyle(CalorynTheme.textSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
+        if isRequestingHealthAuthorization {
+            HStack(spacing: 8) {
+                ProgressView()
+                    .tint(CalorynTheme.textSecondary)
 
-                    Button {
-                        openHealthAccessSettings()
-                    } label: {
-                        HStack(spacing: 5) {
-                            Image(systemName: "gearshape")
-                                .font(CalorynTheme.compactIcon)
-                                .accessibilityHidden(true)
+                Text("Requesting Apple Health access")
+                    .font(CalorynTheme.cardSubtitle)
+                    .foregroundStyle(CalorynTheme.textSecondary)
+            }
+        }
 
-                            Text("Open App Settings")
-                        }
-                    }
+        if let emptyActivityNotice = settingsEnergyTracker.emptyActivityNotice {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(emptyActivityNotice)
                     .font(CalorynTheme.caption)
-                    .buttonStyle(.borderless)
-                    .accessibilityLabel("Open app settings")
+                    .foregroundStyle(CalorynTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Button {
+                    openHealthAccessSettings()
+                } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "gearshape")
+                            .font(CalorynTheme.compactIcon)
+                            .accessibilityHidden(true)
+
+                        Text("Open App Settings")
+                    }
+                    .foregroundStyle(CalorynTheme.textPrimary)
                 }
-            } else if let dynamicStatus = budget.dynamicStatusText {
+                .font(CalorynTheme.caption)
+                .buttonStyle(.borderless)
+                .accessibilityLabel("Open app settings")
+            }
+        } else if let dynamicStatus = budget.dynamicStatusText {
+            if estimate.isDynamicStatusInformational {
                 Text(dynamicStatus)
                     .font(CalorynTheme.caption)
-                    .foregroundStyle(estimate.isDynamicStatusInformational ? CalorynTheme.textSecondary : CalorynTheme.terracotta)
+                    .foregroundStyle(CalorynTheme.textSecondary)
+            } else {
+                SettingsWarningText(dynamicStatus)
             }
+        }
 
-            if let healthStatusMessage {
-                Text(healthStatusMessage)
-                    .font(CalorynTheme.caption)
-                    .foregroundStyle(CalorynTheme.terracotta)
-            }
-        } header: {
-            Text("Calorie Estimate")
-        } footer: {
-            Text(estimate.footerText)
-        }
-        .task(id: "\(profile.energyCalculationModeRaw)-\(profile.manualOverride)") {
-            await settingsEnergyTracker.configure(
-                date: .now,
-                isEnabled: calorieEstimate(for: profile).isActiveEnergyTrackingEnabled
-            )
-        }
-        .onChange(of: settingsEnergyTracker.message) { _, message in
-            guard SettingsCalorieEstimate.fallsBackToLifestyle(
-                energyCalculationMode: profile.energyCalculationMode,
-                trackerMessage: message
-            ) else { return }
-            profile.energyCalculationMode = .lifestyleEstimate
+        if let healthStatusMessage {
+            SettingsWarningText(healthStatusMessage)
         }
     }
 
@@ -206,24 +207,11 @@ struct SettingsView: View {
         )
     }
 
+    /// "Auto-adjust calories" stays the name: Today's caption and the budget's own status
+    /// lines call the feature that, so the board's "Adjust with Apple Health" would name it
+    /// twice. No mode glyph: the subtitle already says which mode is on.
     private func calorieEstimateModeToggleLabel(_ estimate: SettingsCalorieEstimate) -> some View {
-        HStack(alignment: .center, spacing: 12) {
-            Image(systemName: estimate.modeIconName)
-                .font(CalorynTheme.inlineIcon)
-                .foregroundStyle(CalorynTheme.sage)
-                .frame(width: 24)
-                .accessibilityHidden(true)
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Auto-adjust calories")
-                    .foregroundStyle(CalorynTheme.textPrimary)
-
-                Text(estimate.modeSubtitle)
-                    .font(CalorynTheme.caption)
-                    .foregroundStyle(CalorynTheme.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
+        SettingsToggleLabel(title: "Auto-adjust calories", subtitle: estimate.modeSubtitle)
     }
 
     private func dynamicEnergyBinding(for profile: UserProfile) -> Binding<Bool> {
@@ -342,74 +330,89 @@ struct SettingsView: View {
 
     private var appearanceSection: some View {
         Section {
-            Picker("Appearance", selection: $themePreferenceRaw) {
-                ForEach(ThemePreference.allCases, id: \.self) { preference in
-                    Label(preference.displayName, systemImage: preference.icon)
-                        .tag(preference.rawValue)
-                }
-            }
+            SettingsThemeRow(selection: $themePreferenceRaw)
 
             Toggle(isOn: $showNutriscore) {
-                Label("Show Nutri-Score", systemImage: "leaf")
+                SettingsToggleLabel(title: "Show Nutri-Score")
             }
         } header: {
-            Text("Appearance")
+            SettingsSectionTitle("Appearance")
         } footer: {
-            Text("Display nutrition quality scores from Open Food Facts on foods and in your daily summary.")
+            SettingsSectionFooter("Display nutrition quality scores from Open Food Facts on foods and in your daily summary.")
         }
     }
 
+    /// The goal group: the plate and the daily number as the way into Edit Goal, the saved
+    /// nutrient goals, then the calorie estimate that moves the number.
     private func goalSection(_ profile: UserProfile) -> some View {
         let summary = SettingsGoalSummary(
             targets: profile.nutrientTargets,
             goalKinds: profile.nutrientGoalKinds
         )
+        let estimate = calorieEstimate(for: profile)
 
         return Section {
-            HStack {
-                Label("Calories", systemImage: "flame.fill")
-                    .foregroundStyle(CalorynTheme.textPrimary)
-                Spacer()
-                Text(profile.dailyCalorieTarget.kcalFormatted)
-                    .font(CalorynTheme.numericBody)
-                    .foregroundStyle(CalorynTheme.sage)
-                    .accessibilityIdentifier("settings.calorieTarget")
-            }
-
-            if SettingsGoalSummary.showsAdjustmentRow(isManualOverride: profile.manualOverride) {
-                HStack {
-                    Label("Adjustment", systemImage: "plusminus")
-                        .foregroundStyle(CalorynTheme.textPrimary)
-                    Spacer()
-                    Text(SettingsGoalSummary.adjustmentLabel(calorieDeficit: profile.calorieDeficit))
-                        .font(CalorynTheme.numericBody)
-                        .foregroundStyle(CalorynTheme.textSecondary)
+            Button {
+                isEditingGoal = true
+            } label: {
+                SettingsDisclosureLabel {
+                    SettingsGoalHeadline(
+                        plate: goalPlate(for: profile),
+                        targetText: SettingsGoalSummary.dailyTargetText(profile.dailyCalorieTarget),
+                        subtitle: SettingsGoalSummary.goalSubtitle(
+                            calorieDeficit: profile.calorieDeficit,
+                            isManualOverride: profile.manualOverride
+                        )
+                    )
                 }
-            }
-
-            ForEach(summary.nutrients) { nutrient in
-                HStack {
-                    Label(nutrient.displayName, systemImage: nutrient.systemImage)
-                        .foregroundStyle(CalorynTheme.textPrimary)
-
-                    Spacer()
-
-                    Text(summary.text(for: nutrient))
-                        .font(CalorynTheme.numericBody)
-                        .foregroundStyle(nutrient.color)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                        .accessibilityLabel(summary.spokenText(for: nutrient))
-                }
-            }
-
-            NavigationLink("Edit Goal") {
-                GoalEditView(profile: profile)
             }
             .accessibilityIdentifier("settings.editGoal")
+            .accessibilityHint("Double tap to edit your goal")
+
+            ForEach(summary.nutrients) { nutrient in
+                SettingsValueRow(
+                    title: nutrient.displayName.sentenceCased,
+                    value: summary.text(for: nutrient),
+                    valueAccessibilityLabel: summary.spokenText(for: nutrient)
+                )
+            }
+
+            calorieEstimateRows(profile)
         } header: {
-            Text("Goal")
+            SettingsSectionTitle("Your goal")
+        } footer: {
+            SettingsSectionFooter(estimate.footerText)
         }
+        .task(id: "\(profile.energyCalculationModeRaw)-\(profile.manualOverride)") {
+            await settingsEnergyTracker.configure(
+                date: .now,
+                isEnabled: calorieEstimate(for: profile).isActiveEnergyTrackingEnabled
+            )
+        }
+        .onChange(of: settingsEnergyTracker.message) { _, message in
+            guard SettingsCalorieEstimate.fallsBackToLifestyle(
+                energyCalculationMode: profile.energyCalculationMode,
+                trackerMessage: message
+            ) else { return }
+            profile.energyCalculationMode = .lifestyleEstimate
+        }
+    }
+
+    /// Today's meals on the goal's plate, against the same budget Today draws its donut from,
+    /// so the two plates cannot disagree about whether the day is over.
+    private func goalPlate(for profile: UserProfile) -> CalorieDonutSummary {
+        let entries = DayFoodLogSelection.entries(allEntries, on: .now, date: \.date)
+            .map { SettingsGoalPlate.Entry(meal: $0.mealType, calories: $0.calories) }
+        let budget = profile.activityBudget(
+            consumed: SettingsGoalPlate.eaten(entries),
+            activeEnergyKcal: settingsEnergyTracker.activeEnergyKcal,
+            recentActiveEnergySamples: settingsEnergyTracker.recentActiveEnergySamples,
+            isActivityLoading: settingsEnergyTracker.isLoading,
+            activityMessage: settingsEnergyTracker.message,
+            date: .now
+        )
+
+        return CalorieDonutSummary(mealTotals: SettingsGoalPlate.mealTotals(entries), budget: budget)
     }
 
     private func profileSection(_ profile: UserProfile) -> some View {
@@ -422,25 +425,33 @@ struct SettingsView: View {
         )
 
         return Section {
-            LabeledContent("Age", value: summary.ageText)
-            LabeledContent("Sex", value: summary.sexText)
-            LabeledContent("Height", value: summary.heightText)
-            LabeledContent("Weight", value: summary.weightText)
-            LabeledContent("Activity", value: summary.activityText)
+            SettingsValueRow(title: "Age", value: summary.ageText)
+            SettingsValueRow(title: "Sex", value: summary.sexText)
+            SettingsValueRow(title: "Height", value: summary.heightText)
+            SettingsValueRow(title: "Weight", value: summary.weightText)
+            SettingsValueRow(title: "Activity", value: summary.activityText)
 
-            NavigationLink("Edit Profile") {
-                ProfileEditView(profile: profile)
+            Button {
+                isEditingProfile = true
+            } label: {
+                SettingsDisclosureLabel {
+                    Text("Edit profile")
+                        .font(CalorynTheme.bodyText)
+                        .foregroundStyle(CalorynTheme.textPrimary)
+                }
             }
             .accessibilityIdentifier("settings.editProfile")
         } header: {
-            Text("Profile")
+            SettingsSectionTitle("Your profile")
         }
     }
 
     private var dataSection: some View {
-        Section {
+        let isExportEnabled = SettingsDataSectionRules.isExportEnabled(loggedEntryCount: allEntries.count)
+
+        return Section {
             Toggle(isOn: $iCloudSyncEnabled) {
-                Label("iCloud Sync", systemImage: "icloud")
+                SettingsToggleLabel(title: "iCloud sync", subtitle: "Private to your Apple account")
             }
             .onChange(of: iCloudSyncEnabled) {
                 showRestartAlert = true
@@ -452,40 +463,54 @@ struct SettingsView: View {
                     showExportSheet = true
                 }
             } label: {
-                Label("Export CSV", systemImage: "square.and.arrow.up")
+                HStack {
+                    Text("Export everything as CSV")
+                        .font(CalorynTheme.bodyText)
+                    Spacer(minLength: 12)
+                    Image(systemName: "square.and.arrow.up")
+                        .font(CalorynTheme.toolbarIcon)
+                        .accessibilityHidden(true)
+                }
+                .foregroundStyle(isExportEnabled ? CalorynTheme.textPrimary : CalorynTheme.textTertiary)
+                .contentShape(Rectangle())
             }
-            .disabled(!SettingsDataSectionRules.isExportEnabled(loggedEntryCount: allEntries.count))
+            .disabled(!isExportEnabled)
         } header: {
-            Text("Data")
+            SettingsSectionTitle("Your data")
         } footer: {
             if SettingsDataSectionRules.showsSyncFooter(isICloudSyncEnabled: iCloudSyncEnabled) {
-                Text("Your food log syncs automatically across your devices via iCloud.")
+                SettingsSectionFooter("Your food log syncs automatically across your devices via iCloud.")
             }
         }
     }
 
     private var aboutSection: some View {
         Section {
-            LabeledContent("Version", value: appVersion)
+            SettingsValueRow(title: "Version", value: appVersion)
 
             Link(destination: URL(string: "https://caloryn.app/privacy")!) {
                 HStack {
-                    Text("Privacy Policy")
+                    Text("Privacy policy")
+                        .font(CalorynTheme.bodyText)
                         .foregroundStyle(CalorynTheme.textPrimary)
                     Spacer()
                     Image(systemName: "arrow.up.forward.square")
                         .foregroundStyle(CalorynTheme.textSecondary)
+                        .accessibilityHidden(true)
                 }
             }
 
             HStack {
                 Text("Food data by")
+                    .font(CalorynTheme.bodyText)
+                    .foregroundStyle(CalorynTheme.textPrimary)
                 Spacer()
                 Link("Open Food Facts", destination: URL(string: "https://openfoodfacts.org")!)
-                    .font(CalorynTheme.caption)
+                    .font(CalorynTheme.bodyText.weight(.semibold))
+                    .foregroundStyle(CalorynTheme.textPrimary)
             }
         } header: {
-            Text("About")
+            SettingsSectionTitle("About")
         }
     }
 
@@ -570,6 +595,135 @@ private struct PreviewActiveEnergyReader: ActiveEnergyReading {
     .modelContainer(container)
 }
 
+/// The goal group's first row and its way into Edit Goal: today's plate, the daily number
+/// and where it comes from. The number keeps `settings.calorieTarget`, so a journey can read
+/// the target the user saved.
+private struct SettingsGoalHeadline: View {
+    let plate: CalorieDonutSummary
+    let targetText: String
+    let subtitle: String
+
+    @ScaledMetric(relativeTo: .headline) private var plateSize: CGFloat = 40
+
+    var body: some View {
+        HStack(spacing: 12) {
+            CalorieMiniDonutView(
+                summary: plate,
+                size: plateSize,
+                plateColor: CalorynTheme.pageBackground,
+                fillsPlate: true
+            )
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(targetText)
+                    .font(CalorynTheme.itemTitle.monospacedDigit())
+                    .foregroundStyle(CalorynTheme.textPrimary)
+                    .accessibilityIdentifier("settings.calorieTarget")
+
+                Text(subtitle)
+                    .font(CalorynTheme.cardSubtitle)
+                    .foregroundStyle(CalorynTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.vertical, 4)
+        // The hairline under the headline runs from the group's edge like every other row's,
+        // not from the text beside the plate, where the system would start it.
+        .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
+    }
+}
+
+/// Light / Dark / System as the board's theme control: three segments in one page-coloured
+/// pill, the chosen one an ink capsule with a paper label. Built here rather than as a
+/// segmented `Picker`, which ignores the ink tint. Falls under its label when Dynamic Type
+/// leaves no room beside it, and when the pill is wider than the row itself (accessibility
+/// sizes) the three choices stack as chips, one per line, so none runs off the group.
+private struct SettingsThemeRow: View {
+    @Binding var selection: String
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                title
+                Spacer(minLength: 8)
+                segments
+            }
+
+            VStack(alignment: .leading, spacing: 10) {
+                title
+                segments
+            }
+
+            // The last child is used even when it does not fit, so nothing in it is fixed-size.
+            VStack(alignment: .leading, spacing: 10) {
+                title
+                stackedChoices
+            }
+        }
+    }
+
+    /// The fallback: one chip per choice, one under another, the chosen one ink.
+    private var stackedChoices: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(ThemePreference.allCases, id: \.self) { preference in
+                let isSelected = selection == preference.rawValue
+
+                Button {
+                    selection = preference.rawValue
+                } label: {
+                    Text(preference.displayName)
+                        .calorynChip(isSelected: isSelected)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(preference.displayName) theme")
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Theme")
+    }
+
+    private var title: some View {
+        Text("Theme")
+            .font(CalorynTheme.bodyText)
+            .foregroundStyle(CalorynTheme.textPrimary)
+            .accessibilityHidden(true)
+    }
+
+    /// The pill is `pageBackground`, not `surface`: in dark mode `surface` is the group's
+    /// own colour, and the pill would vanish into it.
+    private var segments: some View {
+        HStack(spacing: 4) {
+            ForEach(ThemePreference.allCases, id: \.self) { preference in
+                let isSelected = selection == preference.rawValue
+
+                Button {
+                    selection = preference.rawValue
+                } label: {
+                    Text(preference.displayName)
+                        .font(CalorynTheme.chipLabel.weight(isSelected ? .bold : .medium))
+                        .foregroundStyle(isSelected ? CalorynTheme.pageBackground : CalorynTheme.textPrimary)
+                        .padding(.horizontal, 12)
+                        .frame(minHeight: 28)
+                        .background {
+                            if isSelected {
+                                Capsule().fill(CalorynTheme.textPrimary)
+                            }
+                        }
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(preference.displayName) theme")
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
+            }
+        }
+        .padding(3)
+        .background(CalorynTheme.pageBackground, in: Capsule())
+        .fixedSize()
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Theme")
+    }
+}
+
 private struct CalorieEstimateMetricRow: View {
     let title: String
     let description: String
@@ -577,8 +731,9 @@ private struct CalorieEstimateMetricRow: View {
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(title)
+                    .font(CalorynTheme.bodyText)
                     .foregroundStyle(CalorynTheme.textPrimary)
 
                 Text(description)
@@ -590,8 +745,8 @@ private struct CalorieEstimateMetricRow: View {
             Spacer(minLength: 12)
 
             Text(value)
-                .font(CalorynTheme.numericBody)
-                .foregroundStyle(CalorynTheme.textSecondary)
+                .font(CalorynTheme.bodyText.monospacedDigit())
+                .foregroundStyle(CalorynTheme.textPrimary)
                 .multilineTextAlignment(.trailing)
         }
         .accessibilityElement(children: .combine)

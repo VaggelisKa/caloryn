@@ -95,6 +95,33 @@ struct MealSectionSummary: Equatable {
         totalCalories.kcalFormatted
     }
 
+    // MARK: - Plate header and empty row
+
+    /// Nothing is logged in the section. A zero-calorie entry (black coffee) is still an
+    /// entry, so its header reads "0 kcal" rather than "nothing yet".
+    var isEmpty: Bool {
+        entryCount == 0
+    }
+
+    /// The header's trailing total: "382 kcal", "1,377 kcal", or "nothing yet" for an empty
+    /// meal.
+    ///
+    /// Rounded rather than truncated, and grouped for the reader's locale, because the donut
+    /// legend above prints the same meal's total that way (`TodayHeroSummary`) and the two
+    /// figures sit on one screen.
+    func headerTotalText(locale: Locale = .current) -> String {
+        guard !isEmpty else { return "nothing yet" }
+        return "\(totalCalories.roundedCalories.formatted(.number.locale(locale))) kcal"
+    }
+
+    /// The row an empty meal shows. Copying yesterday is offered only while it is
+    /// available — `DayFoodLogSelection.canCopyYesterday`, a whole-day action — so the
+    /// sentence never promises a control that is not on screen.
+    func emptyRowText(canCopyYesterday: Bool) -> String {
+        let add = "Add \(mealType == .snack ? "a snack" : mealType.displayName.lowercased())"
+        return canCopyYesterday ? "\(add), or copy yesterday's." : "\(add)."
+    }
+
     var proteinText: String {
         "\(totalProtein.macroFormatted) P"
     }

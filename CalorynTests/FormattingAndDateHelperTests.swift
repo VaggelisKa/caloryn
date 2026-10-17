@@ -7,7 +7,22 @@ final class FormattingAndDateHelperTests: XCTestCase {
         XCTAssertEqual(123.kcalFormatted, "123 kcal")
         XCTAssertEqual(12.0.macroFormatted, "12g")
         XCTAssertEqual(12.25.macroFormatted, "12.2g")
+        XCTAssertEqual(12.0.spacedMacroFormatted(locale: Locale(identifier: "en_US")), "12 g")
+        XCTAssertEqual(3.6.spacedMacroFormatted(locale: Locale(identifier: "en_US")), "3.6 g")
         XCTAssertEqual(98.7.wholeFormatted, "98")
+    }
+
+    /// Grams read like the kcal beside them: grouped and pointed for the reader's locale,
+    /// so "1.450 g" on a Danish phone is never read as one and a half grams.
+    func testSpacedGramsAreGroupedAndPointedForTheLocale() {
+        let us = Locale(identifier: "en_US")
+        let danish = Locale(identifier: "da_DK")
+
+        XCTAssertEqual(1_450.0.spacedMacroFormatted(locale: us), "1,450 g")
+        XCTAssertEqual(1_450.0.spacedMacroFormatted(locale: danish), "1.450 g")
+        XCTAssertEqual(66.66.spacedMacroFormatted(locale: us), "66.7 g")
+        XCTAssertEqual(66.66.spacedMacroFormatted(locale: danish), "66,7 g")
+        XCTAssertEqual((-0.01).spacedMacroFormatted(locale: us), "0 g")
     }
 
     func testDateRangeHelpersReturnStartOfDayDescendingDates() {

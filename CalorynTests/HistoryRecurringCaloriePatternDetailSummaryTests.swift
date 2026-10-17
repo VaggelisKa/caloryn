@@ -71,10 +71,10 @@ struct HistoryRecurringCaloriePatternDetailSummaryTests {
     @Test(
         "given a meal, when titling the comparison, then the heading names it in the singular",
         arguments: [
-            (MealType.breakfast, "Breakfast Comparison"),
-            (.lunch, "Lunch Comparison"),
-            (.dinner, "Dinner Comparison"),
-            (.snack, "Snack Comparison")
+            (MealType.breakfast, "Breakfast comparison"),
+            (.lunch, "Lunch comparison"),
+            (.dinner, "Dinner comparison"),
+            (.snack, "Snack comparison")
         ]
     )
     func theMealComparisonHeadingIsSingular(mealType: MealType, expected: String) {
@@ -107,6 +107,7 @@ struct HistoryRecurringCaloriePatternDetailSummaryTests {
 
         #expect(row.totalsText.contains("kcal logged"))
         #expect(row.totalsText.contains("kcal target"))
+        #expect(row.totalsText.contains("·") == false)
         #expect(row.accessibilityLabel.hasPrefix("Mon, 3 Feb, "))
     }
 

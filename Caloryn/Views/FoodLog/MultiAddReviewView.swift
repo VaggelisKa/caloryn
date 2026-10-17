@@ -39,30 +39,36 @@ struct MultiAddReviewView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
+            // A hairline list on the sheet, like Add Food, not a Form: the Form's white
+            // groups vanished on the white sheet but kept their insets, so every row
+            // started about 13pt right of the CTA and of the sibling sheets.
+            List {
                 if let recoveryState {
                     recoverySection(recoveryState)
-                        .listRowBackground(CalorynTheme.cardBackground)
                 }
 
                 itemsSection
-                    .listRowBackground(CalorynTheme.cardBackground)
             }
-            .calorynFormStyle()
-            .safeAreaInset(edge: .bottom) {
-                commitBar
+            .calorynPlainListStyle()
+            .foodLogBottomAction {
+                commitButton
             }
             .calorynSheetCanvas()
-            .navigationTitle("Review Items")
+            .navigationTitle("Review items")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    FoodLogSheetTitle(title: "Review items")
+                }
                 ToolbarItem(placement: .cancellationAction) {
                     Button {
                         dismiss()
                     } label: {
                         Image(systemName: "xmark")
                             .font(CalorynTheme.toolbarIcon)
-                            .foregroundStyle(CalorynTheme.sage)
+                            .foregroundStyle(
+                                isCommitting ? CalorynTheme.textSecondary : CalorynTheme.textPrimary
+                            )
                     }
                     .disabled(isCommitting)
                     .accessibilityLabel("Close")
@@ -77,39 +83,65 @@ struct MultiAddReviewView: View {
         }
     }
 
-    private var commitBar: some View {
-        VStack(spacing: 0) {
-            Button {
-                commit()
-            } label: {
-                Group {
-                    if isCommitting {
-                        ProgressView()
-                    } else {
-                        Text(commitTitle)
-                            .font(CalorynTheme.buttonLabel)
-                    }
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
+    private var commitButton: some View {
+        Button {
+            commit()
+        } label: {
+            if isCommitting {
+                // Shown only while the button is disabled: the disabled label colour.
+                ProgressView()
+                    .tint(CalorynTheme.textSecondary)
+            } else {
+                Text(commitTitle)
             }
-            .adaptiveGlassProminentButton()
-            .disabled(isCommitting || items.isEmpty || recoveryState != nil)
-            .padding(.horizontal, CalorynTheme.pagePadding)
-            .padding(.top, 10)
-            .padding(.bottom, 16)
-            .accessibilityIdentifier("multiAdd.commit")
         }
-        .background(.regularMaterial)
+        .calorynPrimaryButton()
+        .disabled(isCommitting || items.isEmpty || recoveryState != nil)
+        .accessibilityIdentifier("multiAdd.commit")
     }
 
+    /// Rows on the sheet's margin, so they line up with the title, the CTA and the editor.
+    private static let rowInsets = EdgeInsets(
+        top: 10,
+        leading: CalorynTheme.pagePadding,
+        bottom: 10,
+        trailing: CalorynTheme.pagePadding
+    )
+
+    /// The section's title as its first row rather than a `Section` header: a plain list
+    /// pins its headers, and before iOS 26 paints a pinned header's band in a system grey.
+    private func sectionTitleRow<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        content()
+            .textCase(nil)
+            .listRowInsets(Self.rowInsets)
+            .listRowSeparator(.hidden, edges: .top)
+            .calorynHairlineSeparators()
+    }
+
+    @ViewBuilder
     private var itemsSection: some View {
+        sectionTitleRow {
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Selected items")
+                    .font(CalorynTheme.sectionHeaderTitle)
+                    .foregroundStyle(CalorynTheme.textPrimary)
+                Text(destinationDescription)
+                    .font(.system(.footnote))
+                    .foregroundStyle(CalorynTheme.textSecondary)
+                    .accessibilityIdentifier("multiAdd.destinationSummary")
+            }
+            .padding(.top, 4)
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isHeader)
+        }
+
         Section {
             ForEach($items) { $item in
                 NavigationLink {
                     MultiAddPortionEditorView(
                         item: $item,
-                        destinationDescription: destinationDescription
+                        destinationDescription: destinationDescription,
+                        destinationMeal: destinationMeal
                     )
                 } label: {
                     reviewRow(item)
@@ -126,53 +158,43 @@ struct MultiAddReviewView: View {
                     }
                 }
                 .accessibilityIdentifier("multiAdd.item.\(item.id.uuidString)")
+                .listRowInsets(Self.rowInsets)
+                .calorynHairlineSeparators()
             }
-        } header: {
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Selected Items")
-                Text(destinationDescription)
-                    .font(CalorynTheme.caption)
-                    .accessibilityIdentifier("multiAdd.destinationSummary")
-            }
-            .accessibilityElement(children: .combine)
         }
     }
 
+    /// A food row: the name over its portion (and, for a meal's first item, the meal it
+    /// came from), with this portion's calories on the right.
     private func reviewRow(_ item: MultiAddDraftItem) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(item.snapshot.foodName)
-                .font(CalorynTheme.itemTitle)
-                .foregroundStyle(CalorynTheme.textPrimary)
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.snapshot.foodName)
+                    .font(FoodRowTypography.name)
+                    .foregroundStyle(CalorynTheme.textPrimary)
 
-            if let mealName = item.originMealName,
-               isFirstComponentFromMeal(item) {
-                Text("From Meal: \(mealName)")
-                    .font(CalorynTheme.caption)
+                if let mealName = item.originMealName,
+                   isFirstComponentFromMeal(item) {
+                    Text("Part of \(mealName)")
+                        .font(FoodRowTypography.detail)
+                        .foregroundStyle(CalorynTheme.textSecondary)
+                        .accessibilityIdentifier(
+                            "multiAdd.originMeal.\(item.id.uuidString)"
+                        )
+                }
+
+                portionText(for: item)
+                    .font(FoodRowTypography.detail)
                     .foregroundStyle(CalorynTheme.textSecondary)
-                    .accessibilityIdentifier(
-                        "multiAdd.originMeal.\(item.id.uuidString)"
-                    )
             }
 
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 6) {
-                    portionText(for: item)
+            Spacer(minLength: 8)
 
-                    Text("·")
-                        .accessibilityHidden(true)
-
-                    calorieText(for: item)
-                }
-
-                VStack(alignment: .leading, spacing: 2) {
-                    portionText(for: item)
-                    calorieText(for: item)
-                }
-            }
-            .font(CalorynTheme.caption)
-            .foregroundStyle(CalorynTheme.textSecondary)
+            FoodRowFigure(
+                figure: "\(item.snapshot.nutrition.calories.rounded().truncatedSafely)",
+                caption: "kcal"
+            )
         }
-        .padding(.vertical, 4)
         .accessibilityElement(children: .combine)
         .accessibilityHint("Opens the portion editor")
     }
@@ -182,42 +204,56 @@ struct MultiAddReviewView: View {
             .accessibilityIdentifier("multiAdd.portion.\(item.id.uuidString)")
     }
 
-    private func calorieText(for item: MultiAddDraftItem) -> some View {
-        Text("\(item.snapshot.nutrition.calories.rounded().truncatedSafely) kcal")
-    }
-
+    @ViewBuilder
     private func recoverySection(_ state: MultiAddPartialBatch) -> some View {
+        sectionTitleRow {
+            Text("Recovery needed")
+                .font(CalorynTheme.sectionHeaderTitle)
+                .foregroundStyle(CalorynTheme.textPrimary)
+                .padding(.top, 4)
+                .accessibilityAddTraits(.isHeader)
+        }
+
         Section {
             Label {
                 Text("\(state.persistedCount) of \(state.expectedCount) items already exist for this add operation.")
+                    .foregroundStyle(CalorynTheme.textPrimary)
             } icon: {
                 Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(CalorynTheme.terracotta)
+                    .foregroundStyle(CalorynTheme.textPrimary)
             }
             .accessibilityIdentifier("multiAdd.partialState")
 
             Text("Choose whether to replace the partial add or keep it and add only the missing items.")
-                .font(.footnote)
+                .font(.system(.footnote))
                 .foregroundStyle(CalorynTheme.textSecondary)
 
-            Button("Remove Partial Add and Retry", role: .destructive) {
+            // Ink, not red: red is lunch now. Its sibling below is ink with the same
+            // disabled ternary.
+            Button(role: .destructive) {
                 recover(using: .removeAndRetry)
+            } label: {
+                Text("Remove partial add and retry")
+                    .foregroundStyle(isCommitting ? CalorynTheme.textSecondary : CalorynTheme.textPrimary)
             }
             .disabled(isCommitting)
             .accessibilityIdentifier("multiAdd.recovery.replace")
 
-            Button("Keep Added Items and Continue") {
+            Button {
                 recover(using: .keepAddedAndContinue)
+            } label: {
+                Text("Keep added items and continue")
+                    .foregroundStyle(isCommitting ? CalorynTheme.textSecondary : CalorynTheme.textPrimary)
             }
             .disabled(isCommitting)
             .accessibilityIdentifier("multiAdd.recovery.continue")
-        } header: {
-            Text("Recovery Needed")
         }
+        .listRowInsets(Self.rowInsets)
+        .calorynHairlineSeparators()
     }
 
     private var commitTitle: String {
-        let noun = items.count == 1 ? "Item" : "Items"
+        let noun = items.count == 1 ? "item" : "items"
         return "Log \(items.count) \(noun)"
     }
 
@@ -240,7 +276,7 @@ struct MultiAddReviewView: View {
         if calendar.isDateInTomorrow(destinationDate) {
             return "Tomorrow’s \(mealName)"
         }
-        return "\(destinationDate.shortFormatted) · \(mealName)"
+        return "\(destinationDate.shortFormatted), \(mealName)"
     }
 
     private func remove(_ id: UUID) {
@@ -254,9 +290,9 @@ struct MultiAddReviewView: View {
 
     private func formattedPortion(_ portion: Double) -> String {
         if portion.rounded() == portion {
-            return "\(portion.truncatedSafely) grams"
+            return "\(portion.truncatedSafely) g"
         }
-        return "\(portion.formatted(.number.precision(.fractionLength(0...1)))) grams"
+        return "\(portion.formatted(.number.precision(.fractionLength(0...1)))) g"
     }
 
     private func commit() {

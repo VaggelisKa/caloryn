@@ -1,20 +1,12 @@
 import Foundation
 
-/// The headline numbers above the calorie-trend chart, and how they are toned.
+/// The numbers around the calorie-trend chart: the section's support line, the drill-down's
+/// range-summary figures and the spoken description of the chart.
 ///
 /// Takes the period facts the wording depends on rather than the projection, so
-/// the empty-range wording and the tone bands are reachable without building a
-/// summary. The chart itself is elsewhere: this is only the two stat columns,
-/// the range-summary counts and the spoken description of the chart.
+/// the empty-range wording is reachable without building a summary. The chart itself is
+/// elsewhere. Differences from the goal are told in words, never by a tint.
 struct HistoryCalorieTrendCardSummary: Equatable {
-    /// How a difference-from-target line reads. The view maps these to a tint;
-    /// no colour is decided here.
-    enum DifferenceTone: Equatable {
-        /// Nothing to compare against — no logged days, or no target.
-        case neutral
-        case status(HistoryGoalStatus)
-    }
-
     let range: HistoryRange
     let dailyCalorieTarget: Int
     let totalDayCount: Int
@@ -50,11 +42,7 @@ struct HistoryCalorieTrendCardSummary: Equatable {
         self.loggedDayTargetTotal = loggedDayTargetTotal
     }
 
-    // MARK: - Stat columns
-
-    /// The stat columns are hidden entirely when nothing is logged, rather than
-    /// shown as zeroes the reader would have to discount.
-    var showsStatColumns: Bool { hasLoggedData }
+    // MARK: - Figures
 
     var averageValueText: String {
         averageCaloriesPerLoggedDay.rounded().truncatedSafely.formatted()
@@ -68,32 +56,18 @@ struct HistoryCalorieTrendCardSummary: Equatable {
         "\(onTrackLoggedDayCount)/\(loggedDayCount)"
     }
 
-    var averageDifferenceTone: DifferenceTone {
-        tone(
-            value: averageCaloriesPerLoggedDay,
-            target: averageTargetPerLoggedDay
-        )
-    }
+    /// The line under the trend section's title: the range's logged total against the sum
+    /// of the same days' own goals — "12,800 kcal logged, 800 over your goals". The daily
+    /// average already leads the page, so the section carries the total instead. `nil` with
+    /// nothing logged, when there is no total to state.
+    var totalSupportText: String? {
+        guard hasLoggedData else { return nil }
 
-    var totalDifferenceTone: DifferenceTone {
-        tone(
-            value: totalCalories,
-            target: loggedDayTargetTotal
-        )
-    }
-
-    /// Bands the *displayed* number, not the raw double: a value that rounds
-    /// onto the target reads as on target rather than a hair over it.
-    private func tone(value: Double, target: Int) -> DifferenceTone {
-        guard hasLoggedData, target > 0 else { return .neutral }
-
-        return .status(
-            HistoryGoalStatus.calorieStatus(
-                calories: Double(value.rounded().truncatedSafely),
-                loggedCount: 1,
-                targetCalories: target
-            )
-        )
+        let total = "\(totalValueText) kcal logged"
+        let difference = totalCalories.roundedCalories - loggedDayTargetTotal
+        if difference > 0 { return "\(total), \(difference.formatted()) over your goals" }
+        if difference < 0 { return "\(total), \(abs(difference).formatted()) under your goals" }
+        return "\(total), right on your goals"
     }
 
     // MARK: - Spoken descriptions
