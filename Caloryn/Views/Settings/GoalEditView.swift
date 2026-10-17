@@ -299,9 +299,11 @@ private struct NutrientGoalEditRow: View {
     }
 
     /// Minimum / Target / Maximum as chips: a small choice, so the vocabulary's chips rather
-    /// than a segmented control, which ignores the ink tint.
+    /// than a segmented control, which ignores the ink tint. A wrapping layout, so at
+    /// accessibility text sizes the three choices go onto further lines instead of being
+    /// cut to a few letters each.
     private var goalKindChips: some View {
-        HStack(spacing: 6) {
+        ChipFlowLayout(spacing: 6, lineSpacing: 6) {
             ForEach(NutrientGoalKind.allCases) { kind in
                 Button {
                     goalKind = kind
