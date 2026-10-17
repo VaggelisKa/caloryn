@@ -252,7 +252,7 @@ final class ComponentSnapshotTests: XCTestCase {
 
     // The meal palette's three roles, each drawn by a component nothing else here renders:
     // the section header (the name in the meal's ink, the total in secondary or tertiary
-    // text, the plus in the meal's on-fill on its fill) and the meal chips (selected: fill
+    // text, the plus in the meal's ink on a wash of its fill) and the meal chips (selected: fill
     // with on-fill text; unselected: hairline with the meal's ink).
 
     func testMealSectionHeadersAcrossAppearances() {

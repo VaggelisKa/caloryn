@@ -60,8 +60,7 @@ declared together (CLAUDE.md rule 6). Never a literal.
 
 Fill is for shapes (sectors, the add button, chips); ink is for text in that meal's
 colour, dark enough for 4.5:1 on the page. In dark mode fill and ink are the same value.
-On-fill is what is drawn *on* a fill (a selected meal chip's label, "Log to <meal>", the
-header's plus). The boards draw white there, but white on the yellow breakfast fill is
+On-fill is what is drawn *on* a fill (a selected meal chip's label, "Log to <meal>"). The boards draw white there, but white on the yellow breakfast fill is
 1.8:1 and on the snack olive 3.7:1, so those two take ink. Lunch on-fill is still only
 4.3:1, under 4.5:1 for 13pt chip text; reaching it needs a darker lunch fill, which is a
 palette decision, not a token one.
@@ -106,7 +105,8 @@ compile; retire them from new code.
   ink edge when focused.
 - **Section header** (`CalorynMealSectionHeader`): meal name in its ink, 17pt bold, total
   in `TextSecondary` tabular ("nothing yet" in `TextTertiary`, `isEmpty: true`), add button
-  30pt circle in the meal fill with the plus in the meal's on-fill. Non-meal sections: 17pt
+  30pt circle in the meal fill at 16% (`mealWash`) with the plus in the meal's ink, the same
+  treatment for all four meals. Non-meal sections: 17pt
   bold ink.
 - **Row**: name 16pt medium, optional `NutriscoreBadge` or type badge, grams in
   `TextSecondary` 13pt, kcal 16pt semibold tabular right-aligned in a fixed 44pt column.

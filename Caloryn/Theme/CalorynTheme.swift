@@ -86,7 +86,7 @@ enum CalorynTheme {
     static let mealDinnerOnFill = Color(.mealDinnerOnFill)
     static let mealSnackOnFill = Color(.mealSnackOnFill)
 
-    /// The meal's colour for shapes: donut sectors, the add button, a selected meal chip.
+    /// The meal's colour for shapes: donut sectors, a selected meal chip.
     static func mealFill(_ meal: MealType) -> Color {
         switch meal {
         case .breakfast: mealBreakfast
@@ -108,7 +108,7 @@ enum CalorynTheme {
     }
 
     /// What is drawn *on* the meal's fill: a selected meal chip's label, the "Log to <meal>"
-    /// button's label, the header's plus. White on lunch and dinner and ink on breakfast and
+    /// button's label. White on lunch and dinner and ink on breakfast and
     /// snack in light — white on the yellow fill is 1.8:1 — and the dark card colour on every
     /// fill in dark.
     static func mealOnFill(_ meal: MealType) -> Color {
@@ -118,6 +118,13 @@ enum CalorynTheme {
         case .dinner: mealDinnerOnFill
         case .snack: mealSnackOnFill
         }
+    }
+
+    /// A soft wash of the meal's fill, the meal's ink drawn on it: the meal header's add
+    /// button. The same 16% for all four meals, so no meal's button is louder than another's;
+    /// on the page it stays light enough that the ink plus keeps its contrast.
+    static func mealWash(_ meal: MealType) -> Color {
+        mealFill(meal).opacity(0.16)
     }
 
     // MARK: - Nutri-Score

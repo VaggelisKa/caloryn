@@ -1,8 +1,8 @@
 import SwiftUI
 
 /// A meal's section header on the Plate / Market palette: the meal's name in its ink, the
-/// meal's total in secondary text ("nothing yet" in tertiary), and a round add button in the
-/// meal's fill.
+/// meal's total in secondary text ("nothing yet" in tertiary), and a round add button: the
+/// meal's fill as a light wash with the plus in the meal's ink, the same for every meal.
 ///
 /// The whole row is the add button, as the header on Today has always been, so the
 /// accessibility identifier, label and hint land on an element that still does the same
@@ -71,9 +71,11 @@ struct CalorynMealSectionHeader: View {
 
                 Image(systemName: "plus")
                     .font(.system(size: plusSize, weight: .bold))
-                    .foregroundStyle(CalorynTheme.mealOnFill(meal))
+                    .foregroundStyle(meal.ink)
                     .frame(width: addButtonSize, height: addButtonSize)
-                    .background(CalorynTheme.mealFill(meal), in: Circle())
+                    // Over the header's opaque page fill, so the wash is the same colour
+                    // whether the header is pinned or scrolling with its meal.
+                    .background(meal.wash, in: Circle())
             }
             .textCase(nil)
             .frame(maxWidth: .infinity)
