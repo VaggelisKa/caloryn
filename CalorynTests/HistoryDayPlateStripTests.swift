@@ -72,21 +72,21 @@ struct HistoryDayPlateStripTests {
         #expect(strip.currentKeyText == "today so far")
     }
 
-    @Test("given weeks, when keying and speaking the strip, then it reads each week's share on track")
+    @Test("given weeks, when keying and speaking the strip, then it reads each week as its plate says it")
     func aWeeklyStripTalksAboutWeeks() {
         let strip = makeStrip(
             [
-                week(onTrackDays: 6, loggedDays: 7),
+                week(onTrackDays: 6, loggedDays: 7, averageCalories: 2_400),
                 week(day: 7, onTrackDays: 0, loggedDays: 0, averageCalories: 0)
             ],
             granularity: .week
         )
 
-        #expect(strip.ringKeyText == "few days on track")
+        #expect(strip.ringKeyText == "avg over goal")
         #expect(strip.currentKeyText == "this week so far")
         #expect(
             strip.accessibilityLabel
-                == "Weekly goal consistency: 86 percent on track, 7 of 7 days logged; 0 percent on track, 0 of 7 days logged."
+                == "Weekly goal consistency: W1, 6 of 7 days on track, average over goal; W2, 0 of 7 days on track."
         )
     }
 
@@ -95,65 +95,108 @@ struct HistoryDayPlateStripTests {
         #expect(makeStrip([period(calories: 2_000, status: .onTrack)]).ringKeyText == "over goal")
     }
 
+    @Test("given days, when drawing their plates, then none carries a week's caption")
+    func dayPlatesHaveNoWeekCaption() {
+        let plate = makeStrip([period(calories: 2_800, status: .over)]).plates[0]
+
+        #expect(plate.consistencyText == nil)
+        #expect(plate.overGoalText == nil)
+    }
+
     // MARK: - One week
 
-    @Test("given a week mostly on track whose one big day lifts the average over goal, when drawing its plate, then it is not ringed")
-    func aMostlyOnTrackWeekIsNotRingedForOneBigDay() {
-        // Six 2,000 kcal days and one 2,800 kcal Friday: the average, 2,114, is past the
-        // 2,100 band, but six of seven days were on track.
-        let strip = makeStrip(
-            [week(onTrackDays: 6, loggedDays: 7, averageCalories: 2_114)],
-            granularity: .week
-        )
-        let plate = strip.plates[0]
-
-        #expect(strip.statusCounts == [.onTrack: 1])
-        #expect(plate.outline == .standard)
-        #expect(plate.labelStyle == .regular)
-        #expect(plate.donut.eatenKcal == 2_114)
-    }
-
     @Test(
-        "given a week's share of logged days on track, when rating it, then it takes the weekly chart's steps",
-        arguments: [
-            (7, 7, HistoryGoalStatus.onTrack, HistoryDayPlateStrip.Outline.standard),
-            (5, 7, .onTrack, .standard),
-            (3, 7, .under, .standard),
-            (2, 5, .under, .standard),
-            (2, 3, .onTrack, .standard),
-            (1, 3, .under, .standard),
-            (2, 6, .under, .standard),
-            (2, 7, .over, .over),
-            (0, 5, .over, .over),
-            (0, 0, .notLogged, .standard)
-        ]
+        "given a week's days on track, when captioning its plate, then it counts them out of the week's days",
+        arguments: [(6, 7, 7, "6/7 on track"), (2, 5, 7, "2/7 on track"), (0, 0, 7, "0/7 on track"), (3, 3, 3, "3/3 on track")]
     )
-    func aWeekIsRatedByItsShareOnTrack(
-        onTrackDays: Int,
-        loggedDays: Int,
-        status: HistoryGoalStatus,
-        outline: HistoryDayPlateStrip.Outline
-    ) {
-        let strip = makeStrip(
-            [week(onTrackDays: onTrackDays, loggedDays: loggedDays, averageCalories: 1_900)],
+    func aWeekIsCaptionedByItsDaysOnTrack(onTrackDays: Int, loggedDays: Int, totalDays: Int, text: String) {
+        let plate = makeStrip(
+            [week(onTrackDays: onTrackDays, loggedDays: loggedDays, totalDays: totalDays, averageCalories: 1_900)],
             granularity: .week
-        )
+        ).plates[0]
 
-        #expect(strip.statusCounts == [status: 1])
-        #expect(strip.plates[0].outline == outline)
-        #expect(HistoryGoalStatus.weeklyConsistency(onTrackDays: onTrackDays, loggedDays: loggedDays) == status)
+        #expect(plate.consistencyText == text)
     }
 
-    @Test("given a week rated poorly but eaten under goal on average, when drawing its plate, then it is ringed but not full")
-    func aPoorWeekUnderGoalIsRingedButNotFull() {
+    @Test("given a week mostly on track whose one big day lifts the average over goal, when drawing its plate, then it is ringed for its average")
+    func aMostlyOnTrackWeekOverOnAverageIsRinged() {
+        // Six 2,000 kcal days and one 2,800 kcal Friday: the average, 2,114, is past the
+        // 2,100 band. The ring says the average; the caption still says six days went well.
         let plate = makeStrip(
-            [week(onTrackDays: 0, loggedDays: 7, averageCalories: 1_500)],
+            [week(onTrackDays: 6, loggedDays: 7, averageCalories: 2_114)],
             granularity: .week
         ).plates[0]
 
         #expect(plate.outline == .over)
-        #expect(plate.donut.isOver == false)
-        #expect(plate.donut.remainingKcal == 500)
+        #expect(plate.labelStyle == .emphasized)
+        #expect(plate.consistencyText == "6/7 on track")
+        #expect(plate.overGoalText == "avg over goal")
+        #expect(plate.donut.eatenKcal == 2_114)
+        #expect(plate.donut.isOver)
+    }
+
+    @Test(
+        "given a week whose average is within or under its goal band, when drawing its plate, then it is not ringed however few days were on track",
+        arguments: [(0, 7, 1_500.0), (2, 7, 1_900.0), (1, 7, 2_100.0)]
+    )
+    func aWeekNotOverOnAverageIsNotRinged(onTrackDays: Int, loggedDays: Int, averageCalories: Double) {
+        let plate = makeStrip(
+            [week(onTrackDays: onTrackDays, loggedDays: loggedDays, averageCalories: averageCalories)],
+            granularity: .week
+        ).plates[0]
+
+        #expect(plate.outline == .standard)
+        #expect(plate.labelStyle == .regular)
+        #expect(plate.overGoalText == nil)
+    }
+
+    @Test("given this week already over on average, when drawing its plate, then it is dashed and not yet called over")
+    func theCurrentWeekIsDashedEvenWhenOver() {
+        let strip = makeStrip(
+            [week(onTrackDays: 1, loggedDays: 3, totalDays: 3, averageCalories: 2_600, isCurrent: true)],
+            granularity: .week
+        )
+        let plate = strip.plates[0]
+
+        #expect(plate.outline == .current)
+        #expect(plate.consistencyText == "1/3 on track")
+        #expect(plate.overGoalText == nil)
+        #expect(strip.accessibilityLabel == "Weekly goal consistency: W1, 1 of 3 days on track.")
+    }
+
+    @Test("given a week with nothing logged, when drawing its plate, then the plate is empty and not ringed")
+    func anUnloggedWeekIsAnEmptyPlate() {
+        let plate = makeStrip(
+            [week(onTrackDays: 0, loggedDays: 0, averageCalories: 0)],
+            granularity: .week
+        ).plates[0]
+
+        #expect(plate.donut.eatenKcal == 0)
+        #expect(plate.outline == .standard)
+        #expect(plate.consistencyText == "0/7 on track")
+    }
+
+    @Test(
+        "given a week's share of logged days on track, when rating it for the weekly chart, then it takes the day steps",
+        arguments: [
+            (7, 7, HistoryGoalStatus.onTrack),
+            (5, 7, .onTrack),
+            (3, 7, .under),
+            (2, 5, .under),
+            (2, 3, .onTrack),
+            (1, 3, .under),
+            (2, 6, .under),
+            (2, 7, .over),
+            (0, 5, .over),
+            (0, 0, .notLogged)
+        ]
+    )
+    func aWeekIsRatedForTheChartByItsShareOnTrack(
+        onTrackDays: Int,
+        loggedDays: Int,
+        status: HistoryGoalStatus
+    ) {
+        #expect(HistoryGoalStatus.weeklyConsistency(onTrackDays: onTrackDays, loggedDays: loggedDays) == status)
     }
 
     @Test("given no columns, when laying out, then there is still one column")
@@ -235,6 +278,16 @@ struct HistoryDayPlateStripTests {
         #expect(strip.plates.last?.outline == .current)
     }
 
+    @Test("given ninety days ending on a Saturday, when captioning the weeks, then this week counts only its days so far")
+    func ninetyDaysCountEachWeekInItsOwnDays() {
+        // 20 July to Saturday 17 October: twelve whole weeks, then Monday to Saturday.
+        let captions = makeRangeStrip(.quarter).plates.map(\.consistencyText)
+
+        #expect(captions.count == 13)
+        #expect(captions.first == "0/7 on track")
+        #expect(captions.last == "0/6 on track")
+    }
+
     // MARK: - Helpers
 
     private static let calendar: Calendar = {
@@ -270,6 +323,7 @@ struct HistoryDayPlateStripTests {
         day: Int = 0,
         onTrackDays: Int,
         loggedDays: Int,
+        totalDays: Int = 7,
         averageCalories: Double = 2_000,
         isCurrent: Bool = false
     ) -> HistoryDayPlateStrip.Period {
@@ -281,7 +335,7 @@ struct HistoryDayPlateStripTests {
             consistency: HistoryDayPlateStrip.WeekConsistency(
                 onTrackDays: onTrackDays,
                 loggedDays: loggedDays,
-                totalDays: 7
+                totalDays: totalDays
             ),
             isCurrent: isCurrent
         )

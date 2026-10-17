@@ -8,17 +8,18 @@ import Foundation
 /// over its goal is ringed in ink, and the day still in progress is dashed and lighter. Under
 /// and on track are told apart by how full the plate is, so status never rests on colour.
 ///
-/// A week plate is filled with the week's average against its goal, but its status is the
-/// week's consistency, as the 90-day strip and the "Weekly consistency" chart have always
-/// read it: the share of logged days on track, in the day steps. Only a week with few days
-/// on track is ringed, so a mostly on-track week with one big day is not marked down.
+/// A week plate is filled with the week's average against its goal, and is ringed only when
+/// that average is over goal, by the same band a day is rated by. How consistent the week was
+/// is said in words under the plate ("6/7 on track") rather than borrowed from the day
+/// statuses: a ring that meant "over" on a day and "few days on track" on a week read the same
+/// and said two different things.
 ///
 /// Takes each period reduced to the facts a plate needs, so every outline and label rule is
 /// reachable without entries or a store.
 struct HistoryDayPlateStrip: Equatable {
     enum Outline: Equatable {
         case standard
-        /// The day went over its goal, or the week had few of its logged days on track.
+        /// The day, or the week's average per logged day, went over its goal.
         case over
         /// The period is still in progress: today, or this week.
         case current
@@ -32,20 +33,26 @@ struct HistoryDayPlateStrip: Equatable {
         case current
     }
 
-    /// A week's day counts: what its status and its spoken description are made of.
+    /// A week's day counts: what the line under its plate is made of.
+    ///
+    /// The count is out of the week's days in the range (`totalDays`), not its logged days: an
+    /// unlogged day was not a day on track, and out of logged days a week with two days logged,
+    /// both on track, would read "2/2", as good as a perfect week. The range's first week and
+    /// the current one hold only their days inside the range up to today, so neither is
+    /// marked down for days it could not have had.
     struct WeekConsistency: Equatable {
         let onTrackDays: Int
         let loggedDays: Int
         let totalDays: Int
 
-        var onTrackRatio: Double {
-            guard loggedDays > 0 else { return 0 }
-            return Double(onTrackDays) / Double(loggedDays)
+        /// "6/7 on track", under the plate.
+        var text: String {
+            "\(onTrackDays)/\(totalDays) on track"
         }
 
-        /// "86 percent on track, 7 of 7 days logged", as the 90-day strip has always read.
+        /// "6 of 7 days on track", the same count for VoiceOver.
         var spokenText: String {
-            "\((onTrackRatio * 100).rounded().truncatedSafely) percent on track, \(loggedDays) of \(totalDays) days logged"
+            "\(onTrackDays) of \(totalDays) \(totalDays == 1 ? "day" : "days") on track"
         }
     }
 
@@ -56,10 +63,17 @@ struct HistoryDayPlateStrip: Equatable {
         /// Everything eaten that day, or the week's average per logged day.
         let calories: Double
         let target: Int
+        /// The day's status, or for a week the status of its average per logged day.
         let status: HistoryGoalStatus
         let isCurrent: Bool
         /// A week's day counts; `nil` for a day.
         let consistency: WeekConsistency?
+
+        /// Ringed in ink: over its goal and finished. The period still in progress is dashed
+        /// instead, however it stands so far.
+        var isRingedOverGoal: Bool {
+            status == .over && !isCurrent
+        }
 
         init(
             start: Date,
@@ -78,8 +92,8 @@ struct HistoryDayPlateStrip: Equatable {
             consistency = nil
         }
 
-        /// A week: filled with its average per logged day against its goal, its status the
-        /// share of logged days on track (`HistoryGoalStatus.weeklyConsistency`).
+        /// A week: filled with its average per logged day against its goal, and rated by that
+        /// average in the band a day is rated by, as the calorie trend rates its week bars.
         init(
             weekStart: Date,
             label: String,
@@ -92,9 +106,10 @@ struct HistoryDayPlateStrip: Equatable {
             self.label = label
             calories = averageCalories
             self.target = target
-            status = .weeklyConsistency(
-                onTrackDays: consistency.onTrackDays,
-                loggedDays: consistency.loggedDays
+            status = HistoryGoalStatus.calorieStatus(
+                calories: averageCalories,
+                loggedCount: consistency.loggedDays,
+                targetCalories: target
             )
             self.isCurrent = isCurrent
             self.consistency = consistency
@@ -107,6 +122,10 @@ struct HistoryDayPlateStrip: Equatable {
         let donut: CalorieDonutSummary
         let outline: Outline
         let labelStyle: LabelStyle
+        /// A week's "6/7 on track"; `nil` for a day.
+        let consistencyText: String?
+        /// "avg over goal" under a week whose average went over; `nil` otherwise.
+        let overGoalText: String?
     }
 
     enum Granularity: Equatable {
@@ -121,7 +140,7 @@ struct HistoryDayPlateStrip: Equatable {
     let statusCounts: [HistoryGoalStatus: Int]
     /// The strip is one element to VoiceOver. Days are a count per status rather than a
     /// plate-by-plate reading, which at thirty days is a minute of numbers; the thirteen
-    /// weeks are read one by one as their share on track, as the 90-day strip always was.
+    /// weeks are read one by one, as the words under their plates say.
     let accessibilityLabel: String
 
     init(periods: [Period], granularity: Granularity, columnCount: Int, plateSize: CGFloat) {
@@ -155,14 +174,16 @@ struct HistoryDayPlateStrip: Equatable {
         return max(1, min(plateSize, fitted))
     }
 
-    /// The legend's key for the ink ring. A week is ringed for its consistency, not for
-    /// going over, so its key says so.
+    /// The legend's key for the ink ring. A week is ringed for its average, so its key says so.
     var ringKeyText: String {
         switch granularity {
         case .day: "over goal"
-        case .week: "few days on track"
+        case .week: Self.weekOverGoalText
         }
     }
+
+    /// The line under a week plate ringed for its average, and the legend's key for that ring.
+    static let weekOverGoalText = "avg over goal"
 
     /// The legend's key for the dashed plate.
     var currentKeyText: String {
@@ -185,16 +206,17 @@ struct HistoryDayPlateStrip: Equatable {
             let notLogged = statusCounts[.notLogged, default: 0]
             return "Goal consistency: \(under) under, \(onTrack) on track, \(over) over, \(notLogged) not logged."
         case .week:
-            let weeks = periods.compactMap(\.consistency).map(\.spokenText)
+            let weeks = periods.compactMap { period -> String? in
+                guard let consistency = period.consistency else { return nil }
+                let reading = "\(period.label), \(consistency.spokenText)"
+                return period.isRingedOverGoal ? "\(reading), average over goal" : reading
+            }
             return "Weekly goal consistency: \(weeks.joined(separator: "; "))."
         }
     }
 
     private static func plate(for period: Period) -> Plate {
         let isLogged = period.status != .notLogged
-        let isRinged = period.status == .over
-        // The fill is what was eaten against the goal, whatever the status says: a week is
-        // rated by its consistency, but its plate is still as full as its average.
         let donut = CalorieDonutSummary(
             mealTotals: isLogged ? [.breakfast: period.calories] : [:],
             budget: Double(period.target),
@@ -206,7 +228,7 @@ struct HistoryDayPlateStrip: Equatable {
         if period.isCurrent {
             outline = .current
             labelStyle = .current
-        } else if isRinged {
+        } else if period.isRingedOverGoal {
             outline = .over
             labelStyle = .emphasized
         } else {
@@ -219,7 +241,9 @@ struct HistoryDayPlateStrip: Equatable {
             label: period.label,
             donut: donut,
             outline: outline,
-            labelStyle: labelStyle
+            labelStyle: labelStyle,
+            consistencyText: period.consistency?.text,
+            overGoalText: period.consistency != nil && period.isRingedOverGoal ? weekOverGoalText : nil
         )
     }
 }
@@ -278,10 +302,11 @@ extension HistoryDayPlateStrip {
 }
 
 extension HistoryGoalStatus {
-    /// A week's consistency in the day steps, as the spec has "Weekly consistency" reuse
-    /// them: two thirds or more of its logged days on track reads as on track, a third or
+    /// A week's consistency in the day steps, as the spec has the "Weekly consistency" chart
+    /// reuse them: two thirds or more of its logged days on track reads as on track, a third or
     /// more as under, anything less as over, and a week with nothing logged as not logged.
-    /// `HistoryTheme.weeklyConsistencyColor` colours the weekly chart by this same rule.
+    /// `HistoryTheme.weeklyConsistencyColor` colours the weekly chart by this rule; the 90-day
+    /// plates no longer do, and say their consistency in words instead.
     ///
     /// Compared in whole numbers: as a decimal, exactly a third (1 of 3, 2 of 6) fell just
     /// under a 0.34 cut-off and read as over.

@@ -74,8 +74,8 @@ struct HistoryOverviewSection: View {
 }
 
 /// The range as plates: one per day (one per week at 90 days), filled with what was eaten
-/// against that day's own goal, ringed in ink when over (a week: when few of its days were on
-/// track), dashed while still in progress.
+/// against that day's own goal, ringed in ink when over (a week: when its average was), dashed
+/// while still in progress. A week plate says how many of its days were on track under it.
 struct HistoryDayPlateGrid: View {
     let strip: HistoryDayPlateStrip
     /// How much of the range is logged ("High confidence"), read after the days. The plates
@@ -90,7 +90,10 @@ struct HistoryDayPlateGrid: View {
         Array(
             repeating: GridItem(
                 .flexible(minimum: 0, maximum: .infinity),
-                spacing: HistoryDayPlateStrip.columnSpacing
+                spacing: HistoryDayPlateStrip.columnSpacing,
+                // A week whose caption wraps, or that also reads "avg over goal", is taller
+                // than its neighbours; top-aligned, the plates in a row still line up.
+                alignment: .top
             ),
             count: strip.columnCount
         )
@@ -124,6 +127,10 @@ struct HistoryDayPlateGrid: View {
                             .lineLimit(1)
                             .minimumScaleFactor(0.7)
                             .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+
+                        if plate.consistencyText != nil || plate.overGoalText != nil {
+                            weekCaption(for: plate)
+                        }
                     }
                     .frame(maxWidth: .infinity)
                 }
@@ -142,6 +149,30 @@ struct HistoryDayPlateGrid: View {
                 currentKeyText: strip.currentKeyText
             )
         }
+    }
+
+    /// "6/7 on track", and "avg over goal" in ink under a ringed week. Allowed two lines each:
+    /// a column is about a plate wide, and shrinking the words to fit one line would make them
+    /// unreadable sooner than wrapping does.
+    private func weekCaption(for plate: HistoryDayPlateStrip.Plate) -> some View {
+        VStack(spacing: 2) {
+            if let consistencyText = plate.consistencyText {
+                Text(consistencyText)
+                    .font(CalorynTheme.numericMicroCaption)
+                    .foregroundStyle(CalorynTheme.textSecondary)
+            }
+
+            if let overGoalText = plate.overGoalText {
+                Text(overGoalText)
+                    .font(CalorynTheme.microCaptionEmphasized)
+                    .foregroundStyle(CalorynTheme.textPrimary)
+            }
+        }
+        .multilineTextAlignment(.center)
+        .lineLimit(2)
+        .minimumScaleFactor(0.8)
+        .fixedSize(horizontal: false, vertical: true)
+        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
     }
 
     private func outline(for outline: HistoryDayPlateStrip.Outline) -> CalorieMiniDonutView.Outline {
