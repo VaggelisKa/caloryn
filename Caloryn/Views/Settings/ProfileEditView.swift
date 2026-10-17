@@ -175,7 +175,9 @@ private struct ProfileSliderRow: View {
             SettingsValueRow(title: title, value: valueText, valueIsInk: true)
                 .accessibilityHidden(true)
 
-            Slider(value: $value, in: range, step: step)
+            // Stepped without `Slider(step:)`, which draws a tick per step on iOS 26 — the
+            // same slider onboarding sets height and weight with.
+            OnboardingSlider(value: $value, range: range, step: step, label: title)
                 .tint(CalorynTheme.textPrimary)
                 .accessibilityLabel(title)
                 .accessibilityValue(valueText)

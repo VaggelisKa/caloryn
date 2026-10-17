@@ -73,7 +73,7 @@ struct OnboardingHairline: View {
 /// A slider that moves in steps without drawing them. `Slider(step:)` draws a tick per step
 /// on iOS 26 — a dotted rule under the height and weight tracks — and `PlateGoal` draws a
 /// bare track, so the value is snapped through the binding (`SliderStep`) instead, and
-/// VoiceOver still adjusts it one step at a time.
+/// VoiceOver still adjusts it one step at a time. Edit Profile's height and weight use it too.
 struct OnboardingSlider: View {
     @Binding var value: Double
     let range: ClosedRange<Double>
