@@ -2,8 +2,9 @@ import Foundation
 
 /// The sentences the Add Food and Portion sheets build out of data.
 ///
-/// Sentence case, comma joins, no middle dots (`docs/design/plate-market.md`, "Copy"). Kept
-/// out of the views so the wording rules can be tested without rendering anything.
+/// Sentence case and comma joins (`docs/design/plate-market.md`, "Copy"); a food row's line
+/// is built by `FoodRowSummary`. Kept out of the views so the wording rules can be tested
+/// without rendering anything.
 enum FoodLogSheetCopy {
     // MARK: - Servings
 
@@ -28,6 +29,21 @@ enum FoodLogSheetCopy {
         return trimmed
     }
 
+    /// The weight in grams a serving's description ends on: 150 for "1 pot (150g)" and for
+    /// its house form "1 pot 150 g", 40 for "40 g", 12.5 for "12,5 g". `nil` when it gives
+    /// none, or gives it in another unit: a millilitre is not a gram, and a row priced off a
+    /// guessed density would be wrong.
+    static func servingGrams(_ description: String) -> Double? {
+        let trimmed = description.trimmingCharacters(in: .whitespaces)
+        guard let match = trimmed.wholeMatch(
+            of: /(?:.*[\s(])?(\d+(?:[.,]\d+)?)\s*g\s*\)?/.ignoresCase()
+        ),
+            let grams = Double(match.1.replacingOccurrences(of: ",", with: ".")),
+            grams.isFinite, grams > 0
+        else { return nil }
+        return grams
+    }
+
     // MARK: - Add Food
 
     /// The heading over the contextual suggestions: "Usually at lunch".
@@ -38,16 +54,6 @@ enum FoodLogSheetCopy {
         case .dinner: "Usually at dinner"
         case .snack: "Usually as a snack"
         }
-    }
-
-    /// The line under a suggested food: its brand, then the portion it would be logged at.
-    /// "Arla, 150 g".
-    static func suggestionDetail(brand: String?, portionGrams: Double) -> String {
-        let portion = "\(PortionSelection.formattedGrams(portionGrams.rounded())) g"
-        guard let brand = brand?.trimmingCharacters(in: .whitespaces), !brand.isEmpty else {
-            return portion
-        }
-        return "\(brand), \(portion)"
     }
 
     /// The line under a saved meal's name: "Saved meal, 3 items". A meal none of whose

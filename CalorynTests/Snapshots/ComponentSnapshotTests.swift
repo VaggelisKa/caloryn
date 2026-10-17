@@ -115,8 +115,9 @@ final class ComponentSnapshotTests: XCTestCase {
         )
     }
 
-    /// The two-line figure the Add Food rows are built around: "95" over "kcal a pot" — 94.5
-    /// rounded, as the Portion preview and the logged row on Today read the same pot.
+    /// The two-line figure the Add Food rows are built around: "95" over "kcal" for the pot
+    /// the line beside it names — 94.5 rounded, as the Portion preview and the logged row on
+    /// Today read the same pot.
     func testFoodRowWithACountableServing() {
         assertSnapshot(
             of: row(
@@ -126,8 +127,7 @@ final class ComponentSnapshotTests: XCTestCase {
                     caloriesPer100g: 63,
                     nutriscoreGrade: "a",
                     servingDescription: "1 pot (150g)",
-                    caloriesPerServing: 94.5,
-                    servingUnitName: "pot"
+                    caloriesPerServing: 94.5
                 )
             ),
             as: .image(precision: precision, perceptualPrecision: perceptualPrecision, layout: rowLayout, traits: .reference)

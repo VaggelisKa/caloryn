@@ -110,7 +110,9 @@ compile; retire them from new code.
   bold ink.
 - **Row**: name 16pt medium, optional `NutriscoreBadge` or type badge, grams in
   `TextSecondary` 13pt, kcal 16pt semibold tabular right-aligned in a fixed 44pt column.
-  Two-line right stacks ("150" over "kcal a pot") where the unit matters.
+  A row that shows an amount prices it: "152" over "kcal" for 40 g of a 380 kcal food, the
+  line under the name "Quaker, 40 g · per 100 g: 380 kcal" (`FoodRowSummary`). A row with
+  no weighable amount says "kcal per 100 g"; a recipe, "kcal total".
 - **Type badge** ("Recipe", "Yours"): 10pt bold, meal-independent tint
   `MealLunch` at 14% with `MealLunchInk` text in light; `TextSecondary` at 18% in dark —
   `TypeBadgeFill` / `TypeBadgeText`. `FoodRowView` already draws it.

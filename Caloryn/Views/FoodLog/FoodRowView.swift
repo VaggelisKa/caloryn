@@ -9,7 +9,7 @@ enum FoodRowTypography {
     static let detail: Font = .system(.footnote)
     /// The kcal figure, 16pt semibold, tabular.
     static let figure: Font = .system(.callout, weight: .semibold).monospacedDigit()
-    /// What the figure counts, "kcal a pot", 11pt.
+    /// What the figure counts, "kcal", 11pt.
     static let figureCaption: Font = .system(.caption2)
 }
 
@@ -19,18 +19,18 @@ struct FoodRowView: View {
     let caloriesPer100g: Double
     var nutriscoreGrade: String? = nil
     var servingDescription: String? = nil
+    /// What the declared serving weighs, so the row can price it.
+    var servingGrams: Double? = nil
+    /// What the serving adds, when known better than its weight says; a recipe's whole.
     var caloriesPerServing: Double? = nil
     var isCustom: Bool = false
     var isRecipe: Bool = false
     var showsTypeBadge: Bool = true
-    /// The countable unit the declared serving is counted in ("pot"), so the figure reads
-    /// "kcal a pot" rather than "kcal a serving".
-    var servingUnitName: String? = nil
-    /// How many of those units the serving is. Anything but one reads plain "kcal".
-    var servingUnitCount: Double? = nil
-    /// Replaces the brand-and-serving line, for a row about one specific portion.
+    /// Replaces the brand-and-serving line, for a row that is not one food (a saved meal).
     var detail: String? = nil
-    /// The calories of that specific portion. Outranks the other figures and reads "kcal".
+    /// A specific portion the row is about, which it shows and prices instead of the serving.
+    var portionGrams: Double? = nil
+    /// The calories of that portion, or of the row `detail` describes. Reads "kcal".
     var portionCalories: Double? = nil
 
     @AppStorage("showNutriscore") private var showNutriscore = true
@@ -41,12 +41,12 @@ struct FoodRowView: View {
         FoodRowSummary(
             brand: brand,
             servingDescription: servingDescription,
+            servingGrams: servingGrams,
             detail: detail,
             caloriesPer100g: caloriesPer100g,
             caloriesPerServing: caloriesPerServing,
-            servingUnitName: servingUnitName,
-            servingUnitCount: servingUnitCount,
             isRecipe: isRecipe,
+            portionGrams: portionGrams,
             portionCalories: portionCalories
         )
     }
@@ -66,7 +66,7 @@ struct FoodRowView: View {
                     }
 
                     if let subtitle = summary.subtitle {
-                        subtitleText(subtitle).lineLimit(3)
+                        subtitleText(subtitle, spoken: summary.subtitleAccessibilityLabel).lineLimit(3)
                     }
 
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
@@ -88,7 +88,7 @@ struct FoodRowView: View {
                         }
 
                         if let subtitle = summary.subtitle {
-                            subtitleText(subtitle).lineLimit(1)
+                            subtitleText(subtitle, spoken: summary.subtitleAccessibilityLabel).lineLimit(1)
                         }
                     }
 
@@ -107,10 +107,11 @@ struct FoodRowView: View {
             .foregroundStyle(CalorynTheme.textPrimary)
     }
 
-    private func subtitleText(_ subtitle: String) -> some View {
+    private func subtitleText(_ subtitle: String, spoken: String?) -> some View {
         Text(subtitle)
             .font(FoodRowTypography.detail)
             .foregroundStyle(CalorynTheme.textSecondary)
+            .accessibilityLabel(spoken ?? subtitle)
     }
 
     private var hasBadges: Bool {
@@ -129,7 +130,7 @@ struct FoodRowView: View {
     }
 }
 
-/// The two-line figure on the right of a row: "94" over "kcal a pot".
+/// The two-line figure on the right of a row: "152" over "kcal".
 struct FoodRowFigure: View {
     let figure: String
     let caption: String
@@ -182,20 +183,17 @@ struct FoodTypeBadge: View {
             caloriesPer100g: 63,
             nutriscoreGrade: "a",
             servingDescription: "1 pot (150g)",
-            caloriesPerServing: 94,
-            servingUnitName: "pot",
-            servingUnitCount: 1
+            servingGrams: 150
         )
         FoodRowView(
             name: "Dark chocolate 70%",
             brand: "Marabou",
             caloriesPer100g: 590,
             servingDescription: "2 squares (20g)",
-            caloriesPerServing: 118,
-            servingUnitName: "square",
-            servingUnitCount: 2
+            servingGrams: 20
         )
-        FoodRowView(name: "Rugbroed", brand: "Schulstad", caloriesPer100g: 210, servingDescription: "1 slice (45g)", caloriesPerServing: 94)
+        FoodRowView(name: "Rugbroed", brand: "Schulstad", caloriesPer100g: 210, servingDescription: "1 slice (45g)", servingGrams: 45)
+        FoodRowView(name: "Rolled oats", brand: "Quaker", caloriesPer100g: 380, servingDescription: "40 g")
         FoodRowView(name: "Chicken Breast", brand: nil, caloriesPer100g: 165)
         FoodRowView(name: "Nick's Pizza", brand: "Homemade", caloriesPer100g: 267, isCustom: true)
         FoodRowView(name: "Greek Salad", brand: nil, caloriesPer100g: 72, isRecipe: true)

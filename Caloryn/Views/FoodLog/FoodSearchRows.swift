@@ -34,18 +34,15 @@ extension FoodSearchView {
             handleFoodItemSelection(food)
         } label: {
             selectionRow(isSelected: isSelected(.food(food.id))) {
-                let serving = declaredServing(of: food)
                 FoodRowView(
                     name: food.name,
                     brand: food.brand,
                     caloriesPer100g: food.caloriesPer100g,
                     nutriscoreGrade: food.nutriscoreGrade,
                     servingDescription: food.servingDescription,
-                    caloriesPerServing: serving?.calories,
+                    servingGrams: food.defaultServingG,
                     isCustom: true,
-                    showsTypeBadge: false,
-                    servingUnitName: serving?.unitName,
-                    servingUnitCount: serving?.unitCount
+                    showsTypeBadge: false
                 )
             }
             .contentShape(Rectangle())
@@ -81,16 +78,13 @@ extension FoodSearchView {
             handleFoodItemSelection(food)
         } label: {
             selectionRow(isSelected: isSelected(.food(food.id))) {
-                let serving = declaredServing(of: food)
                 FoodRowView(
                     name: food.name,
                     brand: food.brand,
                     caloriesPer100g: food.caloriesPer100g,
                     nutriscoreGrade: food.nutriscoreGrade,
                     servingDescription: food.servingDescription,
-                    caloriesPerServing: serving?.calories,
-                    servingUnitName: serving?.unitName,
-                    servingUnitCount: serving?.unitCount
+                    servingGrams: food.defaultServingG
                 )
             }
             .contentShape(Rectangle())
@@ -103,6 +97,9 @@ extension FoodSearchView {
     func remoteProductRow(_ result: FoodSearchResult) -> some View {
         let product = result.product
         let productName = product.productName ?? "Unknown"
+        // The serving the product is saved with, so the row prices what the Portion sheet
+        // opens on. A serving size with no weight anywhere is still shown, unpriced.
+        let serving = product.effectiveServingInfo
 
         return Button {
             handleProductSelection(result)
@@ -119,8 +116,8 @@ extension FoodSearchView {
                             ? grade.lowercased()
                             : nil
                     },
-                    servingDescription: product.formattedServingDescription,
-                    caloriesPerServing: product.caloriesPerServing
+                    servingDescription: serving.servingDescription ?? product.formattedServingDescription,
+                    servingGrams: serving.defaultServingG
                 )
             }
             .contentShape(Rectangle())
@@ -161,10 +158,7 @@ extension FoodSearchView {
                     nutriscoreGrade: food.nutriscoreGrade,
                     isCustom: food.isManualEntry,
                     isRecipe: food.isRecipe,
-                    detail: FoodLogSheetCopy.suggestionDetail(
-                        brand: food.isRecipe ? nil : food.brand,
-                        portionGrams: suggestion.resolvedPortionGrams
-                    ),
+                    portionGrams: suggestion.resolvedPortionGrams,
                     portionCalories: food.calories(forGrams: suggestion.resolvedPortionGrams)
                 )
             }
@@ -240,17 +234,5 @@ extension FoodSearchView {
             detail: FoodLogSheetCopy.savedMealDetail(itemCount: snapshots.count),
             portionCalories: snapshots.reduce(0) { $0 + $1.nutrition.calories }
         )
-    }
-
-    /// The serving the row's subtitle describes: what it adds, the unit it is counted in and
-    /// how many of them it is — 94 kcal and one pot for "1 pot (150g)", 118 kcal and two
-    /// squares for "2 squares (20g)". The same serving the Portion sheet opens on, so the
-    /// row and the sheet agree. `nil` for a food with no countable serving, which keeps its
-    /// per-100 g figure. `FoodRowSummary` decides the caption.
-    private func declaredServing(
-        of food: FoodItem
-    ) -> (calories: Double, unitName: String, unitCount: Double)? {
-        guard let info = food.servingInfo, let grams = food.defaultServingG else { return nil }
-        return (food.calories(forGrams: grams), info.unitName, grams / info.gramsPerUnit)
     }
 }

@@ -6,7 +6,7 @@ import SwiftUI
 
 /// One food — a manual entry, a favorite, an edited catalog product: its name with its
 /// Nutri-Score, brand and serving underneath, and the kcal figure with what it counts
-/// ("kcal a pot", "kcal per 100 g"), worded as Add Food words the same food.
+/// ("kcal" for the serving shown, "kcal per 100 g"), worded as Add Food words the same food.
 ///
 /// `showsTypeBadge` adds "Yours" for a food listed among other kinds of food (Favorites),
 /// as `RecipeLibraryRow` adds "Recipe"; under "Your own entries" the title already says it.
@@ -34,6 +34,7 @@ struct LibraryFoodRow: View {
                     Text(detail)
                         .font(LibraryRowStyle.detail)
                         .foregroundStyle(CalorynTheme.textSecondary)
+                        .accessibilityLabel(summary.detailAccessibilityLabel ?? detail)
                 }
             }
         }

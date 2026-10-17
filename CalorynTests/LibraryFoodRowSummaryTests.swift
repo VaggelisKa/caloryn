@@ -4,15 +4,18 @@ import XCTest
 final class LibraryFoodRowSummaryTests: XCTestCase {
     // MARK: - Detail line
 
-    /// Brand then serving, comma-joined: the Plate copy has no middle dots.
+    /// Brand then serving, comma-joined, then what 100 g is worth after a middle dot.
     func testTheDetailLineJoinsBrandAndServingWithAComma() {
         let summary = makeSummary(brand: "Arla", servingDescription: "1 pot 150 g")
 
-        XCTAssertEqual(summary.detail, "Arla, 1 pot 150 g")
+        XCTAssertEqual(summary.detail, "Arla, 1 pot 150 g · per 100 g: 63 kcal")
     }
 
     func testAFoodWithNoBrandIsDescribedByItsServingAlone() {
-        XCTAssertEqual(makeSummary(brand: nil, servingDescription: "1 glass 300 g").detail, "1 glass 300 g")
+        XCTAssertEqual(
+            makeSummary(brand: nil, servingDescription: "1 glass 300 g").detail,
+            "1 glass 300 g · per 100 g: 63 kcal"
+        )
     }
 
     func testAFoodWithNoServingIsDescribedByItsBrandAlone() {
@@ -21,7 +24,10 @@ final class LibraryFoodRowSummaryTests: XCTestCase {
 
     /// An empty string is as absent as a missing one, so it leaves no stray comma.
     func testEmptyFactsAreLeftOutRatherThanJoined() {
-        XCTAssertEqual(makeSummary(brand: "", servingDescription: "1 slice 45 g").detail, "1 slice 45 g")
+        XCTAssertEqual(
+            makeSummary(brand: "", servingDescription: "1 slice 45 g").detail,
+            "1 slice 45 g · per 100 g: 63 kcal"
+        )
         XCTAssertEqual(makeSummary(brand: "Arla", servingDescription: "").detail, "Arla")
     }
 
@@ -30,40 +36,49 @@ final class LibraryFoodRowSummaryTests: XCTestCase {
         XCTAssertNil(makeSummary(brand: "", servingDescription: "").detail)
     }
 
-    /// A serving recorded only as a weight is written as that weight, so "kcal a serving"
-    /// beside it says what the serving is.
+    /// A serving recorded only as a weight is written as that weight, so the figure beside
+    /// it says what amount it is for.
     func testAServingWithNoDescriptionIsWrittenAsItsWeight() {
-        XCTAssertEqual(makeSummary(brand: nil, servingDescription: nil, servingGrams: 250).detail, "250 g")
-        XCTAssertEqual(makeSummary(brand: "Arla", servingDescription: nil, servingGrams: 180).detail, "Arla, 180 g")
+        XCTAssertEqual(
+            makeSummary(brand: nil, servingDescription: nil, servingGrams: 250).detail,
+            "250 g · per 100 g: 63 kcal"
+        )
+        XCTAssertEqual(
+            makeSummary(brand: "Arla", servingDescription: nil, servingGrams: 180).detail,
+            "Arla, 180 g · per 100 g: 63 kcal"
+        )
     }
 
     /// The declared serving is written in the house form, as Add Food writes it.
     func testADeclaredServingIsWrittenInTheHouseForm() {
         XCTAssertEqual(
             makeSummary(brand: "Arla", servingDescription: "1 pot (150g)", servingGrams: 150).detail,
-            "Arla, 1 pot 150 g"
+            "Arla, 1 pot 150 g · per 100 g: 63 kcal"
+        )
+    }
+
+    /// VoiceOver hears the weight in words, and no middle dot.
+    func testTheDetailLineIsSpokenWithoutTheMiddleDot() {
+        XCTAssertEqual(
+            makeSummary(brand: "Arla", servingDescription: nil, servingGrams: 180).detailAccessibilityLabel,
+            "Arla, 180 grams, 63 kcal per 100 grams"
         )
     }
 
     // MARK: - Trailing figure
 
-    func testACountableServingIsPricedPerUnit() {
-        let summary = makeSummary(
-            caloriesPer100g: 63,
-            servingGrams: 150,
-            servingUnitName: "pot",
-            servingUnitCount: 1
-        )
+    func testACountableServingIsPricedAsAWhole() {
+        let summary = makeSummary(servingDescription: "1 pot (150g)", caloriesPer100g: 63, servingGrams: 150)
 
         XCTAssertEqual(summary.caloriesText, "95")
-        XCTAssertEqual(summary.caloriesCaption, "kcal a pot")
+        XCTAssertEqual(summary.caloriesCaption, "kcal")
     }
 
-    func testAServingWithNoUnitIsPricedPerServing() {
+    func testAServingWithNoUnitIsPricedForItsWeight() {
         let summary = makeSummary(caloriesPer100g: 120, servingGrams: 250)
 
         XCTAssertEqual(summary.caloriesText, "300")
-        XCTAssertEqual(summary.caloriesCaption, "kcal a serving")
+        XCTAssertEqual(summary.caloriesCaption, "kcal")
     }
 
     /// No serving at all: the figure is per 100 g and says so, as Add Food does, rather than
@@ -82,18 +97,14 @@ final class LibraryFoodRowSummaryTests: XCTestCase {
         brand: String? = nil,
         servingDescription: String? = nil,
         caloriesPer100g: Double = 63,
-        servingGrams: Double? = nil,
-        servingUnitName: String? = nil,
-        servingUnitCount: Double? = nil
+        servingGrams: Double? = nil
     ) -> LibraryFoodRowSummary {
         LibraryFoodRowSummary(
             name: name,
             brand: brand,
             servingDescription: servingDescription,
             caloriesPer100g: caloriesPer100g,
-            servingGrams: servingGrams,
-            servingUnitName: servingUnitName,
-            servingUnitCount: servingUnitCount
+            servingGrams: servingGrams
         )
     }
 }

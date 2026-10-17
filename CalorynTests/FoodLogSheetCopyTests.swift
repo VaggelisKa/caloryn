@@ -1,48 +1,84 @@
+import Foundation
 import Testing
 @testable import Caloryn
 
 /// What a food row says on its right and under its name. See `FoodRowSummary`.
 @Suite("Food row summary")
 struct FoodRowSummaryTests {
-    @Test("A food with a countable serving shows what one of them is worth, rounded like the Portion preview")
+    @Test("A food with a weighed serving prices that amount in plain kcal and says what 100 g is worth")
+    func weighedServing() {
+        let summary = FoodRowSummary(
+            brand: "Quaker",
+            servingDescription: "40 g",
+            servingGrams: 40,
+            caloriesPer100g: 380
+        )
+
+        #expect(summary.figure == "152")
+        #expect(summary.figureCaption == "kcal")
+        #expect(summary.subtitle == "Quaker, 40 g · per 100 g: 380 kcal")
+    }
+
+    @Test("A serving's weight written in its description stands in for a missing weight")
+    func weightFromTheDescription() {
+        let summary = FoodRowSummary(servingDescription: "40 g", caloriesPer100g: 380)
+
+        #expect(summary.figure == "152")
+        #expect(summary.figureCaption == "kcal")
+        #expect(summary.subtitle == "40 g · per 100 g: 380 kcal")
+    }
+
+    @Test("A countable serving is priced as a whole, rounded like the Portion preview")
     func countableServing() {
         let summary = FoodRowSummary(
             brand: "Arla",
             servingDescription: "1 pot (150g)",
-            caloriesPer100g: 63,
-            caloriesPerServing: 94.5,
-            servingUnitName: "pot",
-            servingUnitCount: 1
+            servingGrams: 150,
+            caloriesPer100g: 63
         )
 
         #expect(summary.figure == "95")
-        #expect(summary.figureCaption == "kcal a pot")
-        #expect(summary.subtitle == "Arla, 1 pot 150 g")
+        #expect(summary.figureCaption == "kcal")
+        #expect(summary.subtitle == "Arla, 1 pot 150 g · per 100 g: 63 kcal")
     }
 
-    @Test("A serving of several units is worth its figure as a whole, so it says plain kcal")
+    @Test("A serving of several units is worth its figure as a whole")
     func multiUnitServing() {
         let summary = FoodRowSummary(
             brand: "Marabou",
             servingDescription: "2 squares (20g)",
-            caloriesPer100g: 590,
-            caloriesPerServing: 118,
-            servingUnitName: "square",
-            servingUnitCount: 2
+            servingGrams: 20,
+            caloriesPer100g: 590
         )
 
         #expect(summary.figure == "118")
         #expect(summary.figureCaption == "kcal")
-        #expect(summary.subtitle == "Marabou, 2 squares 20 g")
+        #expect(summary.subtitle == "Marabou, 2 squares 20 g · per 100 g: 590 kcal")
     }
 
-    @Test(
-        "The serving unit takes the article it is spoken with",
-        arguments: [("egg", "kcal an egg"), ("slice", "kcal a slice"), ("  ", "kcal a serving")]
-    )
-    func servingArticle(unit: String, expected: String) {
-        let summary = FoodRowSummary(caloriesPer100g: 100, caloriesPerServing: 70, servingUnitName: unit)
-        #expect(summary.figureCaption == expected)
+    @Test("A known serving figure outranks its weight")
+    func caloriesPerServingOutranksTheWeight() {
+        let summary = FoodRowSummary(servingDescription: "1 pot (150g)", caloriesPer100g: 63, caloriesPerServing: 94.5)
+
+        #expect(summary.figure == "95")
+        #expect(summary.figureCaption == "kcal")
+    }
+
+    @Test("A serving with no description is written as its weight, grouped for the locale")
+    func servingWithoutADescription() {
+        let summary = FoodRowSummary(servingGrams: 1_500, caloriesPer100g: 120)
+
+        #expect(summary.figure == 1_800.formatted())
+        #expect(summary.subtitle == "\(1_500.0.spacedMacroFormatted) · per 100 g: 120 kcal")
+    }
+
+    @Test("A serving of unknown weight is described but not priced, so the figure stays per 100 g")
+    func servingOfUnknownWeight() {
+        let summary = FoodRowSummary(brand: "Oatly", servingDescription: "1 glass", caloriesPer100g: 46)
+
+        #expect(summary.figure == "46")
+        #expect(summary.figureCaption == "kcal per 100 g")
+        #expect(summary.subtitle == "Oatly, 1 glass")
     }
 
     @Test("A food with no serving falls back to its value per 100 g, rounded like the Portion sheet's")
@@ -64,31 +100,59 @@ struct FoodRowSummaryTests {
             isRecipe: true
         )
 
+        #expect(summary.figure == 1_160.formatted())
         #expect(summary.figureCaption == "kcal total")
         #expect(summary.subtitle == nil)
     }
 
-    @Test("A row about one specific portion says that portion, in plain kcal")
+    @Test("A row about one specific portion shows and prices that portion rather than the serving")
     func specificPortion() {
         let summary = FoodRowSummary(
             brand: "Arla",
             servingDescription: "1 pot (150g)",
-            detail: "Arla, 160 g",
+            servingGrams: 150,
             caloriesPer100g: 63,
-            caloriesPerServing: 94.5,
-            servingUnitName: "pot",
-            portionCalories: 100.8
+            portionGrams: 159.6,
+            portionCalories: 100.5
         )
 
         #expect(summary.figure == "101")
         #expect(summary.figureCaption == "kcal")
-        #expect(summary.subtitle == "Arla, 160 g")
+        #expect(summary.subtitle == "Arla, 160 g · per 100 g: 63 kcal")
     }
 
-    @Test("Brand and serving are joined by a comma, never a middle dot, and blanks are dropped")
-    func subtitleJoin() {
-        #expect(FoodRowSummary(brand: "Quaker", servingDescription: "40 g", caloriesPer100g: 380).subtitle == "Quaker, 40 g")
-        #expect(FoodRowSummary(brand: " ", servingDescription: "40 g", caloriesPer100g: 380).subtitle == "40 g")
+    @Test("A recipe's portion leaves out the brand")
+    func recipePortion() {
+        let summary = FoodRowSummary(brand: "ignored", caloriesPer100g: 145, isRecipe: true, portionGrams: 300)
+
+        #expect(summary.figure == "435")
+        #expect(summary.subtitle == "300 g · per 100 g: 145 kcal")
+    }
+
+    @Test("A row that is not one food says its own line and what it adds")
+    func savedMeal() {
+        let summary = FoodRowSummary(detail: "Saved meal, 3 items", caloriesPer100g: 0, portionCalories: 612.4)
+
+        #expect(summary.subtitle == "Saved meal, 3 items")
+        #expect(summary.figure == "612")
+        #expect(summary.figureCaption == "kcal")
+    }
+
+    @Test("VoiceOver hears the same amount and value, in words rather than a middle dot and a colon")
+    func spokenSubtitle() {
+        let weighed = FoodRowSummary(brand: "Quaker", servingDescription: "40 g", servingGrams: 40, caloriesPer100g: 380)
+        let unnamed = FoodRowSummary(servingGrams: 40, caloriesPer100g: 380)
+        let portion = FoodRowSummary(caloriesPer100g: 63, portionGrams: 150)
+
+        #expect(weighed.subtitleAccessibilityLabel == "Quaker, 40 g, 380 kcal per 100 grams")
+        #expect(unnamed.subtitleAccessibilityLabel == "40 grams, 380 kcal per 100 grams")
+        #expect(portion.subtitleAccessibilityLabel == "150 grams, 63 kcal per 100 grams")
+    }
+
+    @Test("Blank brand and serving are dropped rather than joined")
+    func blanksAreDropped() {
+        #expect(FoodRowSummary(brand: " ", servingDescription: "40 g", caloriesPer100g: 380).subtitle == "40 g · per 100 g: 380 kcal")
+        #expect(FoodRowSummary(brand: "Quaker", servingDescription: " ", caloriesPer100g: 380).subtitle == "Quaker")
     }
 }
 
@@ -108,11 +172,22 @@ struct FoodLogSheetCopyTests {
         #expect(FoodLogSheetCopy.suggestionsTitle(for: meal) == expected)
     }
 
-    @Test("A suggestion's line is its brand and the portion it would be logged at")
-    func suggestionDetail() {
-        #expect(FoodLogSheetCopy.suggestionDetail(brand: "Arla", portionGrams: 150) == "Arla, 150 g")
-        #expect(FoodLogSheetCopy.suggestionDetail(brand: nil, portionGrams: 159.6) == "160 g")
-        #expect(FoodLogSheetCopy.suggestionDetail(brand: "  ", portionGrams: 45) == "45 g")
+    @Test(
+        "A serving's description gives its weight only when it is written in grams",
+        arguments: [
+            ("40 g", 40.0 as Double?),
+            ("170g", 170),
+            ("1 pot (150g)", 150),
+            ("1 pot 150 g", 150),
+            ("2 squares ( 20 g )", 20),
+            ("12,5 g", 12.5),
+            ("250 ml", nil),
+            ("1 glass", nil),
+            ("0 g", nil),
+        ]
+    )
+    func servingGrams(description: String, expected: Double?) {
+        #expect(FoodLogSheetCopy.servingGrams(description) == expected)
     }
 
     @Test(
