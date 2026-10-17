@@ -80,6 +80,7 @@ struct PersonalInfoStepView: View {
                             .calorynChip(isSelected: sex == option)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityAddTraits(sex == option ? .isSelected : [])
                 }
             }
         }

@@ -154,6 +154,7 @@ private struct ProfileSexRow: View {
                         .fixedSize()
                 }
                 .buttonStyle(.borderless)
+                .accessibilityAddTraits(selection == sex ? .isSelected : [])
             }
         }
         .accessibilityElement(children: .contain)

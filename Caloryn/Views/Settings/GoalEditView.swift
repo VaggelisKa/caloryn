@@ -312,6 +312,7 @@ private struct NutrientGoalEditRow: View {
                         .calorynChip(isSelected: goalKind == kind)
                 }
                 .buttonStyle(.borderless)
+                .accessibilityAddTraits(goalKind == kind ? .isSelected : [])
             }
         }
         .accessibilityElement(children: .contain)

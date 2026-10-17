@@ -174,7 +174,9 @@ extension View {
     /// chips: selected fills with the meal's fill and labels in `mealOnFill`, unselected
     /// writes the label in the meal's ink.
     ///
-    /// Apply to the label, inside a `Button` with `.buttonStyle(.plain)`.
+    /// Apply to the label, inside a `Button` with `.buttonStyle(.plain)`. A selected chip
+    /// carries the `.isSelected` trait; repeat it on the `Button` — the element VoiceOver
+    /// lands on — as `.accessibilityAddTraits(isSelected ? .isSelected : [])`.
     func calorynChip(isSelected: Bool, meal: MealType? = nil) -> some View {
         modifier(CalorynChipModifier(isSelected: isSelected, meal: meal))
     }

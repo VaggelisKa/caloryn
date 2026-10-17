@@ -206,6 +206,7 @@ struct CustomFoodFormView: View {
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("Count as \(kind.fullDisplayName)")
+                        .accessibilityAddTraits(draft.produceKind == kind ? .isSelected : [])
                     }
                 }
             }

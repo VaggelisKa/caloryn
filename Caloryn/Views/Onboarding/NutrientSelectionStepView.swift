@@ -37,7 +37,7 @@ struct NutrientSelectionStepView: View {
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel(nutrient.displayName.sentenceCased)
-                            .accessibilityValue(isSelected ? "selected" : "not selected")
+                            .accessibilityAddTraits(isSelected ? .isSelected : [])
                         }
                     }
                 }
@@ -79,7 +79,7 @@ struct NutrientSelectionStepView: View {
                 ForEach(TrackedNutrient.defaultSelection) { nutrient in
                     Text(nutrient.displayName.sentenceCased)
                         .calorynChip(isSelected: true)
-                        .accessibilityLabel("\(nutrient.displayName.sentenceCased) selected")
+                        .accessibilityLabel(nutrient.displayName.sentenceCased)
                 }
             }
 

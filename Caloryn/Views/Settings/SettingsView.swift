@@ -686,6 +686,7 @@ private struct SettingsThemeRow: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("\(preference.displayName) theme")
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
             }
         }
         .accessibilityElement(children: .contain)

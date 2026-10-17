@@ -219,6 +219,7 @@ struct MissingFoodEntryView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(meal.displayName)
+                .accessibilityAddTraits(mealType == meal ? .isSelected : [])
             }
         }
         .accessibilityElement(children: .contain)
