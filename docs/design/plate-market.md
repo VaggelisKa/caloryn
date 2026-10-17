@@ -40,7 +40,7 @@ declared together (CLAUDE.md rule 6). Never a literal.
 | `Hairline` *(new)* | `#1E231F` α 0.10 | `#ECEBE8` α 0.12 | row separators, surface borders |
 | `MealBreakfast` *(new)* | `#F2B705` | `#F7C94A` | breakfast fill |
 | `MealBreakfastInk` *(new)* | `#7A5A00` | `#F7C94A` | breakfast text |
-| `MealLunch` *(new)* | `#D9452B` | `#F0705A` | lunch fill |
+| `MealLunch` *(new)* | `#D44026` | `#F0705A` | lunch fill |
 | `MealLunchInk` *(new)* | `#8F2A17` | `#F0705A` | lunch text |
 | `MealDinner` *(new)* | `#5B3758` | `#B98BB5` | dinner fill |
 | `MealDinnerInk` *(new)* | `#4A2C47` | `#B98BB5` | dinner text |
@@ -58,12 +58,13 @@ declared together (CLAUDE.md rule 6). Never a literal.
 | `SwipeActionTint` *(new)* | `#566057` | `#4A504B` | a swipe action's background under its white label |
 | `AccentColor` (app catalog) | `#1E231F` | `#ECEBE8` | stock controls: pickers, links |
 
-Fill is for shapes (sectors, the add button, chips); ink is for text in that meal's
-colour, dark enough for 4.5:1 on the page. In dark mode fill and ink are the same value.
-On-fill is what is drawn *on* a fill (a selected meal chip's label, "Log to <meal>"). The boards draw white there, but white on the yellow breakfast fill is
-1.8:1 and on the snack olive 3.7:1, so those two take ink. Lunch on-fill is still only
-4.3:1, under 4.5:1 for 13pt chip text; reaching it needs a darker lunch fill, which is a
-palette decision, not a token one.
+Fill is for shapes (sectors, chips, the header add button's wash); ink is for text in that
+meal's colour, dark enough for 4.5:1 on the page. In dark mode fill and ink are the same
+value. On-fill is what is drawn *on* a fill (a selected meal chip's label, "Log to
+<meal>"). The boards draw white there, but white on the yellow breakfast fill is 1.8:1 and
+on the snack olive 3.7:1, so those two take ink. The light lunch fill was darkened from
+the board's `#D9452B` (white on it 4.3:1) to `#D44026` (4.6:1), so white 13pt chip text on
+it clears 4.5:1.
 
 Existing `Sage`, `Stone`, `Terracotta`, `Carb`, `Fiber`, `HistoryUnder` assets stay in
 the catalog (widgets and a few unchanged screens read them) but the app stops using them
