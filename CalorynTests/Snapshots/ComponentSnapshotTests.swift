@@ -293,10 +293,24 @@ final class ComponentSnapshotTests: XCTestCase {
         // Wider than a phone: four chips a row is a fixture, not a layout under test.
         // Drawn in the key window: the default layer render drew each chip's capsule with
         // flat sides and stray ticks beside it, which the app never shows.
-        assertAppearances(
+        assertSnapshots(
             of: chips,
-            layout: .fixed(width: 440, height: 130),
-            drawHierarchyInKeyWindow: true
+            as: [
+                "light": .image(
+                    drawHierarchyInKeyWindow: true,
+                    precision: precision,
+                    perceptualPrecision: perceptualPrecision,
+                    layout: .fixed(width: 440, height: 130),
+                    traits: .reference
+                ),
+                "dark": .image(
+                    drawHierarchyInKeyWindow: true,
+                    precision: precision,
+                    perceptualPrecision: perceptualPrecision,
+                    layout: .fixed(width: 440, height: 130),
+                    traits: .referenceDark
+                ),
+            ]
         )
     }
 
@@ -421,58 +435,34 @@ final class ComponentSnapshotTests: XCTestCase {
     private func assertAppearances(
         of view: some View,
         layout: SwiftUISnapshotLayout,
-        drawHierarchyInKeyWindow: Bool = false,
         fileID: StaticString = #fileID,
         file filePath: StaticString = #filePath,
         testName: String = #function,
         line: UInt = #line,
         column: UInt = #column
     ) {
-        let appearances: [(name: String, traits: UITraitCollection, colorScheme: ColorScheme)] = [
-            ("light", .reference, .light),
-            ("dark", .referenceDark, .dark),
-        ]
-
-        for appearance in appearances {
-            // Drawing in the key window renders into the host app's own window, where the
-            // trait override is not reliably applied and the appearance carries over between
-            // captures — CI recorded "light" in dark and "dark" in light. So the window is
-            // pinned to the appearance for the capture and restored after, and the view is
-            // given the matching colour scheme rather than left to inherit one.
-            let window = drawHierarchyInKeyWindow ? keyWindow : nil
-            let previousStyle = window?.overrideUserInterfaceStyle
-            window?.overrideUserInterfaceStyle = appearance.traits.userInterfaceStyle
-            defer {
-                if let window, let previousStyle {
-                    window.overrideUserInterfaceStyle = previousStyle
-                }
-            }
-
-            assertSnapshot(
-                of: view.environment(\.colorScheme, appearance.colorScheme),
-                as: .image(
-                    drawHierarchyInKeyWindow: drawHierarchyInKeyWindow,
+        assertSnapshots(
+            of: view,
+            as: [
+                "light": .image(
                     precision: precision,
                     perceptualPrecision: perceptualPrecision,
                     layout: layout,
-                    traits: appearance.traits
+                    traits: .reference
                 ),
-                named: appearance.name,
-                fileID: fileID,
-                file: filePath,
-                testName: testName,
-                line: line,
-                column: column
-            )
-        }
-    }
-
-    /// The host app's key window, which `drawHierarchyInKeyWindow` renders into.
-    private var keyWindow: UIWindow? {
-        UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .flatMap(\.windows)
-            .first(where: \.isKeyWindow)
+                "dark": .image(
+                    precision: precision,
+                    perceptualPrecision: perceptualPrecision,
+                    layout: layout,
+                    traits: .referenceDark
+                ),
+            ],
+            fileID: fileID,
+            file: filePath,
+            testName: testName,
+            line: line,
+            column: column
+        )
     }
 
     /// Every pixel must match. The two knobs are not interchangeable and
@@ -510,8 +500,9 @@ private extension UITraitCollection {
     ///
     /// Both traits have to be named explicitly:
     ///
-    /// - **Interface style**, because the theme's colours are Color Sets with a
-    ///   light and a dark appearance, and this is what selects between them.
+    /// - **Interface style**, because the theme's colours are Color Sets that
+    ///   resolve from the trait collection rather than from SwiftUI's
+    ///   `colorScheme` — so this is the only place setting it has any effect.
     /// - **Content size category**, because text metrics change with Dynamic
     ///   Type. A simulator left on a non-default setting would otherwise
     ///   re-flow every label and fail images whose components had not changed
