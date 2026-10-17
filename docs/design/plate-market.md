@@ -160,12 +160,14 @@ Chart(sectors) { sector in
   on the ring. (The `PlateOver` board instead draws meals at full size and cuts the
   overshoot out of the last one; that only works in its dinner-last order, and in
   `sortOrder` would erase a small snack. The ink slice is the same size either way; the
-  meal slices are about 15% smaller than the board's.) The legend gains an "Over" row with
-  the same ink key: `CalorieDonutSummary.legend` ends with a `.over` entry. No arcs or
+  meal slices are about 15% smaller than the board's.) The ink sector takes a wider
+  `angularInset` (3 against 1.5) so a page-coloured gap parts it from the dark dinner
+  purple. The legend gains an "Over" row keyed by a 2pt ink ring, the mark History uses
+  for an over-goal day: `CalorieDonutSummary.legend` ends with a `.over` entry. No arcs or
   markers outside the ring.
 - Right column: the number 56pt heavy (`remaining`, or `over` when over) with a tight
   tracking, caption "kcal left of 2.000" / "kcal over", a line "963 of 2.000 eaten",
-  then the legend: 10pt circle key in the meal fill, meal name in `TextSecondary`, kcal
+  then the legend: 12pt circle key in the meal fill, meal name in `TextSecondary`, kcal
   tabular; an unlogged meal shows a hollow key and "not yet". The dynamic-target cues
   (`CalorieRingSummary.cue`: updating / increase / reduction) render under the caption
   exactly as they do in the ring today.

@@ -4,6 +4,10 @@ import SwiftUI
 /// The Today hero's donut: one sector per meal in its fill, then the rest of the budget in
 /// `hairline`, or the overshoot in ink. Renders `CalorieDonutSummary` and decides nothing.
 ///
+/// Every sector is inset from its neighbours, so the page shows between them. The ink
+/// overshoot is inset further: next to the dark dinner purple, the gap every other pair of
+/// sectors gets was too thin to tell where dinner ended and the overshoot began.
+///
 /// The hole is empty by design — the number sits beside the ring, never inside it. The chart
 /// is hidden from VoiceOver: the hero that contains it owns the label, value and hint
 /// (`CalorieRingSummary`), so the ring is not announced twice.
@@ -30,6 +34,7 @@ struct CalorieDonutView: View {
             slices: displayed,
             innerRadius: 0.7,
             angularInset: 1.5,
+            overAngularInset: 3,
             colors: .hero
         )
         .frame(width: size, height: size)
@@ -160,14 +165,31 @@ struct CalorieDonutChart: View {
     let slices: [Slice]
     let innerRadius: CGFloat
     let angularInset: CGFloat
+    /// The overshoot's own inset, wider than the rest so a page-coloured gap parts the ink
+    /// from the meal beside it; `nil` insets it like every other sector.
+    let overAngularInset: CGFloat?
     let colors: Colors
+
+    init(
+        slices: [Slice],
+        innerRadius: CGFloat,
+        angularInset: CGFloat,
+        overAngularInset: CGFloat? = nil,
+        colors: Colors
+    ) {
+        self.slices = slices
+        self.innerRadius = innerRadius
+        self.angularInset = angularInset
+        self.overAngularInset = overAngularInset
+        self.colors = colors
+    }
 
     var body: some View {
         Chart(slices) { slice in
             SectorMark(
                 angle: .value("kcal", slice.kcal),
                 innerRadius: .ratio(innerRadius),
-                angularInset: angularInset
+                angularInset: slice.kind == .over ? overAngularInset ?? angularInset : angularInset
             )
             .foregroundStyle(color(for: slice.kind))
         }

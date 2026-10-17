@@ -15,7 +15,7 @@ struct CalorieHeroView: View {
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
 
     @ScaledMetric(relativeTo: .largeTitle) private var numberSize: CGFloat = 56
-    @ScaledMetric(relativeTo: .footnote) private var legendKeySize: CGFloat = 10
+    @ScaledMetric(relativeTo: .footnote) private var legendKeySize: CGFloat = 12
 
     private static let donutSize: CGFloat = 168
 
@@ -123,19 +123,25 @@ struct CalorieHeroView: View {
         .font(CalorynTheme.legendText)
     }
 
-    /// A filled circle in the meal's fill (ink for the overshoot); a hollow ring for a meal
-    /// nothing is logged in yet. The only keys on the screen — headers carry no glyphs.
+    /// A filled circle in the meal's fill; a hollow ring for a meal nothing is logged in yet.
+    /// The overshoot is a heavier ink ring, the mark History rings an over-goal day with,
+    /// rather than an ink dot that sat beside the dinner purple as one more dark blob. The
+    /// only keys on the screen — headers carry no glyphs.
     @ViewBuilder
     private func legendKey(_ entry: CalorieDonutSummary.LegendEntry) -> some View {
-        let color = entry.meal.map(CalorynTheme.mealFill) ?? CalorynTheme.textPrimary
-
-        if entry.isLogged {
-            Circle()
-                .fill(color)
-                .frame(width: legendKeySize, height: legendKeySize)
+        if let meal = entry.meal {
+            if entry.isLogged {
+                Circle()
+                    .fill(CalorynTheme.mealFill(meal))
+                    .frame(width: legendKeySize, height: legendKeySize)
+            } else {
+                Circle()
+                    .strokeBorder(CalorynTheme.mealFill(meal), lineWidth: 1.5)
+                    .frame(width: legendKeySize, height: legendKeySize)
+            }
         } else {
             Circle()
-                .strokeBorder(color, lineWidth: 1.5)
+                .strokeBorder(CalorynTheme.textPrimary, lineWidth: 2)
                 .frame(width: legendKeySize, height: legendKeySize)
         }
     }
