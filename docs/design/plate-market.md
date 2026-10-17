@@ -52,8 +52,8 @@ declared together (CLAUDE.md rule 6). Never a literal.
 | `MealSnackOnFill` *(new)* | `#1E231F` | `#262A26` | label or glyph on the snack fill |
 | `HistoryEaten` *(new)* | `#5C615D` | `#8E968F` | neutral "eaten" fill in History day plates and bars |
 | `HistoryEatenLight` *(new)* | `#959A96` | `#555B56` | an under-goal day in History, a step lighter than `HistoryEaten` |
-| `TypeBadgeFill` *(new)* | `#D9452B` α 0.14 | `#A6ACA6` α 0.18 | the "Recipe" / "Yours" badge background |
-| `TypeBadgeText` *(new)* | `#8F2A17` | `#A6ACA6` | the "Recipe" / "Yours" badge text |
+| `TypeBadgeFill` *(new)* | `#566057` α 0.18 | `#A6ACA6` α 0.18 | the "Recipe" / "Yours" badge background |
+| `TypeBadgeText` *(new)* | `#566057` | `#A6ACA6` | the "Recipe" / "Yours" badge text |
 | `ControlTint` *(new)* | `#1E231F` | `#8E968F` | a switch's on track and a graphical date picker's selected day: what the system draws white on |
 | `SwipeActionTint` *(new)* | `#566057` | `#4A504B` | a swipe action's background under its white label |
 | `AccentColor` (app catalog) | `#1E231F` | `#ECEBE8` | stock controls: pickers, links |
@@ -113,8 +113,8 @@ compile; retire them from new code.
   A row that shows an amount prices it: "152" over "kcal" for 40 g of a 380 kcal food, the
   line under the name "Quaker, 40 g · per 100 g: 380 kcal" (`FoodRowSummary`). A row with
   no weighable amount says "kcal per 100 g"; a recipe, "kcal total".
-- **Type badge** ("Recipe", "Yours"): 10pt bold, meal-independent tint
-  `MealLunch` at 14% with `MealLunchInk` text in light; `TextSecondary` at 18% in dark —
+- **Type badge** ("Recipe", "Yours"): 10pt bold, meal-independent neutral tint:
+  `TextSecondary` at 18% with `TextSecondary` text in both appearances —
   `TypeBadgeFill` / `TypeBadgeText`. `FoodRowView` already draws it.
 - **Primary button**: 54pt capsule, `TextPrimary` background, `PageBackground` label,
   17pt bold: `calorynPrimaryButton()`, which keeps glass on iOS 26. The only non-ink

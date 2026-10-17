@@ -38,8 +38,10 @@ enum CalorynTheme {
     /// over read as three weights (light, mid, ink) rather than two near-identical greys.
     static let historyEatenLight = Color(.historyEatenLight)
 
-    /// The "Recipe" / "Yours" type badge on a food row: a lunch-red tint with lunch ink in
-    /// light, a neutral tint with secondary text in dark. Alpha is baked into the fill.
+    /// The "Recipe" / "Yours" type badge on a food row: secondary text on an 18% tint of
+    /// itself in both appearances (4.7:1 light, 5.7:1 dark on the page). Neutral, because a
+    /// lunch-red badge read as a lunch marker once meals owned colour. Alpha is baked into
+    /// the fill.
     static let typeBadgeFill = Color(.typeBadgeFill)
     static let typeBadgeText = Color(.typeBadgeText)
 
