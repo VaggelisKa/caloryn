@@ -36,14 +36,14 @@ declared together (CLAUDE.md rule 6). Never a literal.
 | `Surface` | `#F6F5F1` | `#262A26` | input wells inside a sheet (stepper pill, search well) |
 | `TextPrimary` | `#1E231F` | `#ECEBE8` | ink: text, controls, primary buttons |
 | `TextSecondary` | `#566057` | `#A6ACA6` | captions, units, inactive tab labels |
-| `TextTertiary` *(new)* | `#8E948C` | `#6F756F` | "nothing yet", "not yet", a disabled chevron; 2.8:1 in light, so placeholders only |
+| `TextTertiary` *(new)* | `#8E948C` | `#6F756F` | "not yet", a disabled chevron; 2.8:1 in light, so placeholders only |
 | `Hairline` *(new)* | `#1E231F` α 0.10 | `#ECEBE8` α 0.12 | row separators, surface borders |
 | `MealBreakfast` *(new)* | `#F2B705` | `#F7C94A` | breakfast fill |
 | `MealBreakfastInk` *(new)* | `#7A5A00` | `#F7C94A` | breakfast text |
 | `MealLunch` *(new)* | `#D44026` | `#F0705A` | lunch fill |
 | `MealLunchInk` *(new)* | `#8F2A17` | `#F0705A` | lunch text |
 | `MealDinner` *(new)* | `#5B3758` | `#B98BB5` | dinner fill |
-| `MealDinnerInk` *(new)* | `#4A2C47` | `#B98BB5` | dinner text |
+| `MealDinnerInk` *(new)* | `#6A3D66` | `#B98BB5` | dinner text |
 | `MealSnack` *(new)* | `#7E8B2E` | `#B5C457` | snack fill |
 | `MealSnackInk` *(new)* | `#4F5918` | `#B5C457` | snack text |
 | `MealBreakfastOnFill` *(new)* | `#1E231F` | `#262A26` | label or glyph on the breakfast fill |
@@ -64,7 +64,9 @@ value. On-fill is what is drawn *on* a fill (a selected meal chip's label, "Log 
 <meal>"). The boards draw white there, but white on the yellow breakfast fill is 1.8:1 and
 on the snack olive 3.7:1, so those two take ink. The light lunch fill was darkened from
 the board's `#D9452B` (white on it 4.3:1) to `#D44026` (4.6:1), so white 13pt chip text on
-it clears 4.5:1.
+it clears 4.5:1. Dinner's light ink was lifted from the board's `#4A2C47`, which sat 1.3:1
+from `TextPrimary` and read as black, to `#6A3D66` in the same hue: 7.8:1 on the page and
+8.5:1 on white, so still well past 4.5:1, and the only ink lighter than its own fill.
 
 Existing `Sage`, `Stone`, `Terracotta`, `Carb`, `Fiber`, `HistoryUnder` assets stay in
 the catalog (widgets and a few unchanged screens read them) but the app stops using them
@@ -105,7 +107,7 @@ compile; retire them from new code.
   use `Surface`: `calorynInputField()` draws a `Surface` well with a `Hairline` edge and an
   ink edge when focused.
 - **Section header** (`CalorynMealSectionHeader`): meal name in its ink, 17pt bold, total
-  in `TextSecondary` tabular ("nothing yet" in `TextTertiary`, `isEmpty: true`), add button
+  in `TextSecondary` tabular ("nothing yet" in `TextSecondary` too), add button
   30pt circle in the meal fill at 16% (`mealWash`) with the plus in the meal's ink, the same
   treatment for all four meals. Non-meal sections: 17pt
   bold ink.
@@ -188,7 +190,8 @@ Boards are named by their mock file. Where a screen has no board, apply the voca
 
 - **Today** (`Plate`, `PlateOver`, `PlateDark`): date row = "Friday 17 October" 22pt
   heavy left, two 36pt glass circle chevrons right (ids `today.previousDay`/`nextDay`).
-  Hero as above. Nutri-Score day summary, when shown, becomes a row of grade chips with
+  Hero as above. Nutri-Score day summary, when shown, becomes a "Nutri-Score" label (17pt
+  bold ink) over a row of grade chips with
   counts directly under the hero (no card). Meal sections as in Vocabulary; the header's
   macro line goes (macros live in Nutrition Details), the total stays. Empty meal row
   reads "Add dinner, or copy yesterday's." and the copy-yesterday control keeps

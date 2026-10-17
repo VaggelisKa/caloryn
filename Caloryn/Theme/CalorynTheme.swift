@@ -22,7 +22,7 @@ enum CalorynTheme {
 
     static let textPrimary = Color(.textPrimary)
     static let textSecondary = Color(.textSecondary)
-    /// The quietest text: "nothing yet", "not yet", a disabled chevron. Below 4.5:1 on the
+    /// The quietest text: the legend's "not yet", a disabled chevron. Below 4.5:1 on the
     /// page (2.8:1 light), so only for a placeholder whose meaning is also carried some other
     /// way — never for a figure or anything the reader must be able to make out.
     static let textTertiary = Color(.textTertiary)

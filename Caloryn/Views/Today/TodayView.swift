@@ -352,10 +352,23 @@ struct TodayView: View {
         }
     }
 
+    /// The day's Nutri-Score chips under a label in the style of the meal headers below it
+    /// (17pt bold, ink, as a non-meal section is titled), so the badges are not left to
+    /// explain themselves. One stop for VoiceOver: the chips already read "Nutri-Score today:
+    /// 3 A, 1 C", so the label is not read again before them.
     private func nutriscoreSection(distribution: [(grade: String, count: Int)]) -> some View {
-        NutriscoreDaySummary(distribution: distribution)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .leading)))
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Nutri-Score")
+                .font(CalorynTheme.sectionHeaderTitle)
+                .tracking(-0.17)
+                .foregroundStyle(CalorynTheme.textPrimary)
+                .accessibilityHidden(true)
+
+            NutriscoreDaySummary(distribution: distribution)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+        .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .leading)))
     }
 
     /// Copies all of yesterday's log onto an empty day. Shown under the hero, in the slot the

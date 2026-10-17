@@ -251,7 +251,7 @@ final class ComponentSnapshotTests: XCTestCase {
     // MARK: - Meal vocabulary
 
     // The meal palette's three roles, each drawn by a component nothing else here renders:
-    // the section header (the name in the meal's ink, the total in secondary or tertiary
+    // the section header (the name in the meal's ink, the total or "nothing yet" in secondary
     // text, the plus in the meal's ink on a wash of its fill) and the meal chips (selected: fill
     // with on-fill text; unselected: hairline with the meal's ink).
 
@@ -261,7 +261,6 @@ final class ComponentSnapshotTests: XCTestCase {
                 CalorynMealSectionHeader(
                     meal: meal,
                     totalText: meal == .dinner ? "nothing yet" : "382 kcal",
-                    isEmpty: meal == .dinner,
                     addAccessibilityIdentifier: "snapshot.\(meal.rawValue)",
                     addAccessibilityLabel: "Add to \(meal.displayName)",
                     onAdd: {}

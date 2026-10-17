@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// A meal's section header on the Plate / Market palette: the meal's name in its ink, the
-/// meal's total in secondary text ("nothing yet" in tertiary), and a round add button: the
+/// meal's total in secondary text ("382 kcal", "nothing yet"), and a round add button: the
 /// meal's fill as a light wash with the plus in the meal's ink, the same for every meal.
 ///
 /// The whole row is the add button, as the header on Today has always been, so the
@@ -12,7 +12,6 @@ struct CalorynMealSectionHeader: View {
     let meal: MealType
     let title: String
     let totalText: String?
-    let isEmpty: Bool
     let addAccessibilityIdentifier: String
     let addAccessibilityLabel: String
     let addAccessibilityHint: String
@@ -24,14 +23,13 @@ struct CalorynMealSectionHeader: View {
 
     /// - Parameters:
     ///   - title: defaults to the meal's display name; pass the snack slot's name for a snack.
-    ///   - totalText: "382 kcal", "nothing yet", or nil for no trailing text.
-    ///   - isEmpty: true when nothing is logged in the meal, which draws `totalText` in
-    ///     `textTertiary` so "nothing yet" does not read like a real total.
+    ///   - totalText: "382 kcal", "nothing yet", or nil for no trailing text. Both read in
+    ///     secondary text: "nothing yet" is words, not a figure, so it cannot be mistaken for
+    ///     a total, and in tertiary it fell to 2.8:1 on the page.
     init(
         meal: MealType,
         title: String? = nil,
         totalText: String?,
-        isEmpty: Bool = false,
         addAccessibilityIdentifier: String,
         addAccessibilityLabel: String,
         addAccessibilityHint: String = "Double tap to add food or a saved meal",
@@ -40,7 +38,6 @@ struct CalorynMealSectionHeader: View {
         self.meal = meal
         self.title = title ?? meal.displayName
         self.totalText = totalText
-        self.isEmpty = isEmpty
         self.addAccessibilityIdentifier = addAccessibilityIdentifier
         self.addAccessibilityLabel = addAccessibilityLabel
         self.addAccessibilityHint = addAccessibilityHint
@@ -100,7 +97,7 @@ struct CalorynMealSectionHeader: View {
         if let totalText {
             Text(totalText)
                 .font(CalorynTheme.sectionHeaderDetail)
-                .foregroundStyle(isEmpty ? CalorynTheme.textTertiary : CalorynTheme.textSecondary)
+                .foregroundStyle(CalorynTheme.textSecondary)
                 .lineLimit(1)
         }
     }
@@ -112,7 +109,6 @@ struct CalorynMealSectionHeader: View {
             CalorynMealSectionHeader(
                 meal: meal,
                 totalText: meal == .dinner ? "nothing yet" : "382 kcal",
-                isEmpty: meal == .dinner,
                 addAccessibilityIdentifier: "today.mealHeader.\(meal.rawValue)",
                 addAccessibilityLabel: "Add food or meal to \(meal.displayName)",
                 onAdd: {}

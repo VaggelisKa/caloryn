@@ -90,7 +90,6 @@ struct MealSectionView: View {
                 meal: mealType,
                 title: summary.title,
                 totalText: summary.headerTotalText(),
-                isEmpty: summary.isEmpty,
                 addAccessibilityIdentifier: "today.mealHeader.\(mealType.rawValue)",
                 addAccessibilityLabel: summary.addAccessibilityLabel,
                 onAdd: onAdd
