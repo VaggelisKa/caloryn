@@ -5,15 +5,14 @@ import UIKit
 /// (or over), its caption, the dynamic-target cue, what was eaten, and the legend.
 ///
 /// Renders `TodayHeroSummary` and decides nothing. The whole hero is one accessibility
-/// element carrying the ring's label, value and hint (`CalorieRingSummary`), and a tap or a
-/// long press anywhere on it opens Nutrition Details — the same contract the ring had.
+/// element carrying the ring's label, value and hint (`CalorieRingSummary`), and it is a
+/// native `Button` that opens Nutrition Details — the same contract the ring had.
 struct CalorieHeroView: View {
     let summary: TodayHeroSummary
     var onDetailsRequested: (() -> Void)? = nil
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
-    @State private var isDetailsPressing = false
 
     @ScaledMetric(relativeTo: .largeTitle) private var numberSize: CGFloat = 56
     @ScaledMetric(relativeTo: .footnote) private var legendKeySize: CGFloat = 10
@@ -32,6 +31,19 @@ struct CalorieHeroView: View {
     }
 
     var body: some View {
+        Group {
+            if onDetailsRequested != nil {
+                Button(action: requestDetails) {
+                    heroVisual
+                }
+                .buttonStyle(CalorieRingButtonStyle())
+            } else {
+                heroVisual
+            }
+        }
+    }
+
+    private var heroVisual: some View {
         layout {
             CalorieDonutView(summary: summary.donut, size: Self.donutSize)
 
@@ -40,24 +52,11 @@ struct CalorieHeroView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape([.interaction, .accessibility], .rect)
-        .scaleEffect(accessibilityReduceMotion ? 1 : (isDetailsPressing ? 0.97 : 1))
-        .animation(accessibilityReduceMotion ? nil : .smooth(duration: 0.2), value: isDetailsPressing)
         .animation(accessibilityReduceMotion ? nil : .smooth(duration: 0.35), value: summary)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(summary.ring.accessibilityLabel)
         .accessibilityValue(summary.ring.accessibilityValue)
         .accessibilityHint(CalorieRingSummary.accessibilityHint(isInteractive: onDetailsRequested != nil))
-        .accessibilityAddTraits(onDetailsRequested == nil ? [] : .isButton)
-        .accessibilityAction(named: Text("Show nutrition details")) {
-            requestDetails()
-        }
-        .onTapGesture(perform: requestDetails)
-        .onLongPressGesture(
-            minimumDuration: 0.45,
-            maximumDistance: 24,
-            pressing: setDetailsPressing,
-            perform: requestDetails
-        )
     }
 
     private var numberColumn: some View {
@@ -191,34 +190,22 @@ struct CalorieHeroView: View {
 
     // MARK: - Opening details
 
-    private func setDetailsPressing(_ pressing: Bool) {
-        guard onDetailsRequested != nil else { return }
-        guard isDetailsPressing != pressing else { return }
-        if pressing {
-            let generator = UIImpactFeedbackGenerator(style: .light)
-            generator.prepare()
-            generator.impactOccurred(intensity: 0.55)
-        }
-        isDetailsPressing = pressing
-    }
-
     private func requestDetails() {
         guard let onDetailsRequested else { return }
         let generator = UIImpactFeedbackGenerator(style: .medium)
         generator.impactOccurred(intensity: 0.75)
-        isDetailsPressing = false
         onDetailsRequested()
     }
 }
 
-/// The pressed state of a hero rendered as a native `Button`: a slight shrink, and none at
-/// all under Reduce Motion.
-struct CalorieRingButtonStyle: ButtonStyle {
+/// The pressed state of the hero's native `Button`: a slight shrink, and none at all under
+/// Reduce Motion.
+private struct CalorieRingButtonStyle: ButtonStyle {
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(accessibilityReduceMotion ? 1 : (configuration.isPressed ? 0.94 : 1))
+            .scaleEffect(accessibilityReduceMotion ? 1 : (configuration.isPressed ? 0.97 : 1))
             .animation(
                 accessibilityReduceMotion ? nil : .smooth(duration: 0.2),
                 value: configuration.isPressed
