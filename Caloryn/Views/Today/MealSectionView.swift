@@ -6,8 +6,8 @@ import SwiftUI
 /// meal, one row saying how to fill it.
 ///
 /// Rows live in the `List` Today owns, so swipe-to-edit and swipe-to-delete stay the
-/// system's own. The header is a row too rather than a `Section` header: a plain list pins
-/// its section headers while scrolling, and the board's headers scroll with their meal.
+/// system's own. The header is the `Section`'s header, which a plain list pins to the top
+/// while its meal scrolls under it, so a long day never loses which meal a row is in.
 struct MealSectionView: View {
     let mealType: MealType
     let entries: [FoodLogEntry]
@@ -61,18 +61,8 @@ struct MealSectionView: View {
         let summary = summary
 
         Section {
-            CalorynMealSectionHeader(
-                meal: mealType,
-                title: summary.title,
-                totalText: summary.headerTotalText(),
-                isEmpty: summary.isEmpty,
-                addAccessibilityIdentifier: "today.mealHeader.\(mealType.rawValue)",
-                addAccessibilityLabel: summary.addAccessibilityLabel,
-                onAdd: onAdd
-            )
-            .todayPlateRowLayout(top: Self.sectionSpacing, bottom: 8)
-            .listRowSeparator(.hidden, edges: .top)
-
+            // The hairline under the header is the first row's top separator, not part of
+            // the header, so a pinned header draws none.
             if summary.usesSingleRowTransition {
                 SingleMealTransitionRow(
                     entry: entries.first,
@@ -81,6 +71,7 @@ struct MealSectionView: View {
                     onDelete: onDelete
                 )
                 .todayPlateRowLayout()
+                .listRowSeparator(.visible, edges: .top)
                 .listRowSeparator(.hidden, edges: .bottom)
             } else {
                 ForEach(entries) { entry in
@@ -90,9 +81,31 @@ struct MealSectionView: View {
                         onDelete: onDelete
                     )
                     .todayPlateRowLayout()
+                    .listRowSeparator(entry.id == entries.first?.id ? .visible : .automatic, edges: .top)
                     .listRowSeparator(entry.id == entries.last?.id ? .hidden : .visible, edges: .bottom)
                 }
             }
+        } header: {
+            CalorynMealSectionHeader(
+                meal: mealType,
+                title: summary.title,
+                totalText: summary.headerTotalText(),
+                isEmpty: summary.isEmpty,
+                addAccessibilityIdentifier: "today.mealHeader.\(mealType.rawValue)",
+                addAccessibilityLabel: summary.addAccessibilityLabel,
+                onAdd: onAdd
+            )
+            // Laid out as it was as a row: the page margins, the gap to the meal above,
+            // 8pt to its first row. Under it, edge to edge and pinned or not, the page canvas
+            // it already sits on, so rows scrolling under a pinned header do not show through
+            // and an unpinned one looks no different. Zero insets let the fill reach both
+            // edges of the list.
+            .padding(.top, Self.sectionSpacing)
+            .padding(.bottom, 8)
+            .padding(.horizontal, CalorynTheme.pagePadding)
+            .frame(maxWidth: .infinity)
+            .background(CalorynTheme.pageBackground)
+            .listRowInsets(EdgeInsets())
         }
         .calorynHairlineSeparators()
     }

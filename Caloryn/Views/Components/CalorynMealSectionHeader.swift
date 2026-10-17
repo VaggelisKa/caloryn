@@ -6,7 +6,8 @@ import SwiftUI
 ///
 /// The whole row is the add button, as the header on Today has always been, so the
 /// accessibility identifier, label and hint land on an element that still does the same
-/// thing (`today.mealHeader.<raw>` keeps working). Callers own those strings.
+/// thing (`today.mealHeader.<raw>` keeps working). Callers own those strings. It is a
+/// heading as well as a button, so the VoiceOver rotor can jump from meal to meal.
 struct CalorynMealSectionHeader: View {
     let meal: MealType
     let title: String
@@ -81,6 +82,7 @@ struct CalorynMealSectionHeader: View {
         .buttonStyle(.plain)
         .accessibilityLabel(addAccessibilityLabel)
         .accessibilityHint(addAccessibilityHint)
+        .accessibilityAddTraits(.isHeader)
         .accessibilityIdentifier(addAccessibilityIdentifier)
     }
 
