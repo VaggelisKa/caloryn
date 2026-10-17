@@ -352,22 +352,32 @@ struct SettingsView: View {
         let estimate = calorieEstimate(for: profile)
 
         return Section {
-            Button {
-                isEditingGoal = true
-            } label: {
-                SettingsDisclosureLabel {
-                    SettingsGoalHeadline(
-                        plate: goalPlate(for: profile),
-                        targetText: SettingsGoalSummary.dailyTargetText(profile.dailyCalorieTarget),
-                        subtitle: SettingsGoalSummary.goalSubtitle(
-                            calorieDeficit: profile.calorieDeficit,
-                            isManualOverride: profile.manualOverride
-                        )
+            // The button is laid over the headline rather than wrapping it: a button's label
+            // collapses into the button for accessibility, and the number has to stay its own
+            // element (`settings.calorieTarget`) for a journey to read it. The headline's text
+            // takes no touches, so a tap anywhere on the row still lands on the button.
+            SettingsDisclosureLabel {
+                SettingsGoalHeadline(
+                    plate: goalPlate(for: profile),
+                    targetText: SettingsGoalSummary.dailyTargetText(profile.dailyCalorieTarget),
+                    subtitle: SettingsGoalSummary.goalSubtitle(
+                        calorieDeficit: profile.calorieDeficit,
+                        isManualOverride: profile.manualOverride
                     )
-                }
+                )
             }
-            .accessibilityIdentifier("settings.editGoal")
-            .accessibilityHint("Double tap to edit your goal")
+            .allowsHitTesting(false)
+            .overlay {
+                Button {
+                    isEditingGoal = true
+                } label: {
+                    Color.clear
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel("Edit goal")
+                .accessibilityIdentifier("settings.editGoal")
+                .accessibilityHint("Double tap to edit your goal")
+            }
 
             ForEach(summary.nutrients) { nutrient in
                 SettingsValueRow(
@@ -595,7 +605,7 @@ private struct PreviewActiveEnergyReader: ActiveEnergyReading {
     .modelContainer(container)
 }
 
-/// The goal group's first row and its way into Edit Goal: today's plate, the daily number
+/// The goal group's first row, under the Edit Goal button: today's plate, the daily number
 /// and where it comes from. The number keeps `settings.calorieTarget`, so a journey can read
 /// the target the user saved.
 private struct SettingsGoalHeadline: View {
