@@ -22,6 +22,7 @@ final class FormattingAndDateHelperTests: XCTestCase {
         XCTAssertEqual(1_450.0.spacedMacroFormatted(locale: danish), "1.450 g")
         XCTAssertEqual(66.66.spacedMacroFormatted(locale: us), "66.7 g")
         XCTAssertEqual(66.66.spacedMacroFormatted(locale: danish), "66,7 g")
+        XCTAssertEqual(99.6.spacedMacroFormatted(locale: us), "99.6 g", "A portion keeps its tenth rather than truncating")
         XCTAssertEqual((-0.01).spacedMacroFormatted(locale: us), "0 g")
     }
 

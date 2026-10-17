@@ -278,10 +278,6 @@ private struct MealEntryRow: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ScaledMetric(relativeTo: .callout) private var kcalColumnWidth: CGFloat = 44
 
-    private var grams: Int {
-        entry.portionGrams.truncatedSafely
-    }
-
     private var kcal: Int {
         entry.calories.rounded().truncatedSafely
     }
@@ -338,13 +334,15 @@ private struct MealEntryRow: View {
         }
     }
 
+    /// "99.6 g", "1,500 g": the app's house form for a weight, as the Portion sheet and
+    /// Nutrition Details write the same portion.
     private var gramsText: some View {
-        Text("\(grams) g")
+        Text(entry.portionGrams.spacedMacroFormatted)
             .font(TodayPlateFont.rowDetail)
             .foregroundStyle(CalorynTheme.textSecondary)
             .lineLimit(1)
             .fixedSize()
-            .accessibilityLabel("\(grams) grams")
+            .accessibilityLabel(TrackedNutrientUnit.grams.spokenFormatted(entry.portionGrams))
     }
 
     /// The board's column carries no unit; once the figure leaves the column it says one.
