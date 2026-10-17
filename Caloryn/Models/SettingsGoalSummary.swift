@@ -62,14 +62,21 @@ struct SettingsGoalSummary: Equatable {
     /// the stored deficit is said against the estimated burn: positive is under it, negative
     /// over it. "About", because the burn is itself an estimate. Truncated toward zero, not
     /// rounded: the slider steps in whole 50s, so a fraction can only come from stored data.
-    static func goalSubtitle(calorieDeficit: Double, isManualOverride: Bool) -> String {
+    /// Grouped for the reader's locale like the target above it ("About 1.000 under" in
+    /// Danish). `locale` exists for tests.
+    static func goalSubtitle(
+        calorieDeficit: Double,
+        isManualOverride: Bool,
+        locale: Locale = .current
+    ) -> String {
         guard !isManualOverride else { return "A number you set yourself" }
 
         let amount = abs(calorieDeficit).truncatedSafely
+        let amountText = amount.formatted(.number.locale(locale))
         if calorieDeficit > 0, amount > 0 {
-            return "About \(amount) under what you burn"
+            return "About \(amountText) under what you burn"
         } else if calorieDeficit < 0, amount > 0 {
-            return "About \(amount) over what you burn"
+            return "About \(amountText) over what you burn"
         }
 
         return "About what you burn"

@@ -147,6 +147,27 @@ final class SettingsGoalSummaryTests: XCTestCase {
         )
     }
 
+    /// The adjustment reads like the target above it: grouped for the reader's locale, so
+    /// "1.000" on a Danish phone is never read as one.
+    func testALargeAdjustmentIsGroupedForTheLocale() {
+        XCTAssertEqual(
+            SettingsGoalSummary.goalSubtitle(
+                calorieDeficit: 1_000,
+                isManualOverride: false,
+                locale: Locale(identifier: "en_US")
+            ),
+            "About 1,000 under what you burn"
+        )
+        XCTAssertEqual(
+            SettingsGoalSummary.goalSubtitle(
+                calorieDeficit: -1_250,
+                isManualOverride: false,
+                locale: Locale(identifier: "da_DK")
+            ),
+            "About 1.250 over what you burn"
+        )
+    }
+
     /// Under one kcal truncates to nothing, which is no adjustment rather than "About 0 under".
     func testASubCalorieAdjustmentIsNoAdjustment() {
         XCTAssertEqual(
