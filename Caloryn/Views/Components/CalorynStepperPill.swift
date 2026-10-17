@@ -45,6 +45,14 @@ struct CalorynStepperPill: View {
         size == .regular ? min(regularButton, 60) : min(compactButton, 44)
     }
 
+    /// Apple's minimum touch target. The compact pill's 30pt circles are smaller, so each
+    /// button takes touches across 44pt while laying out, and drawing, at its own size.
+    private static let minimumHitTarget: CGFloat = 44
+
+    private var hitTargetOverhang: CGFloat {
+        max(0, Self.minimumHitTarget - buttonDiameter) / 2
+    }
+
     var body: some View {
         HStack(spacing: size == .regular ? 0 : 8) {
             stepButton(systemImage: "minus", isEnabled: canDecrement, action: onDecrement)
@@ -120,7 +128,13 @@ struct CalorynStepperPill: View {
                         .strokeBorder(CalorynTheme.hairline, lineWidth: CalorynTheme.hairlineWidth)
                 }
                 .shadow(color: CalorynTheme.hairline, radius: size == .regular ? 4 : 2, y: size == .regular ? 2 : 1)
-                .contentShape(Circle())
+                .frame(
+                    width: buttonDiameter + hitTargetOverhang * 2,
+                    height: buttonDiameter + hitTargetOverhang * 2
+                )
+                .contentShape(Rectangle())
+                // Hands the overhang back to the layout, so the pill keeps its size.
+                .padding(-hitTargetOverhang)
         }
         // Borderless, not plain: inside a `Form` row a plain button makes the whole row
         // its tap target, and a tap anywhere on "Age" would step it.
