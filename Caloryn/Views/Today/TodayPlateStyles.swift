@@ -141,7 +141,7 @@ private struct TodayTitlelessBarModifier: ViewModifier {
                 .overlay(alignment: .top) {
                     Color.clear
                         .frame(height: 0)
-                        .background(CalorynTheme.pageBackground.ignoresSafeArea(edges: .top))
+                        .background(CalorynTheme.backgroundPrimary.ignoresSafeArea(edges: .top))
                         .allowsHitTesting(false)
                 }
         }

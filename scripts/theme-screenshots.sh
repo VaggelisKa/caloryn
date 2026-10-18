@@ -80,13 +80,13 @@ shutil.rmtree(raw)
 # Colour census. Drift is visible as a number before anyone opens an image.
 # Keep these in step with CalorynShared/SharedColors.xcassets (docs/design/plate-market.md).
 TOKENS = {
-    "page":  {"light": (254,253,250), "dark": (20,22,20)},    # PageBackground #FEFDFA / #141614
-    "card":  {"light": (255,255,255), "dark": (38,42,38)},    # CardBackground #FFFFFF / #262A26
+    "page":  {"light": (254,253,250), "dark": (20,22,20)},    # BackgroundPrimary #FEFDFA / #141614
+    "card":  {"light": (255,255,255), "dark": (38,42,38)},    # BackgroundSecondary #FFFFFF / #262A26
     "sage":  {"light": (124,142,107), "dark": (150,171,131)}, # retired Sage #7C8E6B / #96AB83
 }
 # What a List or Form paints when a row or the list itself escapes the theme. Light mode can
 # only show the list canvas: a stray *row* paints secondarySystemGroupedBackground, which is
-# #FFFFFF, the same as CardBackground now. Dark mode shows both, so read the dark column.
+# #FFFFFF, the same as BackgroundSecondary now. Dark mode shows both, so read the dark column.
 SYSTEM = {
     "light": [(242,242,247)],                          # systemGroupedBackground #F2F2F7
     "dark":  [(28,28,30), (0,0,0), (44,44,46)],        # secondarySystemGrouped #1C1C1E,
@@ -115,6 +115,6 @@ for f in sorted(os.listdir(out)):
 print("\nSYSTEM above ~2% means a List or Form is painting a system grey over the theme:")
 print("#F2F2F7 in light, #1C1C1E / #000000 / #2C2C2E in dark. A missing row background is")
 print("only visible in the dark column, because the light system row is the same white as")
-print("CardBackground. Page and card at 0.0% means the appearance never switched.")
+print("BackgroundSecondary. Page and card at 0.0% means the appearance never switched.")
 print("See docs/theme.md, 'Row backgrounds, and the limit of the abstraction'.")
 PY

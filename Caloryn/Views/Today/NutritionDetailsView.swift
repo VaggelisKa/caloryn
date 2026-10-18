@@ -114,7 +114,7 @@ struct NutritionDetailsView: View {
                     } label: {
                         Image(systemName: "xmark")
                             .font(CalorynTheme.toolbarIcon)
-                            .foregroundStyle(CalorynTheme.textPrimary)
+                            .foregroundStyle(CalorynTheme.accent)
                     }
                     .accessibilityLabel("Close")
                     .accessibilityIdentifier("nutritionDetails.close")
@@ -309,10 +309,10 @@ struct NutritionDetailsView: View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
                 Capsule()
-                    .fill(CalorynTheme.hairline)
+                    .fill(CalorynTheme.fillTrack)
 
                 Capsule()
-                    .fill(CalorynTheme.textPrimary)
+                    .fill(CalorynTheme.dataPrimary)
                     .frame(width: geo.size.width * progress)
             }
         }
@@ -337,11 +337,11 @@ struct NutritionDetailsView: View {
                     Text(item.name)
                         .font(CalorynTheme.chipLabel)
                         .fontWeight(.semibold)
-                        .foregroundStyle(CalorynTheme.mealSnackInk)
+                        .foregroundStyle(CalorynTheme.mealInk(.snack))
                         .lineLimit(1)
                         .padding(.horizontal, 12)
                         .frame(minHeight: chipHeight)
-                        .background(CalorynTheme.mealSnack.opacity(0.16), in: Capsule())
+                        .background(CalorynTheme.mealWash(.snack), in: Capsule())
                 }
 
                 if let remaining = NutritionDetailsSections.produceRemainingText(produce.totalCount) {
@@ -352,7 +352,9 @@ struct NutritionDetailsView: View {
                         .padding(.horizontal, 12)
                         .frame(minHeight: chipHeight)
                         .overlay {
+                            // No outline token has this value yet (docs/theme.md, open decisions).
                             Capsule()
+                                // swiftlint:disable:next text_token_as_shape
                                 .strokeBorder(
                                     CalorynTheme.textPrimary.opacity(0.25),
                                     style: StrokeStyle(lineWidth: 1, dash: [3, 3])
@@ -401,7 +403,7 @@ struct NutritionDetailsView: View {
     private func amountRow(label: String, value: String) -> some View {
         VStack(spacing: 0) {
             Rectangle()
-                .fill(CalorynTheme.hairline)
+                .fill(CalorynTheme.separator)
                 .frame(height: CalorynTheme.hairlineWidth)
 
             HStack {

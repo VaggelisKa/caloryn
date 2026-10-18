@@ -64,7 +64,7 @@ struct CalorynStepperPill: View {
         .background(CalorynTheme.backgroundTertiary, in: Capsule())
         .overlay {
             Capsule()
-                .strokeBorder(CalorynTheme.hairline, lineWidth: CalorynTheme.hairlineWidth)
+                .strokeBorder(CalorynTheme.separator, lineWidth: CalorynTheme.hairlineWidth)
                 .allowsHitTesting(false)
         }
         .accessibilityElement(children: .ignore)
@@ -120,14 +120,14 @@ struct CalorynStepperPill: View {
         } label: {
             Image(systemName: systemImage)
                 .font(size == .regular ? CalorynTheme.inlineIcon : CalorynTheme.compactIcon)
-                .foregroundStyle(isEnabled ? CalorynTheme.textPrimary : CalorynTheme.textTertiary)
+                .foregroundStyle(isEnabled ? CalorynTheme.accent : CalorynTheme.textTertiary)
                 .frame(width: buttonDiameter, height: buttonDiameter)
                 .background(CalorynTheme.backgroundSecondary, in: Circle())
                 .overlay {
                     Circle()
-                        .strokeBorder(CalorynTheme.hairline, lineWidth: CalorynTheme.hairlineWidth)
+                        .strokeBorder(CalorynTheme.separator, lineWidth: CalorynTheme.hairlineWidth)
                 }
-                .shadow(color: CalorynTheme.hairline, radius: size == .regular ? 4 : 2, y: size == .regular ? 2 : 1)
+                .shadow(color: CalorynTheme.shadow, radius: size == .regular ? 4 : 2, y: size == .regular ? 2 : 1)
                 .frame(
                     width: buttonDiameter + hitTargetOverhang * 2,
                     height: buttonDiameter + hitTargetOverhang * 2

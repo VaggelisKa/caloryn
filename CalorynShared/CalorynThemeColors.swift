@@ -3,9 +3,10 @@ import SwiftUI
 /// The app's colours, named by the role they play rather than the screen or component that
 /// first needed them, so a re-skin is a change to `SharedColors.xcassets` and nothing else.
 ///
-/// Every token resolves to a Color Set of the same name that declares its light and dark
-/// appearance together — never a literal or a `UIColor { traits in … }` closure, which can
-/// omit a dark variant silently. One Color Set per role, even where two roles share a value
+/// Every token resolves to a Color Set of the same name (bar `separator`, see there) that
+/// declares its light and dark appearance together — never a literal or a
+/// `UIColor { traits in … }` closure, which can omit a dark variant silently. One Color Set
+/// per role, even where two roles share a value
 /// today (`accent` and `textPrimary` are both ink): sharing a value is a design decision a
 /// re-skin may undo, so it lives in the catalog, not in a Swift alias. The convention and the
 /// value table are in `docs/theme.md`; CLAUDE.md rule 6 has the rules.
@@ -60,8 +61,10 @@ enum CalorynTheme {
     // MARK: - Lines
 
     /// Row separators, surface borders, chip and field outlines. Carries its own alpha in the
-    /// Color Set, so it reads the same on paper and on a white surface.
-    static let separator = Color(.separator)
+    /// Color Set, so it reads the same on paper and on a white surface. The one set not named
+    /// like its token: UIKit owns `UIColor.separator`, so an asset called `Separator` makes
+    /// `Color(.separator)` ambiguous with the system colour and Xcode warns on every build.
+    static let separator = Color(.separatorLine)
     /// A soft shadow under a control raised off a well.
     static let shadow = Color(.shadow)
 

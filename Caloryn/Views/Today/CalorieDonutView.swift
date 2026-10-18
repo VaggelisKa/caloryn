@@ -2,7 +2,7 @@ import Charts
 import SwiftUI
 
 /// The Today hero's donut: one sector per meal in its fill, then the rest of the budget in
-/// `hairline`, or the overshoot in ink. Renders `CalorieDonutSummary` and decides nothing.
+/// `fillTrack`, or the overshoot in ink. Renders `CalorieDonutSummary` and decides nothing.
 ///
 /// Every sector is inset from its neighbours, so the page shows between them. The ink
 /// overshoot is inset further: next to the dark dinner purple, the gap every other pair of
@@ -54,7 +54,7 @@ struct CalorieDonutView: View {
 ///
 /// Two plates appear in the boards. History's is a `backgroundSecondary` disk with the food inset
 /// inside its rim (the defaults). Settings' goal row sits on a white group, so its plate is
-/// `pageBackground` and the food runs to the rim: pass `plateColor: CalorynTheme.pageBackground`
+/// `backgroundPrimary` and the food runs to the rim: pass `plateColor: CalorynTheme.backgroundPrimary`
 /// and `fillsPlate: true`.
 struct CalorieMiniDonutView: View {
     enum Outline: Equatable {
@@ -122,16 +122,16 @@ struct CalorieMiniDonutView: View {
         switch outline {
         case .standard:
             Circle()
-                .stroke(CalorynTheme.hairline, lineWidth: CalorynTheme.hairlineWidth)
+                .stroke(CalorynTheme.separator, lineWidth: CalorynTheme.hairlineWidth)
                 .frame(width: plateDiameter, height: plateDiameter)
         case .over:
             Circle()
                 .inset(by: 1)
-                .stroke(CalorynTheme.textPrimary, lineWidth: 2)
+                .stroke(CalorynTheme.dataPrimary, lineWidth: 2)
         case .today:
             Circle()
                 .stroke(
-                    CalorynTheme.textPrimary.opacity(0.35),
+                    CalorynTheme.dataPrimary.opacity(0.35),
                     style: StrokeStyle(lineWidth: CalorynTheme.hairlineWidth, dash: [2, 3])
                 )
                 .frame(width: plateDiameter, height: plateDiameter)
@@ -151,7 +151,7 @@ struct CalorieDonutChart: View {
     }
 
     enum Colors {
-        /// Meals in their fill, the rest of the budget in `hairline`, over in ink.
+        /// Meals in their fill, the rest of the budget in `fillTrack`, over in ink.
         case hero
         /// On a plate: the rest of the budget is left clear so the plate shows through.
         case plate(uniformFill: Color?)
@@ -198,9 +198,9 @@ struct CalorieDonutChart: View {
         case (.meal, .plate(uniformFill: let fill?)), (.over, .plate(uniformFill: let fill?)):
             fill
         case (.over, _):
-            CalorynTheme.textPrimary
+            CalorynTheme.dataPrimary
         case (.remaining, .hero):
-            CalorynTheme.hairline
+            CalorynTheme.fillTrack
         case (.remaining, .plate):
             Color.clear
         }
@@ -273,5 +273,5 @@ struct CalorieDonutChart: View {
         }
     }
     .padding()
-    .background(CalorynTheme.pageBackground)
+    .background(CalorynTheme.backgroundPrimary)
 }

@@ -39,9 +39,9 @@ extension View {
     // MARK: - Button style
 
     /// The app's prominent button: `.glassProminent` on iOS 26, `.borderedProminent` before
-    /// it, with a paper label (`pageBackground`, or `textSecondary` while disabled).
+    /// it, with a paper label (`textOnAccent`, or `textSecondary` while disabled).
     ///
-    /// The label colour is the point. Both system styles fill with the tint — `AccentColor`,
+    /// The label colour is the point. Both system styles fill with the tint — the `Accent` set,
     /// which is ink — and draw the label in their own white, which vanishes on the near-white
     /// ink of dark mode. Paper on ink reads in both appearances. A call site that tints the
     /// button some other colour must set its own label colour; `calorynPrimaryButton()` does.
@@ -80,7 +80,7 @@ private struct CalorynProminentButton: View {
     var body: some View {
         Button(role: configuration.role, action: configuration.trigger) {
             configuration.label
-                .foregroundStyle(isEnabled ? CalorynTheme.pageBackground : CalorynTheme.textSecondary)
+                .foregroundStyle(isEnabled ? CalorynTheme.textOnAccent : CalorynTheme.textSecondary)
         }
         .systemProminentButtonStyle()
     }

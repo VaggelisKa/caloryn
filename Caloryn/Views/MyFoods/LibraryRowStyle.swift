@@ -150,7 +150,7 @@ extension View {
     func libraryHairlineSection() -> some View {
         calorynHairlineSeparators()
             .listRowInsets(LibraryRowStyle.rowInsets)
-            .listSectionSeparatorTint(CalorynTheme.hairline)
+            .listSectionSeparatorTint(CalorynTheme.separator)
             .listSectionSeparator(.visible, edges: .top)
             .listSectionSeparator(.hidden, edges: .bottom)
     }

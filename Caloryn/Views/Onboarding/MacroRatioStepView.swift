@@ -65,7 +65,7 @@ struct MacroRatioStepView: View {
                 } label: {
                     Text("Skip")
                         .font(CalorynTheme.toolbarAction)
-                        .foregroundStyle(CalorynTheme.textPrimary)
+                        .foregroundStyle(CalorynTheme.accent)
                 }
             }
         }

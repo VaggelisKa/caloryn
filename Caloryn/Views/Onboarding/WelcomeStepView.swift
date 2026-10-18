@@ -33,7 +33,7 @@ struct WelcomePlateMark: View {
                 .frame(width: size, height: size)
 
             Circle()
-                .fill(CalorynTheme.pageBackground)
+                .fill(CalorynTheme.backgroundPrimary)
                 .frame(width: size * 0.34, height: size * 0.34)
                 .scaleEffect(isBitten ? 1 : 0.001)
                 .position(x: size * 0.21, y: size * 0.19)
@@ -71,7 +71,7 @@ struct WelcomeStepView: View {
         // The root of the onboarding `NavigationStack`, and the first screen a
         // new user ever sees. Without a canvas it rendered on the system window
         // background — pure white in light mode, near-black in dark — while
-        // every screen reached afterwards is `pageBackground`.
+        // every screen reached afterwards is `backgroundPrimary`.
         .calorynPageCanvas()
         // No back button to theme: this screen deliberately hides the bar, and
         // it is the stack root, so `calorynDrillDownNavigation()` does not apply.

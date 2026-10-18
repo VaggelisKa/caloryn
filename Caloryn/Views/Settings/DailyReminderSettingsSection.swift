@@ -71,7 +71,7 @@ struct DailyReminderSettingsSection: View {
 
                             Text("Open App Settings")
                         }
-                        .foregroundStyle(CalorynTheme.textPrimary)
+                        .foregroundStyle(CalorynTheme.accent)
                     }
                     .font(CalorynTheme.caption)
                     .buttonStyle(.borderless)

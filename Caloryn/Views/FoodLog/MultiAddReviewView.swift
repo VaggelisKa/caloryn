@@ -67,7 +67,7 @@ struct MultiAddReviewView: View {
                         Image(systemName: "xmark")
                             .font(CalorynTheme.toolbarIcon)
                             .foregroundStyle(
-                                isCommitting ? CalorynTheme.textSecondary : CalorynTheme.textPrimary
+                                isCommitting ? CalorynTheme.textSecondary : CalorynTheme.accent
                             )
                     }
                     .disabled(isCommitting)
@@ -235,7 +235,7 @@ struct MultiAddReviewView: View {
                 recover(using: .removeAndRetry)
             } label: {
                 Text("Remove partial add and retry")
-                    .foregroundStyle(isCommitting ? CalorynTheme.textSecondary : CalorynTheme.textPrimary)
+                    .foregroundStyle(isCommitting ? CalorynTheme.textSecondary : CalorynTheme.accent)
             }
             .disabled(isCommitting)
             .accessibilityIdentifier("multiAdd.recovery.replace")
@@ -244,7 +244,7 @@ struct MultiAddReviewView: View {
                 recover(using: .keepAddedAndContinue)
             } label: {
                 Text("Keep added items and continue")
-                    .foregroundStyle(isCommitting ? CalorynTheme.textSecondary : CalorynTheme.textPrimary)
+                    .foregroundStyle(isCommitting ? CalorynTheme.textSecondary : CalorynTheme.accent)
             }
             .disabled(isCommitting)
             .accessibilityIdentifier("multiAdd.recovery.continue")

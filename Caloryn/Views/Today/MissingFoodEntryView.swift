@@ -38,7 +38,7 @@ struct MissingFoodEntryView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .listRowBackground(CalorynTheme.backgroundSecondary)
-                .listRowSeparatorTint(CalorynTheme.hairline)
+                .listRowSeparatorTint(CalorynTheme.separator)
 
                 Section {
                     LabeledContent("Food") {
@@ -97,7 +97,7 @@ struct MissingFoodEntryView: View {
                 }
                 .foregroundStyle(CalorynTheme.textPrimary)
                 .listRowBackground(CalorynTheme.backgroundSecondary)
-                .listRowSeparatorTint(CalorynTheme.hairline)
+                .listRowSeparatorTint(CalorynTheme.separator)
 
                 Section {
                     // Ink, not red: red is lunch now. The confirmation dialog that follows
@@ -106,7 +106,7 @@ struct MissingFoodEntryView: View {
                         showingDeleteConfirmation = true
                     } label: {
                         Text("Delete log entry")
-                            .foregroundStyle(CalorynTheme.textPrimary)
+                            .foregroundStyle(CalorynTheme.accent)
                             .frame(maxWidth: .infinity)
                     }
                 }
@@ -122,7 +122,7 @@ struct MissingFoodEntryView: View {
                     } label: {
                         Image(systemName: "xmark")
                             .font(CalorynTheme.toolbarIcon)
-                            .foregroundStyle(CalorynTheme.textPrimary)
+                            .foregroundStyle(CalorynTheme.accent)
                     }
                     .accessibilityLabel("Close")
                 }
@@ -135,7 +135,7 @@ struct MissingFoodEntryView: View {
                             .font(CalorynTheme.toolbarAction)
                             .foregroundStyle(
                                 FavoriteFoodLogging.isSafePortion(portionGrams)
-                                    ? CalorynTheme.textPrimary
+                                    ? CalorynTheme.accent
                                     : CalorynTheme.textTertiary
                             )
                     }

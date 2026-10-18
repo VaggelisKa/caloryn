@@ -178,8 +178,8 @@ final class ComponentSnapshotTests: XCTestCase {
 
     // The palette declares a light and a dark appearance for every colour, but until
     // these existed only the light one was ever rendered — which is exactly where
-    // `pageBackground` and `backgroundSecondary` had been silently falling back to system
-    // greys. A dark reference image is the only thing that would have caught that.
+    // the page and card backgrounds (now `backgroundPrimary` and `backgroundSecondary`) had
+    // been silently falling back to system greys. A dark reference image is the only thing that would have caught that.
 
     func testFoodRowAcrossAppearances() {
         assertAppearances(
@@ -222,7 +222,7 @@ final class ComponentSnapshotTests: XCTestCase {
 
     // `calorynGroupSurface` is the surface the Plate screens use (the History insight, the
     // Portion completeness note, the creation-form groups, onboarding): `backgroundSecondary`,
-    // a 22pt continuous corner and a `hairline` border. This test rendered the retired
+    // a 22pt continuous corner and a `separator` border. This test rendered the retired
     // `solidCardSurface` until no screen used it any more, so the real surface could have
     // changed colour without a reference image moving.
 
@@ -243,7 +243,7 @@ final class ComponentSnapshotTests: XCTestCase {
             of: card
                 .padding(CalorynTheme.pagePadding)
                 .frame(width: 390, height: 160)
-                .background(CalorynTheme.pageBackground),
+                .background(CalorynTheme.backgroundPrimary),
             layout: .fixed(width: 390, height: 160)
         )
     }
@@ -253,7 +253,7 @@ final class ComponentSnapshotTests: XCTestCase {
     // The meal palette's three roles, each drawn by a component nothing else here renders:
     // the section header (the name in the meal's ink, the total or "nothing yet" in secondary
     // text, the plus in the meal's ink on a wash of its fill) and the meal chips (selected: fill
-    // with on-fill text; unselected: hairline with the meal's ink).
+    // with on-fill text; unselected: a `separator` outline with the meal's ink).
 
     func testMealSectionHeadersAcrossAppearances() {
         let headers = VStack(spacing: 14) {
@@ -269,7 +269,7 @@ final class ComponentSnapshotTests: XCTestCase {
         }
         .padding(CalorynTheme.pagePadding)
         .frame(width: 390, height: 230)
-        .background(CalorynTheme.pageBackground)
+        .background(CalorynTheme.backgroundPrimary)
 
         assertAppearances(of: headers, layout: .fixed(width: 390, height: 230))
     }
@@ -305,8 +305,8 @@ final class ComponentSnapshotTests: XCTestCase {
 
     // `animated: false` draws the final state on the first frame, so neither image races an
     // animation clock. Under and over side by side cover both of the ring's wholes — the
-    // budget, and everything eaten — and both non-meal sectors: hairline for what is left,
-    // ink for the overshoot.
+    // budget, and everything eaten — and both non-meal sectors: `fillTrack` for what is left,
+    // `dataPrimary` for the overshoot.
 
     func testCalorieDonutUnderAndOverAcrossAppearances() {
         let donuts = HStack(spacing: 22) {
@@ -328,7 +328,7 @@ final class ComponentSnapshotTests: XCTestCase {
             )
         }
         .frame(width: 390, height: 200)
-        .background(CalorynTheme.pageBackground)
+        .background(CalorynTheme.backgroundPrimary)
 
         assertAppearances(of: donuts, layout: .fixed(width: 390, height: 200))
     }
@@ -361,7 +361,7 @@ final class ComponentSnapshotTests: XCTestCase {
             )
         }
         .frame(width: 390, height: 72)
-        .background(CalorynTheme.pageBackground)
+        .background(CalorynTheme.backgroundPrimary)
 
         assertAppearances(of: plates, layout: .fixed(width: 390, height: 72))
     }
@@ -380,7 +380,7 @@ final class ComponentSnapshotTests: XCTestCase {
         }
         .padding(16)
         .frame(width: 390, height: 72)
-        .background(CalorynTheme.pageBackground)
+        .background(CalorynTheme.backgroundPrimary)
 
         assertAppearances(of: badges, layout: .fixed(width: 390, height: 72))
     }
@@ -402,7 +402,7 @@ final class ComponentSnapshotTests: XCTestCase {
             )
             .padding(.horizontal, 16)
             .frame(width: 390, height: 300)
-            .background(CalorynTheme.pageBackground),
+            .background(CalorynTheme.backgroundPrimary),
             as: .image(
                 precision: precision,
                 perceptualPrecision: perceptualPrecision,
@@ -471,14 +471,14 @@ final class ComponentSnapshotTests: XCTestCase {
         view
             .padding(.horizontal, 16)
             .frame(width: 390, height: 76)
-            .background(CalorynTheme.pageBackground)
+            .background(CalorynTheme.backgroundPrimary)
     }
 
     private func summary(_ view: some View) -> some View {
         view
             .padding(16)
             .frame(width: 390, height: 140)
-            .background(CalorynTheme.pageBackground)
+            .background(CalorynTheme.backgroundPrimary)
     }
 }
 

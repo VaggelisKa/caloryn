@@ -3,7 +3,7 @@ import SwiftUI
 import WidgetKit
 
 /// The day as a plate: the app's Today donut at widget size. Meals in their fill, the rest of
-/// the budget in `hairline`, the overshoot in ink. The hole is empty by design — the number
+/// the budget in `fillTrack`, the overshoot in `dataPrimary`. The hole is empty by design — the number
 /// sits beside the ring, never inside it — and the ring is hidden from VoiceOver because the
 /// widget that contains it owns the summary.
 ///

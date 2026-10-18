@@ -3,13 +3,6 @@ import SwiftUI
 /// The app-only half of the theme: meal and Nutri-Score lookups, spacing and type. The colour
 /// tokens themselves are in `CalorynShared/CalorynThemeColors.swift`, shared with the widget.
 extension CalorynTheme {
-    // MARK: - Migration aliases (temporary)
-
-    @available(*, deprecated, message: "backgroundPrimary for a canvas, textOnAccent for a label on accent")
-    static var pageBackground: Color { backgroundPrimary }
-    @available(*, deprecated, message: "separator for a line or outline, fillTrack for a track or remainder, shadow for a shadow")
-    static var hairline: Color { separator }
-
     // MARK: - Meal palette
 
     /// The meal's colour for shapes: donut sectors, a selected meal chip.

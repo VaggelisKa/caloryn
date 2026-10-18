@@ -64,7 +64,7 @@ struct OnboardingSectionTitle: View {
 struct OnboardingHairline: View {
     var body: some View {
         Rectangle()
-            .fill(CalorynTheme.hairline)
+            .fill(CalorynTheme.separator)
             .frame(height: CalorynTheme.hairlineWidth)
             .accessibilityHidden(true)
     }
@@ -119,8 +119,8 @@ struct OnboardingActionBar<Content: View>: View {
         .background {
             LinearGradient(
                 stops: [
-                    .init(color: CalorynTheme.pageBackground.opacity(0), location: 0),
-                    .init(color: CalorynTheme.pageBackground, location: 0.35),
+                    .init(color: CalorynTheme.backgroundPrimary.opacity(0), location: 0),
+                    .init(color: CalorynTheme.backgroundPrimary, location: 0.35),
                 ],
                 startPoint: .top,
                 endPoint: .bottom
@@ -189,12 +189,14 @@ struct OnboardingSelectionMark: View {
         ZStack {
             if isSelected {
                 Circle()
-                    .fill(CalorynTheme.textPrimary)
+                    .fill(CalorynTheme.accent)
                 Image(systemName: "checkmark")
                     .font(.system(size: size * 0.45, weight: .bold))
-                    .foregroundStyle(CalorynTheme.pageBackground)
+                    .foregroundStyle(CalorynTheme.textOnAccent)
             } else {
                 Circle()
+                    // A control border with no role of its own yet (docs/theme.md, open decisions).
+                    // swiftlint:disable:next text_token_as_shape
                     .strokeBorder(CalorynTheme.textTertiary, lineWidth: 1.5)
             }
         }

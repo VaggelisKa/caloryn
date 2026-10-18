@@ -48,7 +48,7 @@ struct IngredientAmountPickerView: View {
                     } label: {
                         Image(systemName: "xmark")
                             .font(CalorynTheme.toolbarIcon)
-                            .foregroundStyle(CalorynTheme.textPrimary)
+                            .foregroundStyle(CalorynTheme.accent)
                     }
                     .accessibilityLabel("Close")
                 }
@@ -64,7 +64,7 @@ struct IngredientAmountPickerView: View {
                         // would silently throw away.
                         Text("Save")
                             .font(CalorynTheme.toolbarAction)
-                            .foregroundStyle(amount.canSave ? CalorynTheme.textPrimary : CalorynTheme.textSecondary)
+                            .foregroundStyle(amount.canSave ? CalorynTheme.accent : CalorynTheme.textSecondary)
                     }
                     .disabled(!amount.canSave)
                 }

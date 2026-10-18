@@ -147,7 +147,7 @@ struct FoodLogValueRows: View {
             ForEach(rows) { row in
                 VStack(spacing: 0) {
                     Rectangle()
-                        .fill(CalorynTheme.hairline)
+                        .fill(CalorynTheme.separator)
                         .frame(height: CalorynTheme.hairlineWidth)
                         .accessibilityHidden(true)
 
@@ -200,7 +200,7 @@ extension View {
             .overlay {
                 Capsule()
                     .strokeBorder(
-                        isFocused ? CalorynTheme.textPrimary : CalorynTheme.hairline,
+                        isFocused ? CalorynTheme.accent : CalorynTheme.separator,
                         lineWidth: isFocused ? 1.2 : CalorynTheme.hairlineWidth
                     )
                     .allowsHitTesting(false)

@@ -150,7 +150,7 @@ struct MyFoodsView: View {
         .foregroundStyle(CalorynTheme.textPrimary, CalorynTheme.textSecondary)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background {
-            CalorynTheme.pageBackground
+            CalorynTheme.backgroundPrimary
                 .ignoresSafeArea()
         }
         .accessibilityIdentifier("myFoods.emptyLibrary")
@@ -199,7 +199,7 @@ struct MyFoodsView: View {
                         Image(systemName: showsAllFavorites ? "chevron.up" : "chevron.down")
                     }
                     .font(CalorynTheme.cardSubtitle.weight(.semibold))
-                    .foregroundStyle(CalorynTheme.textPrimary)
+                    .foregroundStyle(CalorynTheme.accent)
                     .contentShape(Rectangle())
                     .libraryRowSeparatorInset()
                 }
@@ -238,7 +238,7 @@ struct MyFoodsView: View {
         } label: {
             Image(systemName: "plus")
                 .font(CalorynTheme.toolbarIcon)
-                .foregroundStyle(CalorynTheme.textPrimary)
+                .foregroundStyle(CalorynTheme.accent)
         }
         .accessibilityLabel("Create Food")
         .accessibilityIdentifier("myFoods.createMenu")
@@ -500,7 +500,7 @@ private extension View {
             .foregroundStyle(CalorynTheme.textPrimary, CalorynTheme.textSecondary)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background {
-                CalorynTheme.pageBackground
+                CalorynTheme.backgroundPrimary
                     .ignoresSafeArea()
             }
     }
@@ -540,7 +540,7 @@ private struct LibrarySectionHeader: View {
         .textCase(nil)
         .padding(LibraryRowStyle.headerPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(CalorynTheme.pageBackground)
+        .background(CalorynTheme.backgroundPrimary)
         .listRowInsets(EdgeInsets())
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isHeader)

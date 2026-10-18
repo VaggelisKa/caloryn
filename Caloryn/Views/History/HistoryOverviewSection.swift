@@ -218,14 +218,14 @@ private struct HistoryPlateLegend: View {
         key(text: ringKeyText) {
             Circle()
                 .inset(by: 1.75)
-                .stroke(CalorynTheme.textPrimary, lineWidth: 1.5)
+                .stroke(CalorynTheme.dataPrimary, lineWidth: 1.5)
         }
 
         key(text: currentKeyText) {
             Circle()
                 .inset(by: 1)
                 .stroke(
-                    CalorynTheme.textPrimary.opacity(0.5),
+                    CalorynTheme.dataPrimary.opacity(0.5),
                     style: StrokeStyle(lineWidth: 1, dash: [1.5, 2])
                 )
         }

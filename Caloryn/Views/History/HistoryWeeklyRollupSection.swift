@@ -60,7 +60,7 @@ struct HistoryWeeklyRollupSection: View {
             .chartYAxis {
                 AxisMarks(position: .leading, values: [0, 50, 100]) { value in
                     AxisGridLine()
-                        .foregroundStyle(CalorynTheme.hairline)
+                        .foregroundStyle(CalorynTheme.separator)
                     AxisValueLabel {
                         if let percentage = value.as(Int.self) {
                             Text("\(percentage)%")

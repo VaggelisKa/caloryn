@@ -75,7 +75,7 @@ struct ProfileEditView: View {
                 } label: {
                     Text("Save")
                         .font(CalorynTheme.toolbarAction)
-                        .foregroundStyle(CalorynTheme.textPrimary)
+                        .foregroundStyle(CalorynTheme.accent)
                 }
             }
         }
@@ -177,7 +177,7 @@ private struct ProfileSliderRow: View {
             // Stepped without `Slider(step:)`, which draws a tick per step on iOS 26 — the
             // same slider onboarding sets height and weight with.
             OnboardingSlider(value: $value, range: range, step: step, label: title)
-                .tint(CalorynTheme.textPrimary)
+                .tint(CalorynTheme.accent)
                 .accessibilityLabel(title)
                 .accessibilityValue(valueText)
         }
