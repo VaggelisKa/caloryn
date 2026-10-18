@@ -32,34 +32,44 @@ A skin change. Nothing else moves:
 All colours are Color Sets in `CalorynShared/SharedColors.xcassets`, light and dark
 declared together (CLAUDE.md rule 6). Never a literal.
 
-| Asset | Light | Dark | Role |
-|---|---|---|---|
-| `PageBackground` | `#FEFDFA` | `#141614` | every page canvas |
-| `CardBackground` | `#FFFFFF` | `#262A26` | sheet canvas, the few grouped surfaces |
-| `Surface` | `#F6F5F1` | `#262A26` | input wells inside a sheet (stepper pill, search well) |
-| `TextPrimary` | `#1E231F` | `#ECEBE8` | ink: text, controls, primary buttons |
-| `TextSecondary` | `#566057` | `#A6ACA6` | captions, units, inactive tab labels |
-| `TextTertiary` *(new)* | `#8E948C` | `#6F756F` | "not yet", a disabled chevron; 2.8:1 in light, so placeholders only |
-| `Hairline` *(new)* | `#1E231F` α 0.10 | `#ECEBE8` α 0.12 | row separators, surface borders |
-| `MealBreakfast` *(new)* | `#F2B705` | `#F7C94A` | breakfast fill |
-| `MealBreakfastInk` *(new)* | `#7A5A00` | `#F7C94A` | breakfast text |
-| `MealLunch` *(new)* | `#D44026` | `#F0705A` | lunch fill |
-| `MealLunchInk` *(new)* | `#8F2A17` | `#F0705A` | lunch text |
-| `MealDinner` *(new)* | `#5B3758` | `#B98BB5` | dinner fill |
-| `MealDinnerInk` *(new)* | `#6A3D66` | `#B98BB5` | dinner text |
-| `MealSnack` *(new)* | `#7E8B2E` | `#B5C457` | snack fill |
-| `MealSnackInk` *(new)* | `#4F5918` | `#B5C457` | snack text |
-| `MealBreakfastOnFill` *(new)* | `#1E231F` | `#262A26` | label or glyph on the breakfast fill |
-| `MealLunchOnFill` *(new)* | `#FFFFFF` | `#262A26` | label or glyph on the lunch fill |
-| `MealDinnerOnFill` *(new)* | `#FFFFFF` | `#262A26` | label or glyph on the dinner fill |
-| `MealSnackOnFill` *(new)* | `#1E231F` | `#262A26` | label or glyph on the snack fill |
-| `HistoryEaten` *(new)* | `#5C615D` | `#8E968F` | neutral "eaten" fill in History day plates and bars |
-| `HistoryEatenLight` *(new)* | `#959A96` | `#555B56` | an under-goal day in History, a step lighter than `HistoryEaten` |
-| `TypeBadgeFill` *(new)* | `#566057` α 0.18 | `#A6ACA6` α 0.18 | the "Recipe" / "Yours" badge background |
-| `TypeBadgeText` *(new)* | `#566057` | `#A6ACA6` | the "Recipe" / "Yours" badge text |
-| `ControlTint` *(new)* | `#1E231F` | `#8E968F` | a switch's on track and a graphical date picker's selected day: what the system draws white on |
-| `SwipeActionTint` *(new)* | `#566057` | `#4A504B` | a swipe action's background under its white label |
-| `AccentColor` (app catalog) | `#1E231F` | `#ECEBE8` | stock controls: pickers, links |
+Since 2026-10-18 the tokens are named by role (`docs/theme.md`, "Tokens are roles"). The
+prose below keeps the names this spec was written with; the last column maps them.
+
+| Asset | Light | Dark | Role | Written here as |
+|---|---|---|---|---|
+| `BackgroundPrimary` | `#FEFDFA` | `#141614` | every page canvas, the widget container | `PageBackground` |
+| `BackgroundSecondary` | `#FFFFFF` | `#262A26` | sheet canvas, grouped rows, the few grouped surfaces | `CardBackground` |
+| `BackgroundTertiary` | `#F6F5F1` | `#262A26` | wells inside a sheet: input fields, stepper pill, notice panel | `Surface` |
+| `BackgroundInset` | `#FEFDFA` | `#262A26` | the Add Food search well and scanner circle | `SearchWell` |
+| `TextPrimary` | `#1E231F` | `#ECEBE8` | ink: text and content glyphs | `TextPrimary` |
+| `TextSecondary` | `#566057` | `#A6ACA6` | captions, units, inactive tab labels, badge text | `TextSecondary`, `TypeBadgeText` |
+| `TextTertiary` | `#8E948C` | `#6F756F` | "not yet", a disabled chevron; 2.8:1 in light, so placeholders only | `TextTertiary` |
+| `TextOnAccent` | `#FEFDFA` | `#141614` | a label on the accent: primary button, selected chip | `PageBackground` |
+| `Accent` | `#1E231F` | `#ECEBE8` | primary button and selected chip fills, tints, focus and selection rings, button labels; the global accent | `TextPrimary`, `AccentColor` |
+| `AccentControl` | `#1E231F` | `#8E968F` | a switch's on track, a graphical date picker's selected day: what the system draws white on | `ControlTint` |
+| `SeparatorLine` | `#1E231F` α 0.10 | `#ECEBE8` α 0.12 | row separators, surface borders, chip and field outlines | `Hairline` |
+| `Shadow` | `#1E231F` α 0.10 | `#ECEBE8` α 0.12 | under a control raised off a well | `Hairline` |
+| `FillTrack` | `#1E231F` α 0.10 | `#ECEBE8` α 0.12 | a donut's or bar's remainder, a status wash, a day with nothing logged | `Hairline` |
+| `FillBadge` | `#566057` α 0.18 | `#A6ACA6` α 0.18 | the "Recipe" / "Yours" badge background | `TypeBadgeFill` |
+| `FillLoading`, `FillLoadingHighlight` | ink α 0.07, 0.08 | α 0.09 | loading placeholders and their shimmer | `SkeletonBase`, `SkeletonShine` |
+| `FillAction` | `#566057` | `#4A504B` | a swipe action's background under its white label | `SwipeActionTint` |
+| `DataPrimary` | `#1E231F` | `#ECEBE8` | the heaviest data mark: an overshoot, over-goal ring or bar, a progress fill | `TextPrimary` |
+| `DataSecondary` | `#5C615D` | `#8E968F` | neutral "eaten" fill: an on-track day, unattributed calories | `HistoryEaten` |
+| `DataTertiary` | `#959A96` | `#555B56` | an under-goal day, a step lighter than `DataSecondary` | `HistoryEatenLight` |
+| `DataReference` | `#566057` | `#A6ACA6` | a chart's target rule | `TextSecondary` |
+| `MealBreakfast` | `#F2B705` | `#F7C94A` | breakfast fill | |
+| `MealBreakfastInk` | `#7A5A00` | `#F7C94A` | breakfast text | |
+| `MealLunch` | `#D44026` | `#F0705A` | lunch fill | |
+| `MealLunchInk` | `#8F2A17` | `#F0705A` | lunch text | |
+| `MealDinner` | `#5B3758` | `#B98BB5` | dinner fill | |
+| `MealDinnerInk` | `#6A3D66` | `#B98BB5` | dinner text | |
+| `MealSnack` | `#7E8B2E` | `#B5C457` | snack fill | |
+| `MealSnackInk` | `#4F5918` | `#B5C457` | snack text | |
+| `MealBreakfastOnFill` | `#1E231F` | `#262A26` | label or glyph on the breakfast fill | |
+| `MealLunchOnFill` | `#FFFFFF` | `#262A26` | label or glyph on the lunch fill | |
+| `MealDinnerOnFill` | `#FFFFFF` | `#262A26` | label or glyph on the dinner fill | |
+| `MealSnackOnFill` | `#1E231F` | `#262A26` | label or glyph on the snack fill | |
+| `NutriscoreOnFill` | `#FFFFFF` | — | the letter on a Nutri-Score badge | literal `.white` |
 
 Fill is for shapes (sectors, chips, the header add button's wash); ink is for text in that
 meal's colour, dark enough for 4.5:1 on the page. In dark mode fill and ink are the same
@@ -71,9 +81,8 @@ it clears 4.5:1. Dinner's light ink was lifted from the board's `#4A2C47`, which
 from `TextPrimary` and read as black, to `#6A3D66` in the same hue: 7.8:1 on the page and
 8.5:1 on white, so still well past 4.5:1, and the only ink lighter than its own fill.
 
-Existing `Stone` and `Terracotta` assets stay in the catalog (a few unchanged screens
-read them) but the app stops using them for meaning. The `Sage`, `Carb`, `Fiber`,
-`HistoryUnder` and `WarmWhite` sets lost their last reader and were removed:
+The old `Sage`, `Stone`, `Terracotta`, `Carb`, `Fiber`, `HistoryUnder` and `WarmWhite`
+sets lost their last reader and were removed:
 
 - Macros are told apart by their label, never by colour, because the meal palette now
   owns colour and the two systems would collide (sage was both "protein" and "lunch").
@@ -87,10 +96,8 @@ read them) but the app stops using them for meaning. The `Sage`, `Carb`, `Fiber`
   on-track colour, a third or better the under colour, anything less the over colour.
 - Nutri-Score badge colours are fixed by the standard and do not change.
 
-`CalorynTheme` gains: `hairline`, `mealFill(_ meal: MealType)`, `mealInk(_ meal: MealType)`,
-`mealOnFill(_ meal: MealType)`, `textTertiary`, `historyEaten`, `historyEatenLight`,
-`typeBadgeFill`, `typeBadgeText`. The remaining old names (`stone`, `terracotta`) stay
-for unchanged call sites; retire them from new code. `sage` has since been removed.
+`CalorynTheme` gains `mealFill(_:)`, `mealInk(_:)`, `mealOnFill(_:)` and the tokens in the
+table above.
 
 ## Vocabulary
 

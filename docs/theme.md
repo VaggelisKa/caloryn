@@ -2,12 +2,93 @@
 
 CLAUDE.md rule 6 states the rules. This is why they exist.
 
+## Tokens are roles
+
+A token names what a colour *does*, never the screen or component that first needed it.
+The old names did the second — `pageBackground`, `typeBadgeFill`, `historyEaten`,
+`swipeActionTint` — and a name like that gets borrowed for whatever is nearby. An audit of
+every colour use (Oct 2026, ~750 sites) found `textPrimary` painting the primary button, the
+selected chip, every slider tint, the focus ring and History's over-goal bars; `hairline`
+painting the donut's track and two shadows; `pageBackground` painting the label on every ink
+button. Nothing was wrong on screen, because the values happened to coincide. But a re-skin
+that made text blue would have made the data blue, and one that changed the page would have
+changed every button's label.
+
+The vocabulary, in `CalorynShared/CalorynThemeColors.swift` (shared by app and widget):
+
+| Family | Tokens | Paints |
+|---|---|---|
+| background | `backgroundPrimary` · `Secondary` · `Tertiary` · `backgroundInset` | what content sits on: the page; a raised sheet, row or card; a recessed well; a well that sinks to the page |
+| text | `textPrimary` · `Secondary` · `Tertiary` · `textOnAccent` | text and content glyphs by emphasis; a label on the accent |
+| accent | `accent` · `accentControl` | what can be acted on: control fills and tints, focus and selection rings, a button's own label; the accent where a stock control draws white on it |
+| lines | `separator` · `shadow` | separators, borders, outlines; a raised control's shadow |
+| fill | `fillTrack` · `fillBadge` · `fillLoading` · `fillLoadingHighlight` · `fillAction` | shapes that are not a surface, text or data: a track's remainder, a badge, a loading placeholder, a swipe action |
+| data | `dataPrimary` · `Secondary` · `Tertiary` · `dataReference` | quantities that are not meal-coloured, heaviest first; a chart's target rule |
+| categorical | `meal*`, `nutriscore*` | a meal; a Nutri-Score grade. Named for what they classify, by design |
+
+Choosing one: first the family, by *what is painted* — a fill, tint or outline of something
+tappable is `accent` even when it is ink; a bar or sector is `data*`; only text and the
+glyphs that read as content are `text*`. Then the step, by emphasis. A colour derived with
+`.opacity(n)` is derived from the role it serves (`dataPrimary.opacity(0.35)` for an
+in-progress ring), never from a text token borrowed for a shape.
+
+**One Color Set per role, even when two roles share a value.** `accent`, `textPrimary` and
+`dataPrimary` are all ink today; `backgroundPrimary` and `textOnAccent` are both paper. That
+is a design decision a re-skin may undo, so it lives in the catalog where a designer can see
+and change it, not in a Swift alias that would silently carry one change into the other
+role. The cost is that "change the ink" means editing every set in its row below:
+
+| Shared value today | Roles |
+|---|---|
+| ink `#1E231F` / `#ECEBE8` | `textPrimary`, `accent`, `dataPrimary` |
+| paper `#FEFDFA` / `#141614` | `backgroundPrimary`, `textOnAccent` |
+| hairline ink α 0.10 / 0.12 | `separator`, `fillTrack`, `shadow` |
+| `#566057` / `#A6ACA6` | `textSecondary`, `dataReference` |
+
+A new screen should not need a new token. When it seems to, the question is which role it
+is; a genuinely new role gets a family name, never a screen's.
+
+**Re-skinning** is therefore an asset-catalog change only: edit the Color Sets, re-record the
+snapshots (CLAUDE.md rule 4 — look at every image), update the census values in
+`scripts/theme-screenshots.sh`, and run it. The global accent colour (build setting
+`ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME`) is the `Accent` set itself, so stock
+controls follow without a second copy.
+
+The lint rules `text_token_as_shape`, `background_token_as_text` and
+`asset_colour_outside_theme` reject the commonest shapes of drift: a text token as a fill,
+stroke or tint, a background token as a label, and a Color Set read past `CalorynTheme`.
+Like every rule here they are regexes over a single call, so they catch the form, not the
+meaning — `textPrimary` passed into a helper's colour parameter goes unseen.
+
+### Open decisions
+
+The rename was pixel-identical, so it could not resolve the places where the *design* is
+inconsistent; each needs a designer's call, and changes pixels when made. As of 2026-10-18:
+
+- **Two wells.** Input fields and steppers use `backgroundTertiary` (`#F6F5F1`), the Add Food
+  search well `backgroundInset` (paper), though both sit on the same white sheet. Settings'
+  appearance pill and goal plate, and the iOS 18 Delete capsule in the creation forms, use a
+  third: `backgroundPrimary`, paper in dark too.
+- **Three disabled tones:** `textTertiary` (Export row, Save tick), `textSecondary` (primary
+  button, Goal Save), and opacity 0.45 (onboarding choice rows).
+- **Three delete colours:** `fillAction` in a swipe, `accent` in a sheet, system red in a
+  confirmation dialog.
+- **Fills with no role yet,** each a text token borrowed for a shape and marked with a lint
+  exemption: the Nutri-Score day chip (ink 6%), the "+N more" outline (ink 25%), the
+  unselected onboarding radio ring (`textTertiary`, 2.8:1 in light).
+- **Produce borrows the snack palette:** NutritionDetails' fruit-and-veg chips are
+  `mealInk(.snack)` on `mealWash(.snack)` with no meal involved.
+- **Unthemed system paint,** found by reading the code and not yet confirmed in a capture:
+  TextField text and placeholders in the creation forms, the graphical and wheel date
+  pickers, grouped-list and form separators (system, not `separator`), and on iOS 18 the
+  uncollapsed large title.
+
 ## The failure mode
 
 SwiftUI's defaults are wrong for a custom palette, and wrong in a way that looks right.
 
 - A `List` or `Form` paints `systemGroupedBackground` **over** anything behind it. Setting
-  `.background(CalorynTheme.pageBackground)` on it silently does nothing.
+  `.background(CalorynTheme.backgroundPrimary)` on it silently does nothing.
 - `.listStyle(.plain)` paints `systemBackground` — white in light mode.
 - A `Color` built from a `UIColor { traits in … }` closure falls back to whatever the
   `else` branch returns. Two of ours returned system greys, so dark mode quietly wasn't
@@ -25,7 +106,7 @@ The fix is not "remember the modifier". It is to make forgetting impossible or v
 
 Colours live in `CalorynShared/SharedColors.xcassets` as Color Sets, each declaring its
 light and dark appearance together, surfaced through Xcode's generated symbols
-(`Color(.pageBackground)`).
+(`Color(.backgroundPrimary)`), read through `CalorynTheme`.
 
 The point is not tidiness. **A Color Set cannot omit a dark appearance without showing it
 in Xcode's inspector, whereas a closure can omit one silently.** That asymmetry is the
@@ -50,7 +131,8 @@ Two gotchas worth knowing:
 ## Why AccentColor matters more than it looks
 
 `AccentColor.colorset` was an empty stub — it declared no colour. Every stock control that
-was not hand-tinted therefore fell back to system blue.
+was not hand-tinted therefore fell back to system blue. (It is now the `Accent` set in the
+shared catalog, named by the global-accent build setting.)
 
 The cost was not just the wrong colour. It was **48 hand-written `.tint(CalorynTheme.sage)`
 call sites**, and a 40-line `UIViewControllerRepresentable` in the History drill-down whose
@@ -141,8 +223,8 @@ every other pushed screen's was black.
 
 ## Page canvas vs sheet canvas
 
-`calorynPageCanvas()` paints `pageBackground`; `calorynSheetCanvas()` paints
-`cardBackground`. Tab pages and pushed detail views use the first, modal sheets the
+`calorynPageCanvas()` paints `backgroundPrimary`; `calorynSheetCanvas()` paints
+`backgroundSecondary`. Tab pages and pushed detail views use the first, modal sheets the
 second, so a sheet reads as floating above the page rather than continuing it.
 
 The list modifiers therefore paint no background of their own — the canvas supplies the
@@ -194,8 +276,8 @@ Captures 25 surfaces in both appearances — all seven onboarding steps, Today, 
 search sheet, its results, those results *while the search is still running*, and the
 portion picker, History with both drill-downs, Settings with both editors, My Foods,
 multi-add review and its portion editor, the three creation sheets, and the ingredient
-amount picker — then prints how much of each screen is `pageBackground`,
-`cardBackground`, retired sage, and a system grey (`#F2F2F7` in light; `#1C1C1E`, `#000000`
+amount picker — then prints how much of each screen is `backgroundPrimary`,
+`backgroundSecondary`, retired sage, and a system grey (`#F2F2F7` in light; `#1C1C1E`, `#000000`
 or `#2C2C2E` in dark). The token values in the script must move with the Color Sets: after
 the palette change they still held the old ones, and every capture read 0.0% page.
 
@@ -246,8 +328,8 @@ The suite rendered only `traits: .reference` — light, `.large`. Every token th
 changed was invisible to it: it passed unchanged through `cardBackground` going from pure
 white to `#FAFAF7` and both dark backgrounds moving off system greys.
 
-It now covers both appearances, the card surface (`solidCardSurface` is the only thing that
-renders `cardBackground` and `cardSeparator`), the Nutri-Score badges in both modes — those
+It now covers both appearances, the grouped surface (`calorynGroupSurface`; the original
+`solidCardSurface` was deleted with its last caller), the Nutri-Score badges in both modes — those
 colours are appearance-independent by design, so asserting both makes that a checked
 property — and one row at `accessibilityExtraExtraExtraLarge`.
 
