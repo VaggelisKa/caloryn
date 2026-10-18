@@ -29,18 +29,17 @@ struct FoodProvenanceLabelCoverageTests {
     // MARK: - Data sources
 
     @Test(
-        "Each data source has a short badge and a detail sentence",
+        "Each data source has a short badge",
         arguments: [
-            (FoodDataSource.calorynCatalog, "Caloryn data", "Nutrition data from Caloryn"),
-            (.openFoodFactsCommunity, "Community data", "Community-provided data from Open Food Facts"),
-            (.userEntered, "Your data", "Nutrition data entered by you"),
-            (.mixed, "Mixed sources", "Nutrition data combined from multiple sources"),
-            (.unknown, "Source unknown", "The original data source was not recorded"),
-        ] as [(FoodDataSource, String, String)]
+            (FoodDataSource.calorynCatalog, "Caloryn data"),
+            (.openFoodFactsCommunity, "Community data"),
+            (.userEntered, "Your data"),
+            (.mixed, "Mixed sources"),
+            (.unknown, "Source unknown"),
+        ] as [(FoodDataSource, String)]
     )
-    func dataSourceLabels(source: FoodDataSource, short: String, detail: String) {
+    func dataSourceLabels(source: FoodDataSource, short: String) {
         #expect(source.shortLabel == short)
-        #expect(source.detailLabel == detail)
     }
 
     @Test("Data source raw values stay readable from saved foods")

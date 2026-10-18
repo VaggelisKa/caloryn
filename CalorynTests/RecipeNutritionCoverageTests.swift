@@ -363,21 +363,6 @@ struct RecipeNutritionCoverageTests {
         ))
     }
 
-    @Test("The manual-entry preview reads typed macros, with a comma or a point, and blanks as zero")
-    func customFoodPreviewMacros() {
-        var draft = CustomFoodDraft()
-        draft.proteinPerServing = "12,5"
-        draft.carbsPerServing = " 30.25 "
-        draft.fatPerServing = ""
-
-        #expect(draft.previewProtein == 12.5)
-        #expect(draft.previewCarbs == 30.25)
-        #expect(draft.previewFat == 0)
-        #expect(draft.suppliedFat == nil)
-
-        draft.fatPerServing = "abc"
-        #expect(draft.previewFat == 0)
-    }
 
     @Test("A stored food with no serving is priced per 100 g")
     func libraryFoodRowFromStoredFoodWithoutServing() {

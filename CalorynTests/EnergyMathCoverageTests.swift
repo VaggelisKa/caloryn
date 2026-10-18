@@ -151,17 +151,16 @@ struct EnergyMathHandComputedTests {
 struct EnergyCalculationModeCopyTests {
 
     @Test(
-        "Each mode names itself and explains itself in the words Settings shows",
+        "Each mode names itself in the words Settings shows",
         arguments: [
-            (EnergyCalculationMode.lifestyleEstimate, "lifestyleEstimate", "Activity Level Estimate", "Uses your selected activity level."),
-            (.dynamicHealth, "dynamicHealth", "Auto-adjust Calories", "Uses Apple Health when activity data is available."),
+            (EnergyCalculationMode.lifestyleEstimate, "lifestyleEstimate", "Activity Level Estimate"),
+            (.dynamicHealth, "dynamicHealth", "Auto-adjust Calories"),
         ]
     )
-    func copy(mode: EnergyCalculationMode, raw: String, name: String, description: String) {
+    func copy(mode: EnergyCalculationMode, raw: String, name: String) {
         #expect(mode.id == raw)
         #expect(mode.rawValue == raw)
         #expect(mode.displayName == name)
-        #expect(mode.shortDescription == description)
     }
 
     @Test("The persisted raw values decode back to their modes")

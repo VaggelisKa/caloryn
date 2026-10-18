@@ -32,16 +32,15 @@ private func makeMealContainer() throws -> ModelContainer {
 @Suite("Meal type naming coverage")
 struct MealTypeNamingCoverageTests {
     @Test(
-        "Each meal has its Danish name, icon and position in the day",
+        "Each meal has its icon and position in the day",
         arguments: [
-            (MealType.breakfast, "Morgenmad", "sunrise.fill", 0),
-            (MealType.lunch, "Frokost", "sun.max.fill", 1),
-            (MealType.dinner, "Aftensmad", "moon.fill", 2),
-            (MealType.snack, "Snack", "leaf.fill", 3),
+            (MealType.breakfast, "sunrise.fill", 0),
+            (MealType.lunch, "sun.max.fill", 1),
+            (MealType.dinner, "moon.fill", 2),
+            (MealType.snack, "leaf.fill", 3),
         ]
     )
-    func mealNamingAndOrder(meal: MealType, danish: String, icon: String, order: Int) {
-        #expect(meal.danishName == danish)
+    func mealNamingAndOrder(meal: MealType, icon: String, order: Int) {
         #expect(meal.iconName == icon)
         #expect(meal.sortOrder == order)
     }

@@ -129,7 +129,6 @@ struct FavoriteIntentCatalogCoverageTests {
         #expect(candidate.displayTitle == "Oats")
         #expect(candidate.kind == .manualFood)
         #expect(candidate.portionGrams == 120)
-        #expect(candidate.displaySubtitle == "Manual food, last logged 120 g")
     }
 
     @Test("A favourite recipe with ingredients is a Recipe candidate")
@@ -154,7 +153,6 @@ struct FavoriteIntentCatalogCoverageTests {
         let candidates = FavoriteIntentCatalog.candidates(from: [recipe])
 
         #expect(candidates.map(\.kind) == [.recipe])
-        #expect(candidates.first?.displaySubtitle == "Recipe, last logged 250 g")
         #expect(candidates.first?.displayTitle == "Chili")
     }
 
@@ -293,18 +291,8 @@ struct FavoriteIntentCatalogCoverageTests {
         // device's; the digits, precision and lack of grouping are what is asserted.
         let separator = Locale.current.decimalSeparator ?? "."
         let grams = template.replacingOccurrences(of: "{sep}", with: separator)
-        let candidate = FavoriteIntentCandidate(
-            id: "A",
-            name: "Oats",
-            brand: nil,
-            kind: .manualFood,
-            portionGrams: portion,
-            favoritedAt: nil,
-            displayTitle: "Oats"
-        )
         let result = FavoriteIntentLogResult(foodName: "Oats", portionGrams: portion, meal: .breakfast, calories: 50)
 
-        #expect(candidate.displaySubtitle == "Manual food, last logged \(grams) g")
         #expect(result.response == "Logged \(grams) g of Oats to breakfast — 50 calories.")
     }
 

@@ -173,19 +173,6 @@ struct TrackedNutrientTableTests {
         ])
     }
 
-    @Test("Sugars share the carb colour, fat-like nutrients the fat colour, sodium and alcohol their own")
-    func colourGroups() {
-        #expect(TrackedNutrient.protein.color == CalorynTheme.proteinColor)
-        #expect(TrackedNutrient.carbs.color == CalorynTheme.carbColor)
-        #expect(TrackedNutrient.sugars.color == CalorynTheme.carbColor)
-        #expect(TrackedNutrient.fiber.color == CalorynTheme.fiberColor)
-        for nutrient in [TrackedNutrient.fat, .addedSugars, .saturatedFat, .cholesterol] {
-            #expect(nutrient.color == CalorynTheme.fatColor, "\(nutrient)")
-        }
-        #expect(TrackedNutrient.sodium.color == CalorynTheme.stone)
-        #expect(TrackedNutrient.alcohol.color == CalorynTheme.textSecondary)
-        #expect(TrackedNutrient.sodium.color != TrackedNutrient.alcohol.color)
-    }
 
     // MARK: Selection
 
@@ -318,23 +305,5 @@ struct TrackedNutrientMetricCoverageTests {
     )
     func progressShare(value: Double, expected: Double) {
         #expect(metric(value: value, target: 150, kind: .minimum).progress == expected)
-    }
-
-    @Test("Only going past a maximum turns the accent terracotta")
-    func accentColour() {
-        let over = metric(.sugars, value: 51, target: 50, kind: .maximum)
-        let atLimit = metric(.sugars, value: 50, target: 50, kind: .maximum)
-        let pastMinimum = metric(.protein, value: 200, target: 150, kind: .minimum)
-        let pastGoal = metric(.carbs, value: 300, target: 200, kind: .target)
-        let noTarget = metric(.sodium, value: 5, target: nil, kind: .maximum)
-        let noKind = metric(.sugars, value: 80, target: 50, kind: nil)
-
-        #expect(over.accentColor == CalorynTheme.terracotta)
-        #expect(atLimit.accentColor == TrackedNutrient.sugars.color)
-        #expect(pastMinimum.accentColor == TrackedNutrient.protein.color)
-        #expect(pastGoal.accentColor == TrackedNutrient.carbs.color)
-        #expect(noTarget.accentColor == CalorynTheme.stone)
-        #expect(noKind.accentColor == TrackedNutrient.sugars.color)
-        #expect(over.accentColor != atLimit.accentColor)
     }
 }

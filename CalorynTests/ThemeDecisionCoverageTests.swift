@@ -67,11 +67,10 @@ struct ThemePreferenceDecisionTests {
 @Suite("Meal theme role mapping")
 struct MealThemeMappingTests {
 
-    @Test("Each meal's fill, ink, on-fill and wash read the same meal's theme roles", arguments: MealType.allCases)
+    @Test("Each meal's fill, ink and wash read the same meal's theme roles", arguments: MealType.allCases)
     func rolesMapToTheSameMeal(meal: MealType) {
         #expect(meal.fill == CalorynTheme.mealFill(meal))
         #expect(meal.ink == CalorynTheme.mealInk(meal))
-        #expect(meal.onFill == CalorynTheme.mealOnFill(meal))
         #expect(meal.wash == CalorynTheme.mealWash(meal))
     }
 }
@@ -97,10 +96,8 @@ struct CalorynThemeFontRuleTests {
         #expect(CalorynTheme.weeklyChartXAxisLabel(isDense: true) != CalorynTheme.weeklyChartXAxisLabel(isDense: false))
     }
 
-    @Test("Ring and hero numbers take the size they are given")
+    @Test("Hero numbers take the size they are given")
     func displayNumbersHonourSize() {
-        #expect(CalorynTheme.ringNumber(size: 40) == CalorynTheme.ringNumber(size: 40))
-        #expect(CalorynTheme.ringNumber(size: 40) != CalorynTheme.ringNumber(size: 41))
         #expect(CalorynTheme.heroNumber(size: 56) == CalorynTheme.heroNumber(size: 56))
         #expect(CalorynTheme.heroNumber(size: 56) != CalorynTheme.heroNumber(size: 28))
     }

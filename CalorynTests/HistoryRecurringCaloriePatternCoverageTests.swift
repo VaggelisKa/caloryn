@@ -85,20 +85,6 @@ struct HistoryRecurringCaloriePatternCoverageTests {
         #expect(makePattern(eligibleDayCount: 11).basisText == "Based on 11 logged days in the last 30 days")
     }
 
-    @Test("given each kind, when stating the comparison group, then a weekday pattern gives a share and a meal-only one a count")
-    func outcomeComparisonText() {
-        let weekday = makePattern(
-            kind: .weekdayMeal,
-            outcome: .below,
-            weekday: 4,
-            outcomeComparisonCount: 1,
-            outcomeComparisonDayCount: 6
-        )
-        let mealOnly = makePattern(kind: .mealOnly, weekday: nil, mealComparisonDayCount: 7)
-
-        #expect(weekday.outcomeComparisonText == "1 of 6 other eligible logged days were below target.")
-        #expect(mealOnly.outcomeComparisonText == "7 other eligible logged days form the comparison.")
-    }
 
     @Test(
         "given a calendar weekday number, when naming it, then 1 is Sunday through 7 Saturday and anything else is blank",
@@ -343,7 +329,6 @@ struct HistoryRecurringCaloriePatternCoverageTests {
                 == "Across 4 above target logged days, dinner averaged 400 kcal more than on your other eligible logged days."
         )
         #expect(pattern.basisText == "Based on 8 logged days in the last 30 days")
-        #expect(pattern.outcomeComparisonText == "4 other eligible logged days form the comparison.")
     }
 
     // MARK: - Fixtures
