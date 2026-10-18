@@ -160,6 +160,9 @@ struct UserProfileNutrientTargetCoverageTests {
         #expect(profile.nutrientTargets[nutrient] == nil)
         // Macros are always enabled; it is the zero that removes them.
         #expect(profile.isGoalEnabled(for: nutrient))
+        // Stored as 0 g rather than −20 g, so the split it leaves gives this macro nothing at
+        // a new calorie figure; a kept −20 g would come back as a −20 g target.
+        #expect(profile.nutrientTargets(forCalorieTarget: 2_000)[nutrient] == 0)
 
         profile.setTarget(90, for: nutrient)
         #expect(profile.target(for: nutrient) == 90)
@@ -291,6 +294,10 @@ struct UserProfileNutrientTargetCoverageTests {
         #expect(isNear(profile.proteinTargetG, 149.8125))
         #expect(isNear(profile.carbTargetG, 269.6625))
         #expect(isNear(profile.fatTargetG, 79.9))
+        // The active-energy base takes the same new deficit from BMR alone, not from TDEE:
+        // 1534.625 − 250 = 1284.625 → 1284.
+        #expect(profile.calorieBaseTarget(usesActiveEnergy: true) == 1_284)
+        #expect(profile.calorieBaseTarget(usesActiveEnergy: false) == 2_397)
     }
 
     // MARK: - Calculation mode

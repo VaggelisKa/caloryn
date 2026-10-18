@@ -13,7 +13,8 @@ struct EnergyMathHandComputedTests {
 
     @Test("BMR takes fractional weight and height at face value")
     func bmrWithFractionalBody() {
-        // 10 × 72.5 + 6.25 × 178.5 − 5 × 29 = 725 + 1115.625 − 145 = 1695.625
+        // 10 × 72.5 + 6.25 × 178.5 − 5 × 29 = 725 + 1115.625 − 145 = 1695.625,
+        // then + 5 for a man (1700.625) or − 161 for a woman (1534.625).
         #expect(isNear(NutritionCalculator.bmr(sex: .male, weightKg: 72.5, heightCm: 178.5, age: 29), 1_700.625))
         #expect(isNear(NutritionCalculator.bmr(sex: .female, weightKg: 72.5, heightCm: 178.5, age: 29), 1_534.625))
     }
@@ -86,6 +87,10 @@ struct EnergyMathHandComputedTests {
         // −400 × 0.5 / 4 and 2000 × 0.3 / −4
         #expect(isNear(NutritionCalculator.macroGrams(calories: -400, ratio: 0.5, caloriesPerGram: 4), -50))
         #expect(isNear(NutritionCalculator.macroGrams(calories: 2_000, ratio: 0.3, caloriesPerGram: -4), -150))
+        // The zero divisor is the one that is guarded, whichever sign the share or the zero
+        // has: −200 / 0 and −600 / −0 would otherwise be −∞ and +∞.
+        #expect(NutritionCalculator.macroGrams(calories: -400, ratio: 0.5, caloriesPerGram: 0) == 0)
+        #expect(NutritionCalculator.macroGrams(calories: 2_000, ratio: -0.3, caloriesPerGram: -0.0) == 0)
     }
 
     @Test("A calorie target at the top of the domain still converts to exact grams")

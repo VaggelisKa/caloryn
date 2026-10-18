@@ -259,12 +259,14 @@ struct PortionSelectionCoverageTests {
     // MARK: - Shortcut amounts
 
     @Test(
-        "Shortcut amounts round each multiple to whole grams, a half rounding up",
+        "Shortcut amounts round each multiple to whole grams, a half rounding up, and keep both ends of the loggable range",
         arguments: [
             (PortionSelection.Shape(servingGramsPerUnit: 37.5), [38, 75, 113]),   // 37.5, 75, 112.5
             (PortionSelection.Shape(servingGramsPerUnit: 1.4), [1, 3, 4]),        // 1.4, 2.8, 4.2
             (PortionSelection.Shape(isRecipe: true, defaultServingGrams: 5), [1, 3, 5]),  // 1.25, 2.5, 5
             (PortionSelection.Shape(servingGramsPerUnit: 3_333.3), [3_333, 6_667, 10_000]),
+            (PortionSelection.Shape(servingGramsPerUnit: 1), [1, 2, 3]),          // exactly 1 g is loggable
+            (PortionSelection.Shape(isRecipe: true, defaultServingGrams: 10_000), [2_500, 5_000, 10_000]),  // exactly 10 kg is too
         ]
     )
     func shortcutRounding(shape: PortionSelection.Shape, expected: [Int]) {
