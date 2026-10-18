@@ -9,16 +9,16 @@ import SwiftUI
 /// Dynamic Type still scales them.
 enum OnboardingTypography {
     /// A row's label and value on the goal step, 15pt.
-    static let rowText: Font = .system(.subheadline)
-    static let rowValue: Font = .system(.subheadline).monospacedDigit()
+    static let rowText: Font = CalorynTypeface.text(.subheadline)
+    static let rowValue: Font = CalorynTypeface.text(.subheadline).monospacedDigit()
     /// Supporting copy under a figure or a choice, 13pt.
-    static let detail: Font = .system(.footnote)
+    static let detail: Font = CalorynTypeface.text(.footnote)
     /// "Gain / Keep / Lose" under the slider, 12pt.
-    static let scaleLabel: Font = .system(.caption)
+    static let scaleLabel: Font = CalorynTypeface.text(.caption)
     /// A text link ("Set a number yourself instead"), 15pt semibold.
-    static let link: Font = .system(.subheadline, weight: .semibold)
+    static let link: Font = CalorynTypeface.text(.subheadline, weight: .semibold)
     /// A choice row's title, 16pt medium.
-    static let choiceTitle: Font = .system(.callout, weight: .medium)
+    static let choiceTitle: Font = CalorynTypeface.text(.callout, weight: .medium)
 }
 
 /// The step's title and the line under it, left-aligned as the boards draw them.

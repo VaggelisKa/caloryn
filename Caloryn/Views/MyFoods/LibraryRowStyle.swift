@@ -8,10 +8,10 @@ import SwiftUI
 // `FoodRowView` is the Add Food lane's row and keeps its own metrics; My Foods does not mix it
 // into these lists. Fold the two together once both lanes have landed.
 enum LibraryRowStyle {
-    static let name: Font = .system(.callout, weight: .medium)
-    static let detail: Font = .system(.footnote)
-    static let kcal: Font = .system(.callout, weight: .semibold).monospacedDigit()
-    static let unit: Font = .system(.caption2)
+    static let name: Font = CalorynTypeface.text(.callout, weight: .medium)
+    static let detail: Font = CalorynTypeface.text(.footnote)
+    static let kcal: Font = CalorynTypeface.text(.callout, weight: .semibold).monospacedDigit()
+    static let unit: Font = CalorynTypeface.text(.caption2)
     /// The kcal column: wide enough for four digits, so numbers line up down a section.
     static let kcalColumnWidth: CGFloat = 44
     /// The board's row rhythm, 10pt above and below a row's text, where a plain list gives a
