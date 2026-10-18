@@ -252,6 +252,42 @@ struct FavoriteFoodLoggingCoverageTests {
         #expect(!FavoriteFoodLogging.isAvailableForLogging(noIngredients))
     }
 
+    @Test("A favorite's plan reuses the last portion logged by the end of the destination day, not one dated the next midnight")
+    func planStopsAtTheNextMidnight() throws {
+        let context = ModelContext(try makeLoggingContainer())
+        let food = makeTestFoodItem(name: "Porridge", isCustom: true)
+        context.insert(food)
+        // Dates are set after construction, because the initialiser snaps them
+        // to the machine's own start of day.
+        let sameDay = makeTestEntry(foodItem: food, portionGrams: 200)
+        sameDay.date = fixedDate(2026, 7, 22, 0)
+        sameDay.createdAt = fixedDate(2026, 7, 22, 8)
+        let nextMidnight = makeTestEntry(foodItem: food, portionGrams: 300)
+        nextMidnight.date = fixedDate(2026, 7, 23, 0)
+        nextMidnight.createdAt = fixedDate(2026, 7, 21, 8)
+        context.insert(sameDay)
+        context.insert(nextMidnight)
+        try context.save()
+
+        let plan = FavoriteFoodLogging.plan(
+            for: food,
+            destinationMeal: .lunch,
+            destinationDate: fixedDate(2026, 7, 22, 9),
+            calendar: fixedCalendar()
+        )
+
+        #expect(plan.action == .log(portionGrams: 200))
+        #expect(plan.destinationDate == fixedDate(2026, 7, 22, 0))
+
+        let nextDayPlan = FavoriteFoodLogging.plan(
+            for: food,
+            destinationMeal: .lunch,
+            destinationDate: fixedDate(2026, 7, 23, 9),
+            calendar: fixedCalendar()
+        )
+        #expect(nextDayPlan.action == .log(portionGrams: 300))
+    }
+
     @Test("The most recently created log's portion is reused, whatever its meal or date")
     func mostRecentPortionIgnoresMealAndDate() throws {
         let context = ModelContext(try makeLoggingContainer())
