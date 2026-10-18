@@ -66,8 +66,7 @@ struct ProfileEditView: View {
         .calorynFormStyle()
         .calorynPageCanvas()
         .calorynDrillDownNavigation()
-        .navigationTitle("Edit profile")
-        .navigationBarTitleDisplayMode(.inline)
+        .calorynInlineTitle("Edit profile")
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button {

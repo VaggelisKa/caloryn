@@ -147,8 +147,7 @@ struct GoalEditView: View {
         .calorynFormStyle()
         .calorynPageCanvas()
         .calorynDrillDownNavigation()
-        .navigationTitle("Edit goal")
-        .navigationBarTitleDisplayMode(.inline)
+        .calorynInlineTitle("Edit goal")
         .scrollDismissesKeyboard(.interactively)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {

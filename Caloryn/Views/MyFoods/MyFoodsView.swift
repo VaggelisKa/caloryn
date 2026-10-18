@@ -477,8 +477,7 @@ private struct EditedProductCatalogView: View {
         }
         .foregroundStyle(CalorynTheme.textPrimary, CalorynTheme.textSecondary)
         .calorynPageCanvas()
-        .navigationTitle("Edited product catalog")
-        .navigationBarTitleDisplayMode(.inline)
+        .calorynInlineTitle("Edited product catalog")
         .calorynDrillDownNavigation()
         .searchable(
             text: $searchText,

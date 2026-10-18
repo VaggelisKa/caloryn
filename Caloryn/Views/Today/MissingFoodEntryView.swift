@@ -114,8 +114,7 @@ struct MissingFoodEntryView: View {
             }
             .calorynFormStyle()
             .calorynSheetCanvas()
-            .navigationTitle("Edit portion")
-            .navigationBarTitleDisplayMode(.inline)
+            .calorynInlineTitle("Edit portion")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button {

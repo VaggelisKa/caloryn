@@ -49,8 +49,7 @@ struct HistoryCalorieTrendDetailView: View {
         .historyDebugScrollAnchor()
         .calorynPageCanvas()
         .calorynDrillDownNavigation()
-        .navigationTitle("Calorie trend")
-        .navigationBarTitleDisplayMode(.inline)
+        .calorynInlineTitle("Calorie trend")
         .accessibilityIdentifier("history.calorieTrend.details")
     }
 }

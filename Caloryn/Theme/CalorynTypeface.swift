@@ -11,9 +11,10 @@ import SwiftUI
 /// titles and the big numbers. Every text-style font is `relativeTo:` its style, so
 /// Dynamic Type scales it; fixed sizes come from callers' `@ScaledMetric`.
 ///
-/// SF Symbols keep the system font, since a symbol's weight and alignment come from it, and so
-/// do inline navigation titles: UIKit sizes those once, so a bundled font there would not
-/// follow a Dynamic Type change made while the app is open.
+/// SF Symbols keep the system font, since a symbol's weight and alignment come from it.
+/// Inline navigation titles are not set through UIKit's title attributes, which are sized
+/// once and would not follow a Dynamic Type change made while the app is open: they are a
+/// SwiftUI `Text` in the principal slot instead (`calorynInlineTitle`).
 enum CalorynTypeface {
     /// Registers the bundled cuts for this process. Call once, before the first view draws.
     /// Registration rather than `UIAppFonts`, so the fonts live entirely in this folder.

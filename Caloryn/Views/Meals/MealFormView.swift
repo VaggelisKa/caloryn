@@ -46,8 +46,7 @@ struct MealFormView: View {
             }
             .scrollDismissesKeyboard(.interactively)
             .calorynSheetCanvas()
-            .navigationTitle(isEditing ? "Edit meal" : "Create meal")
-            .navigationBarTitleDisplayMode(.inline)
+            .calorynInlineTitle(isEditing ? "Edit meal" : "Create meal")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     CreationFormCloseButton {
