@@ -183,9 +183,11 @@ final class ActiveEnergyDayTrackerCoverageTests: XCTestCase {
         XCTAssertEqual(reader.activeEnergyRequests.map(\.date), [future.startOfDay])
         XCTAssertEqual(reader.historyRequests.count, 1)
         XCTAssertEqual(reader.historyRequests.first?.end, today)
+        // Three weeks of history, counted back from today rather than from the
+        // future day.
         XCTAssertEqual(
             reader.historyRequests.first?.start,
-            Calendar.current.date(byAdding: .day, value: -ActivityCalorieBudget.historyLookbackDays, to: today)
+            Calendar.current.date(byAdding: .day, value: -21, to: today)
         )
     }
 

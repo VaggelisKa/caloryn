@@ -119,6 +119,33 @@ struct DailyGoalSnapshotStoreCoverageTests {
         #expect(stored.goalRevisionUpdatedAt == profile.updatedAt)
     }
 
+    @Test("Editing the same profile is a new goal revision even when the numbers match")
+    func editedProfileIsANewRevision() throws {
+        let context = try makeContext()
+        let profile = makeProfile()
+        context.insert(profile)
+        let firstEdit = goalDate(utc, 2026, 3, 9, 7)
+        let secondEdit = goalDate(utc, 2026, 3, 9, 15)
+        let morning = goalDate(utc, 2026, 3, 9, 8)
+        let evening = goalDate(utc, 2026, 3, 9, 21)
+        profile.updatedAt = firstEdit
+
+        DailyGoalSnapshotStore.recordSnapshot(
+            values: goalValues(base: 1_900, adjustment: 0),
+            for: morning, profile: profile, in: context, now: morning, calendar: utc
+        )
+        profile.updatedAt = secondEdit
+        let didUpdate = DailyGoalSnapshotStore.recordSnapshot(
+            values: goalValues(base: 1_900, adjustment: 0),
+            for: evening, profile: profile, in: context, now: evening, calendar: utc
+        )
+
+        #expect(didUpdate)
+        let stored = try #require(try context.fetch(FetchDescriptor<DailyGoalSnapshot>()).first)
+        #expect(stored.goalRevisionUpdatedAt == secondEdit)
+        #expect(stored.updatedAt == evening)
+    }
+
     @Test("Whether a date is today depends on the injected calendar's time zone")
     func todayIsJudgedInTheInjectedTimeZone() throws {
         let context = try makeContext()
