@@ -172,6 +172,7 @@ struct MyFoodsView: View {
                     } label: {
                         Label("Delete", systemImage: "trash")
                     }
+                    .tint(CalorynTheme.swipeActionTint)
                 }
             }
         } header: {
@@ -372,6 +373,7 @@ struct MyFoodsView: View {
         } label: {
             Label("Delete", systemImage: "trash")
         }
+        .tint(CalorynTheme.swipeActionTint)
     }
 
     private func toggleFavorite(_ food: FoodItem) {
