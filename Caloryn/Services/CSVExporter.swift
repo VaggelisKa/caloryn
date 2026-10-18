@@ -7,7 +7,8 @@ enum CSVExporter {
     /// keeps the common case — a plain food name — byte-identical to what
     /// this exporter has always produced.
     private static func escaped(_ field: String) -> String {
-        guard field.contains(where: { $0 == "," || $0 == "\"" || $0 == "\n" || $0 == "\r" }) else {
+        // `isNewline`, not `== "\n" || == "\r"`: "\r\n" is one Character and equals neither.
+        guard field.contains(where: { $0 == "," || $0 == "\"" || $0.isNewline }) else {
             return field
         }
         return "\"" + field.replacingOccurrences(of: "\"", with: "\"\"") + "\""
