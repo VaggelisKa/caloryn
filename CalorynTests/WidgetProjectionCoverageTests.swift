@@ -47,11 +47,22 @@ struct WidgetProjectionCoverageTests {
         )
         let food = makeTestFoodItem(caloriesPer100g: 100)
         let now = localDate(2026, 7, 25, 9)
+        // `makeTestEntry` normalises to the start of the day, so each entry's exact time is
+        // set afterwards: these sit on, and one second either side of, both midnights.
+        let todayStart = localDate(2026, 7, 25, 0)
+        let tomorrowStart = localDate(2026, 7, 26, 0)
+        func entry(at date: Date, _ meal: MealType, grams: Double) -> FoodLogEntry {
+            let entry = makeTestEntry(mealType: meal, foodItem: food, portionGrams: grams)
+            entry.date = date
+            return entry
+        }
         let entries = [
-            makeTestEntry(date: localDate(2026, 7, 25, 0, 15), mealType: .breakfast, foodItem: food, portionGrams: 250),
-            makeTestEntry(date: localDate(2026, 7, 25, 23, 45), mealType: .snack, foodItem: food, portionGrams: 100),
-            // 23:45 the day before is excluded.
-            makeTestEntry(date: localDate(2026, 7, 24, 23, 45), mealType: .dinner, foodItem: food, portionGrams: 700),
+            entry(at: todayStart.addingTimeInterval(-1), .dinner, grams: 700),
+            entry(at: todayStart, .breakfast, grams: 250),
+            entry(at: todayStart.addingTimeInterval(1), .breakfast, grams: 10),
+            entry(at: tomorrowStart.addingTimeInterval(-1), .snack, grams: 100),
+            entry(at: tomorrowStart, .lunch, grams: 900),
+            entry(at: tomorrowStart.addingTimeInterval(1), .lunch, grams: 400),
         ]
 
         let snapshot = DailyWidgetSnapshotProjector.makeSnapshot(
@@ -62,11 +73,12 @@ struct WidgetProjectionCoverageTests {
         )
 
         #expect(snapshot.dayStart == localDate(2026, 7, 25, 0))
-        #expect(snapshot.calories.consumed == 350)
+        // Only 00:00, 00:00:01 and 23:59:59 count: 250 + 10 + 100.
+        #expect(snapshot.calories.consumed == 360)
         #expect(snapshot.calories.target == 1_800)
-        #expect(snapshot.calories.remaining == 1_450)
+        #expect(snapshot.calories.remaining == 1_440)
         #expect(snapshot.calories.meals.map(\.meal) == [.breakfast, .snack])
-        #expect(snapshot.calories.meals.map(\.kcal) == [250, 100])
+        #expect(snapshot.calories.meals.map(\.kcal) == [260, 100])
     }
 
     @Test("A projected snapshot survives the app-group file unchanged")

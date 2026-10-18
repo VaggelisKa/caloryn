@@ -267,6 +267,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # The gate is only as right as its counting.
+      - name: Test the coverage script
+        run: python3 -m unittest discover -v .github/scripts
+
       - name: Download line coverage
         uses: actions/download-artifact@v4
         with:
