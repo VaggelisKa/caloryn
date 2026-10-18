@@ -196,19 +196,19 @@ struct MultiAddSelectionLabelsTests {
     func reviewButtonTitlePluralises() {
         #expect(
             MultiAddSelectionLabels.reviewButtonTitle(selectedItemCount: 0)
-                == "Review 0 Items"
+                == "Review 0 items"
         )
         #expect(
             MultiAddSelectionLabels.reviewButtonTitle(selectedItemCount: 1)
-                == "Review 1 Item"
+                == "Review 1 item"
         )
         #expect(
             MultiAddSelectionLabels.reviewButtonTitle(selectedItemCount: 2)
-                == "Review 2 Items"
+                == "Review 2 items"
         )
         #expect(
             MultiAddSelectionLabels.reviewButtonTitle(selectedItemCount: 21)
-                == "Review 21 Items"
+                == "Review 21 items"
         )
     }
 

@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import Caloryn
 
@@ -55,8 +56,10 @@ struct OnboardingPersonalInfoTests {
 
     @Test("The weight readout keeps the half kilogram the slider can land on")
     func weightReadout() {
-        #expect(OnboardingPersonalInfo.weightLabel(75) == "75.0 kg")
-        #expect(OnboardingPersonalInfo.weightLabel(75.5) == "75.5 kg")
-        #expect(OnboardingPersonalInfo.weightLabel(200) == "200.0 kg")
+        let us = Locale(identifier: "en_US")
+        #expect(OnboardingPersonalInfo.weightLabel(75, locale: us) == "75.0 kg")
+        #expect(OnboardingPersonalInfo.weightLabel(75.5, locale: us) == "75.5 kg")
+        #expect(OnboardingPersonalInfo.weightLabel(200, locale: us) == "200.0 kg")
+        #expect(OnboardingPersonalInfo.weightLabel(75.5, locale: Locale(identifier: "da_DK")) == "75,5 kg")
     }
 }

@@ -52,10 +52,6 @@ struct NutritionDetailsSummary: Equatable {
         totalNutrition.calories
     }
 
-    var totalPortionGramsText: String {
-        totalPortionGrams.macroFormatted
-    }
-
     /// "1 item", but "0 items" and "2 items".
     var loggedItemsUnitText: String {
         loggedItemCount == 1 ? "item" : "items"

@@ -53,14 +53,16 @@ struct CalorynInputFieldModifier: ViewModifier {
             .textFieldStyle(.plain)
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
-            .background(.thinMaterial, in: .rect(cornerRadius: CalorynTheme.smallCornerRadius))
+            .background(
+                CalorynTheme.surface,
+                in: RoundedRectangle(cornerRadius: CalorynTheme.smallCornerRadius, style: .continuous)
+            )
             .overlay {
+                // A well, not a card: `surface` with a hairline edge, and ink when focused.
                 RoundedRectangle(cornerRadius: CalorynTheme.smallCornerRadius, style: .continuous)
-                    .stroke(
-                        isFocused
-                            ? CalorynTheme.sage.opacity(0.72)
-                            : CalorynTheme.textSecondary.opacity(0.14),
-                        lineWidth: isFocused ? 1.2 : 0.6
+                    .strokeBorder(
+                        isFocused ? CalorynTheme.textPrimary : CalorynTheme.hairline,
+                        lineWidth: isFocused ? 1.2 : CalorynTheme.hairlineWidth
                     )
                     .allowsHitTesting(false)
             }

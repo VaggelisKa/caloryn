@@ -1,7 +1,9 @@
 import SwiftUI
 import Charts
 
-struct HistoryWeeklyRollupCard: View {
+/// "Weekly consistency" for the 30- and 90-day ranges: the share of each week's logged days
+/// that landed on track, in the day palette's three weights.
+struct HistoryWeeklyRollupSection: View {
     let projection: HistoryWeeklyConsistencyProjection
 
     private struct ChartWeek: Identifiable {
@@ -29,17 +31,15 @@ struct HistoryWeeklyRollupCard: View {
     var body: some View {
         let layout = layout
 
-        return VStack(alignment: .leading, spacing: 14) {
+        return VStack(alignment: .leading, spacing: 10) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Weekly Consistency")
-                    .font(CalorynTheme.sectionEyebrow)
-                    .foregroundStyle(CalorynTheme.textSecondary)
-                    .textCase(.uppercase)
+                HistorySectionTitle("Weekly consistency")
 
                 if let headlineText = projection.headlineText {
                     Text(headlineText)
                         .font(CalorynTheme.cardSubtitle)
                         .foregroundStyle(CalorynTheme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
 
@@ -57,9 +57,11 @@ struct HistoryWeeklyRollupCard: View {
             .chartYAxis {
                 AxisMarks(position: .leading, values: [0, 50, 100]) { value in
                     AxisGridLine()
+                        .foregroundStyle(CalorynTheme.hairline)
                     AxisValueLabel {
                         if let percentage = value.as(Int.self) {
                             Text("\(percentage)%")
+                                .foregroundStyle(CalorynTheme.textSecondary)
                         }
                     }
                     .font(CalorynTheme.chartAxisLabel)
@@ -102,6 +104,7 @@ struct HistoryWeeklyRollupCard: View {
             .chartYScale(domain: 0 ... 100)
             .chartXScale(domain: layout.xAxisDomain)
             .frame(height: 170)
+            .padding(.top, 4)
             .accessibilityLabel(
                 HistoryWeeklyConsistencyChart.accessibilityLabel(
                     loggedDayCount: projection.loggedDayCount,
@@ -109,6 +112,6 @@ struct HistoryWeeklyRollupCard: View {
                 )
             )
         }
-        .historyCard()
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

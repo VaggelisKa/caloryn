@@ -385,6 +385,20 @@ struct PortionSelectionTests {
         #expect(selection(slicedFood, grams: 45).quickGramOptions == [45, 90, 135])
     }
 
+    @Test("A shortcut that is a whole number of servings names them; any other is its weight")
+    func shortcutLabelsNameTheServing() {
+        let pot = ServingInfo(unitName: "pot", gramsPerUnit: 150, pluralName: "pots")
+
+        #expect(PortionSelection.quickGramOptionLabel(150, serving: pot) == "1 pot, 150 g")
+        #expect(PortionSelection.quickGramOptionLabel(300, serving: pot) == "2 pots, 300 g")
+        #expect(PortionSelection.quickGramOptionLabel(100, serving: pot) == "100 g")
+        #expect(PortionSelection.quickGramOptionLabel(150, serving: nil) == "150 g")
+
+        let slice = ServingInfo(unitName: "slice", gramsPerUnit: 37.5, pluralName: "slices")
+        #expect(PortionSelection.quickGramOptionLabel(38, serving: slice) == "1 slice, 38 g")
+        #expect(PortionSelection.quickGramOptionLabel(75, serving: slice) == "2 slices, 75 g")
+    }
+
     @Test("A recipe's shortcuts are fractions of the whole recipe")
     func recipeShortcutsAreFractions() {
         #expect(selection(recipe, grams: 800).quickGramOptions == [200, 400, 800])

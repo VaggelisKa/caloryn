@@ -73,10 +73,19 @@ for entry in json.load(open(os.path.join(raw, "manifest.json"))):
 shutil.rmtree(raw)
 
 # Colour census. Drift is visible as a number before anyone opens an image.
+# Keep these in step with CalorynShared/SharedColors.xcassets (docs/design/plate-market.md).
 TOKENS = {
-    "page":  {"light": (243,241,236), "dark": (26,25,23)},    # #F3F1EC / #1A1917
-    "card":  {"light": (250,250,247), "dark": (39,38,36)},    # #FAFAF7 / #272624
-    "sage":  {"light": (124,142,107), "dark": (150,171,131)}, # #7C8E6B / #96AB83
+    "page":  {"light": (246,245,241), "dark": (20,22,20)},    # PageBackground #F6F5F1 / #141614
+    "card":  {"light": (255,255,255), "dark": (38,42,38)},    # CardBackground #FFFFFF / #262A26
+    "sage":  {"light": (124,142,107), "dark": (150,171,131)}, # retired Sage #7C8E6B / #96AB83
+}
+# What a List or Form paints when a row or the list itself escapes the theme. Light mode can
+# only show the list canvas: a stray *row* paints secondarySystemGroupedBackground, which is
+# #FFFFFF, the same as CardBackground now. Dark mode shows both, so read the dark column.
+SYSTEM = {
+    "light": [(242,242,247)],                          # systemGroupedBackground #F2F2F7
+    "dark":  [(28,28,30), (0,0,0), (44,44,46)],        # secondarySystemGrouped #1C1C1E,
+                                                       # systemBackground #000000, tertiary #2C2C2E
 }
 try:
     from PIL import Image
@@ -85,7 +94,7 @@ except ImportError:
     Image = None
 
 print(f"\n==> {out}\n")
-print(f"{'screen':34} {'page':>7} {'card':>7} {'sage':>7} {'PURE WHITE':>11}")
+print(f"{'screen':42} {'page':>7} {'card':>7} {'sage':>7} {'SYSTEM':>8}")
 for f in sorted(os.listdir(out)):
     if not f.endswith(".png"): continue
     if Image is None:
@@ -94,15 +103,13 @@ for f in sorted(os.listdir(out)):
     im = Image.open(os.path.join(out, f)).convert("RGB")
     px = list(im.getdata()); n = len(px)
     pct = lambda c: sum(1 for p in px if p == c) / n
-    white = pct((255,255,255))
-    # A screen showing the system keyboard registers a large legitimate white area in
-    # light mode (the keys). Those captures are exempt rather than permanently flagged.
-    keyboarded = f in {"03-food-search-results-light.png"}
-    flag = "  <-- check" if white > 0.02 and not keyboarded else ("  (keyboard)" if keyboarded else "")
-    print(f"  {f:32} {pct(TOKENS['page'][mode]):6.1%} {pct(TOKENS['card'][mode]):6.1%} "
-          f"{pct(TOKENS['sage'][mode]):6.1%} {white:10.1%}{flag}")
-print("\nPure white above ~2% usually means a List or Form row is painting its own")
-print("background. Captures marked (keyboard) show the system keyboard, whose keys are")
-print("legitimately white in light mode.")
+    system = sum(pct(c) for c in SYSTEM[mode])
+    flag = "  <-- check" if system > 0.02 else ""
+    print(f"  {f:40} {pct(TOKENS['page'][mode]):6.1%} {pct(TOKENS['card'][mode]):6.1%} "
+          f"{pct(TOKENS['sage'][mode]):6.1%} {system:7.1%}{flag}")
+print("\nSYSTEM above ~2% means a List or Form is painting a system grey over the theme:")
+print("#F2F2F7 in light, #1C1C1E / #000000 / #2C2C2E in dark. A missing row background is")
+print("only visible in the dark column, because the light system row is the same white as")
+print("CardBackground. Page and card at 0.0% means the appearance never switched.")
 print("See docs/theme.md, 'Row backgrounds, and the limit of the abstraction'.")
 PY

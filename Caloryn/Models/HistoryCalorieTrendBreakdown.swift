@@ -85,7 +85,7 @@ struct HistoryCalorieTrendDayBreakdown {
     /// Over target the foods are read as an explanation; at or under target
     /// there is nothing to explain, so they are just a list.
     var foodSectionTitle: String {
-        calorieDifference > 0 ? "Top Contributors" : "Foods Logged"
+        calorieDifference > 0 ? "Top contributors" : "Foods logged"
     }
 
     var unloggedText: String {

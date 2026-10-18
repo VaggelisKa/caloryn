@@ -15,11 +15,19 @@ struct HistoryView: View {
     @State private var navigationPath: [HistoryDrillDownRoute] = []
     @State private var analyticsDayStart = Calendar.current.startOfDay(for: .now)
 
+    #if DEBUG
+    @State private var debugLaunch = HistoryDebugLaunch.current
+    #endif
+
     init(initialRange: HistoryRange = .week) {
+        var range = initialRange
+        #if DEBUG
+        range = HistoryDebugLaunch.current.range ?? range
+        #endif
         _historyState = State(
             initialValue: HistoryViewState(
-                range: initialRange,
-                analytics: HistoryAnalytics(entries: [], profile: nil, range: initialRange),
+                range: range,
+                analytics: HistoryAnalytics(entries: [], profile: nil, range: range),
                 recurringPattern: nil
             )
         )
@@ -73,8 +81,28 @@ struct HistoryView: View {
                 let state = historyState
                 let history = state.analytics
                 let patternDiscovery = HistoryPatternDiscovery(analytics: history)
+                let overview = HistoryOverviewSummary(
+                    range: state.range,
+                    loggedDayCount: history.current.loggedDayCount,
+                    totalDayCount: history.current.totalDayCount,
+                    averageCaloriesPerLoggedDay: history.current.averageCaloriesPerLoggedDay,
+                    averageTargetPerLoggedDay: history.current.averageTargetPerLoggedDay,
+                    onTrackLoggedDayCount: history.current.onTrackLoggedDayCount,
+                    onTrackDayDelta: history.goalComparison.onTrackDayDelta
+                )
 
-                VStack(spacing: CalorynTheme.cardSpacing) {
+                VStack(alignment: .leading, spacing: 26) {
+                    VStack(alignment: .leading, spacing: 22) {
+                        rangePicker
+
+                        HistoryOverviewSection(
+                            range: state.range,
+                            summary: history.current,
+                            overview: overview,
+                            today: analyticsDayStart
+                        )
+                    }
+
                     if let recurringPattern = state.recurringPattern {
                         HistoryRecurringCaloriePatternCard(
                             pattern: recurringPattern,
@@ -82,32 +110,33 @@ struct HistoryView: View {
                         )
                     }
 
-                    rangePicker
+                    if overview.hasLoggedDays {
+                        HistoryOnTrackSection(overview: overview)
+                    }
 
-                    HistoryCalorieTrendCard(
+                    if state.range.days >= HistoryRange.month.days {
+                        HistoryWeeklyRollupSection(projection: patternDiscovery.weeklyConsistency)
+                    }
+
+                    HistoryCalorieTrendSection(
                         projection: patternDiscovery.calorieTrend,
                         drillDownAction: patternDiscovery.calorieTrend.canDrillDown
                             ? { openCalorieTrendDetail(range: state.range, summary: history.current) }
                             : nil
                     )
 
-                    HistoryGoalSummaryCard(
-                        range: state.range,
-                        summary: history.current,
-                        comparison: history.goalComparison
-                    )
-
-                    if state.range.days >= HistoryRange.month.days {
-                        HistoryWeeklyRollupCard(projection: patternDiscovery.weeklyConsistency)
-                    }
-
                     if history.macroPatterns.contains(where: { $0.current.loggedDays > 0 }) {
-                        HistoryMacroPatternsCard(projection: patternDiscovery.macroPatterns)
+                        HistoryMacroPatternsSection(
+                            range: state.range,
+                            projection: patternDiscovery.macroPatterns
+                        )
                     }
                 }
                 .padding(.horizontal, CalorynTheme.pagePadding)
-                .padding(.bottom, 20)
+                .padding(.top, 4)
+                .padding(.bottom, 28)
             }
+            .historyDebugScrollAnchor()
             .calorynPageCanvas()
             .navigationTitle("History")
             .navigationDestination(for: HistoryDrillDownRoute.self) { route in
@@ -119,6 +148,9 @@ struct HistoryView: View {
             // Range changes refresh synchronously through selectRange; data/profile
             // changes should recalculate for the range current when this task runs.
             refreshAnalytics(for: historyState.range)
+            #if DEBUG
+            openDebugDrillDownIfRequested()
+            #endif
         }
         .onChange(of: scenePhase) { _, newPhase in
             guard newPhase == .active else { return }
@@ -163,13 +195,6 @@ struct HistoryView: View {
         refreshAnalytics(for: range)
     }
 
-    private var rangeSelection: Binding<HistoryRange> {
-        Binding(
-            get: { historyState.range },
-            set: { selectRange($0) }
-        )
-    }
-
     private func openCalorieTrendDetail(range: HistoryRange, summary: HistoryPeriodSummary) {
         let snapshot = HistoryCalorieTrendSnapshot(
             range: range,
@@ -186,30 +211,102 @@ struct HistoryView: View {
         )
     }
 
+    #if DEBUG
+    /// Pushes the drill-down named by `-CalorynHistoryDrillDown` once, after the first
+    /// analytics refresh, so a simulator capture can reach it without a tap.
+    private func openDebugDrillDownIfRequested() {
+        guard let drillDown = debugLaunch.drillDown else { return }
+        debugLaunch.drillDown = nil
+
+        let state = historyState
+        switch drillDown {
+        case .calorieTrend, .calorieTrendSelected:
+            var snapshot = HistoryCalorieTrendSnapshot(
+                range: state.range,
+                summary: state.analytics.current
+            )
+            if drillDown == .calorieTrendSelected {
+                let projection = HistoryCalorieTrendProjection(
+                    range: state.range,
+                    summary: state.analytics.current
+                )
+                snapshot.initialSelectedPointID = projection.points.last(where: \.isLogged)?.id
+            }
+            navigationPath.append(.calorieTrend(snapshot))
+        case .recurringPattern, .recurringPatternExpanded:
+            guard let pattern = state.recurringPattern else { return }
+            var snapshot = HistoryRecurringCaloriePatternSnapshot(pattern: pattern)
+            if drillDown == .recurringPatternExpanded, let first = pattern.supportingDays.first {
+                snapshot.initiallyExpandedDayIDs = [first.id]
+            }
+            navigationPath.append(.recurringPattern(snapshot))
+        }
+    }
+    #endif
+
     @ViewBuilder
     private func destination(for route: HistoryDrillDownRoute) -> some View {
         switch route {
         case .calorieTrend(let snapshot):
             HistoryCalorieTrendDetailView(
                 range: snapshot.range,
-                summary: snapshot.summary
+                summary: snapshot.summary,
+                initialSelectedPointID: snapshot.initialSelectedPointID
             )
         case .recurringPattern(let snapshot):
             HistoryRecurringCaloriePatternDetailView(
-                pattern: snapshot.pattern
+                pattern: snapshot.pattern,
+                initiallyExpandedDayIDs: snapshot.initiallyExpandedDayIDs
             )
         }
     }
 
+    /// The range as ink chips. One container carries `history.rangePicker`; each chip is
+    /// a button labelled with the full range name ("14 Days") and marked selected, which is
+    /// what VoiceOver and the UI journeys read.
+    ///
+    /// One row while it fits; at accessibility sizes the four overflow it and the selected
+    /// chip read "7…", so they wrap to two rows, or one a row. A chip never truncates.
     private var rangePicker: some View {
-        Picker("Range", selection: rangeSelection) {
-            ForEach(HistoryRange.allCases) { range in
-                Text(range.label).tag(range)
+        let ranges = HistoryRange.allCases
+        let half = (ranges.count + 1) / 2
+
+        return ViewThatFits(in: .horizontal) {
+            HStack(spacing: 6) {
+                ForEach(ranges) { rangeChip($0) }
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 6) {
+                    ForEach(ranges.prefix(half)) { rangeChip($0) }
+                }
+                HStack(spacing: 6) {
+                    ForEach(ranges.dropFirst(half)) { rangeChip($0) }
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(ranges) { rangeChip($0) }
             }
         }
-        .pickerStyle(.segmented)
-        .padding(.top, 4)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Range")
         .accessibilityIdentifier("history.rangePicker")
+    }
+
+    private func rangeChip(_ range: HistoryRange) -> some View {
+        let isSelected = range == historyState.range
+
+        return Button {
+            selectRange(range)
+        } label: {
+            Text(range.chipTitle)
+                .calorynChip(isSelected: isSelected)
+                .fixedSize()
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(range.label)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 
@@ -228,6 +325,7 @@ private struct HistoryCalorieTrendSnapshot: Hashable {
     let id = UUID()
     let range: HistoryRange
     let summary: HistoryPeriodSummary
+    var initialSelectedPointID: String?
 
     static func == (lhs: HistoryCalorieTrendSnapshot, rhs: HistoryCalorieTrendSnapshot) -> Bool {
         lhs.id == rhs.id
@@ -241,6 +339,7 @@ private struct HistoryCalorieTrendSnapshot: Hashable {
 private struct HistoryRecurringCaloriePatternSnapshot: Hashable {
     let id = UUID()
     let pattern: HistoryRecurringCaloriePattern
+    var initiallyExpandedDayIDs: Set<Date> = []
 
     static func == (
         lhs: HistoryRecurringCaloriePatternSnapshot,
@@ -251,6 +350,66 @@ private struct HistoryRecurringCaloriePatternSnapshot: Hashable {
 
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
+    }
+}
+
+#if DEBUG
+/// Simulator-only launch arguments for reaching History's screens without taps, since
+/// `xcrun simctl` can capture but cannot tap. Pair them with `-CalorynHistoryFixture
+/// recurringInsight` (or `noRecurringInsight`), which seeds History and opens its tab:
+///
+/// - `-CalorynHistoryRange week|twoWeeks|month|quarter` opens on that range.
+/// - `-CalorynHistoryDrillDown calorieTrend|calorieTrendSelected|recurringPattern|recurringPatternExpanded`
+///   pushes that drill-down after the first refresh; the `Selected` form selects the last
+///   logged bar, the `Expanded` form opens the first supporting day.
+/// - `-CalorynHistoryScrolledToBottom` opens History's scroll views at their bottom, to
+///   capture what sits below the fold.
+///
+/// Compiled out of release builds, and inert unless the argument is passed.
+struct HistoryDebugLaunch {
+    enum DrillDown: String {
+        case calorieTrend
+        case calorieTrendSelected
+        case recurringPattern
+        case recurringPatternExpanded
+    }
+
+    var range: HistoryRange?
+    var drillDown: DrillDown?
+    var scrollsToBottom = false
+
+    static var current: HistoryDebugLaunch {
+        HistoryDebugLaunch(
+            range: value(after: "-CalorynHistoryRange").flatMap(HistoryRange.init(rawValue:)),
+            drillDown: value(after: "-CalorynHistoryDrillDown").flatMap(DrillDown.init(rawValue:)),
+            scrollsToBottom: ProcessInfo.processInfo.arguments.contains("-CalorynHistoryScrolledToBottom")
+        )
+    }
+
+    private static func value(after flag: String) -> String? {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard let index = arguments.firstIndex(of: flag), arguments.indices.contains(index + 1) else {
+            return nil
+        }
+        return arguments[index + 1]
+    }
+}
+
+#endif
+
+extension View {
+    /// `-CalorynHistoryScrolledToBottom` in DEBUG (see `HistoryDebugLaunch`); nothing otherwise.
+    @ViewBuilder
+    func historyDebugScrollAnchor() -> some View {
+        #if DEBUG
+        if HistoryDebugLaunch.current.scrollsToBottom {
+            defaultScrollAnchor(.bottom)
+        } else {
+            self
+        }
+        #else
+        self
+        #endif
     }
 }
 

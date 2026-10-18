@@ -1,20 +1,32 @@
 import SwiftData
 import SwiftUI
 
+/// One meal on Today, drawn as hairline rows on the page: the meal's header (name in its
+/// ink, the total, the add button in its fill), then a row per entry — or, for an empty
+/// meal, one row saying how to fill it.
+///
+/// Rows live in the `List` Today owns, so swipe-to-edit and swipe-to-delete stay the
+/// system's own. The header is a row too rather than a `Section` header: a plain list pins
+/// its section headers while scrolling, and the board's headers scroll with their meal.
 struct MealSectionView: View {
     let mealType: MealType
     let entries: [FoodLogEntry]
     var snackIndex: Int
     var titleOverride: String?
+    var canCopyYesterday: Bool
     var onAdd: () -> Void
     var onEdit: (FoodLogEntry) -> Void
     var onDelete: (FoodLogEntry) -> Void
+
+    /// Space above each meal, between it and the meal (or hero) before it.
+    private static let sectionSpacing: CGFloat = 22
 
     init(
         mealType: MealType,
         entries: [FoodLogEntry],
         snackIndex: Int = 0,
         titleOverride: String? = nil,
+        canCopyYesterday: Bool = false,
         onAdd: @escaping () -> Void,
         onEdit: @escaping (FoodLogEntry) -> Void,
         onDelete: @escaping (FoodLogEntry) -> Void
@@ -23,6 +35,7 @@ struct MealSectionView: View {
         self.entries = entries
         self.snackIndex = snackIndex
         self.titleOverride = titleOverride
+        self.canCopyYesterday = canCopyYesterday
         self.onAdd = onAdd
         self.onEdit = onEdit
         self.onDelete = onDelete
@@ -45,14 +58,29 @@ struct MealSectionView: View {
     }
 
     var body: some View {
+        let summary = summary
+
         Section {
+            CalorynMealSectionHeader(
+                meal: mealType,
+                title: summary.title,
+                totalText: summary.headerTotalText(),
+                addAccessibilityIdentifier: "today.mealHeader.\(mealType.rawValue)",
+                addAccessibilityLabel: summary.addAccessibilityLabel,
+                onAdd: onAdd
+            )
+            .todayPlateRowLayout(top: Self.sectionSpacing, bottom: 8)
+            .listRowSeparator(.hidden, edges: .top)
+
             if summary.usesSingleRowTransition {
                 SingleMealTransitionRow(
                     entry: entries.first,
+                    emptyText: summary.emptyRowText(canCopyYesterday: canCopyYesterday),
                     onEdit: onEdit,
                     onDelete: onDelete
                 )
-                .listRowBackground(CalorynTheme.cardBackground)
+                .todayPlateRowLayout()
+                .listRowSeparator(.hidden, edges: .bottom)
             } else {
                 ForEach(entries) { entry in
                     MealEntryActionRow(
@@ -60,73 +88,37 @@ struct MealSectionView: View {
                         onEdit: onEdit,
                         onDelete: onDelete
                     )
-                    .listRowBackground(CalorynTheme.cardBackground)
+                    .todayPlateRowLayout()
+                    .listRowSeparator(entry.id == entries.last?.id ? .hidden : .visible, edges: .bottom)
                 }
             }
-        } header: {
-            Button(action: onAdd) {
-                sectionHeader
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(summary.addAccessibilityLabel)
-            .accessibilityHint("Double tap to add food or a saved meal")
-            .accessibilityIdentifier("today.mealHeader.\(mealType.rawValue)")
         }
+        .calorynHairlineSeparators()
     }
+}
 
-    private var sectionHeader: some View {
-        let summary = summary
-
-        return HStack(spacing: 8) {
-            Image(systemName: mealType.iconName)
-                .foregroundStyle(CalorynTheme.sage)
-                .font(CalorynTheme.compactIcon)
-
-            Text(summary.title)
-                .font(CalorynTheme.caption)
-                .foregroundStyle(CalorynTheme.textSecondary)
-
-            Spacer()
-
-            VStack(alignment: .trailing, spacing: 2) {
-                if summary.showsCalories {
-                    Text(summary.caloriesText)
-                        .font(CalorynTheme.numericMicroCaption)
-                        .foregroundStyle(CalorynTheme.textSecondary)
-                }
-
-                if summary.showsMacroBreakdown {
-                    HStack(spacing: 6) {
-                        if summary.showsProtein {
-                            Text(summary.proteinText)
-                                .font(CalorynTheme.numericMicroCaption)
-                                .foregroundStyle(CalorynTheme.proteinColor)
-                        }
-                        if summary.showsCarbs {
-                            Text(summary.carbsText)
-                                .font(CalorynTheme.numericMicroCaption)
-                                .foregroundStyle(CalorynTheme.carbColor)
-                        }
-                        if summary.showsFat {
-                            Text(summary.fatText)
-                                .font(CalorynTheme.numericMicroCaption)
-                                .foregroundStyle(CalorynTheme.fatColor)
-                        }
-                    }
-                }
-            }
-
-            Image(systemName: "plus.circle.fill")
-                .font(.system(.title3, weight: .semibold))
-                .foregroundStyle(CalorynTheme.sage)
-        }
-        .frame(maxWidth: .infinity)
-        .contentShape(Rectangle())
+extension View {
+    /// A row on Today's page: the page's side margins, and a separator that runs from the
+    /// content's leading edge to its trailing edge, as the board's hairlines do, rather than
+    /// off the trailing edge of the screen.
+    func todayPlateRowLayout(top: CGFloat = 0, bottom: CGFloat = 0) -> some View {
+        self
+            .alignmentGuide(.listRowSeparatorLeading) { $0[.leading] }
+            .alignmentGuide(.listRowSeparatorTrailing) { $0[.trailing] }
+            .listRowInsets(
+                EdgeInsets(
+                    top: top,
+                    leading: CalorynTheme.pagePadding,
+                    bottom: bottom,
+                    trailing: CalorynTheme.pagePadding
+                )
+            )
     }
 }
 
 private struct SingleMealTransitionRow: View {
     let entry: FoodLogEntry?
+    let emptyText: String
     let onEdit: (FoodLogEntry) -> Void
     let onDelete: (FoodLogEntry) -> Void
 
@@ -156,7 +148,7 @@ private struct SingleMealTransitionRow: View {
                     .accessibilityHidden(isDeletingEntry)
             }
 
-            EmptyMealRow()
+            EmptyMealRow(text: emptyText)
                 .opacity(showsEmptyState ? 1 : 0)
                 .accessibilityHidden(!showsEmptyState)
         }
@@ -246,57 +238,107 @@ private struct MealEntryButtonRow: View {
 }
 
 private struct EmptyMealRow: View {
+    let text: String
+
     var body: some View {
-        Text("No foods logged yet")
-            .font(CalorynTheme.caption)
+        Text(text)
+            .font(TodayPlateFont.emptyRow)
             .foregroundStyle(CalorynTheme.textSecondary)
-            .frame(maxWidth: .infinity, alignment: .center)
-            .padding(.vertical, 8)
-        .accessibilityElement(children: .combine)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 11)
+            .accessibilityElement(children: .combine)
     }
 }
 
+/// An entry as the board draws it: name, then its type or Nutri-Score badge, then grams in
+/// secondary text and the kcal in a fixed right-hand column so the figures line up down the
+/// meal.
+///
+/// At accessibility text sizes the grams, the kcal column and a badge alone fill the row,
+/// and the name would shrink to an ellipsis. There the name and badges take the first line
+/// (the name may wrap) and the figures go under them.
 private struct MealEntryRow: View {
     let entry: FoodLogEntry
 
     @AppStorage("showNutriscore") private var showNutriscore = true
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .callout) private var kcalColumnWidth: CGFloat = 44
+
+    private var kcal: Int {
+        entry.calories.rounded().truncatedSafely
+    }
 
     var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
-                    Text(entry.foodName)
-                        .font(CalorynTheme.itemTitle)
-                        .foregroundStyle(CalorynTheme.textPrimary)
-                        .lineLimit(1)
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        name(lineLimit: 3)
+                        badges
+                    }
 
-                    if showNutriscore, let grade = entry.historicalNutriscoreGrade {
-                        NutriscoreBadge(grade: grade)
+                    HStack(alignment: .firstTextBaseline, spacing: 12) {
+                        gramsText
+                        kcalText(unit: " kcal")
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                HStack(spacing: 8) {
+                    name(lineLimit: 1)
+                    badges
 
-                Text(entry.proteinG.isZero
-                     ? "\(entry.portionGrams.truncatedSafely)g"
-                     : "\(entry.portionGrams.truncatedSafely)g · \(entry.proteinG.macroFormatted) protein")
-                    .font(CalorynTheme.caption)
-                    .foregroundStyle(CalorynTheme.textSecondary)
-            }
+                    Spacer(minLength: 8)
 
-            Spacer()
+                    gramsText
 
-            VStack(alignment: .trailing, spacing: 2) {
-                Text("\(entry.calories.rounded().truncatedSafely)")
-                    .font(CalorynTheme.numericBody)
-                    .foregroundStyle(CalorynTheme.textPrimary)
-
-                Text("kcal")
-                    .font(CalorynTheme.numericMicroCaption)
-                    .foregroundStyle(CalorynTheme.textSecondary)
+                    kcalText(unit: "")
+                        .frame(minWidth: kcalColumnWidth, alignment: .trailing)
+                }
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 11)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
+    }
+
+    private func name(lineLimit: Int) -> some View {
+        Text(entry.foodName)
+            .font(TodayPlateFont.rowTitle)
+            .foregroundStyle(CalorynTheme.textPrimary)
+            .lineLimit(lineLimit)
+    }
+
+    @ViewBuilder
+    private var badges: some View {
+        if let food = entry.foodItem, food.isRecipe || food.isCustom {
+            TodayTypeBadge(isRecipe: food.isRecipe)
+        }
+
+        if showNutriscore, let grade = entry.historicalNutriscoreGrade {
+            NutriscoreBadge(grade: grade)
+        }
+    }
+
+    /// "99.6 g", "1,500 g": the app's house form for a weight, as the Portion sheet and
+    /// Nutrition Details write the same portion.
+    private var gramsText: some View {
+        Text(entry.portionGrams.spacedMacroFormatted)
+            .font(TodayPlateFont.rowDetail)
+            .foregroundStyle(CalorynTheme.textSecondary)
+            .lineLimit(1)
+            .fixedSize()
+            .accessibilityLabel(TrackedNutrientUnit.grams.spokenFormatted(entry.portionGrams))
+    }
+
+    /// The board's column carries no unit; once the figure leaves the column it says one.
+    private func kcalText(unit: String) -> some View {
+        Text("\(kcal)\(unit)")
+            .font(TodayPlateFont.rowValue)
+            .foregroundStyle(CalorynTheme.textPrimary)
+            .lineLimit(1)
+            .fixedSize()
+            .accessibilityLabel("\(kcal) kcal")
     }
 }
 
@@ -325,7 +367,8 @@ private struct MealEntryRow: View {
             onDelete: { _ in }
         )
     }
-    .calorynGroupedListStyle()
+    .calorynPlainListStyle()
+    .calorynPageCanvas()
 }
 
 #Preview("Empty") {
@@ -338,7 +381,8 @@ private struct MealEntryRow: View {
             onDelete: { _ in }
         )
     }
-    .calorynGroupedListStyle()
+    .calorynPlainListStyle()
+    .calorynPageCanvas()
 }
 
 #Preview("Snack") {
@@ -363,7 +407,8 @@ private struct MealEntryRow: View {
             onDelete: { _ in }
         )
     }
-    .calorynGroupedListStyle()
+    .calorynPlainListStyle()
+    .calorynPageCanvas()
 }
 
 #Preview("Snack with Nutriscore") {
@@ -395,5 +440,6 @@ private struct MealEntryRow: View {
             onDelete: { _ in }
         )
     }
-    .calorynGroupedListStyle()
+    .calorynPlainListStyle()
+    .calorynPageCanvas()
 }

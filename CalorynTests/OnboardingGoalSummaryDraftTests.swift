@@ -29,15 +29,6 @@ struct OnboardingGoalSummaryDraftTests {
         #expect(makeBasis(calorieDeficit: -500).calculatedTarget > makeBasis(calorieDeficit: 0).calculatedTarget)
     }
 
-    // MARK: - Deficit label
-
-    @Test("The deficit label names the direction rather than showing a bare sign")
-    func deficitLabelNamesDirection() {
-        #expect(makeBasis(calorieDeficit: 500).deficitLabel == "-500 kcal/day (lose weight)")
-        #expect(makeBasis(calorieDeficit: -300).deficitLabel == "+300 kcal/day (gain weight)")
-        #expect(makeBasis(calorieDeficit: 0).deficitLabel == "Maintenance (no change)")
-    }
-
     // MARK: - Manual target
 
     @Test("Without the manual toggle the typed text is ignored")

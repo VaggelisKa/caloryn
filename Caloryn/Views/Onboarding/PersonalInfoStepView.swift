@@ -7,83 +7,51 @@ struct PersonalInfoStepView: View {
     @Binding var weightKg: Double
     var onContinue: () -> Void
 
-    @ScaledMetric private var spacing: CGFloat = 24
+    @ScaledMetric private var spacing: CGFloat = 26
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         ScrollView {
-            VStack(spacing: spacing) {
-                VStack(spacing: 8) {
-                    Text("About You")
-                        .font(CalorynTheme.sectionTitle)
-                        .foregroundStyle(CalorynTheme.textPrimary)
-                    Text("We'll use this to calculate your daily target.")
-                        .font(CalorynTheme.bodyText)
-                        .foregroundStyle(CalorynTheme.textSecondary)
-                }
-                .padding(.top, 8)
+            VStack(alignment: .leading, spacing: spacing) {
+                OnboardingStepHeader(
+                    title: "About you",
+                    subtitle: "We'll use this to calculate your daily target."
+                )
 
-                VStack(spacing: CalorynTheme.cardSpacing) {
-                    fieldCard("Sex") {
-                        Picker("Sex", selection: $sex) {
-                            ForEach(Sex.allCases) { s in
-                                Text(s.displayName).tag(s)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                    }
-
-                    fieldCard("Age") {
-                        HStack {
-                            Text(OnboardingPersonalInfo.ageLabel(age))
-                                .font(CalorynTheme.numericBody)
-                                .foregroundStyle(CalorynTheme.textPrimary)
-                            Spacer()
-                            Stepper("", value: $age, in: OnboardingPersonalInfo.ageRange)
-                                .labelsHidden()
-                        }
-                    }
-
-                    fieldCard("Height") {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(OnboardingPersonalInfo.heightLabel(heightCm))
-                                .font(CalorynTheme.numericBody)
-                                .foregroundStyle(CalorynTheme.textPrimary)
-                            Slider(
-                                value: $heightCm,
-                                in: OnboardingPersonalInfo.heightRange,
-                                step: OnboardingPersonalInfo.heightStep
-                            )
-                        }
-                    }
-
-                    fieldCard("Weight") {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(OnboardingPersonalInfo.weightLabel(weightKg))
-                                .font(CalorynTheme.numericBody)
-                                .foregroundStyle(CalorynTheme.textPrimary)
-                            Slider(
-                                value: $weightKg,
-                                in: OnboardingPersonalInfo.weightRange,
-                                step: OnboardingPersonalInfo.weightStep
-                            )
-                        }
-                    }
+                VStack(spacing: 0) {
+                    sexRow
+                    OnboardingHairline()
+                    ageRow
+                    OnboardingHairline()
+                    sliderRow(
+                        "Height",
+                        value: OnboardingPersonalInfo.heightLabel(heightCm),
+                        binding: $heightCm,
+                        range: OnboardingPersonalInfo.heightRange,
+                        step: OnboardingPersonalInfo.heightStep
+                    )
+                    OnboardingHairline()
+                    sliderRow(
+                        "Weight",
+                        value: OnboardingPersonalInfo.weightLabel(weightKg),
+                        binding: $weightKg,
+                        range: OnboardingPersonalInfo.weightRange,
+                        step: OnboardingPersonalInfo.weightStep
+                    )
                 }
             }
             .padding(.horizontal, CalorynTheme.pagePadding)
-            .padding(.bottom, 100)
+            .padding(.top, 8)
+            .padding(.bottom, 24)
         }
         .safeAreaInset(edge: .bottom) {
-            Button(action: onContinue) {
-                Text("Continue")
-                    .font(CalorynTheme.buttonLabel)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
+            OnboardingActionBar {
+                Button(action: onContinue) {
+                    Text("Continue")
+                }
+                .calorynPrimaryButton()
+                .accessibilityIdentifier("onboarding.personalInfo.continue")
             }
-            .adaptiveGlassProminentButton()
-            .padding(.horizontal, CalorynTheme.pagePadding)
-            .padding(.bottom, 16)
-            .accessibilityIdentifier("onboarding.personalInfo.continue")
         }
         .calorynPageCanvas()
         // This step hides the navigation bar outright, so there is no back
@@ -92,15 +60,80 @@ struct PersonalInfoStepView: View {
         .toolbarVisibility(.hidden, for: .navigationBar)
     }
 
-    private func fieldCard<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(title)
-                .font(CalorynTheme.sectionEyebrow)
-                .foregroundStyle(CalorynTheme.textSecondary)
-                .textCase(.uppercase)
-            content()
+    /// Two options, so chips rather than a segmented control. At accessibility sizes the
+    /// label goes above them and they wrap, so neither option is cut to a stub.
+    private var sexRow: some View {
+        OnboardingAdaptiveRow {
+            rowLabel("Sex")
+        } trailing: {
+            let chips = dynamicTypeSize.isAccessibilitySize
+                ? AnyLayout(WrappingChipFlow())
+                : AnyLayout(HStackLayout(spacing: 8))
+            chips {
+                ForEach(Sex.allCases) { option in
+                    Button {
+                        withAnimation(.smooth(duration: 0.2)) {
+                            sex = option
+                        }
+                    } label: {
+                        Text(option.displayName)
+                            .calorynChip(isSelected: sex == option)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(sex == option ? .isSelected : [])
+                }
+            }
         }
-        .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
+        .padding(.vertical, 14)
+    }
+
+    /// A count, so the Plate stepper pill rather than a stock `Stepper`, whose minus/plus
+    /// pill is a system grey no token reaches. The same pill as Edit profile's Age.
+    private var ageRow: some View {
+        let range = OnboardingPersonalInfo.ageRange
+
+        return OnboardingAdaptiveRow {
+            rowLabel("Age")
+                .accessibilityHidden(true)
+        } trailing: {
+            CalorynStepperPill(
+                accessibilityTitle: "Age",
+                value: OnboardingPersonalInfo.ageLabel(age),
+                size: .compact,
+                canDecrement: age > range.lowerBound,
+                canIncrement: age < range.upperBound,
+                onDecrement: { age = max(range.lowerBound, age - 1) },
+                onIncrement: { age = min(range.upperBound, age + 1) }
+            )
+        }
+        .padding(.vertical, 12)
+    }
+
+    private func sliderRow(
+        _ label: String,
+        value: String,
+        binding: Binding<Double>,
+        range: ClosedRange<Double>,
+        step: Double
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                rowLabel(label)
+                Spacer(minLength: 8)
+                Text(value)
+                    .font(CalorynTheme.numericBody)
+                    .foregroundStyle(CalorynTheme.textPrimary)
+            }
+
+            OnboardingSlider(value: binding, range: range, step: step, label: label)
+        }
+        .padding(.vertical, 14)
+    }
+
+    private func rowLabel(_ text: String) -> some View {
+        Text(text)
+            .font(CalorynTheme.bodyText)
+            .foregroundStyle(CalorynTheme.textPrimary)
     }
 }
 

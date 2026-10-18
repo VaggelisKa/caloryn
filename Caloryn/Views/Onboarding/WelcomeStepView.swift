@@ -1,154 +1,57 @@
 import SwiftUI
 
-struct WelcomeCardsGraphic: View {
-    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
-    @State private var preserveFinalArrangement = false
+/// The Caloryn mark (`PlateWelcome`): the Today donut with all four meals at an equal share,
+/// and a bite taken out of its top-left — a page-coloured disc over the ring.
+///
+/// Built from the same `CalorieDonutView` as the Today hero, so it is the app's real ring
+/// rather than a drawing of one. The ring grows its meals into place as it appears and the
+/// bite follows, together well under a second, so the welcome screen is settled long before
+/// `ThemeScreenshotTests` photographs it.
+struct WelcomePlateMark: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var isBitten = false
+
+    /// Four equal meals and a budget they exactly fill: no remaining sector, no over.
+    private static let summary = CalorieDonutSummary(
+        mealTotals: [.breakfast: 1, .lunch: 1, .dinner: 1, .snack: 1],
+        budget: 4,
+        isOver: false
+    )
+
+    /// Decoration, so it does not grow with the text: the board's 200pt, and smaller at
+    /// accessibility sizes so the name, tagline and button keep the room.
+    private var size: CGFloat {
+        dynamicTypeSize.isAccessibilitySize ? 140 : 200
+    }
 
     var body: some View {
-        Group {
-            if accessibilityReduceMotion || preserveFinalArrangement {
-                WelcomeCardsArrangement(
-                    showBack: true,
-                    showMiddle: true,
-                    showFront: true,
-                    expandToList: true
-                )
-                .transaction { transaction in
-                    transaction.animation = nil
-                    transaction.disablesAnimations = true
-                }
-            } else {
-                AnimatedWelcomeCardsGraphic()
-            }
+        // The board's 200pt mark is a ring of radius 80 and width 28: 188pt across, with
+        // the bite a 68pt disc centred at (42, 38).
+        ZStack(alignment: .topLeading) {
+            CalorieDonutView(summary: Self.summary, size: size * 0.94)
+                .frame(width: size, height: size)
+
+            Circle()
+                .fill(CalorynTheme.pageBackground)
+                .frame(width: size * 0.34, height: size * 0.34)
+                .scaleEffect(isBitten ? 1 : 0.001)
+                .position(x: size * 0.21, y: size * 0.19)
         }
+        .frame(width: size, height: size)
+        // Decorative: the name directly under it is the heading.
+        .accessibilityHidden(true)
         .onAppear {
-            preserveFinalArrangement = accessibilityReduceMotion
-        }
-        .onChange(of: accessibilityReduceMotion) { _, reduceMotion in
-            if reduceMotion {
-                // Keep the final arrangement if Reduce Motion is later disabled;
-                // replaying an entrance sequence would be an unexpected motion burst.
-                preserveFinalArrangement = true
+            guard !isBitten else { return }
+            guard !reduceMotion else {
+                isBitten = true
+                return
+            }
+            // After the ring's own 0.55s reveal, so the bite is taken from a full plate.
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.7).delay(0.5)) {
+                isBitten = true
             }
         }
-    }
-}
-
-private struct AnimatedWelcomeCardsGraphic: View {
-    @State private var showBack = false
-    @State private var showMiddle = false
-    @State private var showFront = false
-    @State private var expandToList = false
-
-    var body: some View {
-        WelcomeCardsArrangement(
-            showBack: showBack,
-            showMiddle: showMiddle,
-            showFront: showFront,
-            expandToList: expandToList
-        )
-        .task {
-            do {
-                try await Task.sleep(for: .milliseconds(100))
-                withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
-                    showBack = true
-                }
-
-                try await Task.sleep(for: .milliseconds(150))
-                withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
-                    showMiddle = true
-                }
-
-                try await Task.sleep(for: .milliseconds(150))
-                withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
-                    showFront = true
-                }
-
-                try await Task.sleep(for: .milliseconds(1_100))
-                withAnimation(.spring(response: 0.7, dampingFraction: 0.75)) {
-                    expandToList = true
-                }
-            } catch is CancellationError {
-                // SwiftUI cancels the task when Reduce Motion replaces this subtree.
-            } catch {
-                assertionFailure("Unexpected welcome animation error: \(error)")
-            }
-        }
-    }
-}
-
-private struct WelcomeCardsArrangement: View {
-    let showBack: Bool
-    let showMiddle: Bool
-    let showFront: Bool
-    let expandToList: Bool
-
-    var body: some View {
-        ZStack {
-            // Back card (Dinner)
-            LogCardMock(icon: "moon.stars.fill", title: "Dinner", cals: "650", color: CalorynTheme.terracotta)
-                .scaleEffect(expandToList ? 0.9 : 0.85)
-                .offset(y: !showBack ? 0 : (expandToList ? 85 : -40))
-                .opacity(showBack ? (expandToList ? 1.0 : 0.6) : 0)
-                .zIndex(1)
-                
-            // Middle card (Lunch)
-            LogCardMock(icon: "sun.max.fill", title: "Lunch", cals: "820", color: CalorynTheme.carbColor)
-                .scaleEffect(expandToList ? 0.9 : 0.92)
-                .offset(y: !showMiddle ? 20 : (expandToList ? 0 : -15))
-                .opacity(showMiddle ? (expandToList ? 1.0 : 0.8) : 0)
-                .zIndex(2)
-                
-            // Front card (Breakfast)
-            LogCardMock(icon: "sunrise.fill", title: "Breakfast", cals: "450", color: CalorynTheme.sage)
-                .scaleEffect(expandToList ? 0.9 : 1.0)
-                .offset(y: !showFront ? 40 : (expandToList ? -85 : 10))
-                .opacity(showFront ? 1.0 : 0)
-                .shadow(color: .black.opacity(expandToList ? 0.04 : 0.08), radius: 15, y: 8)
-                .zIndex(3)
-        }
-        .frame(height: 250)
-    }
-}
-
-struct LogCardMock: View {
-    let icon: String
-    let title: String
-    let cals: String
-    let color: Color
-    
-    var body: some View {
-        HStack(spacing: 16) {
-            Image(systemName: icon)
-                .font(CalorynTheme.inlineIcon)
-                .foregroundStyle(CalorynTheme.warmWhite)
-                .frame(width: 44, height: 44)
-                .background(color)
-                .clipShape(Circle())
-                
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(CalorynTheme.itemTitle)
-                    .foregroundStyle(CalorynTheme.textPrimary)
-                Text("\(cals) kcal")
-                    .font(CalorynTheme.numericCaption)
-                    .foregroundStyle(CalorynTheme.textSecondary)
-            }
-            
-            Spacer()
-            
-            Image(systemName: "checkmark.circle.fill")
-                .font(CalorynTheme.inlineIcon)
-                .foregroundStyle(CalorynTheme.sage)
-        }
-        .padding(16)
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(Color.primary.opacity(0.05), lineWidth: 1)
-        )
-        .padding(.horizontal, 40)
     }
 }
 
@@ -156,44 +59,14 @@ struct WelcomeStepView: View {
     var onContinue: () -> Void
 
     var body: some View {
-        VStack(spacing: 0) {
-            Spacer()
-
-            VStack(spacing: 32) {
-                WelcomeCardsGraphic()
-
-                VStack(spacing: 12) {
-                    Text("Caloryn")
-                        .font(CalorynTheme.brandTitle)
-                        .foregroundStyle(CalorynTheme.textPrimary)
-
-                    Text("Track your calories.\nSimple, private, fast.")
-                        .font(CalorynTheme.bodyText)
-                        .foregroundStyle(CalorynTheme.textSecondary)
-                        .multilineTextAlignment(.center)
-                        .lineSpacing(4)
-                }
+        // At least a screen tall, so the spacers centre the mark as the board does; taller
+        // when large text needs it, and then it scrolls rather than truncating the tagline.
+        GeometryReader { proxy in
+            ScrollView {
+                content
+                    .frame(minHeight: proxy.size.height)
             }
-
-            Spacer()
-
-            VStack(spacing: 16) {
-                Button(action: onContinue) {
-                    Text("Get Started")
-                        .font(CalorynTheme.buttonLabel)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                }
-                .adaptiveGlassProminentButton()
-                .accessibilityIdentifier("onboarding.getStarted")
-
-                Text("No account needed. Your data stays on-device.")
-                    .font(CalorynTheme.caption)
-                    .foregroundStyle(CalorynTheme.textSecondary)
-                    .multilineTextAlignment(.center)
-            }
-            .padding(.horizontal, CalorynTheme.pagePadding)
-            .padding(.bottom, 40)
+            .scrollBounceBehavior(.basedOnSize)
         }
         // The root of the onboarding `NavigationStack`, and the first screen a
         // new user ever sees. Without a canvas it rendered on the system window
@@ -203,6 +76,48 @@ struct WelcomeStepView: View {
         // No back button to theme: this screen deliberately hides the bar, and
         // it is the stack root, so `calorynDrillDownNavigation()` does not apply.
         .toolbarVisibility(.hidden, for: .navigationBar)
+    }
+
+    private var content: some View {
+        VStack(spacing: 0) {
+            Spacer(minLength: 24)
+
+            VStack(spacing: 44) {
+                WelcomePlateMark()
+
+                VStack(spacing: 10) {
+                    Text("Caloryn")
+                        .font(CalorynTheme.brandTitle)
+                        .tracking(-1)
+                        .foregroundStyle(CalorynTheme.textPrimary)
+                        .accessibilityAddTraits(.isHeader)
+
+                    Text("Track your calories.\nSimple, private, fast.")
+                        .font(CalorynTheme.bodyText)
+                        .foregroundStyle(CalorynTheme.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(4)
+                }
+            }
+            .padding(.horizontal, 32)
+
+            Spacer(minLength: 24)
+
+            VStack(spacing: 14) {
+                Button(action: onContinue) {
+                    Text("Get started")
+                }
+                .calorynPrimaryButton()
+                .accessibilityIdentifier("onboarding.getStarted")
+
+                Text("No account needed. Your data stays on-device.")
+                    .font(OnboardingTypography.detail)
+                    .foregroundStyle(CalorynTheme.textSecondary)
+                    .multilineTextAlignment(.center)
+            }
+            .padding(.horizontal, CalorynTheme.pagePadding)
+            .padding(.bottom, 12)
+        }
     }
 }
 

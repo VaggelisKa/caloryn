@@ -32,6 +32,11 @@ enum UITestConfiguration {
         case historyPattern
         /// Exact historical targets and entries that intentionally produce no recurring pattern.
         case historyNoPattern
+        /// A profile plus a full day logged past its 2,000 kcal goal, for looking at Today's
+        /// over-budget hero, Nutrition Details and the missing-food editor. Seeded by
+        /// `TodayDebugFixtures`; no journey uses it, but the theme harness photographs it, so
+        /// `UITestCase.Fixture` mirrors it.
+        case overBudgetDay
     }
 
     static var isActive: Bool {

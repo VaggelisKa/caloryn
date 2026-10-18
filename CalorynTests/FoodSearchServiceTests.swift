@@ -21,9 +21,9 @@ final class FoodSearchServiceTests: XCTestCase {
         let barcodePresentation = FoodLookupError.notFound.presentation(for: .barcode)
         let invalidBarcodePresentation = FoodLookupError.invalidRequest.presentation(for: .barcode)
 
-        XCTAssertEqual(searchPresentation.title, "No Results")
+        XCTAssertEqual(searchPresentation.title, "No results")
         XCTAssertNil(searchPresentation.retryTitle)
-        XCTAssertEqual(barcodePresentation.title, "Barcode Not Found")
+        XCTAssertEqual(barcodePresentation.title, "Barcode not found")
         XCTAssertEqual(
             barcodePresentation.message,
             "This barcode isn’t in our food database."

@@ -25,9 +25,9 @@ struct FoodSearchModeTests {
 
     @Test("Each mode titles the screen for the task that opened it")
     func titles() {
-        #expect(Self.logging.title == "Add Food")
-        #expect(Self.ingredient.title == "Add Ingredient")
-        #expect(Self.mealComponent.title == "Add Meal Item")
+        #expect(Self.logging.title == "Add food")
+        #expect(Self.ingredient.title == "Add ingredient")
+        #expect(Self.mealComponent.title == "Add meal item")
     }
 
     @Test("Only the two hand-back modes are selection modes")

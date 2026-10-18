@@ -28,9 +28,9 @@ struct RecipeFormView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 24) {
+                VStack(alignment: .leading, spacing: 28) {
                     nameSection
-                    summaryCard
+                    summary
                     ingredientSection
 
                     if isEditing && allowsDeletion {
@@ -38,21 +38,18 @@ struct RecipeFormView: View {
                     }
                 }
                 .padding(.horizontal, CalorynTheme.pagePadding)
+                .padding(.top, 8)
                 .padding(.bottom, 24)
             }
+            .scrollDismissesKeyboard(.interactively)
             .calorynSheetCanvas()
-            .navigationTitle(isEditing ? "Edit Recipe" : "Create Recipe")
+            .navigationTitle(isEditing ? "Edit recipe" : "Create recipe")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button {
+                    CreationFormCloseButton {
                         dismiss()
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(CalorynTheme.toolbarIcon)
-                            .foregroundStyle(CalorynTheme.sage)
                     }
-                    .accessibilityLabel("Close")
                 }
 
                 if let existingRecipe {
@@ -60,13 +57,7 @@ struct RecipeFormView: View {
                         Button {
                             toggleFavorite(existingRecipe)
                         } label: {
-                            Image(systemName: existingRecipe.isFavorite ? "star.fill" : "star")
-                                .font(CalorynTheme.toolbarIcon)
-                                .foregroundStyle(
-                                    existingRecipe.isFavorite
-                                        ? CalorynTheme.terracotta
-                                        : CalorynTheme.sage
-                                )
+                            CreationFormFavoriteGlyph(isFavorite: existingRecipe.isFavorite)
                         }
                         .accessibilityLabel(
                             existingRecipe.isFavorite
@@ -84,9 +75,7 @@ struct RecipeFormView: View {
                     Button {
                         saveRecipe()
                     } label: {
-                        Image(systemName: "checkmark")
-                            .font(CalorynTheme.toolbarIcon)
-                            .foregroundStyle(CalorynTheme.sage)
+                        CreationFormSaveGlyph(isEnabled: draft.canSave)
                     }
                     .accessibilityLabel("Save")
                     .disabled(!draft.canSave)
@@ -130,146 +119,63 @@ struct RecipeFormView: View {
     }
 
     private var nameSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("RECIPE DETAILS")
-                .font(CalorynTheme.sectionEyebrow)
-                .foregroundStyle(CalorynTheme.textSecondary)
-
+        CreationFormSection("Recipe details") {
             TextField("Recipe name (e.g. Greek Salad)", text: $draft.name)
                 .font(CalorynTheme.bodyText)
                 .textInputAutocapitalization(.words)
                 .focused($isNameFocused)
                 .calorynInputField(isFocused: isNameFocused)
         }
-        .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
     }
 
-    private var summaryCard: some View {
-        VStack(spacing: 14) {
-            VStack(spacing: 4) {
-                Text("\(draft.totalCalories.truncatedSafely)")
-                    .font(CalorynTheme.displayNumber)
-                    .foregroundStyle(CalorynTheme.sage)
-                    .contentTransition(.numericText())
-                    .animation(.smooth(duration: 0.3), value: draft.totalCalories.truncatedSafely)
-
-                Text(draft.totalCaloriesCaption)
-                    .font(CalorynTheme.bodyText)
-                    .foregroundStyle(CalorynTheme.textSecondary)
-            }
-
-            HStack(spacing: CalorynTheme.cardSpacing) {
-                summaryMetric("Protein", value: draft.totalProtein, color: CalorynTheme.proteinColor)
-                summaryMetric("Carbs", value: draft.totalCarbs, color: CalorynTheme.carbColor)
-                summaryMetric("Fat", value: draft.totalFat, color: CalorynTheme.fatColor)
-                summaryMetric("Fiber", value: draft.totalFiber, color: CalorynTheme.fiberColor)
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 20)
-        .glassCard()
-    }
-
-    private func summaryMetric(_ label: String, value: Double, color: Color) -> some View {
-        VStack(spacing: 3) {
-            Text(label)
-                .font(CalorynTheme.caption)
-                .foregroundStyle(CalorynTheme.textSecondary)
-            Text(value.macroFormatted)
-                .font(CalorynTheme.numericBody)
-                .foregroundStyle(color)
-        }
-        .frame(maxWidth: .infinity)
+    private var summary: some View {
+        CreationFormTotal(
+            kcal: draft.totalCalories.truncatedSafely,
+            caption: draft.totalCaloriesCaption,
+            macros: [
+                ("Protein", draft.totalProtein.spacedMacroFormatted),
+                ("Carbs", draft.totalCarbs.spacedMacroFormatted),
+                ("Fat", draft.totalFat.spacedMacroFormatted),
+                ("Fiber", draft.totalFiber.spacedMacroFormatted),
+            ]
+        )
     }
 
     private var ingredientSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("INGREDIENTS")
-                    .font(CalorynTheme.sectionEyebrow)
-                    .foregroundStyle(CalorynTheme.textSecondary)
-
-                Spacer()
-
-                Button {
-                    showingIngredientSearch = true
-                } label: {
-                    Label("Add Ingredient", systemImage: "plus.circle")
-                        .font(CalorynTheme.buttonLabel)
-                }
-                .accessibilityIdentifier("recipe.addIngredient")
+        CreationFormSection("Ingredients", surface: .group) {
+            CreationFormAddButton(title: "Add ingredient") {
+                showingIngredientSearch = true
             }
-
+            .accessibilityIdentifier("recipe.addIngredient")
+        } content: {
             if draft.sortedIngredients.isEmpty {
-                ContentUnavailableView(
-                    "No Ingredients",
-                    systemImage: "list.bullet",
-                    description: Text("Add ingredients from search or barcode scan.")
+                CreationFormEmptyRow(
+                    title: "No ingredients yet",
+                    detail: "Add ingredients from search or barcode scan."
                 )
-                .frame(minHeight: 160)
             } else {
-                VStack(spacing: 0) {
-                    ForEach(draft.sortedIngredients) { ingredient in
-                        ingredientRow(ingredient)
-
-                        if ingredient.id != draft.sortedIngredients.last?.id {
-                            Divider()
-                                .foregroundStyle(CalorynTheme.stone.opacity(0.3))
-                        }
+                ForEach(draft.sortedIngredients) { ingredient in
+                    if ingredient.id != draft.sortedIngredients.first?.id {
+                        CreationFormDivider()
                     }
+                    ingredientRow(ingredient)
                 }
             }
         }
-        .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
     }
 
     private func ingredientRow(_ ingredient: RecipeIngredientDraft) -> some View {
-        HStack {
-            Button {
-                ingredientForAmount = ingredient
-            } label: {
-                HStack {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(ingredient.name)
-                            .font(CalorynTheme.bodyText)
-                            .foregroundStyle(CalorynTheme.textPrimary)
-                            .lineLimit(1)
-
-                        Text("\(ingredient.portionGrams.rounded().truncatedSafely)g")
-                            .font(CalorynTheme.caption)
-                            .foregroundStyle(CalorynTheme.textSecondary)
-                    }
-
-                    Spacer()
-
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text(ingredient.calories.kcalFormatted)
-                            .font(CalorynTheme.numericCaption)
-                            .foregroundStyle(CalorynTheme.textPrimary)
-                        Text("\(ingredient.proteinG.macroFormatted) P")
-                            .font(CalorynTheme.numericCaption)
-                            .foregroundStyle(CalorynTheme.proteinColor)
-                    }
-                }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-
-            Button(role: .destructive) {
-                draft.remove(ingredient)
-            } label: {
-                Image(systemName: "minus.circle")
-                    .font(CalorynTheme.compactIcon)
-                    .foregroundStyle(CalorynTheme.terracotta.opacity(0.7))
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Delete \(ingredient.name)")
-        }
-        .padding(.vertical, 8)
+        CreationFormItemRow(
+            name: ingredient.name,
+            detail: "\(ingredient.portionGrams.rounded().spacedMacroFormatted), \(ingredient.proteinG.spacedMacroFormatted) protein",
+            kcal: ingredient.calories.truncatedSafely,
+            onEdit: { ingredientForAmount = ingredient },
+            onDelete: { draft.remove(ingredient) }
+        )
     }
 
     private var deleteSection: some View {
-        DestructiveGlassButton("Delete Recipe") {
+        CreationFormDeleteButton("Delete recipe") {
             showingDeleteConfirmation = true
         }
     }

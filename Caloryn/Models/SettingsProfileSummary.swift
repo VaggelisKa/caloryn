@@ -25,7 +25,10 @@ struct SettingsProfileSummary: Equatable {
     /// centimetres.
     var heightText: String { "\(heightCm.truncatedSafely) cm" }
 
-    var weightText: String { String(format: "%.1f kg", weightKg) }
+    var weightText: String { weightText(locale: .current) }
 
-    var activityText: String { activityLevel.displayName }
+    /// `weightText` in a given locale. `locale` exists for tests.
+    func weightText(locale: Locale) -> String { weightKg.kilogramsFormatted(locale: locale) }
+
+    var activityText: String { activityLevel.displayName.sentenceCased }
 }

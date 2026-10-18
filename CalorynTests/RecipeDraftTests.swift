@@ -119,18 +119,18 @@ struct RecipeDraftTests {
     func captionStatesYield() {
         let draft = draftWith(name: "Salad", ingredients: [ingredient(grams: 249.6)])
 
-        #expect(draft.totalCaloriesCaption == "calories in 250g")
+        #expect(draft.totalCaloriesCaption == "calories in 250 g")
     }
 
     /// A recipe lighter than half a gram stays savable — the capability is
     /// real — so the caption has to state a yield the form would accept rather
-    /// than rounding it away to "0g".
+    /// than rounding it away to "0 g".
     @Test("A sub-gram recipe is savable and states its real yield")
     func subGramRecipeStatesItsYield() {
         let draft = draftWith(name: "Pinch of salt", ingredients: [ingredient(grams: 0.4)])
 
         #expect(draft.canSave)
-        #expect(draft.totalCaloriesCaption == "calories in 0.4g")
+        #expect(draft.totalCaloriesCaption(locale: Locale(identifier: "en_US")) == "calories in 0.4 g")
     }
 
     @Test("A yield too small for one decimal is stated as under a tenth of a gram")
@@ -138,23 +138,26 @@ struct RecipeDraftTests {
         let draft = draftWith(name: "Dusting", ingredients: [ingredient(grams: 0.004)])
 
         #expect(draft.canSave)
-        #expect(draft.totalCaloriesCaption == "calories in <0.1g")
+        #expect(draft.totalCaloriesCaption(locale: Locale(identifier: "en_US")) == "calories in <0.1 g")
     }
 
     @Test("A yield of half a gram or more rounds up to whole grams")
     func halfAGramRoundsUpToWholeGrams() {
         let draft = draftWith(name: "Salt", ingredients: [ingredient(grams: 0.6)])
 
-        #expect(draft.totalCaloriesCaption == "calories in 1g")
+        #expect(draft.totalCaloriesCaption == "calories in 1 g")
     }
 
     /// The yield is arithmetic on typed numbers, so it has to survive one that
-    /// no `Int` can hold rather than trapping on the conversion.
+    /// no `Int` can hold rather than trapping on a conversion: it is written in
+    /// full, as any other weight is.
     @Test("An unconvertible yield is captioned rather than trapped on")
     func unconvertibleYieldIsCaptioned() {
         let draft = draftWith(name: "Overflow", ingredients: [ingredient(grams: 1e300)])
+        let caption = draft.totalCaloriesCaption(locale: Locale(identifier: "en_US"))
 
-        #expect(draft.totalCaloriesCaption == "calories in \(Int.max)g")
+        #expect(caption.hasPrefix("calories in 1,000,000,000,"))
+        #expect(caption.hasSuffix(",000 g"))
     }
 
     // MARK: - Adding and editing ingredients

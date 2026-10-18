@@ -7,6 +7,16 @@ struct HistoryCalorieTrendDetailView: View {
 
     @State private var selectedPointID: String?
 
+    init(
+        range: HistoryRange,
+        summary: HistoryPeriodSummary,
+        initialSelectedPointID: String? = nil
+    ) {
+        self.range = range
+        self.summary = summary
+        _selectedPointID = State(initialValue: initialSelectedPointID)
+    }
+
     var body: some View {
         let projection = HistoryCalorieTrendProjection(
             range: range,
@@ -15,8 +25,8 @@ struct HistoryCalorieTrendDetailView: View {
         let selectedPoint = projection.points.first { $0.id == selectedPointID }
 
         ScrollView {
-            VStack(spacing: CalorynTheme.cardSpacing) {
-                HistoryCalorieTrendRangeSummaryCard(
+            VStack(alignment: .leading, spacing: 26) {
+                HistoryCalorieTrendRangeSummary(
                     projection: projection
                 )
 
@@ -33,17 +43,19 @@ struct HistoryCalorieTrendDetailView: View {
                 }
             }
             .padding(.horizontal, CalorynTheme.pagePadding)
-            .padding(.bottom, 20)
+            .padding(.top, 8)
+            .padding(.bottom, 28)
         }
+        .historyDebugScrollAnchor()
         .calorynPageCanvas()
         .calorynDrillDownNavigation()
-        .navigationTitle("Calorie Trend")
+        .navigationTitle("Calorie trend")
         .navigationBarTitleDisplayMode(.inline)
         .accessibilityIdentifier("history.calorieTrend.details")
     }
 }
 
-private struct HistoryCalorieTrendRangeSummaryCard: View {
+private struct HistoryCalorieTrendRangeSummary: View {
     let projection: HistoryCalorieTrendProjection
 
     private var summary: HistoryCalorieTrendCardSummary {
@@ -64,32 +76,24 @@ private struct HistoryCalorieTrendRangeSummaryCard: View {
     var body: some View {
         let summary = summary
 
-        return VStack(alignment: .leading, spacing: 14) {
-            Text("Range Summary")
-                .font(CalorynTheme.sectionEyebrow)
-                .foregroundStyle(CalorynTheme.textSecondary)
-                .textCase(.uppercase)
+        return VStack(alignment: .leading, spacing: 12) {
+            HistorySectionTitle("Range summary")
 
-            HStack(alignment: .top, spacing: 12) {
-                metric(
+            HStack(alignment: .top, spacing: 16) {
+                HistoryDetailMetric(
                     value: summary.onTrackRatioText,
                     label: "logged days on track"
                 )
 
-                Divider()
-                    .foregroundStyle(CalorynTheme.stone.opacity(0.3))
-                    .frame(height: 42)
-
-                metric(
+                HistoryDetailMetric(
                     value: summary.averageValueText,
-                    label: "kcal/day avg"
+                    label: "kcal a day on average"
                 )
             }
 
-            Divider()
-                .foregroundStyle(CalorynTheme.stone.opacity(0.3))
+            HistoryHairline()
 
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 6) {
                 summaryLine(projection.totalTargetDeltaText)
 
                 if let biggestInconsistencyText = projection.biggestInconsistencyText {
@@ -101,17 +105,30 @@ private struct HistoryCalorieTrendRangeSummaryCard: View {
                 }
             }
         }
-        .historyCard()
+        .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
     }
 
-    private func metric(value: String, label: String) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
+    private func summaryLine(_ text: String) -> some View {
+        Text(text)
+            .font(CalorynTheme.cardSubtitle)
+            .foregroundStyle(CalorynTheme.textSecondary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+/// A figure over its label: 22pt bold tabular ink, then a quiet caption.
+private struct HistoryDetailMetric: View {
+    let value: String
+    let label: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
             Text(value)
-                .font(CalorynTheme.numericBody)
+                .font(CalorynTheme.compactNumber)
                 .foregroundStyle(CalorynTheme.textPrimary)
                 .lineLimit(1)
-                .minimumScaleFactor(0.8)
+                .minimumScaleFactor(0.75)
 
             Text(label)
                 .font(CalorynTheme.caption)
@@ -120,21 +137,6 @@ private struct HistoryCalorieTrendRangeSummaryCard: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
-
-    private func summaryLine(_ text: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Circle()
-                .fill(CalorynTheme.textSecondary.opacity(0.45))
-                .frame(width: 5, height: 5)
-                .accessibilityHidden(true)
-
-            Text(text)
-                .font(CalorynTheme.caption)
-                .foregroundStyle(CalorynTheme.textSecondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
 }
 
 private struct HistoryCalorieTrendInteractiveChart: View {
@@ -154,10 +156,7 @@ private struct HistoryCalorieTrendInteractiveChart: View {
         let layout = layout
 
         return VStack(alignment: .leading, spacing: 14) {
-            Text("Calories")
-                .font(CalorynTheme.sectionEyebrow)
-                .foregroundStyle(CalorynTheme.textSecondary)
-                .textCase(.uppercase)
+            HistorySectionTitle("Calories")
 
             Chart {
                 ForEach(projection.points) { point in
@@ -167,7 +166,10 @@ private struct HistoryCalorieTrendInteractiveChart: View {
                             y: .value("Calories", point.value),
                             width: .fixed(layout.barWidth)
                         )
-                        .foregroundStyle(barColor(point))
+                        // Every bar keeps its status colour, selected or not: status is told
+                        // by lightness alone now, so dimming an ink "over" bar would turn it
+                        // into the "under" grey. The ring and the ink axis label mark the pick.
+                        .foregroundStyle(point.status.tint)
                         .cornerRadius(4)
                         .accessibilityLabel(point.accessibilityLabel)
                         .accessibilityValue(point.accessibilityValue)
@@ -179,8 +181,8 @@ private struct HistoryCalorieTrendInteractiveChart: View {
                             )
                             .symbol {
                                 Circle()
-                                    .stroke(point.status.tint, lineWidth: 2)
-                                    .background(Circle().fill(CalorynTheme.surface))
+                                    .stroke(CalorynTheme.textPrimary, lineWidth: 2)
+                                    .background(Circle().fill(CalorynTheme.pageBackground))
                                     .frame(width: 12, height: 12)
                             }
                             .accessibilityHidden(true)
@@ -198,8 +200,8 @@ private struct HistoryCalorieTrendInteractiveChart: View {
                 }
 
                 RuleMark(y: .value("Target", projection.dailyCalorieTarget))
-                    .lineStyle(StrokeStyle(lineWidth: 1.8, lineCap: .round))
-                    .foregroundStyle(CalorynTheme.textPrimary.opacity(0.62))
+                    .lineStyle(StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [4, 3]))
+                    .foregroundStyle(CalorynTheme.textSecondary)
             }
             .chartXAxis {
                 AxisMarks(values: projection.points.map(\.index)) { value in
@@ -207,7 +209,7 @@ private struct HistoryCalorieTrendInteractiveChart: View {
                         if let index = value.as(Double.self),
                            let point = projection.point(for: index) {
                             Text(point.xAxisLabel)
-                                .font(CalorynTheme.chartAxisLabel)
+                                .font(CalorynTheme.trendChartXAxisLabel(pointCount: projection.points.count))
                                 .foregroundStyle(.clear)
                                 .accessibilityHidden(true)
                         }
@@ -238,8 +240,12 @@ private struct HistoryCalorieTrendInteractiveChart: View {
                             ForEach(projection.points) { point in
                                 if let xPosition = proxy.position(forX: point.index) {
                                     Text(point.xAxisLabel)
-                                        .font(CalorynTheme.chartAxisLabel)
-                                        .foregroundStyle(CalorynTheme.textSecondary)
+                                        .font(CalorynTheme.trendChartXAxisLabel(pointCount: projection.points.count))
+                                        .foregroundStyle(
+                                            point.id == selectedPointID
+                                                ? CalorynTheme.textPrimary
+                                                : CalorynTheme.textSecondary
+                                        )
                                         .position(
                                             x: plotRect.minX + xPosition,
                                             y: plotRect.maxY + 11
@@ -274,13 +280,16 @@ private struct HistoryCalorieTrendInteractiveChart: View {
             .chartYAxis {
                 AxisMarks(position: .leading) { _ in
                     AxisGridLine()
+                        .foregroundStyle(CalorynTheme.hairline)
                     AxisValueLabel()
                         .font(CalorynTheme.chartAxisLabel)
+                        .foregroundStyle(CalorynTheme.textSecondary)
                 }
             }
             .chartYScale(domain: 0 ... projection.yAxisUpperBound)
             .chartXScale(domain: layout.xAxisDomain)
             .frame(height: layout.chartHeight)
+            .padding(.bottom, 8)
             .accessibilityLabel(
                 HistoryCalorieTrendCardSummary.detailChartAccessibilityLabel(
                     range: projection.range,
@@ -289,7 +298,7 @@ private struct HistoryCalorieTrendInteractiveChart: View {
                 )
             )
         }
-        .historyCard()
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func emphasis(
@@ -299,15 +308,6 @@ private struct HistoryCalorieTrendInteractiveChart: View {
             pointID: point.id,
             selectedPointID: selectedPointID
         )
-    }
-
-    private func barColor(_ point: HistoryCalorieTrendPoint) -> Color {
-        switch emphasis(point) {
-        case .normal, .selected:
-            point.status.tint
-        case .muted:
-            point.status.tint.opacity(0.48)
-        }
     }
 
     private func selectPoint(
@@ -336,12 +336,12 @@ private struct HistoryCalorieTrendSelectedAnalysis: View {
         switch point.selection {
         case .day(let day):
             let detail = day.makeDetail()
-            HistoryCalorieTrendSelectedDayCard(
+            HistoryCalorieTrendSelectedDay(
                 projection: projection,
                 detail: detail
             )
         case .week(let week):
-            HistoryCalorieTrendSelectedWeekCard(
+            HistoryCalorieTrendSelectedWeek(
                 projection: projection,
                 week: week,
                 point: point,
@@ -351,7 +351,87 @@ private struct HistoryCalorieTrendSelectedAnalysis: View {
     }
 }
 
-private struct HistoryCalorieTrendSelectedDayCard: View {
+/// The selected period's title row: its date over what it is, and its status in words.
+private struct HistorySelectionHeader: View {
+    let title: String
+    let caption: String
+    let status: HistoryGoalStatus?
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            VStack(alignment: .leading, spacing: 2) {
+                HistorySectionTitle(title)
+
+                Text(caption)
+                    .font(CalorynTheme.caption)
+                    .foregroundStyle(CalorynTheme.textSecondary)
+            }
+
+            Spacer(minLength: 8)
+
+            if let status {
+                HistoryStatusBadge(status: status)
+            }
+        }
+    }
+}
+
+/// A list row on the page: a title (optionally in a meal's ink) and an optional caption on
+/// the left, a tabular figure on the right.
+private struct HistoryDetailRow: View {
+    let title: String
+    var titleColor: Color = CalorynTheme.textPrimary
+    var titleFont: Font = CalorynTheme.cardSubtitle
+    var caption: String?
+    let value: String
+    var valueColor: Color = CalorynTheme.textPrimary
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(titleFont)
+                    .foregroundStyle(titleColor)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+
+                if let caption {
+                    Text(caption)
+                        .font(CalorynTheme.caption)
+                        .foregroundStyle(CalorynTheme.textSecondary)
+                }
+            }
+
+            Spacer(minLength: 8)
+
+            Text(value)
+                .font(CalorynTheme.cardSubtitle.weight(.semibold).monospacedDigit())
+                .foregroundStyle(valueColor)
+        }
+        .padding(.vertical, 10)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// Rows separated by a drawn hairline, as a scroll view's own list.
+private struct HistoryHairlineRows<Item: Identifiable, Row: View>: View {
+    let items: [Item]
+    @ViewBuilder let row: (Item) -> Row
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(items) { item in
+                row(item)
+
+                if item.id != items.last?.id {
+                    HistoryHairline()
+                }
+            }
+        }
+    }
+}
+
+private struct HistoryCalorieTrendSelectedDay: View {
     let projection: HistoryCalorieTrendProjection
     let detail: HistoryDayDetail
 
@@ -372,172 +452,103 @@ private struct HistoryCalorieTrendSelectedDayCard: View {
         let breakdown = breakdown
 
         return VStack(alignment: .leading, spacing: 14) {
-            header
+            HistorySelectionHeader(
+                title: projection.dayText(for: detail.date),
+                caption: "Selected day",
+                status: detail.status
+            )
 
             if breakdown.isLogged {
                 metricStack
-                Divider()
-                    .foregroundStyle(CalorynTheme.stone.opacity(0.3))
                 mealSplit(breakdown)
 
                 if breakdown.showsFoodSection {
-                    Divider()
-                        .foregroundStyle(CalorynTheme.stone.opacity(0.3))
                     foodDrivers(breakdown)
                 }
             } else {
-                unloggedState(breakdown)
+                Text(breakdown.unloggedText)
+                    .font(CalorynTheme.cardSubtitle)
+                    .foregroundStyle(CalorynTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .historyCard()
+        .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .contain)
     }
 
-    private var header: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 10) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(projection.dayText(for: detail.date))
-                    .font(CalorynTheme.itemTitle)
-                    .foregroundStyle(CalorynTheme.textPrimary)
-
-                Text("Selected day")
-                    .font(CalorynTheme.caption)
-                    .foregroundStyle(CalorynTheme.textSecondary)
-            }
-
-            Spacer()
-
-            statusBadge(detail.status)
-        }
-    }
-
     private var metricStack: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 4) {
             Text(projection.targetDeltaText(detail.calorieDifference, unit: "kcal"))
-                .font(CalorynTheme.numericBody)
-                .foregroundStyle(detail.status.tint)
+                .font(CalorynTheme.compactNumber)
+                .foregroundStyle(CalorynTheme.textPrimary)
 
             if let averageDeltaText = projection.averageDeltaText(
                 value: detail.calories,
                 unit: "kcal"
             ) {
                 Text(averageDeltaText)
-                    .font(CalorynTheme.caption)
+                    .font(CalorynTheme.cardSubtitle)
                     .foregroundStyle(CalorynTheme.textSecondary)
             }
 
             if detail.isTargetEstimated {
                 Text("Compared with your current target — no saved goal for this day.")
-                    .font(CalorynTheme.microCaption)
+                    .font(CalorynTheme.caption)
                     .foregroundStyle(CalorynTheme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
 
+    /// The meal name carries its colour — in its ink, never an icon. An empty meal reads
+    /// "none" in the quietest text.
     private func mealSplit(_ breakdown: HistoryCalorieTrendDayBreakdown) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Meal Split")
-                .font(CalorynTheme.sectionEyebrow)
-                .foregroundStyle(CalorynTheme.textSecondary)
-                .textCase(.uppercase)
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Meal split")
+                .font(CalorynTheme.cardSubtitle.weight(.bold))
+                .foregroundStyle(CalorynTheme.textPrimary)
+                .accessibilityAddTraits(.isHeader)
+                .padding(.top, 6)
 
-            VStack(spacing: 8) {
-                ForEach(breakdown.mealRows) { row in
-                    HStack(alignment: .center, spacing: 10) {
-                        Image(systemName: row.iconName)
-                            .font(CalorynTheme.compactIcon)
-                            .foregroundStyle(row.hasCalories ? CalorynTheme.sage : CalorynTheme.textSecondary)
-                            .frame(width: 20)
-                            .accessibilityHidden(true)
-
-                        Text(row.title)
-                            .font(CalorynTheme.caption)
-                            .foregroundStyle(CalorynTheme.textPrimary)
-
-                        Spacer()
-
-                        Text(row.caloriesText)
-                            .font(CalorynTheme.numericCaption)
-                            .foregroundStyle(row.hasCalories ? CalorynTheme.textPrimary : CalorynTheme.textSecondary)
-                    }
-                    .accessibilityElement(children: .combine)
-                }
+            HistoryHairlineRows(items: breakdown.mealRows) { row in
+                HistoryDetailRow(
+                    title: row.title,
+                    titleColor: row.mealType.ink,
+                    titleFont: CalorynTheme.cardSubtitle.weight(.semibold),
+                    value: row.caloriesText,
+                    valueColor: row.hasCalories ? CalorynTheme.textPrimary : CalorynTheme.textTertiary
+                )
             }
         }
     }
 
     private func foodDrivers(_ breakdown: HistoryCalorieTrendDayBreakdown) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 4) {
             Text(breakdown.foodSectionTitle)
-                .font(CalorynTheme.sectionEyebrow)
-                .foregroundStyle(CalorynTheme.textSecondary)
-                .textCase(.uppercase)
-
-            VStack(spacing: 8) {
-                ForEach(breakdown.visibleFoods) { food in
-                    foodRow(food)
-                }
-
-                if let overflowText = breakdown.overflowText {
-                    Text(overflowText)
-                        .font(CalorynTheme.caption)
-                        .foregroundStyle(CalorynTheme.textSecondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-            }
-        }
-    }
-
-    private func unloggedState(_ breakdown: HistoryCalorieTrendDayBreakdown) -> some View {
-        HStack(alignment: .center, spacing: 12) {
-            Image(systemName: "calendar")
-                .font(CalorynTheme.inlineIcon)
-                .foregroundStyle(CalorynTheme.textSecondary)
-                .frame(width: 28)
-                .accessibilityHidden(true)
-
-            Text(breakdown.unloggedText)
-                .font(CalorynTheme.caption)
-                .foregroundStyle(CalorynTheme.textSecondary)
-        }
-    }
-
-    private func statusBadge(_ status: HistoryGoalStatus) -> some View {
-        Text(status.label)
-            .font(CalorynTheme.microCaptionEmphasized)
-            .foregroundStyle(status.tint)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(status.tint.opacity(0.12), in: Capsule())
-            .accessibilityLabel(status.label)
-    }
-
-    private func foodRow(_ food: HistoryFoodSummary) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(food.name)
-                    .font(CalorynTheme.caption)
-                    .foregroundStyle(CalorynTheme.textPrimary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-
-                Text(HistoryCalorieTrendDayBreakdown.entryCountText(food.entryCount))
-                    .font(CalorynTheme.microCaption)
-                    .foregroundStyle(CalorynTheme.textSecondary)
-            }
-
-            Spacer(minLength: 8)
-
-            Text(food.calories.rounded().truncatedSafely.kcalFormatted)
-                .font(CalorynTheme.numericCaption)
+                .font(CalorynTheme.cardSubtitle.weight(.bold))
                 .foregroundStyle(CalorynTheme.textPrimary)
+                .accessibilityAddTraits(.isHeader)
+                .padding(.top, 6)
+
+            HistoryHairlineRows(items: breakdown.visibleFoods) { food in
+                HistoryDetailRow(
+                    title: food.name,
+                    caption: HistoryCalorieTrendDayBreakdown.entryCountText(food.entryCount),
+                    value: food.calories.rounded().truncatedSafely.kcalFormatted
+                )
+            }
+
+            if let overflowText = breakdown.overflowText {
+                Text(overflowText)
+                    .font(CalorynTheme.caption)
+                    .foregroundStyle(CalorynTheme.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
-        .accessibilityElement(children: .combine)
     }
 }
 
-private struct HistoryCalorieTrendSelectedWeekCard: View {
+private struct HistoryCalorieTrendSelectedWeek: View {
     let projection: HistoryCalorieTrendProjection
     let week: HistoryWeekSummary
     let point: HistoryCalorieTrendPoint
@@ -563,125 +574,72 @@ private struct HistoryCalorieTrendSelectedWeekCard: View {
         let breakdown = breakdown
 
         return VStack(alignment: .leading, spacing: 14) {
-            header(breakdown)
+            HistorySelectionHeader(
+                title: breakdown.headerText,
+                caption: "Selected week",
+                status: breakdown.hasLoggedDays ? point.status : nil
+            )
 
             if breakdown.hasLoggedDays {
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text(projection.targetDeltaText(point.targetDelta, unit: "kcal/day"))
-                        .font(CalorynTheme.numericBody)
-                        .foregroundStyle(point.status.tint)
+                        .font(CalorynTheme.compactNumber)
+                        .foregroundStyle(CalorynTheme.textPrimary)
 
                     if let averageDeltaText = projection.averageDeltaText(
                         value: week.averageCaloriesPerLoggedDay,
                         unit: "kcal/day"
                     ) {
                         Text(averageDeltaText)
-                            .font(CalorynTheme.caption)
+                            .font(CalorynTheme.cardSubtitle)
                             .foregroundStyle(CalorynTheme.textSecondary)
                     }
                 }
 
-                Divider()
-                    .foregroundStyle(CalorynTheme.stone.opacity(0.3))
-
-                HStack(alignment: .top, spacing: 12) {
-                    compactMetric(
+                HStack(alignment: .top, spacing: 16) {
+                    HistoryDetailMetric(
                         value: breakdown.onTrackRatioText,
-                        label: "logged days on track",
-                        color: week.consistencyTint
+                        label: "logged days on track"
                     )
 
-                    Divider()
-                        .foregroundStyle(CalorynTheme.stone.opacity(0.3))
-                        .frame(height: 38)
-
-                    compactMetric(
+                    HistoryDetailMetric(
                         value: breakdown.coverageRatioText,
                         label: "days logged"
                     )
                 }
 
                 if let biggestSwingText = breakdown.biggestSwingText {
-                    Divider()
-                        .foregroundStyle(CalorynTheme.stone.opacity(0.3))
-
                     Text(biggestSwingText)
-                        .font(CalorynTheme.caption)
+                        .font(CalorynTheme.cardSubtitle)
                         .foregroundStyle(CalorynTheme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
                 if breakdown.showsFoodSection {
-                    Divider()
-                        .foregroundStyle(CalorynTheme.stone.opacity(0.3))
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Top foods")
+                            .font(CalorynTheme.cardSubtitle.weight(.bold))
+                            .foregroundStyle(CalorynTheme.textPrimary)
+                            .accessibilityAddTraits(.isHeader)
+                            .padding(.top, 6)
 
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Top Foods")
-                            .font(CalorynTheme.sectionEyebrow)
-                            .foregroundStyle(CalorynTheme.textSecondary)
-                            .textCase(.uppercase)
-
-                        ForEach(breakdown.visibleFoods) { food in
-                            foodRow(food)
+                        HistoryHairlineRows(items: breakdown.visibleFoods) { food in
+                            HistoryDetailRow(
+                                title: food.name,
+                                value: food.calories.rounded().truncatedSafely.kcalFormatted
+                            )
                         }
                     }
                 }
             } else {
                 Text(breakdown.emptyText)
-                    .font(CalorynTheme.caption)
+                    .font(CalorynTheme.cardSubtitle)
                     .foregroundStyle(CalorynTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .historyCard()
-        .accessibilityElement(children: .contain)
-    }
-
-    private func header(_ breakdown: HistoryCalorieTrendWeekBreakdown) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(breakdown.headerText)
-                .font(CalorynTheme.itemTitle)
-                .foregroundStyle(CalorynTheme.textPrimary)
-
-            Text("Selected week")
-                .font(CalorynTheme.caption)
-                .foregroundStyle(CalorynTheme.textSecondary)
-        }
-    }
-
-    private func compactMetric(
-        value: String,
-        label: String,
-        color: Color = CalorynTheme.textPrimary
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(value)
-                .font(CalorynTheme.numericBody)
-                .foregroundStyle(color)
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
-
-            Text(label)
-                .font(CalorynTheme.caption)
-                .foregroundStyle(CalorynTheme.textSecondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func foodRow(_ food: HistoryFoodSummary) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Text(food.name)
-                .font(CalorynTheme.caption)
-                .foregroundStyle(CalorynTheme.textPrimary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-
-            Spacer(minLength: 8)
-
-            Text(food.calories.rounded().truncatedSafely.kcalFormatted)
-                .font(CalorynTheme.numericCaption)
-                .foregroundStyle(CalorynTheme.textPrimary)
-        }
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
     }
 }
 

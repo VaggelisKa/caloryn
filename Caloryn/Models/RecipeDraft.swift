@@ -55,18 +55,24 @@ struct RecipeDraft: Equatable {
     /// The caption under the calorie figure. The yield is only stated once
     /// there is one, so an empty form reads "calories" rather than "in 0g".
     var totalCaloriesCaption: String {
-        totalGrams > 0 ? "calories in \(Self.yieldText(forGrams: totalGrams))g" : "calories"
+        totalCaloriesCaption(locale: .current)
     }
 
-    /// How a yield is written. Whole grams from a gram upwards, because that is
-    /// the precision a recipe is cooked at; below that the figure keeps a
-    /// decimal, because a savable recipe must never claim to weigh nothing —
-    /// rounding 0.4g to "0g" contradicted the form that had just accepted it.
-    static func yieldText(forGrams grams: Double) -> String {
-        guard grams.isFinite else { return "0" }
-        if grams.rounded() >= 1 { return "\(grams.rounded().truncatedSafely)" }
-        if grams >= 0.05 { return String(format: "%.1f", grams) }
-        return "<0.1"
+    /// "calories in 250 g", in a given locale. `locale` exists for tests.
+    func totalCaloriesCaption(locale: Locale) -> String {
+        totalGrams > 0 ? "calories in \(Self.yieldText(forGrams: totalGrams, locale: locale))" : "calories"
+    }
+
+    /// How a yield is written, as every weight is ("250 g", "1.450 g"). Whole grams
+    /// from a gram upwards, because that is the precision a recipe is cooked at;
+    /// below that the figure keeps a decimal, because a savable recipe must never
+    /// claim to weigh nothing — rounding 0.4 g to "0 g" contradicted the form that
+    /// had just accepted it.
+    static func yieldText(forGrams grams: Double, locale: Locale = .current) -> String {
+        guard grams.isFinite else { return 0.0.spacedMacroFormatted(locale: locale) }
+        if grams.rounded() >= 1 { return grams.rounded().spacedMacroFormatted(locale: locale) }
+        if grams >= 0.05 { return grams.spacedMacroFormatted(locale: locale) }
+        return "<\(0.1.spacedMacroFormatted(locale: locale))"
     }
 
     // MARK: - Validation

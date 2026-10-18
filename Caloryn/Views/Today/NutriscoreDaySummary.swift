@@ -1,101 +1,70 @@
 import SwiftUI
 
+/// A day's Nutri-Score grades as a row of chips — the grade's badge and how many items got
+/// it — drawn straight on whatever it sits on (no card), wrapping onto a second line when
+/// they do not fit. Today shows it under the hero and Nutrition Details under "Nutri-Score
+/// today".
+///
+/// Grades come in a-to-e order whatever order `distribution` lists them in; a grade nothing
+/// was logged for has no chip. The badge colours are the official Nutri-Score ones and do not
+/// change with the appearance (`NutriscoreBadge`).
 struct NutriscoreDaySummary: View {
     let distribution: [(grade: String, count: Int)]
-    var usesCard = true
 
-    private let gradeOrder = ["a", "b", "c", "d", "e"]
+    @ScaledMetric(relativeTo: .footnote) private var chipHeight: CGFloat = 30
 
     private var orderedSegments: [(grade: String, count: Int)] {
-        gradeOrder.compactMap { grade in
+        NutriscoreDayDistribution.recognizedGrades.compactMap { grade in
             distribution.first(where: { $0.grade.lowercased() == grade }).map { ($0.grade, $0.count) }
         }
     }
 
-    private var totalCount: Int {
-        distribution.reduce(0) { $0 + $1.count }
-    }
-
     var body: some View {
-        Group {
-            if usesCard {
-                CalorynCard {
-                    summaryContent
-                }
-            } else {
-                summaryContent
+        // Wraps rather than squeezing: with all five grades at the accessibility text sizes
+        // the chips are wider than Today or Nutrition Details, and a row ran off the edge.
+        ChipFlowLayout(spacing: 6, lineSpacing: 6) {
+            ForEach(orderedSegments, id: \.grade) { item in
+                gradeChip(grade: item.grade, count: item.count)
             }
         }
-        .accessibilityElement(children: .combine)
+        .animation(.smooth(duration: 0.35), value: orderedSegments.map { "\($0.grade)-\($0.count)" })
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilitySummary)
     }
 
-    private var summaryContent: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
-                Image(systemName: "heart.fill")
-                    .font(CalorynTheme.compactIcon)
-                    .foregroundStyle(CalorynTheme.sage)
-                Text("Today's health")
-                    .font(CalorynTheme.caption)
-                    .foregroundStyle(CalorynTheme.textSecondary)
-            }
+    private func gradeChip(grade: String, count: Int) -> some View {
+        HStack(spacing: 5) {
+            NutriscoreBadge(grade: grade)
 
-            NutriscoreAllocationBar(segments: orderedSegments, total: totalCount)
-
-            HStack(spacing: 12) {
-                ForEach(orderedSegments, id: \.grade) { item in
-                    HStack(spacing: 4) {
-                        NutriscoreBadge(grade: item.grade)
-                        Text("×\(item.count)")
-                            .font(CalorynTheme.numericMicroCaption)
-                            .foregroundStyle(CalorynTheme.textSecondary)
-                            .contentTransition(.numericText())
-                    }
-                }
-                .animation(.smooth(duration: 0.35), value: orderedSegments.map { "\($0.grade)-\($0.count)" })
-            }
+            Text("\(count)")
+                .font(CalorynTheme.chipLabel)
+                .fontWeight(.semibold)
+                .foregroundStyle(CalorynTheme.textPrimary)
+                .contentTransition(.numericText())
         }
+        .padding(.leading, 6)
+        .padding(.trailing, 10)
+        .frame(minHeight: chipHeight)
+        // Ink at 6%: a quiet chip that reads on paper, on a white sheet and in dark mode alike.
+        .background(CalorynTheme.textPrimary.opacity(0.06), in: Capsule())
+        .transition(.opacity.combined(with: .scale(scale: 0.95, anchor: .leading)))
     }
 
     private var accessibilitySummary: String {
-        let parts = distribution.map { "\($0.count) \($0.grade.uppercased())" }
-        return "Today's health: \(parts.joined(separator: ", "))"
-    }
-}
-
-private struct NutriscoreAllocationBar: View {
-    let segments: [(grade: String, count: Int)]
-    let total: Int
-
-    var body: some View {
-        GeometryReader { geo in
-            HStack(spacing: 0) {
-                ForEach(segments, id: \.grade) { item in
-                    if let color = CalorynTheme.nutriscoreColor(for: item.grade), total > 0 {
-                        let fraction = Double(item.count) / Double(total)
-                        RoundedRectangle(cornerRadius: 3, style: .continuous)
-                            .fill(color)
-                            .frame(width: max(0, geo.size.width * fraction))
-                            .transition(.opacity.combined(with: .scale(scale: 0.95, anchor: .leading)))
-                    }
-                }
-            }
-            .animation(.smooth(duration: 0.35), value: segments.map { "\($0.grade)-\($0.count)" })
-        }
-        .frame(height: 14)
-        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+        let parts = orderedSegments.map { "\($0.count) \($0.grade.uppercased())" }
+        return "Nutri-Score today: \(parts.joined(separator: ", "))"
     }
 }
 
 #Preview {
-    VStack(spacing: 16) {
+    VStack(alignment: .leading, spacing: 16) {
         NutriscoreDaySummary(distribution: [
-            ("a", 2),
-            ("b", 3),
-            ("c", 1)
+            ("a", 4),
+            ("c", 1),
+            ("d", 1)
         ])
         NutriscoreDaySummary(distribution: [("e", 1)])
     }
     .padding()
+    .background(CalorynTheme.pageBackground)
 }

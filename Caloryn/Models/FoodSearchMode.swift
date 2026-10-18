@@ -25,9 +25,9 @@ enum FoodSearchMode {
 
     var title: String {
         switch self {
-        case .logging: "Add Food"
-        case .ingredientSelection: "Add Ingredient"
-        case .mealComponentSelection: "Add Meal Item"
+        case .logging: "Add food"
+        case .ingredientSelection: "Add ingredient"
+        case .mealComponentSelection: "Add meal item"
         }
     }
 

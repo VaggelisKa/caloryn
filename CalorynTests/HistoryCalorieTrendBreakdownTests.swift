@@ -48,7 +48,7 @@ struct HistoryCalorieTrendBreakdownTests {
 
     @Test("given a day over target, when titling the food list, then it reads as an explanation")
     func overTargetTheFoodsExplainTheOverage() {
-        #expect(makeDay(calorieDifference: 320).foodSectionTitle == "Top Contributors")
+        #expect(makeDay(calorieDifference: 320).foodSectionTitle == "Top contributors")
     }
 
     @Test(
@@ -56,7 +56,7 @@ struct HistoryCalorieTrendBreakdownTests {
         arguments: [0, -1, -450]
     )
     func atOrUnderTargetTheFoodsAreJustAList(difference: Int) {
-        #expect(makeDay(calorieDifference: difference).foodSectionTitle == "Foods Logged")
+        #expect(makeDay(calorieDifference: difference).foodSectionTitle == "Foods logged")
     }
 
     @Test("given more foods than fit, when listing them, then the rest are summarised as a count")

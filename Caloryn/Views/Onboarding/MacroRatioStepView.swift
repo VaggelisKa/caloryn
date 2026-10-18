@@ -5,7 +5,7 @@ struct MacroRatioStepView: View {
     @Binding var proteinRatio: Double
     @Binding var carbRatio: Double
     @Binding var fatRatio: Double
-    var primaryButtonTitle = "Start Tracking"
+    var primaryButtonTitle = "Start tracking"
     var onComplete: () -> Void
 
     private var selection: MacroRatioSelection {
@@ -19,43 +19,41 @@ struct MacroRatioStepView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 24) {
-                VStack(spacing: 8) {
-                    Text("Macro Ratios")
-                        .font(CalorynTheme.sectionTitle)
-                        .foregroundStyle(CalorynTheme.textPrimary)
-                    Text("Fine-tune how your \(calorieTarget) kcal are split.")
-                        .font(CalorynTheme.bodyText)
-                        .foregroundStyle(CalorynTheme.textSecondary)
-                }
-                .padding(.top, 8)
+            VStack(alignment: .leading, spacing: 26) {
+                OnboardingStepHeader(
+                    title: "Macro ratios",
+                    subtitle: "Fine-tune how your \(calorieTarget.formatted()) kcal are split."
+                )
 
-                macroSlider(macro: .protein, ratio: $proteinRatio)
-                macroSlider(macro: .carbs, ratio: $carbRatio)
-                macroSlider(macro: .fat, ratio: $fatRatio)
+                VStack(spacing: 0) {
+                    OnboardingHairline()
+                    macroSlider(macro: .protein, ratio: $proteinRatio)
+                    OnboardingHairline()
+                    macroSlider(macro: .carbs, ratio: $carbRatio)
+                    OnboardingHairline()
+                    macroSlider(macro: .fat, ratio: $fatRatio)
+                }
 
                 if let validationMessage = selection.validationMessage {
                     Text(validationMessage)
-                        .font(CalorynTheme.caption)
-                        .foregroundStyle(CalorynTheme.terracotta)
+                        .font(OnboardingTypography.detail.weight(.semibold))
+                        .foregroundStyle(CalorynTheme.textPrimary)
                         .transition(.opacity)
                 }
             }
             .padding(.horizontal, CalorynTheme.pagePadding)
-            .padding(.bottom, 100)
+            .padding(.top, 8)
+            .padding(.bottom, 24)
         }
         .safeAreaInset(edge: .bottom) {
-            Button(action: onComplete) {
-                Text(primaryButtonTitle)
-                    .font(CalorynTheme.buttonLabel)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
+            OnboardingActionBar {
+                Button(action: onComplete) {
+                    Text(primaryButtonTitle)
+                }
+                .calorynPrimaryButton()
+                .disabled(!selection.isValid)
+                .accessibilityIdentifier("onboarding.macroRatios.continue")
             }
-            .adaptiveGlassProminentButton()
-            .disabled(!selection.isValid)
-            .padding(.horizontal, CalorynTheme.pagePadding)
-            .padding(.bottom, 16)
-            .accessibilityIdentifier("onboarding.macroRatios.continue")
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -66,7 +64,8 @@ struct MacroRatioStepView: View {
                     onComplete()
                 } label: {
                     Text("Skip")
-                        .foregroundStyle(CalorynTheme.textSecondary)
+                        .font(CalorynTheme.toolbarAction)
+                        .foregroundStyle(CalorynTheme.textPrimary)
                 }
             }
         }
@@ -79,42 +78,31 @@ struct MacroRatioStepView: View {
 
     // MARK: - Macro Slider
 
-    private func color(for macro: MacroRatioSelection.Macro) -> Color {
-        switch macro {
-        case .protein: CalorynTheme.proteinColor
-        case .carbs: CalorynTheme.carbColor
-        case .fat: CalorynTheme.fatColor
-        }
-    }
-
+    /// Macros are told apart by their label, never by colour: one ink for all three. At
+    /// accessibility sizes the name goes above its figures, so it is never broken mid-word.
     private func macroSlider(
         macro: MacroRatioSelection.Macro,
         ratio: Binding<Double>
     ) -> some View {
-        let color = color(for: macro)
-
-        return VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Circle()
-                    .fill(color)
-                    .frame(width: 10, height: 10)
+        VStack(alignment: .leading, spacing: 8) {
+            OnboardingAdaptiveRow(alignment: .firstTextBaseline, spacing: 10) {
                 Text(macro.displayName)
-                    .font(CalorynTheme.itemTitle)
+                    .font(OnboardingTypography.choiceTitle)
                     .foregroundStyle(CalorynTheme.textPrimary)
-                Spacer()
+            } trailing: {
                 Text(selection.percentText(for: macro))
-                    .font(CalorynTheme.numericBody)
-                    .foregroundStyle(color)
-                Text("·")
-                    .foregroundStyle(CalorynTheme.textSecondary)
+                    .font(CalorynTheme.numericBody.weight(.semibold))
+                    .foregroundStyle(CalorynTheme.textPrimary)
                 Text(selection.gramsText(for: macro))
-                    .font(CalorynTheme.numericCaption)
+                    .font(OnboardingTypography.rowValue)
                     .foregroundStyle(CalorynTheme.textSecondary)
+                    .frame(minWidth: 48, alignment: .trailing)
             }
-            Slider(value: ratio, in: macro.sliderRange, step: 0.05)
-                .tint(color)
+            .accessibilityElement(children: .combine)
+
+            OnboardingSlider(value: ratio, range: macro.sliderRange, step: 0.05, label: macro.displayName)
         }
-        .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
+        .padding(.vertical, 14)
     }
 }
 

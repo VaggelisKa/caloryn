@@ -16,14 +16,15 @@ struct HistoryCalorieTrendChartLayout: Equatable {
         case detail
     }
 
-    /// How prominently one bar is drawn, given what is selected. The view maps
-    /// these to a tint; no colour is decided here.
+    /// Where one bar stands relative to the selection. The drill-down marks the selected bar
+    /// with a ring and an ink axis label; no colour is decided here.
     enum BarEmphasis: Equatable {
         /// Nothing is selected, so every bar reads at full strength.
         case normal
         /// This bar is the selection.
         case selected
-        /// Another bar is the selection, so this one recedes.
+        /// Another bar is the selection. It still keeps its status colour: status is told by
+        /// lightness alone, so a dimmed ink "over" bar would read as an "under" one.
         case muted
     }
 
@@ -75,7 +76,7 @@ struct HistoryCalorieTrendChartLayout: Equatable {
         return axis.slot(for: chartValue)
     }
 
-    /// Selecting a bar dims its neighbours; selecting nothing dims none of them.
+    /// Selecting a bar sets it apart from its neighbours; selecting nothing sets none apart.
     static func barEmphasis(pointID: String, selectedPointID: String?) -> BarEmphasis {
         guard let selectedPointID else { return .normal }
         return selectedPointID == pointID ? .selected : .muted

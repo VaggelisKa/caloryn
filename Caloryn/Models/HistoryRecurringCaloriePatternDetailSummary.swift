@@ -103,7 +103,7 @@ struct HistoryRecurringCaloriePatternDetailSummary: Equatable {
     // MARK: - Meal comparison
 
     /// Singular here: this heading names the meal, not a row of several.
-    var mealComparisonTitle: String { "\(mealType.displayName) Comparison" }
+    var mealComparisonTitle: String { "\(mealType.displayName) comparison" }
 
     /// Zero reads as "+0 kcal" — the sign is about direction of the pattern,
     /// and a pattern with no difference never reaches this screen.
@@ -150,7 +150,7 @@ struct HistoryRecurringCaloriePatternDayRow: Equatable {
     var mealName: String { HistoryMealLabel.rowTitle(for: mealType) }
 
     var totalsText: String {
-        "\(totalCalories.rounded().truncatedSafely.formatted()) kcal logged · \(dailyCalorieTarget.formatted()) kcal target"
+        "\(totalCalories.rounded().truncatedSafely.formatted()) kcal logged, \(dailyCalorieTarget.formatted()) kcal target"
     }
 
     var mealCaloriesText: String {

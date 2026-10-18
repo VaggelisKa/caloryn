@@ -101,6 +101,12 @@ This is a genuine hole in the abstraction and it has no automated guard: SwiftLi
 custom rules can ban a primitive but cannot detect a *missing* modifier. It is covered by
 convention (CLAUDE.md rule 7) and by looking at screenshots, nothing stronger.
 
+**Since the Plate / Market palette, light mode cannot show this bug at all.**
+`CardBackground` is now `#FFFFFF` — exactly the `secondarySystemGroupedBackground` a row
+paints when it has no `.listRowBackground` — so a forgotten modifier renders pixel-identical
+in light mode. Only dark mode tells them apart (`#1C1C1E` against `#262A26`). Check a
+grouped list or form in a **dark** capture; a light one proves nothing about its rows.
+
 ### Audit per struct, not per file
 
 Three unthemed screens — `GoalEditView`, `ProfileEditView`, `MissingFoodEntryView` — hid
@@ -175,7 +181,9 @@ search sheet, its results, those results *while the search is still running*, an
 portion picker, History with both drill-downs, Settings with both editors, My Foods,
 multi-add review and its portion editor, the three creation sheets, and the ingredient
 amount picker — then prints how much of each screen is `pageBackground`,
-`cardBackground`, sage, and pure white.
+`cardBackground`, retired sage, and a system grey (`#F2F2F7` in light; `#1C1C1E`, `#000000`
+or `#2C2C2E` in dark). The token values in the script must move with the Color Sets: after
+the palette change they still held the old ones, and every capture read 0.0% page.
 
 Every extension of this harness so far has found a bug on the screen it was extended to
 reach. That is the argument for adding a capture whenever a screen is touched.
@@ -208,8 +216,10 @@ never builds the list at all, which is a different screen and photographs clean.
 It prefers an already-booted simulator, so running it does not boot a second one alongside
 whichever device you are testing on by hand.
 
-Read the census before opening images: drift shows up as a number. Pure white above ~2% on
-a screen without a keyboard means a `List` or `Form` row is painting its own background.
+Read the census before opening images: drift shows up as a number. A system grey above ~2%
+means a `List` or `Form` is painting over the theme — and since `CardBackground` became pure
+white, the dark column is the only one that can show a stray row (see above). Pure white is
+no longer a signal: it is the sheet canvas and every grouped surface.
 A dark capture whose page/card percentages are 0.0% means the appearance never switched —
 that happened twice, and both times the images were silently light.
 

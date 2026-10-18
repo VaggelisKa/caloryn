@@ -7,16 +7,23 @@ final class SettingsProfileSummaryTests: XCTestCase {
 
         XCTAssertEqual(summary.ageText, "34")
         XCTAssertEqual(summary.heightText, "168 cm")
-        XCTAssertEqual(summary.weightText, "72.5 kg")
+        XCTAssertEqual(summary.weightText(locale: Self.us), "72.5 kg")
     }
 
     func testWeightAlwaysShowsOneDecimal() {
-        XCTAssertEqual(makeSummary(weightKg: 70).weightText, "70.0 kg")
+        XCTAssertEqual(makeSummary(weightKg: 70).weightText(locale: Self.us), "70.0 kg")
     }
 
     func testWeightIsRoundedToTheNearestTenthNotTruncated() {
-        XCTAssertEqual(makeSummary(weightKg: 72.46).weightText, "72.5 kg")
+        XCTAssertEqual(makeSummary(weightKg: 72.46).weightText(locale: Self.us), "72.5 kg")
     }
+
+    /// Pointed for the locale, as the gram figures beside it on Settings are.
+    func testWeightIsPointedForTheLocale() {
+        XCTAssertEqual(makeSummary(weightKg: 72.5).weightText(locale: Locale(identifier: "da_DK")), "72,5 kg")
+    }
+
+    private static let us = Locale(identifier: "en_US")
 
     /// The height slider only produces whole centimetres, so a fraction can only
     /// come from stored data — and it is dropped rather than rounded.
@@ -28,7 +35,7 @@ final class SettingsProfileSummaryTests: XCTestCase {
         let summary = makeSummary(sex: .female, activityLevel: .moderatelyActive)
 
         XCTAssertEqual(summary.sexText, Sex.female.displayName)
-        XCTAssertEqual(summary.activityText, ActivityLevel.moderatelyActive.displayName)
+        XCTAssertEqual(summary.activityText, "Moderately active")
     }
 
     private func makeSummary(

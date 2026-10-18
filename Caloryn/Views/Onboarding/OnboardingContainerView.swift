@@ -200,79 +200,69 @@ struct EnergyCalculationModeStepView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 24) {
-                VStack(spacing: 8) {
-                    Text("Calorie Estimate")
-                        .font(CalorynTheme.sectionTitle)
-                        .foregroundStyle(CalorynTheme.textPrimary)
+            VStack(alignment: .leading, spacing: 26) {
+                OnboardingStepHeader(
+                    title: "Calorie estimate",
+                    subtitle: "Choose how Caloryn estimates your daily calories."
+                )
 
-                    Text("Choose how Caloryn estimates your daily calories.")
-                        .font(CalorynTheme.bodyText)
-                        .foregroundStyle(CalorynTheme.textSecondary)
-                        .multilineTextAlignment(.center)
-                }
-                .padding(.top, 8)
-
-                VStack(spacing: CalorynTheme.cardSpacing) {
-                    EnergyCalculationModeCard(
-                        title: EnergyCalculationMode.lifestyleEstimate.displayName,
+                VStack(spacing: 0) {
+                    OnboardingHairline()
+                    OnboardingChoiceRow(
+                        title: EnergyCalculationMode.lifestyleEstimate.displayName.sentenceCased,
                         detail: "Uses the activity level you choose. Best when your routine stays similar.",
-                        iconName: "figure.walk",
-                        isSelected: selectedMode == .lifestyleEstimate,
-                        isDisabled: false
+                        isSelected: selectedMode == .lifestyleEstimate
                     ) {
-                        onSelectionChanged()
-                        withAnimation(.smooth(duration: 0.25)) {
-                            selectedMode = .lifestyleEstimate
-                        }
+                        select(.lifestyleEstimate)
                     }
 
-                    EnergyCalculationModeCard(
-                        title: EnergyCalculationMode.dynamicHealth.displayName,
+                    OnboardingHairline()
+                    OnboardingChoiceRow(
+                        title: EnergyCalculationMode.dynamicHealth.displayName.sentenceCased,
                         detail: isHealthAvailable
                             ? "Uses Apple Health when activity data is available."
                             : AppleHealthAdjustmentSettings.unavailableMessage,
-                        iconName: "heart.text.square.fill",
                         isSelected: selectedMode == .dynamicHealth,
                         isDisabled: !isHealthAvailable
                     ) {
-                        onSelectionChanged()
-                        withAnimation(.smooth(duration: 0.25)) {
-                            selectedMode = .dynamicHealth
-                        }
+                        select(.dynamicHealth)
                     }
                 }
 
                 if let message {
+                    // The one callout on this step, so it is the grouped surface rather
+                    // than another row.
                     Text(message)
-                        .font(CalorynTheme.caption)
-                        .foregroundStyle(CalorynTheme.terracotta)
+                        .font(OnboardingTypography.detail)
+                        .foregroundStyle(CalorynTheme.textPrimary)
+                        .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
+                        .padding(CalorynTheme.cardPadding)
+                        .calorynGroupSurface()
                 }
             }
             .padding(.horizontal, CalorynTheme.pagePadding)
-            .padding(.bottom, 100)
+            .padding(.top, 8)
+            .padding(.bottom, 24)
         }
         .safeAreaInset(edge: .bottom) {
-            Button(action: onContinue) {
-                HStack(spacing: 8) {
-                    if isRequestingAuthorization {
-                        ProgressView()
-                            .tint(CalorynTheme.warmWhite)
-                    }
+            OnboardingActionBar {
+                Button(action: onContinue) {
+                    HStack(spacing: 8) {
+                        if isRequestingAuthorization {
+                            // Only ever shown while the button is disabled, so it matches
+                            // the disabled label rather than the paper one.
+                            ProgressView()
+                                .tint(CalorynTheme.textSecondary)
+                        }
 
-                    Text(selectedMode == .dynamicHealth ? "Allow & Continue" : "Continue")
-                        .font(CalorynTheme.buttonLabel)
+                        Text(selectedMode == .dynamicHealth ? "Allow and continue" : "Continue")
+                    }
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
+                .calorynPrimaryButton()
+                .disabled(isRequestingAuthorization)
+                .accessibilityIdentifier("onboarding.energyMode.continue")
             }
-            .adaptiveGlassProminentButton()
-            .disabled(isRequestingAuthorization)
-            .padding(.horizontal, CalorynTheme.pagePadding)
-            .padding(.bottom, 16)
-            .accessibilityIdentifier("onboarding.energyMode.continue")
         }
         // Nested in a file whose outer view is the `NavigationStack` itself, which
         // is exactly how an unthemed screen hides from a file-scoped grep — see
@@ -285,79 +275,12 @@ struct EnergyCalculationModeStepView: View {
             }
         }
     }
-}
 
-private struct EnergyCalculationModeCard: View {
-    let title: String
-    let detail: String
-    let iconName: String
-    let isSelected: Bool
-    let isDisabled: Bool
-    var onTap: () -> Void
-
-    private var usesLiquidGlassSelectedStyle: Bool {
-        if #available(iOS 26.0, *) {
-            isSelected
-        } else {
-            false
+    private func select(_ mode: EnergyCalculationMode) {
+        onSelectionChanged()
+        withAnimation(.smooth(duration: 0.25)) {
+            selectedMode = mode
         }
-    }
-
-    private var contentForeground: Color {
-        usesLiquidGlassSelectedStyle ? CalorynTheme.warmWhite : CalorynTheme.textPrimary
-    }
-
-    private var secondaryForeground: Color {
-        usesLiquidGlassSelectedStyle ? CalorynTheme.warmWhite.opacity(0.9) : CalorynTheme.textSecondary
-    }
-
-    private var accentForeground: Color {
-        usesLiquidGlassSelectedStyle ? CalorynTheme.warmWhite : CalorynTheme.sage
-    }
-
-    var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: 14) {
-                Image(systemName: iconName)
-                    .font(CalorynTheme.inlineIcon)
-                    .foregroundStyle(accentForeground)
-                    .frame(width: 36)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(title)
-                        .font(CalorynTheme.itemTitle)
-                        .foregroundStyle(contentForeground)
-
-                    Text(detail)
-                        .font(CalorynTheme.caption)
-                        .foregroundStyle(secondaryForeground)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                Spacer(minLength: 8)
-
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .foregroundStyle(accentForeground)
-                    .font(CalorynTheme.inlineIcon)
-                    .accessibilityHidden(true)
-            }
-            .padding(CalorynTheme.cardPadding)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            // Same hit-area fix as the activity level cards: the label's
-            // glyphs, not the card, would otherwise be the tap target.
-            .contentShape(
-                [.interaction, .accessibility],
-                .rect(cornerRadius: CalorynTheme.smallCornerRadius)
-            )
-            .adaptiveSelectableGlass(
-                isSelected: isSelected,
-                cornerRadius: CalorynTheme.smallCornerRadius
-            )
-            .opacity(isDisabled ? 0.48 : 1)
-        }
-        .buttonStyle(.plain)
-        .disabled(isDisabled)
-        .accessibilityLabel("\(title), \(isSelected ? "selected" : "not selected")")
     }
 }
 

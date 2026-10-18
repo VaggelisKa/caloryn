@@ -109,7 +109,7 @@ struct HistoryRecurringCaloriePattern: Identifiable {
     }
 
     var basisText: String {
-        "Based on \(eligibleDayCount) logged days · Last 30 days"
+        "Based on \(eligibleDayCount) logged days in the last 30 days"
     }
 
     var outcomeComparisonText: String {

@@ -26,8 +26,11 @@ struct MyFoodsView: View {
 
     var body: some View {
         NavigationStack {
+            // The canvas goes inside the stack: a plain list paints nothing of its own, and
+            // outside it the stack's system background covers the page.
             libraryContent
-            .navigationTitle("My Foods")
+            .calorynPageCanvas()
+            .calorynLargeTitle("My Foods")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     createMenu
@@ -78,12 +81,14 @@ struct MyFoodsView: View {
                 Text(mealErrorMessage ?? "Please try again.")
             }
         }
-        .calorynPageCanvas()
     }
 
     /// An empty section is dropped rather than filled with a placeholder, so
     /// a library with one manual entry is one section with one row. When
     /// there is nothing at all the list gives way to a single empty state.
+    ///
+    /// A page, not cards: hairline lists straight on the canvas, in the board's
+    /// order — what you reach for most, then whole meals, then what you made.
     @ViewBuilder
     private var libraryContent: some View {
         let listing = listing
@@ -94,30 +99,31 @@ struct MyFoodsView: View {
             List {
                 if listing.showsFavoritesSection {
                     favoritesSection
-                        .listRowBackground(CalorynTheme.cardBackground)
-                }
-
-                if listing.showsRecipesSection {
-                    recipesSection
-                        .listRowBackground(CalorynTheme.cardBackground)
+                        .libraryHairlineSection()
                 }
 
                 if listing.showsMealsSection {
                     mealsSection
-                        .listRowBackground(CalorynTheme.cardBackground)
+                        .libraryHairlineSection()
+                }
+
+                if listing.showsRecipesSection {
+                    recipesSection
+                        .libraryHairlineSection()
                 }
 
                 if listing.showsManualEntriesSection {
                     manualEntriesSection
-                        .listRowBackground(CalorynTheme.cardBackground)
+                        .libraryHairlineSection()
                 }
 
                 if listing.showsEditedProductCatalogSection {
                     editedProductCatalogSection
-                        .listRowBackground(CalorynTheme.cardBackground)
+                        .libraryHairlineSection()
                 }
             }
-            .calorynGroupedListStyle()
+            .calorynPlainListStyle()
+            .listSectionSpacing(.compact)
         }
     }
 
@@ -130,12 +136,18 @@ struct MyFoodsView: View {
     /// system background *over* `calorynPageCanvas()`, exactly as a `List` does — this
     /// shipped at 77.8% pure white in light mode with every test green, and only the
     /// colour census caught it.
+    ///
+    /// `ContentUnavailableView` draws its title and description in the primary level of the
+    /// foreground style and only its glyph in the secondary, so the description names its own
+    /// secondary text; without these they are the system's own label greys.
     private var emptyLibraryView: some View {
         ContentUnavailableView {
-            Label("Your Food Library Is Empty", systemImage: "takeoutbag.and.cup.and.straw")
+            Label("Your food library is empty", systemImage: "takeoutbag.and.cup.and.straw")
         } description: {
             Text("Foods, recipes and meals you save appear here, ready to log in one tap.")
+                .foregroundStyle(CalorynTheme.textSecondary)
         }
+        .foregroundStyle(CalorynTheme.textPrimary, CalorynTheme.textSecondary)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background {
             CalorynTheme.pageBackground
@@ -150,7 +162,8 @@ struct MyFoodsView: View {
                 Button {
                     editingMeal = meal
                 } label: {
-                    MealTemplateLibraryRow(template: meal)
+                    LibraryMealRow(template: meal)
+                        .libraryRowSeparatorInset()
                 }
                 .buttonStyle(.plain)
                 .swipeActions(edge: .trailing) {
@@ -162,9 +175,7 @@ struct MyFoodsView: View {
                 }
             }
         } header: {
-            Text("Meals")
-                .font(CalorynTheme.caption)
-                .foregroundStyle(CalorynTheme.textSecondary)
+            LibrarySectionHeader(title: "Meals", count: mealTemplates.count)
         }
     }
 
@@ -186,9 +197,10 @@ struct MyFoodsView: View {
                         Spacer()
                         Image(systemName: showsAllFavorites ? "chevron.up" : "chevron.down")
                     }
-                    .font(CalorynTheme.caption)
-                    .foregroundStyle(CalorynTheme.sage)
+                    .font(CalorynTheme.cardSubtitle.weight(.semibold))
+                    .foregroundStyle(CalorynTheme.textPrimary)
                     .contentShape(Rectangle())
+                    .libraryRowSeparatorInset()
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(
@@ -198,13 +210,7 @@ struct MyFoodsView: View {
                 )
             }
         } header: {
-            HStack {
-                Label("Favorites", systemImage: "star.fill")
-                Spacer()
-                Text("\(listing.favorites.count)")
-            }
-            .font(CalorynTheme.caption)
-            .foregroundStyle(CalorynTheme.textSecondary)
+            LibrarySectionHeader(title: "Favorites", count: listing.favorites.count, marksFavorites: true)
         }
     }
 
@@ -231,7 +237,7 @@ struct MyFoodsView: View {
         } label: {
             Image(systemName: "plus")
                 .font(CalorynTheme.toolbarIcon)
-                .foregroundStyle(CalorynTheme.sage)
+                .foregroundStyle(CalorynTheme.textPrimary)
         }
         .accessibilityLabel("Create Food")
         .accessibilityIdentifier("myFoods.createMenu")
@@ -249,9 +255,7 @@ struct MyFoodsView: View {
                     }
             }
         } header: {
-            Text("Manual Entries")
-                .font(CalorynTheme.caption)
-                .foregroundStyle(CalorynTheme.textSecondary)
+            LibrarySectionHeader(title: "Your own entries", count: listing.nonFavoriteManualEntries.count)
         }
     }
 
@@ -267,9 +271,7 @@ struct MyFoodsView: View {
                     }
             }
         } header: {
-            Text("Recipes")
-                .font(CalorynTheme.caption)
-                .foregroundStyle(CalorynTheme.textSecondary)
+            LibrarySectionHeader(title: "Recipes", count: listing.nonFavoriteRecipes.count)
         }
     }
 
@@ -284,17 +286,16 @@ struct MyFoodsView: View {
                         ? "1 product"
                         : "\(editedProductCount) products"
                 )
-                .font(CalorynTheme.bodyText)
+                .font(LibraryRowStyle.name)
                 .foregroundStyle(CalorynTheme.textPrimary)
+                .libraryRowSeparatorInset()
             }
             .accessibilityLabel(
-                "Edited Product Catalog, \(editedProductCount) "
+                "Edited product catalog, \(editedProductCount) "
                     + (editedProductCount == 1 ? "product" : "products")
             )
         } header: {
-            Text("Edited Product Catalog")
-                .font(CalorynTheme.caption)
-                .foregroundStyle(CalorynTheme.textSecondary)
+            LibrarySectionHeader(title: "Edited products", count: editedProductCount)
         }
     }
 
@@ -306,28 +307,28 @@ struct MyFoodsView: View {
                 editingManualEntry = food
             }
         } label: {
-            if food.isRecipe {
-                RecipeLibraryRow(recipe: food)
-            } else {
-                manualEntryRow(for: food)
+            Group {
+                if food.isRecipe {
+                    // Among favorites a recipe or a food of your own sits with other kinds of
+                    // food, so it says what it is; under "Recipes" and "Your own entries" the
+                    // section title already does.
+                    RecipeLibraryRow(recipe: food, showsTypeBadge: food.isFavorite)
+                } else {
+                    manualEntryRow(for: food)
+                }
             }
+            .libraryRowSeparatorInset()
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("myFoods.food.\(food.name)")
     }
 
     private func manualEntryRow(for food: FoodItem) -> some View {
-        FoodRowView(
-            name: food.name,
-            brand: food.brand,
-            caloriesPer100g: food.caloriesPer100g,
+        LibraryFoodRow(
+            summary: LibraryFoodRowSummary(food: food),
             nutriscoreGrade: food.nutriscoreGrade,
-            servingDescription: food.servingDescription,
-            caloriesPerServing: food.calories(forGrams: food.defaultServingG ?? 100),
-            isCustom: true,
-            showsTypeBadge: false
+            showsTypeBadge: food.isFavorite
         )
-        .contentShape(Rectangle())
     }
 
     private func delete(_ food: FoodItem) {
@@ -348,6 +349,11 @@ struct MyFoodsView: View {
         }
     }
 
+    /// A swipe action draws its label in white whatever the tint, so the tint has to be dark
+    /// in both appearances: ink is near-white in dark mode, and the retired terracotta is out
+    /// of the palette. `swipeActionTint` is a neutral dark grey in both (`historyEaten`, used
+    /// before, lightens to 3:1 under white in dark), and a favorite is not a meal, so it
+    /// takes no meal colour.
     private func favoriteButton(for food: FoodItem) -> some View {
         Button {
             toggleFavorite(food)
@@ -357,7 +363,7 @@ struct MyFoodsView: View {
                 systemImage: food.isFavorite ? "star.slash" : "star"
             )
         }
-        .tint(food.isFavorite ? CalorynTheme.textSecondary : CalorynTheme.terracotta)
+        .tint(CalorynTheme.swipeActionTint)
     }
 
     private func deleteButton(for food: FoodItem) -> some View {
@@ -411,7 +417,6 @@ struct MyFoodsView: View {
 }
 
 private struct EditedProductCatalogView: View {
-    @Environment(\.dismiss) private var dismiss
     @Query(sort: \FoodItem.name) private var foodItems: [FoodItem]
 
     @State private var searchText = ""
@@ -428,55 +433,51 @@ private struct EditedProductCatalogView: View {
     var body: some View {
         Group {
             if products.isEmpty {
+                // Each is the whole screen, the shape that painted a system background over
+                // the canvas on My Foods' own empty state, so each covers it the same way.
                 if hasEditedProducts {
                     ContentUnavailableView.search(text: searchText)
+                        .onCatalogCanvas()
                 } else {
                     ContentUnavailableView(
-                        "No Edited Products",
+                        "No edited products",
                         systemImage: "square.and.pencil",
                         description: Text(
                             "Products you personalize from the catalog will appear here."
                         )
+                        .foregroundStyle(CalorynTheme.textSecondary)
                     )
+                    .onCatalogCanvas()
                 }
             } else {
-                List(products) { product in
-                    Button {
-                        editingProduct = product
-                    } label: {
-                        FoodRowView(
-                            name: product.name,
-                            brand: product.brand,
-                            caloriesPer100g: product.caloriesPer100g,
-                            nutriscoreGrade: product.nutriscoreGrade,
-                            servingDescription: product.servingDescription,
-                            caloriesPerServing: product.calories(
-                                forGrams: product.defaultServingG ?? 100
-                            ),
-                            showsTypeBadge: false
-                        )
-                        .contentShape(Rectangle())
+                // A page list like the library it drills down from: hairline rows on the
+                // canvas. As a grouped list it had no row backgrounds, so its rows painted
+                // the system's own grouped white over the theme.
+                List {
+                    Section {
+                        ForEach(products) { product in
+                            Button {
+                                editingProduct = product
+                            } label: {
+                                LibraryFoodRow(
+                                    summary: LibraryFoodRowSummary(food: product),
+                                    nutriscoreGrade: product.nutriscoreGrade
+                                )
+                                .libraryRowSeparatorInset()
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
-                    .buttonStyle(.plain)
+                    .libraryHairlineSection()
                 }
-                .calorynGroupedListStyle()
+                .calorynPlainListStyle()
             }
         }
-        .navigationTitle("Edited Product Catalog")
+        .foregroundStyle(CalorynTheme.textPrimary, CalorynTheme.textSecondary)
+        .calorynPageCanvas()
+        .navigationTitle("Edited product catalog")
         .navigationBarTitleDisplayMode(.inline)
-        .navigationBarBackButtonHidden()
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: "chevron.left")
-                        .font(CalorynTheme.toolbarIcon)
-                        .foregroundStyle(CalorynTheme.sage)
-                }
-                .accessibilityLabel("Back")
-            }
-        }
+        .calorynDrillDownNavigation()
         .searchable(
             text: $searchText,
             placement: .navigationBarDrawer(displayMode: .always),
@@ -486,44 +487,62 @@ private struct EditedProductCatalogView: View {
             CustomFoodFormView(existingFood: product)
                 .presentationDragIndicator(.visible)
         }
-        .calorynPageCanvas()
     }
 }
 
-private struct RecipeLibraryRow: View {
-    let recipe: FoodItem
+private extension View {
+    /// A full-screen `ContentUnavailableView` on the page colour, edge to edge, with its text
+    /// in the theme's ink and secondary rather than the system's label greys. See
+    /// `emptyLibraryView`.
+    func onCatalogCanvas() -> some View {
+        self
+            .foregroundStyle(CalorynTheme.textPrimary, CalorynTheme.textSecondary)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background {
+                CalorynTheme.pageBackground
+                    .ignoresSafeArea()
+            }
+    }
+}
+
+/// A library section's title: 17pt bold ink, with the section's count on the right. Favorites
+/// keeps its outline star, which is what marks a food as one, not decoration.
+///
+/// A plain list pins its section headers, and before iOS 26 it paints a pinned header's band in
+/// a system grey over the page. The header covers that band with the page colour, edge to edge
+/// (no row insets; its margins are padding inside), which also keeps rows scrolling under a
+/// pinned title from showing through it.
+private struct LibrarySectionHeader: View {
+    let title: String
+    let count: Int
+    var marksFavorites = false
 
     var body: some View {
-        let summary = RecipeLibraryRowSummary(recipe: recipe)
-
-        HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(summary.name)
-                    .font(CalorynTheme.itemTitle)
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            if marksFavorites {
+                Image(systemName: "star")
+                    .font(CalorynTheme.compactIcon)
                     .foregroundStyle(CalorynTheme.textPrimary)
-                    .lineLimit(1)
-
-                Text(summary.detail)
-                    .font(CalorynTheme.caption)
-                    .foregroundStyle(CalorynTheme.textSecondary)
-                    .lineLimit(1)
+                    .accessibilityHidden(true)
             }
 
-            Spacer(minLength: 12)
+            Text(title)
+                .font(CalorynTheme.sectionHeaderTitle)
+                .foregroundStyle(CalorynTheme.textPrimary)
 
-            VStack(alignment: .trailing, spacing: 2) {
-                Text(summary.caloriesText)
-                    .font(CalorynTheme.numericBody)
-                    .foregroundStyle(CalorynTheme.textPrimary)
+            Spacer(minLength: 8)
 
-                Text("kcal total")
-                    .font(CalorynTheme.numericMicroCaption)
-                    .foregroundStyle(CalorynTheme.textSecondary)
-            }
+            Text("\(count)")
+                .font(CalorynTheme.sectionHeaderDetail)
+                .foregroundStyle(CalorynTheme.textSecondary)
         }
-        .padding(.vertical, 6)
-        .contentShape(Rectangle())
+        .textCase(nil)
+        .padding(LibraryRowStyle.headerPadding)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(CalorynTheme.pageBackground)
+        .listRowInsets(EdgeInsets())
         .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
     }
 }
 

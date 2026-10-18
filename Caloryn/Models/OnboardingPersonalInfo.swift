@@ -29,7 +29,7 @@ enum OnboardingPersonalInfo {
     }
 
     /// Kept to one decimal because the slider steps by half a kilogram.
-    static func weightLabel(_ weightKg: Double) -> String {
-        String(format: "%.1f kg", weightKg)
+    static func weightLabel(_ weightKg: Double, locale: Locale = .current) -> String {
+        weightKg.kilogramsFormatted(locale: locale)
     }
 }

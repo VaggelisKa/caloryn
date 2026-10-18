@@ -42,8 +42,11 @@ final class ThemeScreenshotTests: UITestCase {
     private func captureAllSurfaces(appearance: Appearance) {
         captureOnboarding(appearance)
         captureTodayAndSearch(appearance)
+        captureOverBudgetDay(appearance)
         captureSearchSkeleton(appearance)
         captureSearchInFlight(appearance)
+        captureLookupFailure(appearance, fixture: "search-offline", named: "03e-food-search-offline")
+        captureLookupFailure(appearance, fixture: "barcode-not-found", named: "03f-barcode-not-found")
         capturePortionPicker(appearance)
         captureMultiAddReview(appearance)
         captureHistoryDrillDown(appearance)
@@ -120,6 +123,80 @@ final class ThemeScreenshotTests: UITestCase {
         attach(app, "03-food-search-results", appearance)
     }
 
+    /// Add Food opened on a failure: a name search that could not reach the provider, or a
+    /// scanned barcode the provider does not know. The lookup fixture seeds the failure as
+    /// the sheet opens, so neither needs a network or the camera.
+    private func captureLookupFailure(_ appearance: Appearance, fixture: String, named name: String) {
+        let app = launch(fixture: .customFoods, appearance: appearance, lookupFixture: fixture)
+        let today = TodayScreen(app: app)
+
+        XCTAssertTrue(today.isVisible, "Today should render")
+        let addBreakfast = today.mealHeader("breakfast")
+        XCTAssertTrue(addBreakfast.awaitExistence(), "Breakfast add button missing")
+        addBreakfast.tap()
+
+        XCTAssertTrue(searchField(in: app).awaitExistence(), "Food search sheet did not present")
+        sleep(2)
+        attach(app, name, appearance)
+    }
+
+    /// Today over budget, and the three sheets only a logged day opens: Nutrition Details
+    /// (at rest, and at the large detent scrolled to its foot), the edit-mode Portion sheet,
+    /// and the editor for an entry whose food was deleted.
+    ///
+    /// None of these was captured while the restyle was built, and the missing-food editor
+    /// was the one screen a hand-run sweep still found in system red and a system-grey date
+    /// pill. The PlateOver and PlateDetails boards have no other capture here.
+    private func captureOverBudgetDay(_ appearance: Appearance) {
+        let app = launch(fixture: .overBudgetDay, appearance: appearance)
+        let today = TodayScreen(app: app)
+
+        XCTAssertTrue(today.isVisible, "Today should render")
+        sleep(1)
+        attach(app, "01b-today-over-budget", appearance)
+
+        today.calorieRing.tap()
+        let consumed = app.descendants(matching: .any)
+            .matching(identifier: "nutritionDetails.consumedCalories").firstMatch
+        XCTAssertTrue(consumed.awaitExistence(), "Nutrition Details did not open")
+        sleep(1)
+        attach(app, "01c-nutrition-details", appearance)
+
+        // The sheet opens at its medium detent, so its lower half — fruit and veg, the
+        // Nutri-Score counts, the other nutrients and the data-quality note — never reached
+        // a capture. Swiping its content up first takes the sheet to the large detent; the
+        // swipes after that scroll it to its foot.
+        consumed.swipeUp()
+        let dataQualityNote = app.descendants(matching: .any)
+            .matching(identifier: "nutritionDetails.dataQualityNote").firstMatch
+        scrollTo(dataQualityNote, in: app)
+        app.swipeUp()
+        sleep(1)
+        attach(app, "01d-nutrition-details-bottom", appearance)
+        dismissSheet(in: app)
+
+        // A logged food opens the Portion sheet in edit mode, with its delete action.
+        let garlicBread = today.entry(named: "Garlic bread")
+        scrollTo(garlicBread, in: app)
+        garlicBread.tap()
+        let delete = app.descendants(matching: .any)
+            .matching(identifier: "portionPicker.delete").firstMatch
+        XCTAssertTrue(delete.awaitExistence(), "The edit-mode Portion sheet did not open")
+        sleep(1)
+        attach(app, "03d-portion-edit", appearance)
+        dismissSheet(in: app)
+
+        // The red wine's saved food was deleted, so its row opens the snapshot editor.
+        let redWine = today.entry(named: "Red wine")
+        scrollTo(redWine, in: app)
+        redWine.tap()
+        let portion = app.descendants(matching: .any)
+            .matching(identifier: "missingEntry.portion").firstMatch
+        XCTAssertTrue(portion.awaitExistence(), "The missing-food editor did not open")
+        sleep(1)
+        attach(app, "01d-missing-food-editor", appearance)
+    }
+
     /// The full-screen skeleton: a query in flight with nothing local to show beside it.
     ///
     /// `loggedDay` seeds only Oats, so the fixture's "salad" query matches nothing locally
@@ -146,7 +223,7 @@ final class ThemeScreenshotTests: UITestCase {
             "The sheet is not on the loading skeleton, so this photographs some other state"
         )
         sleep(1)
-        attach(app, "03d-food-search-skeleton", appearance)
+        attach(app, "03g-food-search-skeleton", appearance)
     }
 
     /// Results with the search still running, which no other capture can show.
@@ -364,6 +441,10 @@ final class ThemeScreenshotTests: UITestCase {
             .matching(NSPredicate(format: "identifier BEGINSWITH %@", "foodSearch.result."))
             .firstMatch
         XCTAssertTrue(ingredient.awaitExistence(), "No food to add as an ingredient")
+        // The ingredient search is the one list whose section titles pin, which before
+        // iOS 26 paints a pinned header's band unless the header covers it.
+        sleep(1)
+        attach(app, "11b-ingredient-search", appearance)
         ingredient.tap()
         sleep(1)
         attach(app, "12-ingredient-amount", appearance)
@@ -427,6 +508,12 @@ final class ThemeScreenshotTests: UITestCase {
         sleep(1)
         attach(app, "06c-settings-edit-profile", appearance)
         back(in: app)
+
+        // Below the fold: the reminder, data (iCloud sync on) and about groups. Its switches
+        // are where an on state's knob vanished on an ink track in dark mode.
+        for _ in 0 ..< 4 { app.swipeUp() }
+        sleep(1)
+        attach(app, "06d-settings-bottom", appearance)
 
         tabs.go(to: .myFoods)
         sleep(1)
@@ -503,6 +590,18 @@ final class ThemeScreenshotTests: UITestCase {
             app.swipeUp()
         }
         XCTAssertTrue(element.exists && element.isHittable, "Never scrolled to \(element)")
+    }
+
+    /// Closes the sheet on top with its themed close button ("Close"), which every food-log
+    /// and Today sheet carries; falls back to a downward swipe for one without.
+    private func dismissSheet(in app: XCUIApplication) {
+        let close = app.buttons["Close"].firstMatch
+        if close.waitForExistence(timeout: 3) {
+            close.tap()
+        } else {
+            app.swipeDown(velocity: .fast)
+        }
+        sleep(1)
     }
 
     /// Pops a pushed detail screen.

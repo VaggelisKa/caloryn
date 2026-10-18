@@ -63,7 +63,7 @@ final class MacroRatioSelectionTests: XCTestCase {
         let selection = makeSelection(calorieTarget: 0, protein: 0.30, carbs: 0.40, fat: 0.30)
 
         XCTAssertEqual(selection.grams(for: .protein), 0)
-        XCTAssertEqual(selection.gramsText(for: .protein), "0g")
+        XCTAssertEqual(selection.gramsText(for: .protein), "0 g")
     }
 
     // MARK: - Text
@@ -72,8 +72,8 @@ final class MacroRatioSelectionTests: XCTestCase {
         let selection = makeSelection(calorieTarget: 2_000, protein: 0.30, carbs: 0.40, fat: 0.30)
 
         XCTAssertEqual(selection.percentText(for: .protein), "30%")
-        XCTAssertEqual(selection.gramsText(for: .carbs), "200g")
-        XCTAssertEqual(selection.gramsText(for: .fat), "66g")
+        XCTAssertEqual(selection.gramsText(for: .carbs), "200 g")
+        XCTAssertEqual(selection.gramsText(for: .fat), "66 g")
     }
 
     /// `Int(_:)` terminates the process on a value that is not finite. These
@@ -83,7 +83,7 @@ final class MacroRatioSelectionTests: XCTestCase {
         let selection = makeSelection(protein: .nan, carbs: .infinity, fat: 0.30)
 
         XCTAssertEqual(selection.percentText(for: .protein), "0%")
-        XCTAssertEqual(selection.gramsText(for: .protein), "0g")
+        XCTAssertEqual(selection.gramsText(for: .protein), "0 g")
         XCTAssertFalse(selection.isValid)
         XCTAssertNotNil(selection.validationMessage)
     }

@@ -14,21 +14,44 @@ struct DailyReminderSettingsSection: View {
     @AppStorage("dailyReminderEnabled") private var isEnabled = false
     @AppStorage("dailyReminderMinutesFromMidnight") private var reminderMinutes = DailyReminderPlanner.defaultReminderMinutes
     @State private var isPermissionDenied = false
+    @State private var isPickingTime = false
 
     var body: some View {
         Section {
             Toggle(isOn: enableBinding) {
-                Label("Daily Reminder", systemImage: "bell.badge")
-                    .foregroundStyle(CalorynTheme.textPrimary)
+                SettingsToggleLabel(title: "Daily reminder")
             }
 
             if isEnabled {
-                DatePicker(
-                    "Remind me at",
-                    selection: reminderTimeBinding,
-                    displayedComponents: .hourAndMinute
-                )
-                .foregroundStyle(CalorynTheme.textPrimary)
+                // The time as a value, as PlateSettings draws it ("20:30" in secondary
+                // text), opening a wheel under the row on tap. A compact `DatePicker` drew
+                // the time in a system-filled pill, the same off-token grey as a stock
+                // stepper's.
+                Button {
+                    withAnimation(.smooth(duration: 0.25)) {
+                        isPickingTime.toggle()
+                    }
+                } label: {
+                    SettingsValueRow(
+                        title: "Remind me at",
+                        value: reminderTimeBinding.wrappedValue.formatted(date: .omitted, time: .shortened),
+                        valueIsInk: isPickingTime
+                    )
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint(isPickingTime ? "Double tap to close the time picker" : "Double tap to change the time")
+
+                if isPickingTime {
+                    DatePicker(
+                        "Remind me at",
+                        selection: reminderTimeBinding,
+                        displayedComponents: .hourAndMinute
+                    )
+                    .datePickerStyle(.wheel)
+                    .labelsHidden()
+                    .frame(maxWidth: .infinity)
+                }
             }
 
             if isPermissionDenied {
@@ -48,6 +71,7 @@ struct DailyReminderSettingsSection: View {
 
                             Text("Open App Settings")
                         }
+                        .foregroundStyle(CalorynTheme.textPrimary)
                     }
                     .font(CalorynTheme.caption)
                     .buttonStyle(.borderless)
@@ -55,9 +79,9 @@ struct DailyReminderSettingsSection: View {
                 }
             }
         } header: {
-            Text("Notifications")
+            SettingsSectionTitle("Reminder")
         } footer: {
-            Text("Get one reminder a day with how many calories you have left to reach your goal. It skips days when you're within \(DailyReminderPlanner.minimumRemainingKcal) calories of your goal.")
+            SettingsSectionFooter("Get one reminder a day with how many calories you have left to reach your goal. It skips days when you're within \(DailyReminderPlanner.minimumRemainingKcal) calories of your goal.")
         }
         .task(id: scenePhase) {
             guard scenePhase == .active else { return }

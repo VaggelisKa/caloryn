@@ -198,6 +198,17 @@ struct PortionSelection: Equatable {
         gramsInput = Self.formattedGrams(portionGrams)
     }
 
+    /// The user tapped the stepper's minus or plus.
+    ///
+    /// Steps from the portion rather than from the text: typing already moves the portion
+    /// on every keystroke, and a box emptied mid-edit should step from what is logged, not
+    /// from nothing.
+    mutating func gramsStepped(_ step: GramStep) {
+        guard mode == .grams else { return }
+        setGrams(Self.stepped(portionGrams, step))
+        gramsInput = Self.formattedGrams(portionGrams)
+    }
+
     private mutating func setGrams(_ grams: Double) {
         portionGrams = grams
         if shape.isRecipe {
@@ -339,6 +350,24 @@ struct PortionSelection: Equatable {
         return deduplicated.count == quickGramOptionCount ? deduplicated : fallbackQuickGramOptions
     }
 
+    /// A quick chip's label. A whole number of the food's countable serving names the
+    /// count, "1 pot, 150 g", as the board's first chip does, so 150, 300 and 450 read as
+    /// one, two and three pots rather than arbitrary amounts. Anything else, and every
+    /// option for a food with no countable serving, is its weight alone: "100 g".
+    static func quickGramOptionLabel(_ grams: Int, serving: ServingInfo?) -> String {
+        let weight = "\(grams) g"
+        guard let serving, serving.gramsPerUnit.isFinite, serving.gramsPerUnit > 0 else {
+            return weight
+        }
+        let count = (Double(grams) / serving.gramsPerUnit).rounded()
+        guard count >= 1, count <= Double(maximumServingCountLimit),
+              (count * serving.gramsPerUnit).rounded().truncatedSafely == grams
+        else {
+            return weight
+        }
+        return "\(serving.label(for: count.truncatedSafely)), \(weight)"
+    }
+
     /// Whole grams only, within range. `nil` for anything the field cannot
     /// mean, which the caller reads as "leave the portion alone".
     static func parsedGrams(_ text: String) -> Int? {
@@ -351,6 +380,24 @@ struct PortionSelection: Equatable {
 
     static func clampedGrams(_ grams: Int) -> Int {
         max(minimumGrams, min(maximumGrams, grams))
+    }
+
+    /// One press of the grams stepper's minus or plus.
+    enum GramStep {
+        case less
+        case more
+    }
+
+    /// How far one press of the stepper moves the portion.
+    static let gramStepSize: Double = 10
+
+    /// `grams` moved one step, kept within the same bounds a typed weight is. A fraction
+    /// scaled in from elsewhere keeps its fraction: the step adds exactly ten grams rather
+    /// than snapping to a multiple of ten, so "137.5 g" becomes "147.5 g".
+    static func stepped(_ grams: Double, _ step: GramStep) -> Double {
+        guard grams.isFinite else { return Double(minimumGrams) }
+        let moved = grams + (step == .more ? gramStepSize : -gramStepSize)
+        return max(Double(minimumGrams), min(Double(maximumGrams), moved))
     }
 
     /// How a portion reads in the field. Whole grams lose their decimal point,

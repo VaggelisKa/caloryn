@@ -4,9 +4,9 @@ import Foundation
 ///
 /// Takes the recipe's serving size, its ingredient count and its per-100g
 /// macros rather than the `FoodItem`, because that is all the row depends on.
-/// A recipe with no serving size recorded still has macros worth showing, so
-/// the gram figure drops out of the detail line rather than the line reading
-/// "0g".
+/// A recipe with no serving size recorded still has ingredients worth naming,
+/// so the gram figure drops out of the detail line rather than the line reading
+/// "0 g".
 struct RecipeLibraryRowSummary: Equatable {
     let name: String
     let totalGrams: Double
@@ -44,22 +44,18 @@ struct RecipeLibraryRowSummary: Equatable {
         ingredientCount == 1 ? "1 ingredient" : "\(ingredientCount) ingredients"
     }
 
-    var macroLabel: String {
-        "\(protein.macroFormatted) P · \(carbs.macroFormatted) C · \(fat.macroFormatted) F"
-    }
-
     var gramsText: String {
-        "\(totalGrams.rounded().truncatedSafely)g"
+        "\(totalGrams.rounded().truncatedSafely) g"
     }
 
-    /// A recipe that weighs nothing skips the gram figure rather than claiming
-    /// "0g".
+    /// "4 ingredients, 450 g": comma-joined, no macros (they live in the recipe itself). A
+    /// recipe that weighs nothing skips the gram figure rather than claiming "0 g".
     var detail: String {
         guard totalGrams > 0 else {
-            return "\(ingredientLabel) · \(macroLabel)"
+            return ingredientLabel
         }
 
-        return "\(ingredientLabel) · \(gramsText) · \(macroLabel)"
+        return "\(ingredientLabel), \(gramsText)"
     }
 
     // MARK: - Trailing total

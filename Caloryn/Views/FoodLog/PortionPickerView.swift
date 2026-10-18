@@ -74,8 +74,7 @@ struct PortionPickerView: View {
     private var previewCalories: Double { previewNutrition.calories }
     private var isEditing: Bool { existingEntry != nil }
     private var saveButtonTitle: String {
-        if isEditing { return "Save Changes" }
-        return activeFoodItem.isRecipe ? "Log Recipe" : "Log Food"
+        FoodLogSheetCopy.portionSaveTitle(isEditing: isEditing, meal: selectedMeal)
     }
 
     private var activeFoodItem: FoodItem {
@@ -90,11 +89,11 @@ struct PortionPickerView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 24) {
+            VStack(alignment: .leading, spacing: 22) {
                 foodHeader
 
                 if activeFoodItem.provenance.warrantsNutritionNotice {
-                    nutritionCompletenessCard
+                    nutritionCompletenessNote
                 }
 
                 caloriePreview
@@ -106,7 +105,8 @@ struct PortionPickerView: View {
                 nutritionPreview
             }
             .padding(.horizontal, CalorynTheme.pagePadding)
-            .padding(.bottom, 100)
+            .padding(.top, 8)
+            .padding(.bottom, 24)
             .dismissesGramKeypadOnTap($isGramsFieldFocused)
         }
         // `.immediately`, not `.interactively`: interactive dismissal only
@@ -114,10 +114,14 @@ struct PortionPickerView: View {
         // higher up the page left it sitting there.
         .scrollDismissesKeyboard(.immediately)
         .calorynSheetCanvas()
-        .navigationTitle(isEditing ? "Edit Portion" : "Portion")
+        .navigationTitle(isEditing ? "Edit portion" : "Portion")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(!isEditing)
         .toolbar {
+            ToolbarItem(placement: .principal) {
+                FoodLogSheetTitle(title: isEditing ? "Edit portion" : "Portion")
+            }
+
             if isEditing {
                 ToolbarItem(placement: .cancellationAction) {
                     Button {
@@ -125,20 +129,21 @@ struct PortionPickerView: View {
                     } label: {
                         Image(systemName: "xmark")
                             .font(CalorynTheme.toolbarIcon)
-                            .foregroundStyle(CalorynTheme.sage)
+                            .foregroundStyle(CalorynTheme.textPrimary)
                     }
                     .accessibilityLabel("Close")
                 }
 
                 ToolbarItem(placement: .topBarTrailing) {
+                    // Ink, not red: red is lunch now. The confirmation dialog that
+                    // follows is where the destructive colour belongs.
                     Button(role: .destructive) {
                         showingDeleteConfirmation = true
                     } label: {
-                        Label("Delete", systemImage: "trash.fill")
+                        Label("Delete", systemImage: "trash")
                             .font(CalorynTheme.toolbarIcon)
-                            .foregroundStyle(.red)
+                            .foregroundStyle(CalorynTheme.textPrimary)
                     }
-                    .tint(.red)
                     .accessibilityLabel("Delete Log Entry")
                     .accessibilityIdentifier("portionPicker.delete")
                 }
@@ -149,7 +154,7 @@ struct PortionPickerView: View {
                     } label: {
                         Image(systemName: "chevron.left")
                             .font(CalorynTheme.toolbarIcon)
-                            .foregroundStyle(CalorynTheme.sage)
+                            .foregroundStyle(CalorynTheme.textPrimary)
                     }
                     .accessibilityLabel("Back")
                     .accessibilityIdentifier("portionPicker.back")
@@ -166,28 +171,24 @@ struct PortionPickerView: View {
                     } label: {
                         Image(systemName: "pencil")
                             .font(CalorynTheme.toolbarIcon)
-                            .foregroundStyle(CalorynTheme.sage)
+                            .foregroundStyle(CalorynTheme.textPrimary)
                     }
                     .accessibilityLabel("Edit Food Details")
                     .accessibilityHint("Creates or updates your private version of this barcode")
                 }
             }
         }
-        .safeAreaInset(edge: .bottom) {
-            VStack(spacing: 0) {
-                Button(action: savePortion) {
-                    Text(saveButtonTitle)
-                        .font(CalorynTheme.buttonLabel)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                }
-                .adaptiveGlassProminentButton()
-                .padding(.horizontal, CalorynTheme.pagePadding)
-                .padding(.top, 10)
-                .padding(.bottom, 16)
-                .accessibilityIdentifier("portionPicker.save")
+        .foodLogBottomAction {
+            // "Log to lunch" in the lunch fill: the one primary button that is not ink.
+            // Editing keeps the ink button — the entry already belongs to a meal.
+            Button(action: savePortion) {
+                Text(saveButtonTitle)
+                    .contentTransition(.opacity)
+                    .animation(.smooth(duration: 0.2), value: saveButtonTitle)
             }
-            .background(.regularMaterial)
+            .calorynPrimaryButton(meal: isEditing ? nil : selectedMeal)
+            .animation(.smooth(duration: 0.2), value: selectedMeal)
+            .accessibilityIdentifier("portionPicker.save")
         }
         .confirmationDialog("Delete Log Entry", isPresented: $showingDeleteConfirmation) {
             Button("Delete", role: .destructive, action: deleteEntry)
@@ -212,263 +213,295 @@ struct PortionPickerView: View {
         }
     }
 
-    @AppStorage("showNutriscore") private var showNutriscore = true
-
     private var foodHeader: some View {
-        VStack(spacing: 4) {
-            HStack(spacing: 8) {
-                Text(activeFoodItem.name)
-                    .font(CalorynTheme.sectionTitle)
-                    .foregroundStyle(CalorynTheme.textPrimary)
-                    .multilineTextAlignment(.center)
-
-                if showNutriscore, let grade = activeFoodItem.nutriscoreGrade {
-                    NutriscoreBadge(grade: grade)
-                }
-            }
-
-            if let brand = activeFoodItem.brand, !brand.isEmpty {
-                Text(brand)
-                    .font(CalorynTheme.caption)
-                    .foregroundStyle(CalorynTheme.textSecondary)
-            }
-
-            if !activeFoodItem.isRecipe,
-               let serving = activeFoodItem.servingDescription,
-               !serving.isEmpty {
-                Text("Serving: \(serving)")
-                    .font(CalorynTheme.caption)
-                    .foregroundStyle(CalorynTheme.textSecondary)
-            }
-        }
-        .padding(.top, 8)
+        FoodLogSheetHeader(
+            name: activeFoodItem.name,
+            nutriscoreGrade: activeFoodItem.nutriscoreGrade,
+            lines: [
+                FoodLogSheetCopy.portionDetail(
+                    brand: activeFoodItem.brand,
+                    servingDescription: activeFoodItem.servingDescription,
+                    isRecipe: activeFoodItem.isRecipe,
+                    caloriesPer100g: activeFoodItem.caloriesPer100g
+                )
+            ]
+        )
     }
 
+    /// The figure in the ink of the meal it will land in, so changing the meal chip
+    /// below recolours it.
     private var caloriePreview: some View {
-        VStack(spacing: 4) {
-            Text("\(previewCalories.truncatedSafely)")
-                .font(CalorynTheme.displayNumber)
-                .foregroundStyle(CalorynTheme.sage)
-                .contentTransition(.numericText())
-                .animation(.smooth(duration: 0.3), value: previewCalories.truncatedSafely)
-                .accessibilityIdentifier("portionPicker.calories")
-
-            Text("calories")
-                .font(CalorynTheme.bodyText)
-                .foregroundStyle(CalorynTheme.textSecondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 20)
-        .glassCard()
+        FoodLogCaloriePreview(
+            calories: previewCalories.rounded().truncatedSafely,
+            tint: selectedMeal.ink,
+            detail: "\(previewNutrition.proteinG.spacedMacroFormatted) protein",
+            identifier: "portionPicker.calories"
+        )
+        .animation(.smooth(duration: 0.2), value: selectedMeal)
     }
 
-    private var nutritionCompletenessCard: some View {
+    private var nutritionCompletenessNote: some View {
         let provenance = activeFoodItem.provenance
 
         return VStack(alignment: .leading, spacing: 8) {
             if provenance.completeness == .partial {
-                Label(
-                    "Some nutrition values were not provided. Check the package and edit your private food if needed.",
-                    systemImage: "exclamationmark.triangle.fill"
-                )
-                .font(CalorynTheme.caption)
-                .foregroundStyle(CalorynTheme.terracotta)
+                Label {
+                    Text("Some nutrition values were not provided. Check the package and edit your private food if needed.")
+                        .foregroundStyle(CalorynTheme.textPrimary)
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(CalorynTheme.textPrimary)
+                }
             } else if provenance.completeness == .unknown {
-                Label(
-                    "This food's nutrition may be incomplete. Check the package and edit your private food if needed.",
-                    systemImage: "questionmark.circle"
-                )
-                .font(CalorynTheme.caption)
-                .foregroundStyle(CalorynTheme.textSecondary)
+                Label {
+                    Text("This food's nutrition may be incomplete. Check the package and edit your private food if needed.")
+                        .foregroundStyle(CalorynTheme.textSecondary)
+                } icon: {
+                    Image(systemName: "questionmark.circle")
+                        .foregroundStyle(CalorynTheme.textSecondary)
+                }
             }
 
             if activeFoodItem.normalizedBarcode != nil {
-                Button("Edit Food Details") {
+                Button {
                     BarcodeRecoveryAnalytics.record(path: .personalEdit, result: .started)
                     showingFoodEditor = true
+                } label: {
+                    Text("Edit food details")
+                        .fontWeight(.semibold)
+                        .foregroundStyle(CalorynTheme.textPrimary)
+                        .underline()
                 }
-                .font(CalorynTheme.bodyText)
+                .buttonStyle(.plain)
                 .accessibilityHint("Creates or updates your private version without changing the provider record")
             }
         }
+        .font(.system(.footnote))
+        .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .calorynGroupSurface()
         .accessibilityElement(children: .combine)
-        .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
     }
 
     private var maxServingCount: Int { selection.maxServingCount }
 
-    /// Whether the food can be said any way other than in grams, and so needs
-    /// the unit wheel beside the amount.
-    private var hasUnitWheel: Bool {
-        activeFoodItem.isRecipe || activeFoodItem.servingInfo != nil
+    /// The ways this food can be measured besides grams: none, a countable serving
+    /// ("pot"), or a share of a recipe. Chosen with chips beside "How much".
+    private var unitOptions: [UnitOption] {
+        if activeFoodItem.isRecipe {
+            return [UnitOption(label: "grams", mode: .grams), UnitOption(label: "serving", mode: .recipeServing)]
+        }
+        if let info = activeFoodItem.servingInfo {
+            return [UnitOption(label: "grams", mode: .grams), UnitOption(label: info.unitName, mode: .serving)]
+        }
+        return []
     }
 
-    /// A wheel has to be tall enough to show rows above and below the selected
-    /// one. A typed field does not, and pinning it to a wheel's height left a
-    /// third of the card empty.
-    private var amountRowHeight: CGFloat? {
-        selection.mode == .grams && !hasUnitWheel ? nil : 150
+    private struct UnitOption: Hashable {
+        let label: String
+        let mode: PortionMode
     }
+
 
     private var portionPicker: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("PORTION SIZE")
-                .font(CalorynTheme.sectionEyebrow)
-                .foregroundStyle(CalorynTheme.textSecondary)
+        VStack(alignment: .leading, spacing: 10) {
+            // A food with no second unit gets no unit control at all: the stepper already
+            // reads "180 g". The chips sit beside the title, or under it when a large text
+            // size will not fit both on one line.
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .center, spacing: 8) {
+                    FoodLogSectionTitle("How much")
 
-            HStack(spacing: 0) {
-                Group {
-                    switch selection.mode {
-                    case .grams:
-                        // Typed, not spun: a wheel is fine for "3 slices" and
-                        // miserable for "340 g". See `GramAmountField`.
-                        GramAmountField(
-                            text: $selection.gramsInput,
-                            quickOptions: selection.quickGramOptions,
-                            identifierPrefix: "portionPicker",
-                            isFocused: $isGramsFieldFocused,
-                            onTextChange: { selection.gramsInputChanged() },
-                            onCommit: { selection.commitGramsInput() },
-                            onQuickOption: { selection.quickGramOptionChosen($0) }
-                        )
-                    case .serving:
-                        Picker("Count", selection: $selection.servingCount) {
-                            ForEach(1...maxServingCount, id: \.self) { n in
-                                Text("\(n)").tag(n)
-                            }
-                        }
-                        .pickerStyle(.wheel)
-                    case .recipeServing:
-                        Picker("Recipe serving", selection: $selection.recipeServingID) {
-                            ForEach(PortionSelection.recipeServingOptions) { option in
-                                Text(option.label).tag(option.id)
-                            }
-                        }
-                        .pickerStyle(.wheel)
+                    Spacer(minLength: 8)
+
+                    if !unitOptions.isEmpty {
+                        unitChips
                     }
                 }
-                // Spinning the unit wheel swaps this whole column between a
-                // field and a wheel, which without a transition is an abrupt
-                // cut mid-gesture. The `id` is what makes it one: without it
-                // SwiftUI reuses the column across the switch and there is no
-                // insertion to transition. The old control leaves first so the
-                // two never cross-dissolve into mush, and the scale is what
-                // makes a fade between two similar-sized controls read at all.
-                .id(selection.mode)
-                .transition(
-                    .asymmetric(
-                        insertion: .opacity.combined(with: .scale(scale: 0.92))
-                            .animation(.easeOut(duration: 0.28).delay(0.12)),
-                        removal: .opacity.animation(.easeIn(duration: 0.12))
-                    )
-                )
-                // A wheel fills the row it is given; the field is shorter than
-                // one, so without this it sits at the top and the unit wheel
-                // beside it reads a line lower.
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                // Scoped to the mode so it never animates the wheels' spinning.
-                .animation(.easeInOut(duration: 0.28), value: selection.mode)
-                // No identifier on this container. An identifier here is
-                // inherited by every descendant, so it overwrote the field's
-                // and each chip's — the whole column reported one name and a
-                // journey could not tell the chips apart. It named a single
-                // wheel back when that is what this was.
 
-                if activeFoodItem.isRecipe {
-                    Picker("Unit", selection: $selection.mode) {
-                        Text("grams").tag(PortionMode.grams)
-                        Text("serving").tag(PortionMode.recipeServing)
+                VStack(alignment: .leading, spacing: 8) {
+                    FoodLogSectionTitle("How much")
+
+                    if !unitOptions.isEmpty {
+                        unitChips
                     }
-                    .pickerStyle(.wheel)
-                    .frame(width: 120)
-                } else if let info = activeFoodItem.servingInfo {
-                    Picker("Unit", selection: $selection.mode) {
-                        Text("grams").tag(PortionMode.grams)
-                        Text(info.unitName).tag(PortionMode.serving)
-                    }
-                    .pickerStyle(.wheel)
-                    .frame(width: 120)
                 }
-                // A food with no second unit gets no unit column at all. The
-                // wheel needed a label to say what its numbers meant; the field
-                // already reads "180 g", so a "grams" caption beside it only
-                // squeezed the field into 60% of the card to repeat itself.
             }
-            .frame(height: amountRowHeight)
-            .clipped()
-            .onChange(of: selection.servingCount) { selection.servingCountChanged() }
-            .onChange(of: selection.recipeServingID) { selection.recipeServingChanged() }
-            .onChange(of: selection.mode) { selection.modeChanged() }
+
+            Group {
+                switch selection.mode {
+                case .grams:
+                    // Typed, not spun: a wheel is fine for "3 slices" and
+                    // miserable for "340 g". See `GramAmountField`.
+                    GramAmountField(
+                        text: $selection.gramsInput,
+                        quickOptions: selection.quickGramOptions,
+                        identifierPrefix: "portionPicker",
+                        isFocused: $isGramsFieldFocused,
+                        onTextChange: { selection.gramsInputChanged() },
+                        onCommit: { selection.commitGramsInput() },
+                        onQuickOption: { selection.quickGramOptionChosen($0) },
+                        onStep: { selection.gramsStepped($0) },
+                        quickOptionLabel: { grams in
+                            PortionSelection.quickGramOptionLabel(
+                                grams,
+                                serving: activeFoodItem.isRecipe ? nil : activeFoodItem.servingInfo
+                            )
+                        }
+                    )
+                case .serving:
+                    // The same pill as grams, stepping a count. A wheel drew a system-grey
+                    // selection band, needed 150pt of height and clipped its last row.
+                    servingStepper
+                case .recipeServing:
+                    recipeServingStepper
+                }
+            }
+            // Choosing a unit swaps this whole area between the stepper and a
+            // wheel, which without a transition is an abrupt cut. The `id` is
+            // what makes it one: without it SwiftUI reuses the view across the
+            // switch and there is no insertion to transition. The old control
+            // leaves first so the two never cross-dissolve into mush, and the
+            // scale is what makes a fade between two controls read at all.
+            .id(selection.mode)
+            .transition(
+                .asymmetric(
+                    insertion: .opacity.combined(with: .scale(scale: 0.92))
+                        .animation(.easeOut(duration: 0.28).delay(0.12)),
+                    removal: .opacity.animation(.easeIn(duration: 0.12))
+                )
+            )
+            .frame(maxWidth: .infinity, alignment: .leading)
+            // Scoped to the mode, so a step animates only the number.
+            .animation(.easeInOut(duration: 0.28), value: selection.mode)
+            // No identifier on this container. An identifier here is
+            // inherited by every descendant, so it overwrote the field's
+            // and each chip's — the whole column reported one name and a
+            // journey could not tell the chips apart.
         }
-        .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
+        .onChange(of: selection.servingCount) { selection.servingCountChanged() }
+        .onChange(of: selection.recipeServingID) { selection.recipeServingChanged() }
+        .onChange(of: selection.mode) { selection.modeChanged() }
+    }
+
+    private var servingStepper: some View {
+        let count = selection.servingCount
+        let info = activeFoodItem.servingInfo
+        return CalorynStepperPill(
+            accessibilityTitle: "Count",
+            value: "\(count)",
+            unit: info.map { count == 1 ? $0.unitName : $0.pluralName },
+            canDecrement: count > 1,
+            canIncrement: count < maxServingCount,
+            onDecrement: { selection.servingCount = max(1, count - 1) },
+            onIncrement: { selection.servingCount = min(maxServingCount, count + 1) }
+        )
+        .accessibilityIdentifier("portionPicker.servingCount")
+    }
+
+    /// A share of the recipe, stepped through the same options the wheel listed
+    /// (¼, ½, 1, 2, 3, 4).
+    private var recipeServingStepper: some View {
+        let options = PortionSelection.recipeServingOptions
+        let index = options.firstIndex { $0.id == selection.recipeServingID } ?? 0
+        let count = options[index].multiplier
+        return CalorynStepperPill(
+            accessibilityTitle: "Recipe serving",
+            value: options[index].label,
+            unit: count > 1 ? "servings" : "serving",
+            canDecrement: index > 0,
+            canIncrement: index < options.count - 1,
+            onDecrement: { selection.recipeServingID = options[max(0, index - 1)].id },
+            onIncrement: { selection.recipeServingID = options[min(options.count - 1, index + 1)].id }
+        )
+        .accessibilityIdentifier("portionPicker.recipeServing")
+    }
+
+    /// Grams or the food's own unit, as ink chips.
+    private var unitChips: some View {
+        HStack(spacing: 6) {
+            ForEach(unitOptions, id: \.mode) { option in
+                Button {
+                    selection.mode = option.mode
+                } label: {
+                    Text(option.label)
+                        .calorynChip(isSelected: selection.mode == option.mode)
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(selection.mode == option.mode ? .isSelected : [])
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Unit")
     }
 
     private var nutritionPreview: some View {
-        let items = nutritionDetails
+        VStack(alignment: .leading, spacing: 6) {
+            FoodLogSectionTitle("In this portion")
 
-        return VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("NUTRITION")
-                    .font(CalorynTheme.sectionEyebrow)
-                    .foregroundStyle(CalorynTheme.textSecondary)
+            FoodLogValueRows(
+                rows: nutritionDetails.map { nutrient in
+                    FoodLogValueRows.Row(
+                        id: nutrient.id,
+                        label: nutrient.label,
+                        value: nutrient.spacedFormattedValue
+                    )
+                }
+            )
+        }
+    }
 
-                Spacer()
+    /// The four meals as chips, each in its own colour: the chosen one filled, the others
+    /// outlined with the meal's ink. Two rows when a large text size will not fit four, and
+    /// one chip a row when it will not fit two.
+    private var mealSelector: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            FoodLogSectionTitle("Which meal")
 
-                Text("\(portionGrams.rounded().truncatedSafely)g")
-                    .font(CalorynTheme.caption)
-                    .foregroundStyle(CalorynTheme.textSecondary)
-                    .contentTransition(.numericText())
-                    .animation(.smooth(duration: 0.3), value: portionGrams.rounded().truncatedSafely)
-            }
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 8) {
+                    ForEach(MealType.allCases) { meal in
+                        mealChip(meal)
+                    }
+                }
 
-            VStack(spacing: 0) {
-                ForEach(items) { item in
-                    nutrientRow(item)
-                        .padding(.vertical, 7)
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        ForEach(MealType.allCases.prefix(2)) { meal in
+                            mealChip(meal)
+                        }
+                    }
+                    HStack(spacing: 8) {
+                        ForEach(MealType.allCases.dropFirst(2)) { meal in
+                            mealChip(meal)
+                        }
+                    }
+                }
 
-                    if item.id != items.last?.id {
-                        Divider()
-                            .foregroundStyle(CalorynTheme.stone.opacity(0.3))
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(MealType.allCases) { meal in
+                        mealChip(meal)
                     }
                 }
             }
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("Meal")
         }
-        .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
     }
 
-    private func nutrientRow(_ nutrient: DetailNutrient) -> some View {
-        HStack {
-            Text(nutrient.label)
-                .font(CalorynTheme.bodyText)
-                .foregroundStyle(CalorynTheme.textPrimary)
-
-            Spacer()
-
-            Text(nutrient.formattedValue)
-                .font(CalorynTheme.numericBody)
-                .foregroundStyle(CalorynTheme.textPrimary)
-                .contentTransition(.numericText())
-                .animation(.smooth(duration: 0.3), value: nutrient.formattedValue)
+    private func mealChip(_ meal: MealType) -> some View {
+        Button {
+            selectedMeal = meal
+        } label: {
+            // The label keeps its own width and the chip stretches round it, so the
+            // four share the row evenly the way the board lays them out.
+            Text(meal.displayName)
+                .fixedSize()
+                .frame(maxWidth: .infinity)
+                .calorynChip(isSelected: selectedMeal == meal, meal: meal)
         }
-        .accessibilityElement(children: .combine)
-    }
-
-    private var mealSelector: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("MEAL")
-                .font(CalorynTheme.sectionEyebrow)
-                .foregroundStyle(CalorynTheme.textSecondary)
-
-            Picker("Meal", selection: $selectedMeal) {
-                ForEach(MealType.allCases) { meal in
-                    Label(meal.displayName, systemImage: meal.iconName)
-                        .tag(meal)
-                }
-            }
-            .pickerStyle(.segmented)
-        }
-        .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(selectedMeal == meal ? .isSelected : [])
     }
 
     private func savePortion() {

@@ -12,12 +12,6 @@ struct AppleHealthOptInCard: View {
         VStack(alignment: .leading, spacing: 12) {
             Toggle(isOn: $isEnabled) {
                 HStack(alignment: .top, spacing: 12) {
-                    Image(systemName: "heart.text.square.fill")
-                        .font(CalorynTheme.inlineIcon)
-                        .foregroundStyle(CalorynTheme.sage)
-                        .frame(width: 28, height: 28)
-                        .accessibilityHidden(true)
-
                     VStack(alignment: .leading, spacing: 5) {
                         Text(EnergyCalculationMode.dynamicHealth.displayName)
                             .font(CalorynTheme.itemTitle)
@@ -49,12 +43,13 @@ struct AppleHealthOptInCard: View {
             if let message {
                 Text(message)
                     .font(CalorynTheme.caption)
-                    .foregroundStyle(CalorynTheme.terracotta)
+                    .foregroundStyle(CalorynTheme.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
                     .transition(.opacity)
             }
         }
-        .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
+        .padding(CalorynTheme.cardPadding)
+        .calorynGroupSurface()
         .accessibilityElement(children: .combine)
     }
 }

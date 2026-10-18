@@ -1,17 +1,29 @@
 import SwiftUI
 
+/// One line of placeholder text: a bar the height of the glyphs, centred in the height
+/// of the line it stands in for, so a placeholder row is exactly as tall as the row it
+/// replaces.
+///
 /// `maxWidth` rather than `width`: the bar gives its width back under pressure,
 /// which is what keeps a large Dynamic Type calorie block from being squeezed
-/// out by a placeholder.
+/// out by a placeholder. Squared off with a small corner, like the badges, rather than
+/// a capsule.
 struct SkeletonBar: View {
+    @Environment(\.skeletonDrawsOpaqueMask) private var drawsOpaqueMask
+
     let width: CGFloat
     let height: CGFloat
+    var lineHeight: CGFloat? = nil
 
     var body: some View {
-        Capsule(style: .continuous)
-            .fill(CalorynTheme.skeletonBase)
+        RoundedRectangle(cornerRadius: 3, style: .continuous)
+            // Inside the shimmer's mask the bar must be opaque: a mask multiplies by
+            // alpha, and the faint on-screen fill would reduce the highlight to under
+            // one percent, which is invisible. The colour of a mask is never painted.
+            .fill(drawsOpaqueMask ? Color.black : CalorynTheme.skeletonBase)
             .frame(maxWidth: width)
             .frame(height: height)
+            .frame(height: max(lineHeight ?? height, height))
     }
 }
 
@@ -45,7 +57,7 @@ struct ShimmeringPlaceholder<Content: View>: View {
                         let width = proxy.size.width
                         let band = max(width * 0.42, 1)
                         LinearGradient(
-                            colors: [.clear, CalorynTheme.skeletonHighlight, .clear],
+                            colors: [.clear, CalorynTheme.skeletonShine, .clear],
                             startPoint: .leading,
                             endPoint: .trailing
                         )
@@ -53,7 +65,7 @@ struct ShimmeringPlaceholder<Content: View>: View {
                         .offset(x: -band + Self.sweep(at: timeline.date) * (width + 2 * band))
                     }
                 }
-                .mask(content)
+                .mask(content.environment(\.skeletonDrawsOpaqueMask, true))
                 .allowsHitTesting(false)
             }
         }
@@ -68,6 +80,19 @@ struct ShimmeringPlaceholder<Content: View>: View {
         let elapsed = date.timeIntervalSinceReferenceDate
             .truncatingRemainder(dividingBy: cycle)
         return min(elapsed / (cycle * sweepFraction), 1)
+    }
+}
+
+/// Set on the copy of the content that serves as the shimmer's mask, so the bars
+/// draw fully opaque there and only their shape, not their faint fill, limits the band.
+private struct SkeletonDrawsOpaqueMaskKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    var skeletonDrawsOpaqueMask: Bool {
+        get { self[SkeletonDrawsOpaqueMaskKey.self] }
+        set { self[SkeletonDrawsOpaqueMaskKey.self] = newValue }
     }
 }
 

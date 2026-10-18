@@ -104,7 +104,7 @@ struct MacroRatioSelection: Equatable {
     }
 
     func gramsText(for macro: Macro) -> String {
-        "\(grams(for: macro).truncatedSafely)g"
+        Double(grams(for: macro).truncatedSafely).spacedMacroFormatted
     }
 
     /// Says how far off the split is rather than only that it is wrong, so the

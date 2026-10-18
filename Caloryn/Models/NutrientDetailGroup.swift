@@ -19,16 +19,24 @@ struct DetailNutrient: Identifiable, Equatable {
         self.unit = unit
     }
 
+    /// "3.6 g", "1.200 mg": a space before the unit and the number in the reader's locale,
+    /// on the Portion sheet and in Nutrition Details alike.
+    var spacedFormattedValue: String {
+        spacedFormattedValue(locale: .current)
+    }
+
+    /// `spacedFormattedValue` in a given locale. `locale` exists for tests.
+    ///
     /// Scaling to milligrams multiplies whatever the product data held by a
     /// thousand, so `Int(_:)` cannot do the rounding: it terminates the process
     /// past `Int.max` rather than throwing, and nothing bounds a nutrient value
     /// on the way in.
-    var formattedValue: String {
+    func spacedFormattedValue(locale: Locale) -> String {
         switch unit {
         case .grams:
-            value.macroFormatted
+            value.spacedMacroFormatted(locale: locale)
         case .milligramsFromGrams:
-            "\((value * 1000).rounded().truncatedSafely)mg"
+            "\((value * 1000).rounded().truncatedSafely.formatted(.number.locale(locale))) mg"
         }
     }
 }
