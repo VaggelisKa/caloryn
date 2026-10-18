@@ -295,11 +295,10 @@ struct TodayView: View {
         isEnabled: Bool,
         action: @escaping () -> Void
     ) -> some View {
-        Button {
-            withAnimation {
-                action()
-            }
-        } label: {
+        // No animation: the list is rebuilt per day (`.id(selectedDate)`), and animating that
+        // crossfaded the two days over each other, figures ghosted on figures. The new day
+        // swaps in at once and its hero makes the entrance: the donut grows, the numbers roll.
+        Button(action: action) {
             Image(systemName: systemImage)
                 .font(CalorynTheme.inlineIcon)
                 .imageScale(.small)
