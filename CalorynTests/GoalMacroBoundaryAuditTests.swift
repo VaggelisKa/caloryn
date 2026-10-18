@@ -244,17 +244,15 @@ struct AuditMacroRatioTotalTests {
         #expect(MacroRatioSelection.Macro.allCases.map(\.displayName) == ["Protein", "Carbs", "Fat"])
     }
 
-    @Test("A short split's message names a total the three readouts do not add up to")
-    func validationMessageTruncatesTheFloatingPointTotal() {
+    @Test("A short split's message names the total the three readouts add up to")
+    func validationMessageAddsTheReadouts() {
         let selection = MacroRatioSelection(calorieTarget: 2_000, protein: 0.10, carbs: 0.50, fat: 0.30)
 
         #expect(selection.percentText(for: .protein) == "10%")
         #expect(selection.percentText(for: .carbs) == "50%")
         #expect(selection.percentText(for: .fat) == "30%")
         #expect(selection.isValid == false)
-        // Current behaviour, suspected bug: 0.1 + 0.5 + 0.3 is 0.8999…, and truncating it
-        // reports 89% beside readouts that total 90%.
-        #expect(selection.validationMessage == "Ratios should total 100% (currently 89%)")
+        #expect(selection.validationMessage == "Ratios should total 100% (currently 90%)")
     }
 
     @Test("At every reachable valid split and target, the grams spend the whole target")
