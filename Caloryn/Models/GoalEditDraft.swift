@@ -136,11 +136,14 @@ struct GoalEditDraft: Equatable {
 
     // MARK: - Labels
 
+    /// Signed by the whole calories it prints, so a stored fraction under one
+    /// calorie reads as maintenance rather than "-0 kcal/day".
     var deficitLabel: String {
-        if calorieDeficit > 0 {
-            return "-\(calorieDeficit.truncatedSafely) kcal/day (lose weight)"
-        } else if calorieDeficit < 0 {
-            return "+\(abs(calorieDeficit).truncatedSafely) kcal/day (gain weight)"
+        let wholeDeficit = calorieDeficit.truncatedSafely
+        if wholeDeficit > 0 {
+            return "-\(wholeDeficit) kcal/day (lose weight)"
+        } else if wholeDeficit < 0 {
+            return "+\(abs(wholeDeficit)) kcal/day (gain weight)"
         }
         return "Maintenance (no change)"
     }

@@ -581,8 +581,8 @@ struct AuditGoalDeficitWordingTests {
     }
 
     @Test(
-        "A sub-calorie deficit reads as no adjustment in Settings but as a direction in the editor",
-        arguments: [(0.5, "-0 kcal/day (lose weight)"), (-0.5, "+0 kcal/day (gain weight)")]
+        "A sub-calorie deficit reads as no adjustment in Settings, onboarding and the editor",
+        arguments: [(0.5, "Maintenance (no change)"), (-0.5, "Maintenance (no change)")]
     )
     func subCalorieDeficitWording(deficit: Double, editorLabel: String) {
         var draft = GoalEditDraft(profile: auditProfile())
@@ -590,8 +590,6 @@ struct AuditGoalDeficitWordingTests {
 
         #expect(SettingsGoalSummary.goalSubtitle(calorieDeficit: deficit, isManualOverride: false) == "About what you burn")
         #expect(OnboardingGoalPlate(bmr: 1_700, tdee: 2_500, target: 2_500, calorieDeficit: deficit).paceCaption == "What you burn")
-        // Current behaviour, suspected bug: the editor tests the raw deficit's sign but prints
-        // its truncation, so a stored fraction under one calorie reads "-0 kcal/day".
         #expect(draft.deficitLabel == editorLabel)
     }
 }
