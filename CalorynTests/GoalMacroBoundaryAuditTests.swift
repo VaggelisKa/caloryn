@@ -108,8 +108,8 @@ struct AuditGoalManualTargetTests {
         #expect(onboarding.appliesManualTarget == editor.isManualTargetValid)
     }
 
-    @Test("Onboarding carries a typed target past the calorie domain that the goal editor clamps")
-    func onboardingDoesNotClampAHugeTarget() {
+    @Test("Onboarding clamps a typed target past the calorie domain the way the goal editor does")
+    func onboardingClampsAHugeTarget() {
         let text = "99999999999"
         var editor = GoalEditDraft(profile: auditProfile())
         editor.manualOverride = true
@@ -122,9 +122,7 @@ struct AuditGoalManualTargetTests {
         )
 
         #expect(editor.effectiveCalorieTarget(tdee: basis.tdee) == CalorieDomain.maximum)
-        // Current behaviour, suspected bug: the onboarding field parses with a bare Int(_:)
-        // and never clamps, so the same text saves 99,999,999,999 there but 1,000,000,000 here.
-        #expect(onboarding.displayTarget(basis: basis) == 99_999_999_999)
+        #expect(onboarding.displayTarget(basis: basis) == CalorieDomain.maximum)
     }
 
     @Test(
