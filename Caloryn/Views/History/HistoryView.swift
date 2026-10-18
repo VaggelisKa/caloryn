@@ -190,9 +190,15 @@ struct HistoryView: View {
         )
     }
 
+    /// A range switch or a data change: figures roll, bars and plates morph, and sections
+    /// that come or go fade.
+    private static let changeAnimation: Animation = .smooth(duration: 0.4)
+
     private func selectRange(_ range: HistoryRange) {
         guard range != historyState.range else { return }
-        refreshAnalytics(for: range)
+        withAnimation(Self.changeAnimation) {
+            refreshAnalytics(for: range)
+        }
     }
 
     private func openCalorieTrendDetail(range: HistoryRange, summary: HistoryPeriodSummary) {

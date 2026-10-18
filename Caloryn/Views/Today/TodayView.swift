@@ -155,6 +155,9 @@ struct TodayView: View {
                 .contentMargins(.top, 0, for: .scrollContent)
                 .id(selectedDate)
                 .animation(.smooth(duration: 0.35), value: hasNutriscoreData)
+                // Entries saved from the add-food sheet arrive through the query with no
+                // transaction of their own; without this a new row snaps into its meal.
+                .animation(.smooth(duration: 0.3), value: projection.today.map(\.id))
             }
             .calorynPageCanvas()
             .todayTitlelessBar()
@@ -409,12 +412,14 @@ struct TodayView: View {
             mealType: \.mealType,
             createdAt: \.createdAt
         )
-        DailyFoodLogCommands.copyLoggedEntries(
-            orderedEntries,
-            to: selectedDate,
-            modelContext: modelContext
-        )
-        try? modelContext.save()
+        withAnimation(.smooth(duration: 0.35)) {
+            DailyFoodLogCommands.copyLoggedEntries(
+                orderedEntries,
+                to: selectedDate,
+                modelContext: modelContext
+            )
+            try? modelContext.save()
+        }
     }
 
     private func handlePendingRoute() {

@@ -6,6 +6,9 @@ import Charts
 struct HistoryWeeklyRollupSection: View {
     let projection: HistoryWeeklyConsistencyProjection
 
+    /// False on the first frame, so the bars grow up from the axis.
+    @State private var isRevealed = false
+
     private struct ChartWeek: Identifiable {
         let index: Double
         let label: String
@@ -47,7 +50,7 @@ struct HistoryWeeklyRollupSection: View {
                 ForEach(chartWeeks) { chartWeek in
                     BarMark(
                         x: .value("Week", chartWeek.index),
-                        y: .value("On Track", chartWeek.week.onTrackRatio * 100),
+                        y: .value("On Track", isRevealed ? chartWeek.week.onTrackRatio * 100 : 0),
                         width: .fixed(layout.barWidth)
                     )
                     .foregroundStyle(chartWeek.week.consistencyTint)
@@ -104,6 +107,7 @@ struct HistoryWeeklyRollupSection: View {
             .chartYScale(domain: 0 ... 100)
             .chartXScale(domain: layout.xAxisDomain)
             .frame(height: 170)
+            .revealOnAppear($isRevealed)
             .padding(.top, 4)
             .accessibilityLabel(
                 HistoryWeeklyConsistencyChart.accessibilityLabel(

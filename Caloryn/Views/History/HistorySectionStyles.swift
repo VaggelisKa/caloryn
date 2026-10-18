@@ -29,6 +29,9 @@ struct HistoryInkBar: View {
     /// 0...1; clamped.
     let ratio: Double
 
+    /// False on the first frame, so the fill grows in from the leading edge.
+    @State private var isRevealed = false
+
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
@@ -37,10 +40,11 @@ struct HistoryInkBar: View {
 
                 Rectangle()
                     .fill(CalorynTheme.textPrimary)
-                    .frame(width: geometry.size.width * min(1, max(0, ratio)))
+                    .frame(width: isRevealed ? geometry.size.width * min(1, max(0, ratio)) : 0)
             }
         }
         .frame(height: 8)
+        .revealOnAppear($isRevealed)
         .clipShape(Capsule())
         .accessibilityHidden(true)
     }

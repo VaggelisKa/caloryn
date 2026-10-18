@@ -8,6 +8,9 @@ struct HistoryCalorieTrendSection: View {
     let projection: HistoryCalorieTrendProjection
     let drillDownAction: (() -> Void)?
 
+    /// False on the first frame, so the bars grow up from the axis.
+    @State private var isRevealed = false
+
     init(
         projection: HistoryCalorieTrendProjection,
         drillDownAction: (() -> Void)? = nil
@@ -103,7 +106,7 @@ struct HistoryCalorieTrendSection: View {
                 if chartPoint.isLogged {
                     BarMark(
                         x: .value("Period", chartPoint.index),
-                        y: .value("Calories", chartPoint.value),
+                        y: .value("Calories", isRevealed ? chartPoint.value : 0),
                         width: .fixed(layout.barWidth)
                     )
                     .foregroundStyle(chartPoint.status.tint)
@@ -172,6 +175,7 @@ struct HistoryCalorieTrendSection: View {
         .chartYScale(domain: 0 ... projection.yAxisUpperBound)
         .chartXScale(domain: layout.xAxisDomain)
         .frame(height: layout.chartHeight)
+        .revealOnAppear($isRevealed)
         .accessibilityLabel(summary.chartAccessibilityLabel)
     }
 }

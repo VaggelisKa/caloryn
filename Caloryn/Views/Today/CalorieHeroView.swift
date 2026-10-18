@@ -17,7 +17,17 @@ struct CalorieHeroView: View {
     @ScaledMetric(relativeTo: .largeTitle) private var numberSize: CGFloat = 56
     @ScaledMetric(relativeTo: .footnote) private var legendKeySize: CGFloat = 12
 
+    /// Flipped on the runloop after the first frame, as the donut flips its own, so the
+    /// figures roll from the full budget while the meals grow in. The hero is rebuilt for
+    /// each day Today shows, so every day gets the same entrance.
+    @State private var isRevealed = false
+
     private static let donutSize: CGFloat = 168
+    /// What the number column prints: the day's figures, or before the entrance the same
+    /// budget with nothing eaten. VoiceOver always reads `summary` — the entrance is visual.
+    private var displayed: TodayHeroSummary {
+        isRevealed || accessibilityReduceMotion ? summary : summary.unrevealed
+    }
 
     /// Side by side as the board draws it; stacked from xxxLarge, where a 168pt donut leaves
     /// the number column (176pt on a 402pt phone) narrower than a legend row
@@ -57,32 +67,36 @@ struct CalorieHeroView: View {
         .accessibilityLabel(summary.ring.accessibilityLabel)
         .accessibilityValue(summary.ring.accessibilityValue)
         .accessibilityHint(CalorieRingSummary.accessibilityHint(isInteractive: onDetailsRequested != nil))
+        // The donut's own curve, so the numbers land when the ring does.
+        .revealOnAppear($isRevealed)
     }
 
     private var numberColumn: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(summary.headlineText)
+            Text(displayed.headlineText)
                 .font(CalorynTheme.heroNumber(size: numberSize))
                 .tracking(-numberSize * 0.01)
                 .foregroundStyle(CalorynTheme.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
-                .contentTransition(numberTransition)
+                .contentTransition(numberTransition(for: displayed.headline))
 
-            Text(summary.caption)
+            Text(displayed.caption)
                 .font(TodayPlateFont.heroCaption)
-                .fontWeight(summary.isOver ? .semibold : .medium)
-                .foregroundStyle(summary.isOver ? CalorynTheme.textPrimary : CalorynTheme.textSecondary)
+                .fontWeight(displayed.isOver ? .semibold : .medium)
+                .foregroundStyle(displayed.isOver ? CalorynTheme.textPrimary : CalorynTheme.textSecondary)
                 .lineLimit(2)
                 .minimumScaleFactor(0.8)
+                .contentTransition(textTransition)
 
             dynamicTargetCue
 
-            Text(summary.eatenLine)
+            Text(displayed.eatenLine)
                 .font(CalorynTheme.legendText)
                 .foregroundStyle(CalorynTheme.textSecondary)
                 .lineLimit(2)
                 .minimumScaleFactor(0.8)
+                .contentTransition(textTransition)
 
             legend
                 .padding(.top, 10)
@@ -93,7 +107,7 @@ struct CalorieHeroView: View {
 
     private var legend: some View {
         VStack(alignment: .leading, spacing: 6) {
-            ForEach(summary.donut.legend) { entry in
+            ForEach(displayed.donut.legend) { entry in
                 legendRow(entry)
             }
         }
@@ -113,14 +127,16 @@ struct CalorieHeroView: View {
 
             Spacer(minLength: 4)
 
-            Text(summary.legendValue(for: entry))
+            Text(displayed.legendValue(for: entry))
                 .fontWeight(isOverRow ? .bold : .medium)
                 .foregroundStyle(entry.isLogged ? CalorynTheme.textPrimary : CalorynTheme.textTertiary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.85)
-                .contentTransition(numberTransition)
+                .contentTransition(numberTransition(for: entry.kcal))
         }
         .font(CalorynTheme.legendText)
+        // The "Over" row arrives with the overshoot, sliding in under the meals.
+        .transition(.opacity.combined(with: .move(edge: .top)))
     }
 
     /// A filled circle in the meal's fill; a hollow ring for a meal nothing is logged in yet.
@@ -189,8 +205,14 @@ struct CalorieHeroView: View {
 
     // MARK: - Reduce Motion
 
-    /// Digits roll when the number changes, unless Reduce Motion is on: then they swap.
-    private var numberTransition: ContentTransition {
+    /// Digits roll when the number changes, counting up or down with it, unless Reduce
+    /// Motion is on: then they swap.
+    private func numberTransition(for value: Int) -> ContentTransition {
+        accessibilityReduceMotion ? .identity : .numericText(value: Double(value))
+    }
+
+    /// Sentences that carry figures ("963 of 2,000 eaten") roll only their changed digits.
+    private var textTransition: ContentTransition {
         accessibilityReduceMotion ? .identity : .numericText()
     }
 
