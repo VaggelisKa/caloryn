@@ -138,7 +138,7 @@ struct NutritionDetailsView: View {
         return layout {
             Text("\(calorieBudget.roundedConsumed)")
                 .font(CalorynTheme.heroNumber(size: numberSize))
-                .tracking(-numberSize * 0.035)
+                .tracking(-numberSize * 0.01)
                 .foregroundStyle(CalorynTheme.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)

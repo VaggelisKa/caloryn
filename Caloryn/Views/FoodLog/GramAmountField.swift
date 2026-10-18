@@ -123,7 +123,7 @@ struct GramAmountField: View {
                     .accessibilityHidden(true)
             }
             .font(CalorynTheme.heroNumber(size: amountFontSize))
-            .tracking(-amountFontSize * 0.03)
+            .tracking(-amountFontSize * 0.01)
             .foregroundStyle(CalorynTheme.textPrimary)
             .fixedSize()
 
@@ -131,7 +131,7 @@ struct GramAmountField: View {
             // by its children, the field keeps its own, and this label is what then
             // carries `amountBox` for a journey to tap.
             Text("g")
-                .font(.system(size: unitFontSize, weight: .semibold))
+                .font(CalorynTypeface.fixed(size: unitFontSize, weight: .semibold))
                 .foregroundStyle(CalorynTheme.textSecondary)
         }
         .frame(maxWidth: .infinity, minHeight: buttonDiameter)

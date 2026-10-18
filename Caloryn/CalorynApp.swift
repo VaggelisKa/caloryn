@@ -8,6 +8,7 @@ struct CalorynApp: App {
     @State private var router = AppRouter.shared
 
     init() {
+        CalorynTypeface.register()
         #if DEBUG
         let historyFixture = HistorySimulatorFixture.current
         let usesEphemeralStore = UITestConfiguration.isActive || historyFixture != nil
@@ -75,6 +76,8 @@ struct CalorynApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                // Text without a font of its own gets the app's body face, not the system's.
+                .font(CalorynTheme.bodyText)
                 .environment(router)
                 .onOpenURL(perform: router.handle)
         }

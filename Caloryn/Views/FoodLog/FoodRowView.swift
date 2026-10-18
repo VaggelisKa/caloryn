@@ -4,13 +4,13 @@ import SwiftUI
 /// result, a suggestion, a saved meal — lines up with the next.
 enum FoodRowTypography {
     /// The food's name, 16pt medium.
-    static let name: Font = .system(.callout, weight: .medium)
+    static let name: Font = CalorynTypeface.text(.callout, weight: .medium)
     /// Brand and serving under the name, 13pt.
-    static let detail: Font = .system(.footnote)
+    static let detail: Font = CalorynTypeface.text(.footnote)
     /// The kcal figure, 16pt semibold, tabular.
-    static let figure: Font = .system(.callout, weight: .semibold).monospacedDigit()
+    static let figure: Font = CalorynTypeface.text(.callout, weight: .semibold).monospacedDigit()
     /// What the figure counts, "kcal", 11pt.
-    static let figureCaption: Font = .system(.caption2)
+    static let figureCaption: Font = CalorynTypeface.text(.caption2)
 }
 
 struct FoodRowView: View {

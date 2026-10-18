@@ -8,29 +8,29 @@ import SwiftUI
 // `CalorynTheme`.
 enum TodayPlateFont {
     /// "Friday 17 October" on the date row: 22pt heavy.
-    static let dateTitle: Font = .system(.title2, weight: .heavy)
+    static let dateTitle: Font = CalorynTypeface.text(.title2, weight: .heavy)
     /// A food row's name: 16pt medium.
-    static let rowTitle: Font = .system(.callout, weight: .medium)
+    static let rowTitle: Font = CalorynTypeface.text(.callout, weight: .medium)
     /// A food row's grams: 13pt, tabular.
-    static let rowDetail: Font = .system(.footnote).monospacedDigit()
+    static let rowDetail: Font = CalorynTypeface.text(.footnote).monospacedDigit()
     /// A food row's kcal: 16pt semibold, tabular, right-aligned in a fixed column.
-    static let rowValue: Font = .system(.callout, weight: .semibold).monospacedDigit()
+    static let rowValue: Font = CalorynTypeface.text(.callout, weight: .semibold).monospacedDigit()
     /// The hero's caption under the number ("kcal left of 2,000"): 15pt medium.
-    static let heroCaption: Font = .system(.subheadline, weight: .medium).monospacedDigit()
+    static let heroCaption: Font = CalorynTypeface.text(.subheadline, weight: .medium).monospacedDigit()
     /// The empty meal row's sentence: 15pt.
-    static let emptyRow: Font = .system(.subheadline)
+    static let emptyRow: Font = CalorynTypeface.text(.subheadline)
     /// A Nutrition Details section title ("Against your targets"): 15pt bold.
-    static let detailsSectionTitle: Font = .system(.subheadline, weight: .bold)
+    static let detailsSectionTitle: Font = CalorynTypeface.text(.subheadline, weight: .bold)
     /// A Nutrition Details row: 15pt, tabular.
-    static let detailsRow: Font = .system(.subheadline).monospacedDigit()
+    static let detailsRow: Font = CalorynTypeface.text(.subheadline).monospacedDigit()
     /// The amount on a target row ("46g"): 15pt semibold, tabular.
-    static let detailsRowValue: Font = .system(.subheadline, weight: .semibold).monospacedDigit()
+    static let detailsRowValue: Font = CalorynTypeface.text(.subheadline, weight: .semibold).monospacedDigit()
     /// The line beside the big number ("of 2,000 kcal"): 15pt semibold.
-    static let detailsNumberCaption: Font = .system(.subheadline, weight: .semibold).monospacedDigit()
+    static let detailsNumberCaption: Font = CalorynTypeface.text(.subheadline, weight: .semibold).monospacedDigit()
     /// Notes and trailing counts ("3 kinds today"): 13pt.
-    static let detailsNote: Font = .system(.footnote).monospacedDigit()
+    static let detailsNote: Font = CalorynTypeface.text(.footnote).monospacedDigit()
     /// The data-quality note at the foot of the sheet: 12pt.
-    static let detailsFootnote: Font = .system(.caption)
+    static let detailsFootnote: Font = CalorynTypeface.text(.caption)
 }
 
 /// The "Recipe" / "Yours" badge on a logged entry's row: the same badge `FoodRowView` draws
