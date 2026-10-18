@@ -40,6 +40,8 @@ jobs:
     name: Unit tests
     runs-on: macos-26
     timeout-minutes: 30
+    outputs:
+      device: ${{ steps.simulator.outputs.device }}
 
     steps:
       - name: Checkout
@@ -96,6 +98,22 @@ jobs:
 
           echo "percent=$(cat TestResults/coverage-percent.txt)" >> "$GITHUB_OUTPUT"
           cat TestResults/coverage-summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      # Per-line data for the combined-coverage job, which unions it with the
+      # UI journeys'. The xccov report above cannot be unioned.
+      - name: Export line coverage
+        run: |
+          set -euo pipefail
+          mkdir -p LineCoverage
+          python3 .github/scripts/line_coverage.py export TestResults/Unit.xcresult \
+            --root "$GITHUB_WORKSPACE" --output LineCoverage/unit-lines.json
+
+      - name: Upload line coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-line-coverage
+          path: LineCoverage/unit-lines.json
+          if-no-files-found: error
 
       # The baseline is the coverage percentage last measured on main. Main
       # builds write it and pull requests read it, so a PR fails only when it
@@ -167,6 +185,8 @@ jobs:
     name: UI tests
     runs-on: macos-26
     timeout-minutes: 45
+    outputs:
+      device: ${{ steps.simulator.outputs.device }}
 
     steps:
       - name: Checkout
@@ -203,7 +223,22 @@ jobs:
             -clonedSourcePackagesDirPath .spm-cache \
             -onlyUsePackageVersionsFromResolvedFile \
             -disableAutomaticPackageResolution \
+            -enableCodeCoverage YES \
             CODE_SIGNING_ALLOWED=NO
+
+      - name: Export line coverage
+        run: |
+          set -euo pipefail
+          mkdir -p LineCoverage
+          python3 .github/scripts/line_coverage.py export TestResults/UI.xcresult \
+            --root "$GITHUB_WORKSPACE" --output LineCoverage/ui-lines.json
+
+      - name: Upload line coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-line-coverage
+          path: LineCoverage/ui-lines.json
+          if-no-files-found: error
 
       - name: Upload results
         if: always()
@@ -211,4 +246,109 @@ jobs:
         with:
           name: ui-test-results
           path: TestResults
+          if-no-files-found: ignore
+
+  # The figure the 70% floor applies to: every executable line counted once,
+  # covered when the unit plan or the UI journeys ran it. Views are most of the
+  # app's lines and only the journeys reach them, so the unit plan alone cannot
+  # say how much of the app is tested. See docs/testing/coverage.md.
+  #
+  # The unit-plan ratchet above stays: without it, deleting unit tests whose
+  # lines a journey also happens to run would not move this number.
+  combined-coverage:
+    name: Combined coverage
+    needs: [unit-tests, ui-tests]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      COVERAGE_FLOOR: "70"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download line coverage
+        uses: actions/download-artifact@v4
+        with:
+          pattern: "*-line-coverage"
+          path: LineCoverage
+          merge-multiple: true
+
+      - name: Combine
+        id: coverage
+        run: |
+          set -euo pipefail
+
+          python3 .github/scripts/line_coverage.py combine \
+            --input unit=LineCoverage/unit-lines.json \
+            --input ui=LineCoverage/ui-lines.json \
+            --output LineCoverage/combined-summary.md \
+            --percent-file LineCoverage/combined-percent.txt
+
+          echo "percent=$(cat LineCoverage/combined-percent.txt)" >> "$GITHUB_OUTPUT"
+          cat LineCoverage/combined-summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Check coverage floor
+        run: |
+          set -euo pipefail
+
+          current="${{ steps.coverage.outputs.percent }}"
+          if awk "BEGIN { exit !(${current} < ${COVERAGE_FLOOR}) }"; then
+            echo "::error::Combined coverage is ${current}%, below the ${COVERAGE_FLOOR}% floor."
+            exit 1
+          fi
+
+          echo "Combined coverage ${current}% is at or above the ${COVERAGE_FLOOR}% floor."
+
+      # Same baseline scheme as the unit-plan ratchet (see the comments there),
+      # under its own key. Both jobs' devices are in it: either falling back to
+      # another model changes what start-up code runs.
+      - name: Restore combined coverage baseline
+        if: github.event_name == 'pull_request'
+        uses: actions/cache/restore@v4
+        with:
+          path: combined-coverage-baseline.txt
+          key: combined-coverage-baseline-main-${{ needs.unit-tests.outputs.device }}-${{ needs.ui-tests.outputs.device }}-${{ github.sha }}
+          restore-keys: |
+            combined-coverage-baseline-main-${{ needs.unit-tests.outputs.device }}-${{ needs.ui-tests.outputs.device }}-
+
+      - name: Check combined coverage ratchet
+        if: github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail
+
+          current="${{ steps.coverage.outputs.percent }}"
+
+          if [ ! -f combined-coverage-baseline.txt ]; then
+            echo "No combined baseline recorded yet; reporting ${current}% without gating."
+            exit 0
+          fi
+
+          baseline="$(cat combined-coverage-baseline.txt)"
+          echo "Baseline (main): ${baseline}%  Current: ${current}%"
+
+          if awk "BEGIN { exit !(${current} < ${baseline} - 0.5) }"; then
+            echo "::error::Combined coverage dropped from ${baseline}% to ${current}%."
+            exit 1
+          fi
+
+          echo "Combined coverage did not regress."
+
+      - name: Save combined coverage baseline
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: echo "${{ steps.coverage.outputs.percent }}" > combined-coverage-baseline.txt
+
+      - name: Store combined coverage baseline
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/cache/save@v4
+        with:
+          path: combined-coverage-baseline.txt
+          key: combined-coverage-baseline-main-${{ needs.unit-tests.outputs.device }}-${{ needs.ui-tests.outputs.device }}-${{ github.sha }}
+
+      - name: Upload combined summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: combined-coverage
+          path: LineCoverage
           if-no-files-found: ignore

@@ -76,10 +76,13 @@ exit code and looks green.
 
 ## CI
 
-Simulator pinned to iPhone 17; the coverage-baseline cache key includes the model
-because start-up coverage varies by device. Coverage is a **ratchet, not a target** —
-fails only on a regression vs main, 0.5pp tolerance. UI plan retries 3×; a retry is a
-bug, not noise.
+Simulator pinned to iPhone 17; the coverage-baseline cache keys include the model
+because start-up coverage varies by device. Two coverage gates: the unit plan is a
+**ratchet** (fails only on a regression vs main, 0.5pp tolerance), and the **combined**
+unit + UI figure must also stay **≥ 70%** and not regress. The two use different
+counting and are not comparable — xccov's report counts SwiftUI lines once per closure;
+the combined one counts each line once (`docs/testing/coverage.md`). UI plan retries
+3×; a retry is a bug, not noise.
 
 ## Gotchas
 
@@ -93,5 +96,5 @@ bug, not noise.
 
 ## Further reading
 
-`docs/testing/snapshot-testing.md` · `docs/testing/mutation-testing.md` · `docs/theme.md` · issue #90
+`docs/testing/coverage.md` · `docs/testing/snapshot-testing.md` · `docs/testing/mutation-testing.md` · `docs/theme.md` · issue #90
 (open defects the suite surfaced).
