@@ -237,8 +237,8 @@ struct FoodItemNutritionCoverageTests {
         #expect(info.label(for: 0) == "0 \(serving.plural)")
     }
 
-    @Test("Some unit words are singularised or pluralised wrongly")
-    func servingUnitWordingQuirks() throws {
+    @Test("Unit words ending in -ie, -ss, -x and a consonant then -y are inflected correctly")
+    func servingUnitWordingEdgeCases() throws {
         let cookies = try #require(
             makeTestFoodItem(defaultServingG: 30, servingDescription: "2 cookies (30g)").servingInfo
         )
@@ -252,12 +252,20 @@ struct FoodItemNutritionCoverageTests {
             makeTestFoodItem(defaultServingG: 30, servingDescription: "1 box (30g)").servingInfo
         )
 
-        // Current behaviour, suspected bug: every "-ies" plural becomes "-y" ("cookie", "pie" expected).
-        #expect(cookies.label(for: 1) == "1 cooky")
-        #expect(pies.label(for: 1) == "1 py")
-        // Current behaviour, suspected bug: a singular unit gets a bare "s" ("glasses", "boxes" expected).
-        #expect(glass.label(for: 2) == "2 glasss")
-        #expect(box.label(for: 3) == "3 boxs")
+        let patty = try #require(
+            makeTestFoodItem(defaultServingG: 90, servingDescription: "1 patty (90g)").servingInfo
+        )
+        let tray = try #require(
+            makeTestFoodItem(defaultServingG: 90, servingDescription: "1 tray (90g)").servingInfo
+        )
+
+        #expect(cookies.label(for: 1) == "1 cookie")
+        #expect(cookies.label(for: 2) == "2 cookies")
+        #expect(pies.label(for: 1) == "1 pie")
+        #expect(glass.label(for: 2) == "2 glasses")
+        #expect(box.label(for: 3) == "3 boxes")
+        #expect(patty.label(for: 2) == "2 patties")
+        #expect(tray.label(for: 2) == "2 trays")
     }
 
     @Test("Plural generic serving words are filtered like their singulars")
