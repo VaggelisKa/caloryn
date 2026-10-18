@@ -213,7 +213,8 @@ private struct LargeProgressView: View {
             }
             .privacySensitive()
             .accessibilityElement(children: .combine)
-            .accessibilityLabel(WidgetAccessibility.summary(for: entry.snapshot.calories))
+            // The legend is on screen here, so VoiceOver gets each meal as well.
+            .accessibilityLabel(WidgetAccessibility.summary(for: entry.snapshot.calories, withMeals: true))
 
             Rectangle()
                 .fill(WidgetTheme.hairline)
@@ -255,12 +256,26 @@ private struct WidgetHeader: View {
     }
 }
 
-private enum WidgetAccessibility {
-    static func summary(for calories: WidgetCalorieSummary) -> String {
+enum WidgetAccessibility {
+    /// What the hero says: the total and what is left or over, then — where the legend is
+    /// shown — each meal in order, so VoiceOver hears the same breakdown sighted users see.
+    static func summary(for calories: WidgetCalorieSummary, withMeals: Bool = false) -> String {
+        var parts = ["Today.", "\(calories.consumed) calories eaten."]
         if calories.isOver {
-            return "Today. \(calories.consumed) calories eaten. \(calories.overAmount) calories over target."
+            parts.append("\(calories.overAmount) calories over target.")
+        } else {
+            parts.append("\(calories.remaining) calories remaining.")
         }
-        return "Today. \(calories.consumed) calories eaten. \(calories.remaining) calories remaining."
+        if withMeals {
+            for meal in WidgetMeal.allCases {
+                if let kcal = calories.kcal(for: meal) {
+                    parts.append("\(meal.displayName) \(kcal) calories.")
+                } else {
+                    parts.append("\(meal.displayName) not logged.")
+                }
+            }
+        }
+        return parts.joined(separator: " ")
     }
 }
 
