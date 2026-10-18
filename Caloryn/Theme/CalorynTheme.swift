@@ -61,7 +61,6 @@ enum CalorynTheme {
     static let sage = Color(.sage)
     static let stone = Color(.stone)
     static let terracotta = Color(.terracotta)
-    static let warmWhite = Color(.warmWhite)
     static let cardSeparator = stone.opacity(0.3)
 
     // Macros are told apart by their label, never by colour: sage was both "protein" and

@@ -71,9 +71,9 @@ it clears 4.5:1. Dinner's light ink was lifted from the board's `#4A2C47`, which
 from `TextPrimary` and read as black, to `#6A3D66` in the same hue: 7.8:1 on the page and
 8.5:1 on white, so still well past 4.5:1, and the only ink lighter than its own fill.
 
-Existing `Sage`, `Stone`, `Terracotta`, `Carb`, `Fiber`, `HistoryUnder` assets stay in
-the catalog (a few unchanged screens read them) but the app stops using them
-for meaning:
+Existing `Sage`, `Stone` and `Terracotta` assets stay in the catalog (a few unchanged
+screens read them) but the app stops using them for meaning. The `Carb`, `Fiber`,
+`HistoryUnder` and `WarmWhite` sets lost their last reader and were removed:
 
 - `proteinColor`, `carbColor`, `fatColor`, `fiberColor` resolve to `TextPrimary`. Macros
   are told apart by their label, never by colour, because the meal palette now owns

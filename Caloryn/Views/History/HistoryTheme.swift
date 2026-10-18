@@ -10,8 +10,7 @@ import SwiftUI
 /// 1.04:1 against `historyEaten` in light mode, so an under day and an on-track day were the
 /// same colour on every strip and bar that tells them apart by colour alone.
 enum HistoryTheme {
-    /// The colour of an under-goal day. The old amber `HistoryUnder` asset stays in the
-    /// catalog, but History no longer reads it.
+    /// The colour of an under-goal day.
     static let under = CalorynTheme.historyEatenLight
 
     static func color(for status: HistoryGoalStatus) -> Color {
