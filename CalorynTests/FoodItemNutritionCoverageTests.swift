@@ -260,21 +260,12 @@ struct FoodItemNutritionCoverageTests {
         #expect(box.label(for: 3) == "3 boxs")
     }
 
-    @Test("Plural generic serving words are not filtered like their singulars")
-    func pluralGenericServingWords() throws {
-        let servings = try #require(
-            makeTestFoodItem(defaultServingG: 100, servingDescription: "2 servings (100g)").servingInfo
-        )
-
+    @Test("Plural generic serving words are filtered like their singulars")
+    func pluralGenericServingWords() {
         #expect(makeTestFoodItem(defaultServingG: 100, servingDescription: "1 serving (100g)").servingInfo == nil)
         #expect(makeTestFoodItem(defaultServingG: 100, servingDescription: "1 portion").servingInfo == nil)
-        // Current behaviour, suspected bug: "serving"/"portion" are excluded but "servings"/"portions" are not.
-        #expect(servings.unitName == "serving")
-        #expect(servings.gramsPerUnit == 50)
-        #expect(
-            makeTestFoodItem(defaultServingG: 300, servingDescription: "2 portions (300g)").servingInfo?.unitName
-                == "portion"
-        )
+        #expect(makeTestFoodItem(defaultServingG: 100, servingDescription: "2 servings (100g)").servingInfo == nil)
+        #expect(makeTestFoodItem(defaultServingG: 300, servingDescription: "2 portions (300g)").servingInfo == nil)
     }
 
     @Test(

@@ -525,7 +525,7 @@ final class FoodItem {
             "l", "liter", "liters", "litre", "litres",
             "oz", "ounce", "ounces", "fl",
             "lb", "pound", "pounds",
-            "cl", "dl", "serving", "portion"
+            "cl", "dl", "serving", "servings", "portion", "portions"
         ]
 
         guard let match = description.wholeMatch(
