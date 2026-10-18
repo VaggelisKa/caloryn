@@ -14,10 +14,6 @@ struct FavoriteIntentCandidate: Equatable, Sendable {
     let portionGrams: Double
     let favoritedAt: Date?
     let displayTitle: String
-
-    var displaySubtitle: String {
-        "\(kind.rawValue), last logged \(IntentNumberFormatting.grams(portionGrams)) g"
-    }
 }
 
 @MainActor

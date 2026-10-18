@@ -56,19 +56,11 @@ enum CalorynTheme {
     /// appearances (6.6:1 light, 8:1 dark), where `historyEaten` fell to 3:1 in dark.
     static let swipeActionTint = Color(.swipeActionTint)
 
-    // Retired from new code: the meal palette owns colour now. Kept so the call sites that
-    // still read them compile, and because widgets and a few unchanged screens use them.
-    static let sage = Color(.sage)
+    // Retired from new code: the meal palette owns colour now. Kept for the few unchanged
+    // screens that still read them.
     static let stone = Color(.stone)
     static let terracotta = Color(.terracotta)
     static let cardSeparator = stone.opacity(0.3)
-
-    // Macros are told apart by their label, never by colour: sage was both "protein" and
-    // "lunch" once meals took the palette. All four resolve to ink.
-    static let proteinColor = textPrimary
-    static let carbColor = textPrimary
-    static let fatColor = textPrimary
-    static let fiberColor = textPrimary
 
     // MARK: - Meal palette
 
@@ -169,12 +161,7 @@ enum CalorynTheme {
 
     static let screenTitle: Font = CalorynTypeface.text(.largeTitle, weight: .heavy)
     static let brandTitle: Font = CalorynTypeface.text(.largeTitle, weight: .heavy)
-    static let displayNumber: Font = CalorynTypeface.text(.largeTitle, weight: .heavy).monospacedDigit()
     static let compactNumber: Font = CalorynTypeface.text(.title2, weight: .bold).monospacedDigit()
-    static let largeNumber: Font = displayNumber
-    static func ringNumber(size: CGFloat) -> Font {
-        CalorynTypeface.fixed(size: size, weight: .heavy).monospacedDigit()
-    }
     /// The hero figure beside the donut, the Portion sheet's kcal preview, History's daily
     /// average. Pass a size from `@ScaledMetric` so it still follows Dynamic Type, and pair it
     /// with a tight negative `tracking` as the mocks do.
@@ -186,7 +173,6 @@ enum CalorynTheme {
     static let sectionHeaderTitle: Font = CalorynTypeface.text(.headline, weight: .bold)
     /// The trailing total on a section header ("382 kcal"), tabular.
     static let sectionHeaderDetail: Font = CalorynTypeface.text(.subheadline, weight: .medium).monospacedDigit()
-    static let sectionEyebrow: Font = CalorynTypeface.text(.caption, weight: .medium)
     static let cardSubtitle: Font = CalorynTypeface.text(.subheadline)
     static let itemTitle: Font = CalorynTypeface.text(.headline)
     static let bodyText: Font = CalorynTypeface.text(.body)
@@ -222,6 +208,5 @@ enum CalorynTheme {
     static let badgeText: Font = CalorynTypeface.text(.caption2, weight: .semibold)
     static let toolbarIcon: Font = .system(.body, weight: .medium)
     static let inlineIcon: Font = .system(.headline, weight: .semibold)
-    static let emptyStateIcon: Font = .system(.largeTitle, weight: .medium)
     static let compactIcon: Font = .system(.caption, weight: .semibold)
 }

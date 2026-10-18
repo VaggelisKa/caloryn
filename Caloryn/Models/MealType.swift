@@ -17,15 +17,6 @@ enum MealType: String, Codable, CaseIterable, Identifiable {
         }
     }
 
-    var danishName: String {
-        switch self {
-        case .breakfast: "Morgenmad"
-        case .lunch: "Frokost"
-        case .dinner: "Aftensmad"
-        case .snack: "Snack"
-        }
-    }
-
     var iconName: String {
         switch self {
         case .breakfast: "sunrise.fill"
