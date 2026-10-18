@@ -6,9 +6,10 @@ import SwiftUI
 /// iOS 26 has a toolbar slot for the large title, so the page keeps the system navigation
 /// bar — Liquid Glass, the collapse to an inline title on scroll, the toolbar buttons — and
 /// only the words change. Before iOS 26 there is no such slot, so the system large title
-/// stays.
+/// stays. The inline title it collapses into is UIKit's, set in the app's typeface by
+/// `CalorynTypeface.styleCollapsedNavigationTitles()`.
 ///
-/// Settings and My Foods both use it; it lives with Settings only because a lane may not
+/// Settings, My Foods and History use it; it lives with Settings only because a lane may not
 /// add to the shared theme folder.
 private struct PlateLargeTitleModifier: ViewModifier {
     let title: String

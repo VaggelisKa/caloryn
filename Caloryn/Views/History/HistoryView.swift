@@ -144,7 +144,7 @@ struct HistoryView: View {
             }
             .historyDebugScrollAnchor()
             .calorynPageCanvas()
-            .navigationTitle("History")
+            .calorynLargeTitle("History")
             .navigationDestination(for: HistoryDrillDownRoute.self) { route in
                 destination(for: route)
             }
