@@ -72,9 +72,6 @@ struct RecipeLibraryRow: View {
 
 /// One saved meal: its name, its items by name, and the meal's total. Renders
 /// `MealTemplateLibraryRowSummary`.
-///
-/// My Foods' own row. The Add Food sheet lists saved meals with the shared
-/// `MealTemplateLibraryRow`, which belongs to that screen and is left as it is.
 struct LibraryMealRow: View {
     let template: MealTemplate
 
