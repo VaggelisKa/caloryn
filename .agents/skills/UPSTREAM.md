@@ -7,7 +7,7 @@ where each came from so "update to the latest" does not require rediscovering th
 
 - Upstream: https://github.com/AvdLee/SwiftUI-Agent-Skill
 - Canonical path in that repo: `skills/swiftui-expert-skill/`
-- Vendored version: **5.1.0** (synced 2026-09-21; previously 2.0.0)
+- Vendored version: **5.2.1** (synced 2026-10-18; previously 5.1.0)
 
 We take `SKILL.md`, `references/` and `scripts/`. We deliberately skip `assets/`
 (logo images) and `agents/openai.yaml` (packaging for other agent tools) — neither is
