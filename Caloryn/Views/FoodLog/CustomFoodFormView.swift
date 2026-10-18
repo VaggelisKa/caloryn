@@ -71,8 +71,7 @@ struct CustomFoodFormView: View {
             }
             .scrollDismissesKeyboard(.interactively)
             .calorynSheetCanvas()
-            .navigationTitle(formTitle)
-            .navigationBarTitleDisplayMode(.inline)
+            .calorynInlineTitle(formTitle)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     CreationFormCloseButton {

@@ -141,6 +141,26 @@ extension View {
         modifier(CalorynDrillDownNavigationModifier())
     }
 
+    /// An inline navigation title in the app's typeface: 17pt bold ink, as the Add Food sheets
+    /// draw theirs. Use in place of `.navigationTitle(_:)` with `.inline` display mode.
+    ///
+    /// UIKit draws a bare `.navigationTitle` in the system font, so the words go in the
+    /// principal slot instead. The navigation title stays set for VoiceOver's screen name and
+    /// the back-button menu.
+    func calorynInlineTitle(_ title: String) -> some View {
+        navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text(title)
+                        .font(CalorynTheme.sectionHeaderTitle)
+                        .foregroundStyle(CalorynTheme.textPrimary)
+                        .lineLimit(1)
+                        .accessibilityAddTraits(.isHeader)
+                }
+            }
+    }
+
     /// Flat list on the page canvas, for content that should not read as cards
     /// (search results, pickers).
     ///

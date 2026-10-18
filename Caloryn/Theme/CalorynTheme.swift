@@ -11,6 +11,9 @@ enum CalorynTheme {
     // surface, `surface` is an input well inside a sheet, and `textPrimary` is the ink that
     // text, controls and primary buttons are drawn in.
     static let surface = Color(.surface)
+    /// The Add Food search well and its scanner circle: page paper in light, where `surface`
+    /// read as grey on the white sheet, and `surface` in dark.
+    static let searchWell = Color(.searchWell)
     static let pageBackground = Color(.pageBackground)
     static let cardBackground = Color(.cardBackground)
 

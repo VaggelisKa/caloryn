@@ -43,8 +43,7 @@ struct RecipeFormView: View {
             }
             .scrollDismissesKeyboard(.interactively)
             .calorynSheetCanvas()
-            .navigationTitle(isEditing ? "Edit recipe" : "Create recipe")
-            .navigationBarTitleDisplayMode(.inline)
+            .calorynInlineTitle(isEditing ? "Edit recipe" : "Create recipe")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     CreationFormCloseButton {

@@ -358,17 +358,20 @@ struct FoodSearchView: View {
                         searchText = ""
                         searchService.clearResults()
                     } label: {
+                        // Ink at the symbol's own secondary opacity, a soft grey disc on
+                        // the well. A flat `textSecondary` filled the disc with solid sage.
                         Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(CalorynTheme.textSecondary)
+                            .symbolRenderingMode(.hierarchical)
+                            .foregroundStyle(CalorynTheme.textPrimary)
                     }
                     .accessibilityLabel("Clear search")
                 }
             }
-            // The well: a `surface` capsule beside the round scanner, as the board draws it.
+            // The well: a `searchWell` capsule beside the round scanner, as the board draws it.
             .foodSearchWell(isFocused: isSearchFocused, height: searchControlHeight)
 
             // Glass, like the close and Select circles above it: chrome stays glass. Tinted
-            // with the well's `surface` and edged with its hairline, as the board draws the
+            // with the well's colour and edged with its hairline, as the board draws the
             // circle beside the well: clear glass on the white sheet showed no edge at all.
             Button {
                 isSearchFocused = false
@@ -380,7 +383,7 @@ struct FoodSearchView: View {
                     .foregroundStyle(CalorynTheme.textPrimary)
                     .frame(width: searchControlHeight, height: searchControlHeight)
             }
-            .adaptiveCircleInteractiveGlass(tint: CalorynTheme.surface, edge: CalorynTheme.hairline)
+            .adaptiveCircleInteractiveGlass(tint: CalorynTheme.searchWell, edge: CalorynTheme.hairline)
             .accessibilityLabel("Scan a barcode")
         }
         .padding(.horizontal, CalorynTheme.pagePadding)
