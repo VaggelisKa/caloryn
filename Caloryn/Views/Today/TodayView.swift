@@ -93,10 +93,14 @@ struct TodayView: View {
 
         NavigationStack {
             VStack(spacing: 0) {
-                dateNavigator
-                    .padding(.horizontal, CalorynTheme.pagePadding)
-
                 List {
+                    // The first row rather than a view above the list, so the date scrolls
+                    // away with the day instead of staying pinned over it.
+                    dateNavigator
+                        .todayPlateRowLayout(top: 4, bottom: 0)
+                        .calorynClearRowBackground()
+                        .listRowSeparator(.hidden)
+
                     dashboardSection(entries: projection.today, calorieBudget: calorieBudget)
                         .todayPlateRowLayout(top: 12, bottom: 4)
                         .calorynClearRowBackground()
