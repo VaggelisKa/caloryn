@@ -114,9 +114,10 @@ struct OpenFoodFactsProduct: Decodable, Identifiable, Hashable {
         return (nil, nil)
     }
 
+    /// Per the same serving `effectiveServingInfo` picks, so a zero
+    /// serving_quantity defers to the pack size here too.
     var caloriesPerServing: Double? {
-        let grams = servingQuantityG ?? productQuantity ?? quantityGrams
-        guard let grams, grams > 0,
+        guard let grams = effectiveServingInfo.defaultServingG,
               let caloriesPer100g = nutriments?.energyKcal100g else { return nil }
         return caloriesPer100g * grams / 100
     }

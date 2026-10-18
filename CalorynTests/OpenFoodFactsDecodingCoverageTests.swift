@@ -481,8 +481,8 @@ struct OpenFoodFactsDecodingCoverageTests {
         #expect(product.formattedServingDescription == nil)
         #expect(product.effectiveServingInfo.defaultServingG == 350)
         #expect(product.effectiveServingInfo.servingDescription == "1 pack (350g)")
-        // Current behaviour, suspected bug: the zero serving wins over the 350 g pack here (expected 60 × 3.5 = 210 kcal).
-        #expect(product.caloriesPerServing == nil)
+        // 60 kcal/100 g × 350 g = 210 kcal
+        #expect(product.caloriesPerServing == 210)
     }
 
     @Test("A numeric pack size becomes a one-pack default serving")
