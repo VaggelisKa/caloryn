@@ -6,9 +6,13 @@ private struct CalorynPageCanvasModifier: ViewModifier {
         if #available(iOS 26.0, *) {
             pageCanvas(content)
         } else {
+            // Before Liquid Glass a bar that is "visible" paints its background and its
+            // hairline even at rest, so every page had a system line across the top (and
+            // Today, which has no title, an empty bar with one). Setting only the colour
+            // keeps the bar transparent at rest and paints the page colour, not the
+            // system material, once content scrolls under it.
             pageCanvas(content)
                 .toolbarBackground(CalorynTheme.pageBackground, for: .navigationBar)
-                .toolbarBackground(.visible, for: .navigationBar)
         }
     }
 
@@ -39,9 +43,10 @@ private struct CalorynSheetCanvasModifier: ViewModifier {
         if #available(iOS 26.0, *) {
             sheetCanvas(content)
         } else {
+            // Colour only, as the page canvas does: forcing the bar visible drew a
+            // hairline under every sheet title at rest, which the glass bar never has.
             sheetCanvas(content)
                 .toolbarBackground(CalorynTheme.cardBackground, for: .navigationBar)
-                .toolbarBackground(.visible, for: .navigationBar)
         }
     }
 
