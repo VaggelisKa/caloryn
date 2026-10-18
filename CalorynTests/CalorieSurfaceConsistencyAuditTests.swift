@@ -330,6 +330,21 @@ struct AuditCalorieRingArcTests {
 @MainActor
 @Suite("Calorie donut identity audit")
 struct AuditCalorieDonutIdentityTests {
+    /// The donut takes the over decision as given. Told it is over while its own meal sum
+    /// is still under the budget, it reports nothing left rather than re-deciding.
+    @Test("A day the budget calls over has nothing remaining on the donut, whatever the meals add up to")
+    func overDecisionWinsOverTheMealSum() {
+        let donut = CalorieDonutSummary(mealTotals: [.lunch: 500], budget: 2_000, isOver: true)
+
+        #expect(donut.isOver)
+        #expect(donut.eatenKcal == 500)
+        #expect(donut.budgetKcal == 2_000)
+        #expect(donut.remainingKcal == 0)
+        #expect(donut.overKcal == 0)
+        #expect(donut.sectors == [.init(kind: .meal(.lunch), kcal: 500)])
+        #expect(donut.hasOverSector == false)
+    }
+
     @Test("Every sector and legend row has its own identity, named after what it draws")
     func identitiesAreUniqueAndDescriptive() {
         let days: [([MealType: Double], Double, Bool)] = [

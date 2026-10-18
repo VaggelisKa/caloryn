@@ -389,6 +389,34 @@ struct AuditCalorieBudgetAutoAdjustTests {
         }
     }
 
+    @Test("A day far past the baseline adds at most 600, and one far under it takes off at most 300")
+    func dailyAdjustmentIsCappedBothWays() {
+        // 1,600 + 160 TEF + 300 baseline − 300 deficit = 1,760; 1,500 active is 1,200 above.
+        let busy = auditBudget(
+            activeEnergyKcal: 1_500,
+            samples: auditSamples(kcal: 300, count: 9, before: auditFutureDay),
+            mode: .dynamicHealth,
+            date: auditFutureDay
+        )
+        // 2,000 + 200 TEF + 900 baseline − 300 deficit = 2,800; 50 active is 850 below.
+        let quiet = auditBudget(
+            bmr: 2_000,
+            activeEnergyKcal: 50,
+            samples: auditSamples(kcal: 900, count: 9, before: auditCompletedDay),
+            mode: .dynamicHealth,
+            date: auditCompletedDay
+        )
+
+        #expect(busy.dynamicAdjustment == 600)
+        #expect(busy.dynamicIncrease == 600)
+        #expect(busy.adjustedTarget == 2_360)
+        #expect(CalorieRingSummary(budget: busy).cue == .increase(600))
+        #expect(quiet.baseTarget == 2_800)
+        #expect(quiet.dynamicAdjustment == -300)
+        #expect(quiet.adjustedTarget == 2_500)
+        #expect(CalorieRingSummary(budget: quiet).cue == .reduction(-300))
+    }
+
     @Test("At the top of the calorie domain an increase is computed but cannot move the target")
     func increaseSwallowedByTheDomain() {
         let budget = auditBudget(
