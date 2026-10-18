@@ -46,13 +46,13 @@ private struct CalorynSheetCanvasModifier: ViewModifier {
             // Colour only, as the page canvas does: forcing the bar visible drew a
             // hairline under every sheet title at rest, which the glass bar never has.
             sheetCanvas(content)
-                .toolbarBackground(CalorynTheme.cardBackground, for: .navigationBar)
+                .toolbarBackground(CalorynTheme.backgroundSecondary, for: .navigationBar)
         }
     }
 
     private func sheetCanvas(_ content: Content) -> some View {
         content.background {
-            CalorynTheme.cardBackground
+            CalorynTheme.backgroundSecondary
                 .ignoresSafeArea()
         }
     }
@@ -64,7 +64,7 @@ private struct CalorynFormStyleModifier: ViewModifier {
             .scrollContentBackground(.hidden)
         // A `Form` paints `systemGroupedBackground` over its canvas exactly as a `List`
         // does — cool grey-blue, not the warm palette. Sections still need
-        // `.listRowBackground(CalorynTheme.cardBackground)`; this only clears the scroll
+        // `.listRowBackground(CalorynTheme.backgroundSecondary)`; this only clears the scroll
         // background so the canvas shows through.
     }
 }
@@ -121,7 +121,7 @@ extension View {
     }
 
     /// `Form` on whichever canvas surrounds it. Sections still need
-    /// `.listRowBackground(CalorynTheme.cardBackground)`.
+    /// `.listRowBackground(CalorynTheme.backgroundSecondary)`.
     func calorynFormStyle() -> some View {
         modifier(CalorynFormStyleModifier())
     }

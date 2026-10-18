@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The Plate stepper for a count: a `surface` capsule with round minus and plus buttons at
+/// The Plate stepper for a count: a `backgroundTertiary` capsule with round minus and plus buttons at
 /// its ends and the value between them — the Portion sheet's grams pill (`GramAmountField`)
 /// without the typed field.
 ///
@@ -61,7 +61,7 @@ struct CalorynStepperPill: View {
         }
         .padding(.horizontal, size == .regular ? 10 : 4)
         .frame(minHeight: pillHeight)
-        .background(CalorynTheme.surface, in: Capsule())
+        .background(CalorynTheme.backgroundTertiary, in: Capsule())
         .overlay {
             Capsule()
                 .strokeBorder(CalorynTheme.hairline, lineWidth: CalorynTheme.hairlineWidth)
@@ -122,7 +122,7 @@ struct CalorynStepperPill: View {
                 .font(size == .regular ? CalorynTheme.inlineIcon : CalorynTheme.compactIcon)
                 .foregroundStyle(isEnabled ? CalorynTheme.textPrimary : CalorynTheme.textTertiary)
                 .frame(width: buttonDiameter, height: buttonDiameter)
-                .background(CalorynTheme.cardBackground, in: Circle())
+                .background(CalorynTheme.backgroundSecondary, in: Circle())
                 .overlay {
                     Circle()
                         .strokeBorder(CalorynTheme.hairline, lineWidth: CalorynTheme.hairlineWidth)
@@ -170,5 +170,5 @@ struct CalorynStepperPill: View {
         }
     }
     .padding()
-    .background(CalorynTheme.cardBackground)
+    .background(CalorynTheme.backgroundSecondary)
 }

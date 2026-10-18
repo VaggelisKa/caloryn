@@ -4,7 +4,7 @@ import Foundation
 /// History's consistency strip as a row of small plates, one per day — or one per week in
 /// the 90-day range, where ninety plates would be too small to read.
 ///
-/// A plate is filled with what was eaten against that day's own goal (`historyEaten`); a day
+/// A plate is filled with what was eaten against that day's own goal (`dataSecondary`); a day
 /// over its goal is ringed in ink, and the day still in progress is dashed and lighter. Under
 /// and on track are told apart by how full the plate is, so status never rests on colour.
 ///

@@ -63,7 +63,7 @@ struct GoalEditView: View {
             } header: {
                 SettingsSectionTitle("Daily calorie target")
             }
-            .listRowBackground(CalorynTheme.cardBackground)
+            .listRowBackground(CalorynTheme.backgroundSecondary)
 
             if !draft.manualOverride {
                 Section {
@@ -92,7 +92,7 @@ struct GoalEditView: View {
                 } footer: {
                     SettingsSectionFooter("Positive values create a deficit for weight loss, negative values create a surplus for weight gain.")
                 }
-                .listRowBackground(CalorynTheme.cardBackground)
+                .listRowBackground(CalorynTheme.backgroundSecondary)
             }
 
             Section {
@@ -121,7 +121,7 @@ struct GoalEditView: View {
             } header: {
                 SettingsSectionTitle("Macro goals")
             }
-            .listRowBackground(CalorynTheme.cardBackground)
+            .listRowBackground(CalorynTheme.backgroundSecondary)
 
             Section {
                 ForEach(TrackedNutrient.editableGoalNutrients) { nutrient in
@@ -142,7 +142,7 @@ struct GoalEditView: View {
             } footer: {
                 SettingsSectionFooter("These goals appear anywhere the nutrient is shown. Sodium and cholesterol are entered in milligrams.")
             }
-            .listRowBackground(CalorynTheme.cardBackground)
+            .listRowBackground(CalorynTheme.backgroundSecondary)
         }
         .calorynFormStyle()
         .calorynPageCanvas()

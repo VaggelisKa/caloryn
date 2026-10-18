@@ -178,8 +178,8 @@ struct FoodLogBottomFade: View {
     var body: some View {
         LinearGradient(
             stops: [
-                .init(color: CalorynTheme.cardBackground.opacity(0), location: 0),
-                .init(color: CalorynTheme.cardBackground, location: 0.3),
+                .init(color: CalorynTheme.backgroundSecondary.opacity(0), location: 0),
+                .init(color: CalorynTheme.backgroundSecondary, location: 0.3),
             ],
             startPoint: .top,
             endPoint: .bottom
@@ -191,12 +191,12 @@ struct FoodLogBottomFade: View {
 extension View {
     /// The Add Food search well: a hairline edge and ink while focused, as `calorynInputField`
     /// draws, as the board's capsule so it matches the round scanner button beside it. Filled
-    /// with `searchWell`, not the form fields' `surface`, which read as grey on the white
+    /// with `backgroundInset`, not the form fields' `backgroundTertiary`, which read as grey on the white
     /// sheet. The form fields keep `calorynInputField`'s rectangle.
     func foodSearchWell(isFocused: Bool, height: CGFloat) -> some View {
         padding(.horizontal, 16)
             .frame(minHeight: height)
-            .background(CalorynTheme.searchWell, in: Capsule())
+            .background(CalorynTheme.backgroundInset, in: Capsule())
             .overlay {
                 Capsule()
                     .strokeBorder(

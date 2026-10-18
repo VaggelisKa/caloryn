@@ -409,7 +409,7 @@ struct CreationFormDeleteButton: View {
 
 /// Delete's capsule before iOS 26, drawn here rather than by `.borderedProminent`. That style
 /// fills with the tint and draws no edge, so any quiet fill vanished into the sheet (the
-/// `surface` tint is the sheet's own colour in dark mode), and a destructive role can turn it
+/// `backgroundTertiary` tint is the sheet's own colour in dark mode), and a destructive role can turn it
 /// system red. A page-coloured capsule with the hairline edge `calorynGroupSurface()` uses
 /// reads as a control in both appearances.
 private struct CreationFormOutlinedCapsuleStyle: ButtonStyle {

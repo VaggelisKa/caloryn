@@ -43,7 +43,7 @@ struct ProfileEditView: View {
             } header: {
                 SettingsSectionTitle("Personal info")
             }
-            .listRowBackground(CalorynTheme.cardBackground)
+            .listRowBackground(CalorynTheme.backgroundSecondary)
 
             Section {
                 // A menu, not chips: five long names do not fit a row of chips.
@@ -61,7 +61,7 @@ struct ProfileEditView: View {
                     SettingsSectionFooter(ProfileEditActivityLevelPolicy.lockedExplanation)
                 }
             }
-            .listRowBackground(CalorynTheme.cardBackground)
+            .listRowBackground(CalorynTheme.backgroundSecondary)
         }
         .calorynFormStyle()
         .calorynPageCanvas()
@@ -82,7 +82,7 @@ struct ProfileEditView: View {
     }
 }
 
-/// Age on the Plate stepper: a `surface` pill with round minus and plus buttons. A stock
+/// Age on the Plate stepper: a `backgroundTertiary` pill with round minus and plus buttons. A stock
 /// `Stepper` draws its minus/plus pill in a system fill (#EEEEEF on the white group) that
 /// no token reaches.
 private struct ProfileAgeRow: View {

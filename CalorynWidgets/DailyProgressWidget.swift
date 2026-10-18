@@ -82,7 +82,7 @@ struct DailyProgressWidget: Widget {
         ) { entry in
             DailyProgressWidgetView(entry: entry)
                 .containerBackground(for: .widget) {
-                    WidgetTheme.page
+                    CalorynTheme.backgroundPrimary
                 }
         }
         .configurationDisplayName("Today")
@@ -180,7 +180,7 @@ private struct MediumProgressView: View {
             .accessibilityLabel(WidgetAccessibility.summary(for: entry.snapshot.calories))
 
             Rectangle()
-                .fill(WidgetTheme.hairline)
+                .fill(CalorynTheme.separator)
                 .frame(width: 1)
 
             QuickLogSection()
@@ -217,7 +217,7 @@ private struct LargeProgressView: View {
             .accessibilityLabel(WidgetAccessibility.summary(for: entry.snapshot.calories, withMeals: true))
 
             Rectangle()
-                .fill(WidgetTheme.hairline)
+                .fill(CalorynTheme.separator)
                 .frame(height: 1)
 
             QuickLogSection()
@@ -249,7 +249,7 @@ private struct WidgetHeader: View {
             if isStale {
                 Image(systemName: "arrow.clockwise")
                     .font(.caption2.weight(.semibold))
-                    .foregroundStyle(WidgetTheme.secondary)
+                    .foregroundStyle(CalorynTheme.textSecondary)
                     .accessibilityLabel("Update needed")
             }
         }
@@ -290,11 +290,11 @@ private struct WidgetMessageView: View {
 
             Text(title)
                 .font(.headline.weight(.bold))
-                .foregroundStyle(WidgetTheme.ink)
+                .foregroundStyle(CalorynTheme.textPrimary)
 
             Text(message)
                 .font(.caption)
-                .foregroundStyle(WidgetTheme.secondary)
+                .foregroundStyle(CalorynTheme.textSecondary)
                 .lineLimit(3)
         }
         .frame(maxWidth: .infinity, alignment: .leading)

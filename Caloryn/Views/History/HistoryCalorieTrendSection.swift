@@ -2,7 +2,7 @@ import SwiftUI
 import Charts
 
 /// "Calorie trend": the range's logged total and one bar per day (per week at 90 days) —
-/// over days in ink, on track in `historyEaten`, under a step lighter — against the goal line.
+/// over days in ink, on track in `dataSecondary`, under a step lighter — against the goal line.
 /// The whole section opens the drill-down once there is enough logged to inspect.
 struct HistoryCalorieTrendSection: View {
     let projection: HistoryCalorieTrendProjection

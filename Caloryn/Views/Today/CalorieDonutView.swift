@@ -52,7 +52,7 @@ struct CalorieDonutView: View {
 /// The mocks draw these as a filled plate (`innerRadiusRatio` 0) on a disk, with the unfilled
 /// budget showing the plate. Pass a ratio above 0 for a ring instead.
 ///
-/// Two plates appear in the boards. History's is a `cardBackground` disk with the food inset
+/// Two plates appear in the boards. History's is a `backgroundSecondary` disk with the food inset
 /// inside its rim (the defaults). Settings' goal row sits on a white group, so its plate is
 /// `pageBackground` and the food runs to the rim: pass `plateColor: CalorynTheme.pageBackground`
 /// and `fillsPlate: true`.
@@ -70,11 +70,11 @@ struct CalorieMiniDonutView: View {
     var size: CGFloat = 40
     var outline: Outline = .standard
     /// One fill for everything eaten instead of each meal's own — History passes
-    /// `CalorynTheme.historyEaten`. Over-ness is then told by `outline`, not by an ink slice.
+    /// `CalorynTheme.dataSecondary`. Over-ness is then told by `outline`, not by an ink slice.
     var uniformFill: Color? = nil
     var innerRadiusRatio: CGFloat = 0
     /// The disk under the food. White on the page; paper on a white surface.
-    var plateColor: Color = CalorynTheme.cardBackground
+    var plateColor: Color = CalorynTheme.backgroundSecondary
     /// True runs the food out to the plate's rim instead of leaving a margin of plate round it.
     var fillsPlate: Bool = false
 
@@ -251,16 +251,16 @@ struct CalorieDonutChart: View {
             CalorieMiniDonutView(
                 summary: CalorieDonutSummary(mealTotals: [.breakfast: 2_300], budget: 2_000, isOver: true),
                 outline: .over,
-                uniformFill: CalorynTheme.historyEaten
+                uniformFill: CalorynTheme.dataSecondary
             )
             CalorieMiniDonutView(
                 summary: CalorieDonutSummary(mealTotals: [.breakfast: 1_690], budget: 2_000, isOver: false),
-                uniformFill: CalorynTheme.historyEaten
+                uniformFill: CalorynTheme.dataSecondary
             )
             CalorieMiniDonutView(
                 summary: CalorieDonutSummary(mealTotals: [.breakfast: 963], budget: 2_000, isOver: false),
                 outline: .today,
-                uniformFill: CalorynTheme.historyEaten
+                uniformFill: CalorynTheme.dataSecondary
             )
             CalorieMiniDonutView(
                 summary: CalorieDonutSummary(

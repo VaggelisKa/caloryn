@@ -37,7 +37,7 @@ struct MissingFoodEntryView: View {
                         .foregroundStyle(CalorynTheme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                .listRowBackground(CalorynTheme.cardBackground)
+                .listRowBackground(CalorynTheme.backgroundSecondary)
                 .listRowSeparatorTint(CalorynTheme.hairline)
 
                 Section {
@@ -96,7 +96,7 @@ struct MissingFoodEntryView: View {
                     sectionHeader("Entry")
                 }
                 .foregroundStyle(CalorynTheme.textPrimary)
-                .listRowBackground(CalorynTheme.cardBackground)
+                .listRowBackground(CalorynTheme.backgroundSecondary)
                 .listRowSeparatorTint(CalorynTheme.hairline)
 
                 Section {
@@ -110,7 +110,7 @@ struct MissingFoodEntryView: View {
                             .frame(maxWidth: .infinity)
                     }
                 }
-                .listRowBackground(CalorynTheme.cardBackground)
+                .listRowBackground(CalorynTheme.backgroundSecondary)
             }
             .calorynFormStyle()
             .calorynSheetCanvas()
@@ -163,7 +163,7 @@ struct MissingFoodEntryView: View {
 
     /// The date as a value, like the rows above it; tapping it opens a calendar under the
     /// row. A compact `DatePicker` drew its date in a system-grey pill beside the
-    /// `surface` portion well, and no token reaches that fill.
+    /// `backgroundTertiary` portion well, and no token reaches that fill.
     @ViewBuilder
     private var dateRow: some View {
         Button {
@@ -200,7 +200,7 @@ struct MissingFoodEntryView: View {
             .labelsHidden()
             // Not ink: the selected day is drawn white on the tint, and ink is near-white
             // in dark mode.
-            .tint(CalorynTheme.controlTint)
+            .tint(CalorynTheme.accentControl)
         }
     }
 

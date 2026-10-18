@@ -93,7 +93,7 @@ struct IngredientAmountPickerView: View {
         )
     }
 
-    /// The weight that goes into the recipe, typed into a `surface` well.
+    /// The weight that goes into the recipe, typed into a `backgroundTertiary` well.
     /// The label and the well share a line, until accessibility sizes: there the label
     /// goes above, and the well, sized with the text (a fixed 104pt left about 80pt for a
     /// number that needs 99pt at AX5), takes the line under it. One layout swapped with

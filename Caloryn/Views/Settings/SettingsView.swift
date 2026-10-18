@@ -51,19 +51,19 @@ struct SettingsView: View {
             List {
                 if let profile {
                     goalSection(profile)
-                        .listRowBackground(CalorynTheme.cardBackground)
+                        .listRowBackground(CalorynTheme.backgroundSecondary)
                     profileSection(profile)
-                        .listRowBackground(CalorynTheme.cardBackground)
+                        .listRowBackground(CalorynTheme.backgroundSecondary)
                 }
 
                 appearanceSection
-                    .listRowBackground(CalorynTheme.cardBackground)
+                    .listRowBackground(CalorynTheme.backgroundSecondary)
                 DailyReminderSettingsSection()
-                    .listRowBackground(CalorynTheme.cardBackground)
+                    .listRowBackground(CalorynTheme.backgroundSecondary)
                 dataSection
-                    .listRowBackground(CalorynTheme.cardBackground)
+                    .listRowBackground(CalorynTheme.backgroundSecondary)
                 aboutSection
-                    .listRowBackground(CalorynTheme.cardBackground)
+                    .listRowBackground(CalorynTheme.backgroundSecondary)
             }
             .calorynGroupedListStyle()
             .calorynPageCanvas()
@@ -700,7 +700,7 @@ private struct SettingsThemeRow: View {
             .accessibilityHidden(true)
     }
 
-    /// The pill is `pageBackground`, not `surface`: in dark mode `surface` is the group's
+    /// The pill is `pageBackground`, not `backgroundTertiary`: in dark mode `backgroundTertiary` is the group's
     /// own colour, and the pill would vanish into it.
     private var segments: some View {
         HStack(spacing: 4) {

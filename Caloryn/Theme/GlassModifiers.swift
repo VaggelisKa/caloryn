@@ -9,11 +9,11 @@ struct CalorynInputFieldModifier: ViewModifier {
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
             .background(
-                CalorynTheme.surface,
+                CalorynTheme.backgroundTertiary,
                 in: RoundedRectangle(cornerRadius: CalorynTheme.smallCornerRadius, style: .continuous)
             )
             .overlay {
-                // A well, not a card: `surface` with a hairline edge, and ink when focused.
+                // A well, not a card: `backgroundTertiary` with a hairline edge, and ink when focused.
                 RoundedRectangle(cornerRadius: CalorynTheme.smallCornerRadius, style: .continuous)
                     .strokeBorder(
                         isFocused ? CalorynTheme.textPrimary : CalorynTheme.hairline,

@@ -248,7 +248,7 @@ struct NutritionDetailsView: View {
             .padding(10)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
-                CalorynTheme.surface,
+                CalorynTheme.backgroundTertiary,
                 in: RoundedRectangle(cornerRadius: CalorynTheme.smallCornerRadius, style: .continuous)
             )
     }

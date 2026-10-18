@@ -178,7 +178,7 @@ final class ComponentSnapshotTests: XCTestCase {
 
     // The palette declares a light and a dark appearance for every colour, but until
     // these existed only the light one was ever rendered — which is exactly where
-    // `pageBackground` and `cardBackground` had been silently falling back to system
+    // `pageBackground` and `backgroundSecondary` had been silently falling back to system
     // greys. A dark reference image is the only thing that would have caught that.
 
     func testFoodRowAcrossAppearances() {
@@ -221,7 +221,7 @@ final class ComponentSnapshotTests: XCTestCase {
     // MARK: - Group surface
 
     // `calorynGroupSurface` is the surface the Plate screens use (the History insight, the
-    // Portion completeness note, the creation-form groups, onboarding): `cardBackground`,
+    // Portion completeness note, the creation-form groups, onboarding): `backgroundSecondary`,
     // a 22pt continuous corner and a `hairline` border. This test rendered the retired
     // `solidCardSurface` until no screen used it any more, so the real surface could have
     // changed colour without a reference image moving.
@@ -295,7 +295,7 @@ final class ComponentSnapshotTests: XCTestCase {
         }
         .padding(CalorynTheme.pagePadding)
         .frame(width: 440, height: 130)
-        .background(CalorynTheme.cardBackground)
+        .background(CalorynTheme.backgroundSecondary)
 
         // Wider than a phone: four chips a row is a fixture, not a layout under test.
         assertAppearances(of: chips, layout: .fixed(width: 440, height: 130))
@@ -341,16 +341,16 @@ final class ComponentSnapshotTests: XCTestCase {
             CalorieMiniDonutView(
                 summary: CalorieDonutSummary(mealTotals: [.dinner: 2_300], budget: 2_000, isOver: true),
                 outline: .over,
-                uniformFill: CalorynTheme.historyEaten
+                uniformFill: CalorynTheme.dataSecondary
             )
             CalorieMiniDonutView(
                 summary: CalorieDonutSummary(mealTotals: [.dinner: 1_690], budget: 2_000, isOver: false),
-                uniformFill: CalorynTheme.historyEaten
+                uniformFill: CalorynTheme.dataSecondary
             )
             CalorieMiniDonutView(
                 summary: CalorieDonutSummary(mealTotals: [.dinner: 963], budget: 2_000, isOver: false),
                 outline: .today,
-                uniformFill: CalorynTheme.historyEaten
+                uniformFill: CalorynTheme.dataSecondary
             )
             CalorieMiniDonutView(
                 summary: CalorieDonutSummary(

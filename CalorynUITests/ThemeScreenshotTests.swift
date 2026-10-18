@@ -13,7 +13,7 @@ import XCTest
 /// `displayName`, and the run still passed.
 ///
 /// It exists because the screens that drift are the ones nothing renders in CI. The
-/// `cardBackground` token was wrong in every grouped list for as long as it had existed
+/// `backgroundSecondary` token was wrong in every grouped list for as long as it had existed
 /// and no test noticed, because no test had ever displayed a grouped list.
 ///
 /// Skipped in `Caloryn-UI` so it does not slow the PR gate. Run it explicitly:

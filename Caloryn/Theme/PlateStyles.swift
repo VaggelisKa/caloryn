@@ -21,7 +21,7 @@ private struct CalorynGroupSurfaceModifier: ViewModifier {
         let shape = RoundedRectangle(cornerRadius: CalorynTheme.groupCornerRadius, style: .continuous)
 
         content
-            .background(CalorynTheme.cardBackground, in: shape)
+            .background(CalorynTheme.backgroundSecondary, in: shape)
             .overlay {
                 shape
                     .strokeBorder(CalorynTheme.hairline, lineWidth: CalorynTheme.hairlineWidth)
@@ -146,13 +146,13 @@ extension View {
         listRowBackground(Color.clear)
     }
 
-    /// One of the few grouped surfaces built as a stack (the History insight): `cardBackground`,
+    /// One of the few grouped surfaces built as a stack (the History insight): `backgroundSecondary`,
     /// a 22pt continuous corner, a 1pt `hairline` border, no shadow. Surface only — add the
     /// padding the content needs inside it.
     ///
     /// Not for `List`/`Form` sections. Those keep the system inset-grouped shape (its own
     /// corner radius, no border) via `calorynGroupedListStyle()` / `calorynFormStyle()` plus
-    /// `.listRowBackground(CalorynTheme.cardBackground)` on each `Section`: a row cannot draw
+    /// `.listRowBackground(CalorynTheme.backgroundSecondary)` on each `Section`: a row cannot draw
     /// a border round its whole section. See `docs/design/plate-market.md`, "Grouped surfaces".
     func calorynGroupSurface() -> some View {
         modifier(CalorynGroupSurfaceModifier())
@@ -182,7 +182,7 @@ extension View {
     }
 }
 
-/// The system switch, tinted `controlTint` rather than the app's ink.
+/// The system switch, tinted `accentControl` rather than the app's ink.
 ///
 /// A `Toggle` takes the app-wide `.tint(textPrimary)`, and in dark mode that put the
 /// switch's white knob on a near-white track (about 1.1:1): on and off could only be told
@@ -193,6 +193,6 @@ struct CalorynToggleStyle: ToggleStyle {
     func makeBody(configuration: Configuration) -> some View {
         Toggle(configuration)
             .toggleStyle(.switch)
-            .tint(CalorynTheme.controlTint)
+            .tint(CalorynTheme.accentControl)
     }
 }

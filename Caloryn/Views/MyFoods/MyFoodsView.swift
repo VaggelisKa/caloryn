@@ -172,7 +172,7 @@ struct MyFoodsView: View {
                     } label: {
                         Label("Delete", systemImage: "trash")
                     }
-                    .tint(CalorynTheme.swipeActionTint)
+                    .tint(CalorynTheme.fillAction)
                 }
             }
         } header: {
@@ -352,7 +352,7 @@ struct MyFoodsView: View {
 
     /// A swipe action draws its label in white whatever the tint, so the tint has to be dark
     /// in both appearances: ink is near-white in dark mode, and the retired terracotta is out
-    /// of the palette. `swipeActionTint` is a neutral dark grey in both (`historyEaten`, used
+    /// of the palette. `fillAction` is a neutral dark grey in both (`dataSecondary`, used
     /// before, lightens to 3:1 under white in dark), and a favorite is not a meal, so it
     /// takes no meal colour.
     private func favoriteButton(for food: FoodItem) -> some View {
@@ -364,7 +364,7 @@ struct MyFoodsView: View {
                 systemImage: food.isFavorite ? "star.slash" : "star"
             )
         }
-        .tint(CalorynTheme.swipeActionTint)
+        .tint(CalorynTheme.fillAction)
     }
 
     private func deleteButton(for food: FoodItem) -> some View {
@@ -373,7 +373,7 @@ struct MyFoodsView: View {
         } label: {
             Label("Delete", systemImage: "trash")
         }
-        .tint(CalorynTheme.swipeActionTint)
+        .tint(CalorynTheme.fillAction)
     }
 
     private func toggleFavorite(_ food: FoodItem) {

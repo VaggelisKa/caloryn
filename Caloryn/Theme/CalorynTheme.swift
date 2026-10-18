@@ -1,80 +1,16 @@
 import SwiftUI
 
-/// Every colour below resolves to a Color Set in `CalorynShared/SharedColors.xcassets`, which declares its
-/// light and dark appearance together. Add colours there, never as literals here — a Color Set
-/// makes a missing dark variant visible in Xcode, whereas a `UIColor { traits in … }` closure
-/// silently falls back. See CLAUDE.md rule 6 and `docs/design/plate-market.md`.
-enum CalorynTheme {
-    // MARK: - Colors
+/// The app-only half of the theme: meal and Nutri-Score lookups, spacing and type. The colour
+/// tokens themselves are in `CalorynShared/CalorynThemeColors.swift`, shared with the widget.
+extension CalorynTheme {
+    // MARK: - Migration aliases (temporary)
 
-    // Paper and ink. Pages are paper, `cardBackground` is the white of a sheet or a grouped
-    // surface, `surface` is an input well inside a sheet, and `textPrimary` is the ink that
-    // text, controls and primary buttons are drawn in.
-    static let surface = Color(.surface)
-    /// The Add Food search well and its scanner circle: page paper in light, where `surface`
-    /// read as grey on the white sheet, and `surface` in dark.
-    static let searchWell = Color(.searchWell)
-    static let pageBackground = Color(.pageBackground)
-    static let cardBackground = Color(.cardBackground)
-
-    /// Skeleton loaders: the hairline's ink at two weights, so a placeholder reads as
-    /// part of the page it sits on rather than a grey block dropped onto it. `skeletonShine`
-    /// is the band that sweeps over `skeletonBase`, so the two add up at its peak.
-    static let skeletonBase = Color(.skeletonBase)
-    static let skeletonShine = Color(.skeletonShine)
-
-    static let textPrimary = Color(.textPrimary)
-    static let textSecondary = Color(.textSecondary)
-    /// The quietest text: the legend's "not yet", a disabled chevron. Below 4.5:1 on the
-    /// page (2.8:1 light), so only for a placeholder whose meaning is also carried some other
-    /// way — never for a figure or anything the reader must be able to make out.
-    static let textTertiary = Color(.textTertiary)
-
-    /// Row separators, surface borders and the unfilled part of a donut. Carries its own
-    /// alpha in the Color Set, so it reads the same on paper and on a white surface.
-    static let hairline = Color(.hairline)
-
-    /// The neutral "eaten" fill of History's day plates and bars. History is about totals,
-    /// not meals, so it does not borrow a meal colour.
-    static let historyEaten = Color(.historyEaten)
-    /// An under-goal day in History: a lighter step of `historyEaten`, so under, on track and
-    /// over read as three weights (light, mid, ink) rather than two near-identical greys.
-    static let historyEatenLight = Color(.historyEatenLight)
-
-    /// The "Recipe" / "Yours" type badge on a food row: secondary text on an 18% tint of
-    /// itself in both appearances (4.7:1 light, 5.7:1 dark on the page). Neutral, because a
-    /// lunch-red badge read as a lunch marker once meals owned colour. Alpha is baked into
-    /// the fill.
-    static let typeBadgeFill = Color(.typeBadgeFill)
-    static let typeBadgeText = Color(.typeBadgeText)
-
-    /// The "on" colour of a stock control that draws white on it: a switch's track under its
-    /// white knob, the selected day of a graphical date picker. Ink in light, as the spec has
-    /// it; in dark, where ink is near-white, a mid grey the white knob still shows on
-    /// (3:1, and 3.8:1 against the system's off track). `ContentView` applies it to every
-    /// `Toggle` through `CalorynToggleStyle`.
-    static let controlTint = Color(.controlTint)
-
-    /// A swipe action's background under the system's white label and glyph: dark in both
-    /// appearances (6.6:1 light, 8:1 dark), where `historyEaten` fell to 3:1 in dark.
-    static let swipeActionTint = Color(.swipeActionTint)
+    @available(*, deprecated, message: "backgroundPrimary for a canvas, textOnAccent for a label on accent")
+    static var pageBackground: Color { backgroundPrimary }
+    @available(*, deprecated, message: "separator for a line or outline, fillTrack for a track or remainder, shadow for a shadow")
+    static var hairline: Color { separator }
 
     // MARK: - Meal palette
-
-    // Asset names omit a `Color` suffix: Xcode strips it when generating symbols, so an
-    // asset called `MealLunchColor` would yield `.mealLunch` anyway.
-    static let mealBreakfast = Color(.mealBreakfast)
-    static let mealBreakfastInk = Color(.mealBreakfastInk)
-    static let mealLunch = Color(.mealLunch)
-    static let mealLunchInk = Color(.mealLunchInk)
-    static let mealDinner = Color(.mealDinner)
-    static let mealDinnerInk = Color(.mealDinnerInk)
-    static let mealSnack = Color(.mealSnack)
-    static let mealSnackInk = Color(.mealSnackInk)
-    static let mealBreakfastOnFill = Color(.mealBreakfastOnFill)
-    static let mealLunchOnFill = Color(.mealLunchOnFill)
-    static let mealDinnerOnFill = Color(.mealDinnerOnFill)
-    static let mealSnackOnFill = Color(.mealSnackOnFill)
 
     /// The meal's colour for shapes: donut sectors, a selected meal chip.
     static func mealFill(_ meal: MealType) -> Color {
@@ -118,14 +54,6 @@ enum CalorynTheme {
     }
 
     // MARK: - Nutri-Score
-
-    // Nutri-Score (A = best, E = worst). Appearance-independent by design: these are
-    // the official Nutri-Score brand colours and must not shift with the interface style.
-    static let nutriscoreA = Color(.nutriscoreA)
-    static let nutriscoreB = Color(.nutriscoreB)
-    static let nutriscoreC = Color(.nutriscoreC)
-    static let nutriscoreD = Color(.nutriscoreD)
-    static let nutriscoreE = Color(.nutriscoreE)
 
     static func nutriscoreColor(for grade: String) -> Color? {
         switch grade.lowercased() {

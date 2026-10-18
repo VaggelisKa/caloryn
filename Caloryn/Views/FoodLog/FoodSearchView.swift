@@ -367,7 +367,7 @@ struct FoodSearchView: View {
                     .accessibilityLabel("Clear search")
                 }
             }
-            // The well: a `searchWell` capsule beside the round scanner, as the board draws it.
+            // The well: a `backgroundInset` capsule beside the round scanner, as the board draws it.
             .foodSearchWell(isFocused: isSearchFocused, height: searchControlHeight)
 
             // Glass, like the close and Select circles above it: chrome stays glass. Tinted
@@ -383,7 +383,7 @@ struct FoodSearchView: View {
                     .foregroundStyle(CalorynTheme.textPrimary)
                     .frame(width: searchControlHeight, height: searchControlHeight)
             }
-            .adaptiveCircleInteractiveGlass(tint: CalorynTheme.searchWell, edge: CalorynTheme.hairline)
+            .adaptiveCircleInteractiveGlass(tint: CalorynTheme.backgroundInset, edge: CalorynTheme.hairline)
             .accessibilityLabel("Scan a barcode")
         }
         .padding(.horizontal, CalorynTheme.pagePadding)
@@ -564,7 +564,7 @@ struct FoodSearchView: View {
                         .padding(.horizontal, 16)
                         .padding(.vertical, 6)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(CalorynTheme.cardBackground)
+                        .background(CalorynTheme.backgroundSecondary)
                         .listRowInsets(EdgeInsets())
                         .accessibilityAddTraits(.isHeader)
                 }

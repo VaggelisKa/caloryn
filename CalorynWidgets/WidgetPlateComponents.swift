@@ -34,9 +34,9 @@ struct WidgetPlateView: View {
     private func color(for kind: WidgetPlateSummary.SectorKind) -> Color {
         switch kind {
         case .meal(let meal): WidgetTheme.mealFill(meal)
-        case .eaten: WidgetTheme.eaten
-        case .over: WidgetTheme.ink
-        case .remaining: WidgetTheme.hairline
+        case .eaten: CalorynTheme.dataSecondary
+        case .over: CalorynTheme.dataPrimary
+        case .remaining: CalorynTheme.fillTrack
         }
     }
 }
@@ -51,14 +51,14 @@ struct WidgetPlateFigures: View {
             Text(primaryValue.formatted())
                 .font(numberFont.monospacedDigit())
                 .tracking(-0.5)
-                .foregroundStyle(WidgetTheme.ink)
+                .foregroundStyle(CalorynTheme.textPrimary)
                 .contentTransition(.numericText())
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
 
             Text(calories.isOver ? "kcal over" : "kcal left")
                 .font(.caption.weight(.medium))
-                .foregroundStyle(WidgetTheme.secondary)
+                .foregroundStyle(CalorynTheme.textSecondary)
         }
     }
 
@@ -74,7 +74,7 @@ struct WidgetEatenLine: View {
     var body: some View {
         Text("\(calories.consumed.formatted()) of \(calories.target.formatted()) eaten")
             .font(.caption.weight(.medium).monospacedDigit())
-            .foregroundStyle(WidgetTheme.secondary)
+            .foregroundStyle(CalorynTheme.textSecondary)
             .lineLimit(1)
             .minimumScaleFactor(0.8)
     }
@@ -102,16 +102,16 @@ struct WidgetPlateLegend: View {
                 .frame(width: 10, height: 10)
             Text(name)
                 .font(.caption2.weight(.medium))
-                .foregroundStyle(WidgetTheme.secondary)
+                .foregroundStyle(CalorynTheme.textSecondary)
             Spacer(minLength: 6)
             if let kcal {
                 Text(kcal.formatted())
                     .font(.caption2.weight(.semibold).monospacedDigit())
-                    .foregroundStyle(WidgetTheme.ink)
+                    .foregroundStyle(CalorynTheme.textPrimary)
             } else {
                 Text("not yet")
                     .font(.caption2)
-                    .foregroundStyle(WidgetTheme.tertiary)
+                    .foregroundStyle(CalorynTheme.textTertiary)
             }
         }
         .lineLimit(1)
@@ -132,7 +132,7 @@ struct WidgetPlateLegend: View {
 
     private var overKey: some View {
         Circle()
-            .stroke(WidgetTheme.ink, lineWidth: 2)
+            .stroke(CalorynTheme.dataPrimary, lineWidth: 2)
     }
 }
 
@@ -145,7 +145,7 @@ struct WidgetQuickLogRows: View {
             ForEach(Array(WidgetMeal.allCases.enumerated()), id: \.element) { index, meal in
                 if index > 0 {
                     Rectangle()
-                        .fill(WidgetTheme.hairline)
+                        .fill(CalorynTheme.separator)
                         .frame(height: 1)
                 }
                 WidgetQuickLogRow(meal: meal)
@@ -189,7 +189,7 @@ struct WidgetSectionTitle: View {
     var body: some View {
         Text(title)
             .font(.headline.weight(.bold))
-            .foregroundStyle(WidgetTheme.ink)
+            .foregroundStyle(CalorynTheme.textPrimary)
             .lineLimit(1)
     }
 }

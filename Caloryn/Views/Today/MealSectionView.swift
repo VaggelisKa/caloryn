@@ -155,7 +155,7 @@ private struct SingleMealTransitionRow: View {
         .animation(.easeIn(duration: 0.16), value: entry?.id)
         // A swipe action draws its label in white on the tint. Before iOS 26 the app-wide
         // ink tint reaches it, destructive role or not, and ink is near-white in dark mode:
-        // the Delete action was a white glyph on a white bar. `swipeActionTint` is a dark
+        // the Delete action was a white glyph on a white bar. `fillAction` is a dark
         // grey in both appearances, the token the palette reserves for exactly this.
         .onChange(of: entry?.id) { _, newID in
             if pendingDeletionID != newID {
@@ -170,7 +170,7 @@ private struct SingleMealTransitionRow: View {
                 } label: {
                     Label("Edit", systemImage: "pencil")
                 }
-                .tint(CalorynTheme.swipeActionTint)
+                .tint(CalorynTheme.fillAction)
             }
         }
         .swipeActions(edge: .trailing) {
@@ -180,7 +180,7 @@ private struct SingleMealTransitionRow: View {
                 } label: {
                     Label("Delete", systemImage: "trash")
                 }
-                .tint(CalorynTheme.swipeActionTint)
+                .tint(CalorynTheme.fillAction)
             }
         }
     }
@@ -216,7 +216,7 @@ private struct MealEntryActionRow: View {
                 } label: {
                     Label("Edit", systemImage: "pencil")
                 }
-                .tint(CalorynTheme.swipeActionTint)
+                .tint(CalorynTheme.fillAction)
             }
             .swipeActions(edge: .trailing) {
                 Button(role: .destructive) {
@@ -224,7 +224,7 @@ private struct MealEntryActionRow: View {
                 } label: {
                     Label("Delete", systemImage: "trash")
                 }
-                .tint(CalorynTheme.swipeActionTint)
+                .tint(CalorynTheme.fillAction)
             }
     }
 }
