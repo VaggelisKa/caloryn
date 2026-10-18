@@ -682,7 +682,7 @@ struct HistoryWeekSummary: Identifiable {
         targetPerLoggedDay = targetDays.isEmpty
             ? 0
             : (Double(targetDays.reduce(0) { $0 + $1.dailyCalorieTarget }) / Double(targetDays.count)).roundedCalories
-        hasEstimatedTargets = targetDays.contains(where: \.isTargetEstimated)
+        hasEstimatedTargets = logged.contains(where: \.isTargetEstimated)
     }
 }
 
