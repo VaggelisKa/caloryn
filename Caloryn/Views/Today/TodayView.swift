@@ -157,6 +157,7 @@ struct TodayView: View {
                 .animation(.smooth(duration: 0.35), value: hasNutriscoreData)
             }
             .calorynPageCanvas()
+            .todayTitlelessBar()
             .sheet(item: $foodSearchPresentation) { presentation in
                 FoodSearchView(
                     mealType: presentation.mealType,

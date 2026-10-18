@@ -124,3 +124,33 @@ struct ChipFlowLayout: Layout {
         return CGSize(width: min(fitted.width, maxWidth), height: fitted.height)
     }
 }
+
+/// Today's navigation bar, which has nothing in it: the date row is the heading. iOS 26
+/// collapses a titleless bar to nothing, so the date row sits straight under the status bar.
+/// Before it the bar still stands 44pt tall above the date row, empty, so there it is hidden
+/// and the status bar is backed with the page colour, which is what the bar was doing for the
+/// rows that scroll under the clock.
+private struct TodayTitlelessBarModifier: ViewModifier {
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content
+        } else {
+            content
+                .toolbar(.hidden, for: .navigationBar)
+                .overlay(alignment: .top) {
+                    Color.clear
+                        .frame(height: 0)
+                        .background(CalorynTheme.pageBackground.ignoresSafeArea(edges: .top))
+                        .allowsHitTesting(false)
+                }
+        }
+    }
+}
+
+extension View {
+    /// Apply inside Today's `NavigationStack`, on the screen content, with the page canvas.
+    func todayTitlelessBar() -> some View {
+        modifier(TodayTitlelessBarModifier())
+    }
+}

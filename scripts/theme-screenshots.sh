@@ -20,12 +20,16 @@ OUT="${1:-/tmp/caloryn-theme-shots}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RESULT="$(mktemp -d)/theme.xcresult"
 
-# An iOS 26 iPhone simulator; the UI test target cannot run below 26.0. A already-booted one
-# wins, so running this does not boot a second simulator alongside whichever one you are
-# testing on by hand — an earlier version picked the first *available* device and did exactly
-# that. With several booted (one per agent), name yours in CALORYN_SIM_UDID: a test plan
-# must never share a simulator with another run.
-UDID="${CALORYN_SIM_UDID:-$(xcrun simctl list devices available -j \
+# An iOS 26 iPhone simulator by default — the palette is designed against Liquid Glass. A
+# already-booted one wins, so running this does not boot a second simulator alongside
+# whichever one you are testing on by hand — an earlier version picked the first *available*
+# device and did exactly that. The UI test target deploys to 18.6, so to audit the iOS 18
+# fallbacks (materials for glass, a UIKit navigation bar) pass that simulator explicitly,
+# and do the same with several booted (one per agent): a test plan must never share a
+# simulator with another run.
+#
+#   CALORYN_UDID=<udid> ./scripts/theme-screenshots.sh
+UDID="${CALORYN_UDID:-$(xcrun simctl list devices available -j \
   | python3 -c '
 import json,sys
 d=json.load(sys.stdin)["devices"]
