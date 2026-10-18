@@ -436,7 +436,9 @@ struct SettingsView: View {
 
         return Section {
             SettingsValueRow(title: "Age", value: summary.ageText)
+                .accessibilityIdentifier("settings.profile.age")
             SettingsValueRow(title: "Sex", value: summary.sexText)
+                .accessibilityIdentifier("settings.profile.sex")
             SettingsValueRow(title: "Height", value: summary.heightText)
             SettingsValueRow(title: "Weight", value: summary.weightText)
             SettingsValueRow(title: "Activity", value: summary.activityText)

@@ -67,6 +67,7 @@ struct IngredientAmountPickerView: View {
                             .foregroundStyle(amount.canSave ? CalorynTheme.textPrimary : CalorynTheme.textSecondary)
                     }
                     .disabled(!amount.canSave)
+                    .accessibilityIdentifier("ingredientAmount.save")
                 }
             }
             .onAppear {
@@ -122,6 +123,7 @@ struct IngredientAmountPickerView: View {
                         .focused($isAmountFocused)
                         .calorynInputField(isFocused: isAmountFocused)
                         .frame(width: min(amountFieldWidth, 220))
+                        .accessibilityIdentifier("ingredientAmount.grams")
 
                     Text("g")
                         .font(CalorynTheme.bodyText)

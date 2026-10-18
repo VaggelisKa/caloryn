@@ -305,3 +305,111 @@ struct SettingsScreen: Screen {
     var manualOverride: XCUIElement { element("goalEdit.manualOverride") }
     var saveGoal: XCUIElement { element("goalEdit.save") }
 }
+
+// MARK: - Multi-add
+
+struct MultiAddScreen: Screen {
+    let app: XCUIApplication
+
+    var selectMultiple: XCUIElement { element("foodSearch.selectMultiple") }
+    var review: XCUIElement { element("multiAdd.review") }
+    var commit: XCUIElement { element("multiAdd.commit") }
+    var editorSave: XCUIElement { element("multiAdd.editor.save") }
+    var editorCalories: XCUIElement { element("multiAdd.editor.calories") }
+
+    /// A review row. Rows are identified by a draft UUID, so the food is picked
+    /// out by what the row says rather than by position.
+    func item(named name: String) -> XCUIElement {
+        app.descendants(matching: .any)
+            .matching(NSPredicate(
+                format: "identifier BEGINSWITH %@ AND label CONTAINS %@",
+                "multiAdd.item.",
+                name
+            ))
+            .firstMatch
+    }
+
+    /// A shortcut chip in the portion editor. The editor sets `multiAdd.editor.portion` on
+    /// the whole amount group, and a container's identifier replaces its children's, so the
+    /// chip is that identifier plus what the chip says.
+    func editorQuickGrams(_ grams: Int) -> XCUIElement {
+        app.descendants(matching: .any)
+            .matching(NSPredicate(
+                format: "identifier == %@ AND label == %@",
+                "multiAdd.editor.portion",
+                "\(grams) grams"
+            ))
+            .firstMatch
+    }
+}
+
+// MARK: - Recipe and meal forms
+
+struct CreationFormScreen: Screen {
+    let app: XCUIApplication
+
+    var createRecipe: XCUIElement { element("myFoods.createRecipe") }
+    var createMeal: XCUIElement { element("myFoods.createMeal") }
+
+    var recipeName: XCUIElement { element("recipe.name") }
+    var addIngredient: XCUIElement { element("recipe.addIngredient") }
+    var saveRecipe: XCUIElement { element("recipe.save") }
+
+    var mealName: XCUIElement { element("meal.name") }
+    var addMealItem: XCUIElement { element("meal.addItem") }
+    var saveMeal: XCUIElement { element("meal.save") }
+
+    var amountGrams: XCUIElement { element("ingredientAmount.grams") }
+    var amountCalories: XCUIElement { element("ingredientAmount.calories") }
+    var saveAmount: XCUIElement { element("ingredientAmount.save") }
+
+    func libraryMeal(named name: String) -> XCUIElement {
+        element("myFoods.meal.\(name)")
+    }
+
+    /// A saved meal in Add Food. Its identifier carries the template's UUID.
+    var firstMealResult: XCUIElement { element(withIdentifierPrefix: "meal.select.") }
+}
+
+// MARK: - Missing-food editor
+
+struct MissingFoodEntryScreen: Screen {
+    let app: XCUIApplication
+
+    var portion: XCUIElement { element("missingEntry.portion") }
+    var save: XCUIElement { element("missingEntry.save") }
+}
+
+// MARK: - Profile and reminder settings
+
+struct ProfileEditScreen: Screen {
+    let app: XCUIApplication
+
+    var age: XCUIElement { element("profileEdit.age") }
+    var save: XCUIElement { element("profileEdit.save") }
+
+    func sex(_ rawValue: String) -> XCUIElement {
+        element("profileEdit.sex.\(rawValue)")
+    }
+
+    var settingsAge: XCUIElement { element("settings.profile.age") }
+    var settingsSex: XCUIElement { element("settings.profile.sex") }
+}
+
+struct DailyReminderScreen: Screen {
+    let app: XCUIApplication
+
+    var toggle: XCUIElement { element("settings.dailyReminder.toggle") }
+    var time: XCUIElement { element("settings.dailyReminder.time") }
+    var timePicker: XCUIElement { element("settings.dailyReminder.timePicker") }
+
+    var isOn: Bool { (toggle.value as? String) == "1" }
+
+    /// Flips the switch. A SwiftUI toggle row only responds on the switch
+    /// itself, which sits at the trailing edge of the row.
+    func flip() {
+        awaitTappable(toggle)
+            .coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.5))
+            .tap()
+    }
+}

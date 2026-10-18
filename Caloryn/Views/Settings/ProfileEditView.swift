@@ -77,6 +77,7 @@ struct ProfileEditView: View {
                         .font(CalorynTheme.toolbarAction)
                         .foregroundStyle(CalorynTheme.textPrimary)
                 }
+                .accessibilityIdentifier("profileEdit.save")
             }
         }
     }
@@ -108,6 +109,7 @@ private struct ProfileAgeRow: View {
                 onDecrement: { age = max(Self.range.lowerBound, age - 1) },
                 onIncrement: { age = min(Self.range.upperBound, age + 1) }
             )
+            .accessibilityIdentifier("profileEdit.age")
         }
     }
 }
@@ -154,6 +156,7 @@ private struct ProfileSexRow: View {
                 }
                 .buttonStyle(.borderless)
                 .accessibilityAddTraits(selection == sex ? .isSelected : [])
+                .accessibilityIdentifier("profileEdit.sex.\(sex.rawValue)")
             }
         }
         .accessibilityElement(children: .contain)

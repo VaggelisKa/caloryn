@@ -187,6 +187,7 @@ struct FoodSearchView: View {
                                 : "Select multiple items"
                         )
                         .disabled(!isEnabled)
+                        .accessibilityIdentifier("foodSearch.selectMultiple")
                     }
                 } else if mode.allowsManualEntryCreation {
                     ToolbarItem(placement: .primaryAction) {
