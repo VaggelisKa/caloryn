@@ -282,6 +282,13 @@ final class ComponentSnapshotTests: XCTestCase {
                         Text(meal.displayName)
                             .calorynChip(isSelected: isSelected, meal: meal)
                             .fixedSize()
+                            // The layer render draws a capsule `strokeBorder` with a stray
+                            // tick at each end of its bounds, outside the capsule, which the
+                            // app never shows. Clipping to the chip's own shape leaves only
+                            // what the app draws; drawing in the key window avoided the ticks
+                            // but captured the simulator's colour management, which differs
+                            // between the pinned runtime and CI's.
+                            .clipShape(Capsule())
                     }
                 }
             }
@@ -291,27 +298,7 @@ final class ComponentSnapshotTests: XCTestCase {
         .background(CalorynTheme.cardBackground)
 
         // Wider than a phone: four chips a row is a fixture, not a layout under test.
-        // Drawn in the key window: the default layer render drew each chip's capsule with
-        // flat sides and stray ticks beside it, which the app never shows.
-        assertSnapshots(
-            of: chips,
-            as: [
-                "light": .image(
-                    drawHierarchyInKeyWindow: true,
-                    precision: precision,
-                    perceptualPrecision: perceptualPrecision,
-                    layout: .fixed(width: 440, height: 130),
-                    traits: .reference
-                ),
-                "dark": .image(
-                    drawHierarchyInKeyWindow: true,
-                    precision: precision,
-                    perceptualPrecision: perceptualPrecision,
-                    layout: .fixed(width: 440, height: 130),
-                    traits: .referenceDark
-                ),
-            ]
-        )
+        assertAppearances(of: chips, layout: .fixed(width: 440, height: 130))
     }
 
     // MARK: - Calorie donut
