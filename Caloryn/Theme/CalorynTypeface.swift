@@ -1,5 +1,6 @@
 import CoreText
 import SwiftUI
+import UIKit
 
 /// Bricolage Grotesque, the app's typeface, bundled as fixed cuts of the variable font
 /// (SIL Open Font License, `Fonts/BricolageGrotesque-OFL.txt`).
@@ -14,7 +15,9 @@ import SwiftUI
 /// SF Symbols keep the system font, since a symbol's weight and alignment come from it.
 /// Inline navigation titles are not set through UIKit's title attributes, which are sized
 /// once and would not follow a Dynamic Type change made while the app is open: they are a
-/// SwiftUI `Text` in the principal slot instead (`calorynInlineTitle`).
+/// SwiftUI `Text` in the principal slot instead (`calorynInlineTitle`). The one exception is
+/// the title a large title collapses into on scroll: SwiftUI has no slot for it, so UIKit
+/// draws it, from the attributes `styleCollapsedNavigationTitles()` sets.
 enum CalorynTypeface {
     /// Registers the bundled cuts for this process. Call once, before the first view draws.
     /// Registration rather than `UIAppFonts`, so the fonts live entirely in this folder.
@@ -23,6 +26,19 @@ enum CalorynTypeface {
         for url in urls where url.lastPathComponent.hasPrefix("BricolageGrotesque") {
             CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
         }
+    }
+
+    /// Sets the inline title a large title collapses into — History, Settings, My Foods — in
+    /// 17pt bold ink, as `calorynInlineTitle` draws the others. A principal-slot `Text` cannot
+    /// do it: it shows above the large title as well, not in its place once it scrolls away.
+    /// The size is fixed, as UIKit's own inline title is: it does not scale with Dynamic Type.
+    /// Call once, after `register()`, before the first navigation bar is made.
+    static func styleCollapsedNavigationTitles() {
+        guard let font = UIFont(name: postScriptName(size: 17, weight: .bold), size: 17) else { return }
+        UINavigationBar.appearance().titleTextAttributes = [
+            .font: font,
+            .foregroundColor: UIColor(resource: .textPrimary),
+        ]
     }
 
     /// The face for a text style, scaled with Dynamic Type. With no weight, the style's own:

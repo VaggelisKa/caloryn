@@ -9,6 +9,7 @@ struct CalorynApp: App {
 
     init() {
         CalorynTypeface.register()
+        CalorynTypeface.styleCollapsedNavigationTitles()
         #if DEBUG
         let historyFixture = HistorySimulatorFixture.current
         let usesEphemeralStore = UITestConfiguration.isActive || historyFixture != nil
