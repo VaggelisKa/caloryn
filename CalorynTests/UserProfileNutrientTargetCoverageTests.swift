@@ -218,6 +218,7 @@ struct UserProfileNutrientTargetCoverageTests {
         let profile = manualProfile(target: 2_000)
         profile.proteinGoalKindRaw = ""
         profile.carbGoalKindRaw = "legacy"
+        // Close to a real kind, but not one: a lenient parse would read it as `.minimum`.
         profile.alcoholGoalKindRaw = "minimum "
 
         #expect(profile.goalKind(for: .protein) == .minimum)

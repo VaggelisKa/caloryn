@@ -145,6 +145,8 @@ final class ScannerViewController: UIViewController, AVCaptureMetadataOutputObje
         device.unlockForConfiguration()
     }
 
+    /// Restricts metadata detection to the visible cutout area.
+    /// Must be called after the session is running so `metadataOutputRectConverted` works.
     private func restrictScanArea(_ output: AVCaptureMetadataOutput) {
         guard let previewLayer else { return }
         let bounds = view.bounds
@@ -209,6 +211,9 @@ final class ScannerViewController: UIViewController, AVCaptureMetadataOutputObje
         label.textColor = .white
         label.font = .preferredFont(forTextStyle: .headline)
 
+        // The primary button's shape (`calorynPrimaryButton`: a 54pt capsule, 17pt bold),
+        // drawn white on the black camera view rather than in ink: this sits over video,
+        // not over the theme, like the scanner's white close glyph.
         var buttonConfiguration = UIButton.Configuration.filled()
         buttonConfiguration.title = "Open Settings"
         buttonConfiguration.baseBackgroundColor = .white
@@ -251,6 +256,9 @@ final class ScannerViewController: UIViewController, AVCaptureMetadataOutputObje
               let object = metadataObjects.first as? AVMetadataMachineReadableCodeObject,
               let code = object.stringValue,
               let normalizedBarcode = BarcodeIdentity.normalized(code) else {
+            // Metadata that cannot form a supported product identity is not a
+            // completed scan. Keep the live camera running so the persistent
+            // guidance remains immediately actionable.
             return
         }
 

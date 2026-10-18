@@ -387,6 +387,17 @@ final class ComponentSnapshotTests: XCTestCase {
 }
 
 private extension UITraitCollection {
+    /// The environment every reference image is recorded in.
+    ///
+    /// Both traits have to be named explicitly:
+    ///
+    /// - **Interface style**, because the theme's colours are Color Sets that
+    ///   resolve from the trait collection rather than from SwiftUI's
+    ///   `colorScheme` — so this is the only place setting it has any effect.
+    /// - **Content size category**, because text metrics change with Dynamic
+    ///   Type. A simulator left on a non-default setting would otherwise
+    ///   re-flow every label and fail images whose components had not changed
+    ///   at all.
     static let reference = UITraitCollection { traits in
         traits.userInterfaceStyle = .light
         traits.preferredContentSizeCategory = .large

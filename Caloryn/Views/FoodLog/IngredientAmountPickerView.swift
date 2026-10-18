@@ -57,6 +57,11 @@ struct IngredientAmountPickerView: View {
                     Button {
                         save()
                     } label: {
+                        // A `Button("Save")` has no label view to colour, and a toolbar
+                        // button takes neither the AccentColor asset nor `.tint()` under
+                        // Liquid Glass — only `.foregroundStyle` on the label works. The
+                        // ternary keeps the disabled state visible, which a flat ink
+                        // would silently throw away.
                         Text("Save")
                             .font(CalorynTheme.toolbarAction)
                             .foregroundStyle(amount.canSave ? CalorynTheme.accent : CalorynTheme.textSecondary)
@@ -89,6 +94,11 @@ struct IngredientAmountPickerView: View {
         )
     }
 
+    /// The weight that goes into the recipe, typed into a `backgroundTertiary` well.
+    /// The label and the well share a line, until accessibility sizes: there the label
+    /// goes above, and the well, sized with the text (a fixed 104pt left about 80pt for a
+    /// number that needs 99pt at AX5), takes the line under it. One layout swapped with
+    /// `AnyLayout`, so the field keeps its identity and focus across the switch.
     private var amountSection: some View {
         let stacks = dynamicTypeSize.isAccessibilitySize
         let layout = stacks

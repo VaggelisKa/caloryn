@@ -22,6 +22,10 @@ struct DetailNutrient: Identifiable, Equatable {
         spacedFormattedValue(locale: .current)
     }
 
+    /// Scaling to milligrams multiplies whatever the product data held by a
+    /// thousand, so `Int(_:)` cannot do the rounding: it terminates the process
+    /// past `Int.max` rather than throwing, and nothing bounds a nutrient value
+    /// on the way in.
     func spacedFormattedValue(locale: Locale) -> String {
         switch unit {
         case .grams:
@@ -32,6 +36,11 @@ struct DetailNutrient: Identifiable, Equatable {
     }
 }
 
+/// Which lines exist is a property of the data, not of the layout: a nutrient
+/// with nothing recorded for it is absent rather than shown as zero, because a
+/// zero would claim the food genuinely contains none of it. A whole group
+/// disappears once every line in it is missing, which is why `populatedGroups`
+/// and not the view decides what to draw.
 enum NutrientDetailGroup: String, CaseIterable, Identifiable {
     case protein
     case carbs

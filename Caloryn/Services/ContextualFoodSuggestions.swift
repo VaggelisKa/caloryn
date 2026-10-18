@@ -262,6 +262,9 @@ enum ContextualFoodSuggestionAdapter {
             )
         }
         let observations = entries.compactMap { entry -> ContextualSuggestionObservation? in
+            // A missing relationship means the source was deleted. Never fall
+            // back to names: duplicate names remain distinct and deletions do
+            // not leak stale candidates back into suggestions.
             guard let foodID = entry.foodItem?.id else { return nil }
             return ContextualSuggestionObservation(
                 entryID: entry.id,

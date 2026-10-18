@@ -26,6 +26,9 @@ custom_rules:
   raw_white_color:
     name: "Raw white"
     regex: 'Color\.white|Color\(\.white\)|UIColor\.white|\(\s*\.white\s*\)'
+    # The barcode scanner draws a UIKit overlay on top of a live camera feed. That text and
+    # its reticle are white against video, not against the theme, so they are correctly
+    # appearance-independent.
     excluded: ".*BarcodeScannerView\\.swift"
     message: "Use a CalorynTheme colour: backgroundSecondary for the white of a sheet or group, textOnAccent for a label on accent, mealOnFill(_:) for a label on a meal fill. A literal white has no dark appearance, so it turns into a glaring block in dark mode."
     severity: error

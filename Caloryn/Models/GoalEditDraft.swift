@@ -82,6 +82,11 @@ struct GoalEditDraft: Equatable {
     }
 
     func storedTarget(for nutrient: TrackedNutrient) -> Double? {
+        // decimalInputValue accepts a decimal comma so the field behaves the
+        // same for users whose keyboard produces one, and rejects the spellings
+        // a keypad cannot produce — "1e3" was a saveable goal, and an infinity
+        // reaches an Int(_:) conversion, which traps rather than throws. The
+        // `> 0` guard below already excluded NaN, but not those.
         guard let input = trimmedText(for: nutrient).decimalInputValue, input > 0 else {
             return nil
         }

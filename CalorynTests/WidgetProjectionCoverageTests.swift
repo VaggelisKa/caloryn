@@ -44,6 +44,8 @@ struct WidgetProjectionCoverageTests {
         )
         let food = makeTestFoodItem(caloriesPer100g: 100)
         let now = localDate(2026, 7, 25, 9)
+        // `makeTestEntry` normalises to the start of the day, so each entry's exact time is
+        // set afterwards: these sit on, and one second either side of, both midnights.
         let todayStart = localDate(2026, 7, 25, 0)
         let tomorrowStart = localDate(2026, 7, 26, 0)
         func entry(at date: Date, _ meal: MealType, grams: Double) -> FoodLogEntry {

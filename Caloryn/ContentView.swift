@@ -24,7 +24,11 @@ struct ContentView: View {
             }
         }
         .preferredColorScheme(colorScheme)
+        // `accent` is also the build's global accent colour, so stock controls read it already;
+        // a `Toggle` does not — it stays system green unless tinted.
         .tint(CalorynTheme.accent)
+        // Switches take `accentControl` instead: ink is near-white in dark mode, and the
+        // switch's white knob vanished on an ink track.
         .toggleStyle(CalorynToggleStyle())
         .animation(.smooth(duration: 0.4), value: hasCompletedOnboarding)
         .background {

@@ -39,6 +39,9 @@ final class DailyReminderScheduler {
         self.center = center
     }
 
+    /// Reconciliation suspends at several awaits, so overlapping calls could
+    /// otherwise interleave and let an older plan finish last. Chaining each
+    /// call on the previous one keeps applies strictly ordered.
     func apply(_ plan: [PlannedReminder], force: Bool = false) async {
         let previous = pendingApply
         let task = Task {

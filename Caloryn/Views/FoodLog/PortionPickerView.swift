@@ -100,6 +100,9 @@ struct PortionPickerView: View {
             .padding(.bottom, 24)
             .dismissesGramKeypadOnTap($isGramsFieldFocused)
         }
+        // `.immediately`, not `.interactively`: interactive dismissal only
+        // moves the keypad while the drag is over the keypad itself, so a scroll
+        // higher up the page left it sitting there.
         .scrollDismissesKeyboard(.immediately)
         .calorynSheetCanvas()
         .navigationTitle(isEditing ? "Edit portion" : "Portion")
@@ -336,6 +339,10 @@ struct PortionPickerView: View {
             )
             .frame(maxWidth: .infinity, alignment: .leading)
             .animation(.easeInOut(duration: 0.28), value: selection.mode)
+            // No identifier on this container. An identifier here is
+            // inherited by every descendant, so it overwrote the field's
+            // and each chip's — the whole column reported one name and a
+            // journey could not tell the chips apart.
         }
         .onChange(of: selection.servingCount) { selection.servingCountChanged() }
         .onChange(of: selection.recipeServingID) { selection.recipeServingChanged() }
@@ -455,6 +462,12 @@ struct PortionPickerView: View {
     }
 
     private func savePortion() {
+        // Belt and braces. Typing already moves the portion on every keystroke,
+        // so by the time Save is tapped the grams are usually right without
+        // this — deleting it does not fail the journey that saves straight from
+        // the keypad. It stays because it makes "what is saved" depend on the
+        // committed value rather than on the live path having fired, and Save
+        // does not reliably resign the keypad first.
         selection.commitGramsInput()
 
         if let existingEntry {

@@ -191,6 +191,9 @@ final class FoodItem {
 
     var lastUsed: Date = Date()
 
+    // These storage names predate the user-facing "Favorites" terminology.
+    // Keeping them preserves lightweight SwiftData / CloudKit migration.
+    // A nil value is the migrated, never-favorited state.
     var isPinnedRaw: Bool?
     var pinnedAt: Date?
 
@@ -305,6 +308,9 @@ final class FoodItem {
         }
     }
 
+    /// Applying nutrition from the manual editor makes the user the source of
+    /// the current values. Provider and fallback attribution are intentionally
+    /// cleared, while field presence is retained as completeness metadata.
     func applyUserNutritionEdit(
         _ nutrition: NutritionValues,
         suppliedProtein: Double?,

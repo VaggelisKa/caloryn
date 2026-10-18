@@ -1,6 +1,9 @@
 import SwiftData
 import SwiftUI
 
+/// Rows live in the `List` Today owns, so swipe-to-edit and swipe-to-delete stay the
+/// system's own. The header is a row too rather than a `Section` header: a plain list pins
+/// its section headers while scrolling, and the board's headers scroll with their meal.
 struct MealSectionView: View {
     let mealType: MealType
     let entries: [FoodLogEntry]
@@ -142,6 +145,10 @@ private struct SingleMealTransitionRow: View {
                 .accessibilityHidden(!showsEmptyState)
         }
         .animation(.easeIn(duration: 0.16), value: entry?.id)
+        // A swipe action draws its label in white on the tint. Before iOS 26 the app-wide
+        // ink tint reaches it, destructive role or not, and ink is near-white in dark mode:
+        // the Delete action was a white glyph on a white bar. `fillAction` is a dark
+        // grey in both appearances, the token the palette reserves for exactly this.
         .onChange(of: entry?.id) { _, newID in
             if pendingDeletionID != newID {
                 pendingDeletionID = nil

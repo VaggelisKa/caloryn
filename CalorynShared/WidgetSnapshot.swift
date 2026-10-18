@@ -43,6 +43,11 @@ struct WidgetCalorieSummary: Codable, Hashable, Sendable {
         }
     }
 
+    /// `Int(_:)` is a trap, not a conversion: NaN, an infinity or anything past `Int64`
+    /// terminates the process, and `consumed` is a raw sum of logged calories.
+    /// `Double.truncatedSafely` says the same thing, but it lives in the app target, which
+    /// this shared file is compiled into the widget without — so the guard is spelled out
+    /// here. Anything that is not a positive finite number floors at 0.
     private static func clamped(_ kcal: Double) -> Int {
         let rounded = kcal.rounded()
         if !rounded.isFinite || rounded <= 0 {
@@ -66,6 +71,9 @@ struct WidgetCalorieSummary: Codable, Hashable, Sendable {
         meals.first { $0.meal == meal }?.kcal
     }
 
+    // Hand-written so a snapshot saved before `meals` existed still decodes: the widget
+    // reads it until the app next publishes, and a decode failure would show "Open
+    // Caloryn" in its place.
     private enum CodingKeys: String, CodingKey {
         case consumed, baseTarget, target, dynamicAdjustment, meals
     }

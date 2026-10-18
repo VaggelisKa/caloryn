@@ -41,6 +41,8 @@ enum CalorynTheme {
     static let mealDinnerOnFill = Color(.mealDinnerOnFill)
     static let mealSnackOnFill = Color(.mealSnackOnFill)
 
+    // The official Nutri-Score colours (A = best, E = worst), and the white the letter is drawn
+    // in. Appearance-independent by design: they must not shift with the interface style.
     static let nutriscoreA = Color(.nutriscoreA)
     static let nutriscoreB = Color(.nutriscoreB)
     static let nutriscoreC = Color(.nutriscoreC)

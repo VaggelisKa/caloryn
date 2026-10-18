@@ -2,6 +2,9 @@ import Charts
 import SwiftUI
 import WidgetKit
 
+/// Accentable as a whole: in the tinted rendering mode the meals and the overshoot take the
+/// accent at full strength and the track keeps the hairline's own alpha, so the ring still
+/// reads as a plate filling up.
 struct WidgetPlateView: View {
     let summary: WidgetPlateSummary
     let size: CGFloat

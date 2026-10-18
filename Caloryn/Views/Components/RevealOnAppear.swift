@@ -28,6 +28,9 @@ private struct RevealOnAppear: ViewModifier {
             }
             .task {
                 guard !isRevealed else { return }
+                // A real frame on the empty state first. A bare `Task.yield()` can resume
+                // before the view's first render, and a figure with nothing on screen to
+                // roll from just appears at its final value.
                 try? await Task.sleep(for: .milliseconds(50))
                 guard !Task.isCancelled else { return }
                 withAnimation(animation) {

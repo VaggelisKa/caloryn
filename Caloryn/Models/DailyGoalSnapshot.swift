@@ -1,6 +1,11 @@
 import Foundation
 import SwiftData
 
+/// CloudKit compatibility: every attribute has a default value and there are no
+/// unique constraints, so adding this model is an additive, lightweight schema
+/// change for existing stores. Uniqueness per day is enforced by
+/// `DailyGoalSnapshotStore` upserts and by last-write-wins deduplication when
+/// reading, because CloudKit-backed stores cannot declare `.unique` attributes.
 @Model
 final class DailyGoalSnapshot {
     var id: UUID = UUID()

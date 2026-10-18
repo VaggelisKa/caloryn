@@ -10,6 +10,8 @@ struct HistoryCalorieTrendChartLayout: Equatable {
     enum BarEmphasis: Equatable {
         case normal
         case selected
+        /// Another bar is the selection. It still keeps its status colour: status is told by
+        /// lightness alone, so a dimmed ink "over" bar would read as an "under" one.
         case muted
     }
 

@@ -36,6 +36,10 @@ final class ThemeScreenshotTests: UITestCase {
                 advance.awaitExistence(),
                 "Onboarding step '\(step.name)' never appeared, so it was not photographed"
             )
+            // The welcome graphic animates for ~2.2s after `onAppear` (three spring
+            // entrances, then a 1.5s-delayed re-layout), and the steps that follow fade
+            // in with the push. A capture taken mid-animation photographs a half-drawn
+            // screen, which reads as a theme problem when it is not one.
             sleep(step.name == "welcome" ? 4 : 1)
             let ordinal = String(UnicodeScalar(UInt8(97 + index)))
             attach(app, "00\(ordinal)-onboarding-\(step.name)", appearance)
@@ -403,6 +407,12 @@ final class ThemeScreenshotTests: UITestCase {
     private enum Appearance: String {
         case light, dark
 
+        /// `XCUIDevice.appearance` is the only thing that actually switches the simulator.
+        ///
+        /// A `-AppleInterfaceStyle Dark` launch argument does **not** work here: the first
+        /// version of this harness used it, and every "dark" reference image it produced
+        /// was pixel-identical to its light counterpart. Nothing failed — the images were
+        /// simply wrong, which is the failure mode this whole file exists to prevent.
         var device: XCUIDevice.Appearance {
             self == .dark ? .dark : .light
         }
@@ -413,6 +423,11 @@ final class ThemeScreenshotTests: UITestCase {
         appearance: Appearance,
         lookupFixture: String? = nil
     ) -> XCUIApplication {
+        // Setting this immediately before `launch()` is a race: on a simulator that was in
+        // the other appearance, the app can come up before the change lands, and the whole
+        // run then photographs light images under dark filenames. It is set once per launch
+        // and given a moment to settle, and the captured images are checked for the
+        // appearance's own tokens afterwards (scripts/theme-screenshots.sh).
         if XCUIDevice.shared.appearance != appearance.device {
             XCUIDevice.shared.appearance = appearance.device
             sleep(2)

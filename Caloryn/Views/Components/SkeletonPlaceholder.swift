@@ -9,6 +9,9 @@ struct SkeletonBar: View {
 
     var body: some View {
         RoundedRectangle(cornerRadius: 3, style: .continuous)
+            // Inside the shimmer's mask the bar must be opaque: a mask multiplies by
+            // alpha, and the faint on-screen fill would reduce the highlight to under
+            // one percent, which is invisible. The colour of a mask is never painted.
             .fill(drawsOpaqueMask ? Color.black : CalorynTheme.fillLoading)
             .frame(maxWidth: width)
             .frame(height: height)

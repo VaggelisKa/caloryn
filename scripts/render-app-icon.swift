@@ -48,6 +48,7 @@ struct Mark {
     var innerRadius: CGFloat { outerRadius * 0.7 }
     var gap: CGFloat { mark * 1.5 / 168 }
     var biteRadius: CGFloat { mark * 0.34 / 2 }
+    /// Core Graphics' origin is bottom-left; the mark's bite is at (21%, 19%) from the top.
     var biteCenter: CGPoint { CGPoint(x: origin.x + mark * 0.21, y: origin.y + mark * (1 - 0.19)) }
 
     func draw(in context: CGContext, fills: [CGColor], bite: CGColor?) {

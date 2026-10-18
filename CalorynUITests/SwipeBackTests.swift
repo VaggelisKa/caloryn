@@ -94,6 +94,10 @@ final class SwipeBackTests: UITestCase {
 }
 
 extension XCUIApplication {
+    /// Drags from the very left edge to the far side, the gesture a user makes to pop.
+    ///
+    /// A `swipeRight()` will not do: it starts inside the content, and the pop
+    /// recognizer only claims touches that begin in the screen-edge strip.
     func swipeBackFromLeftEdge() {
         let edge = coordinate(withNormalizedOffset: CGVector(dx: 0.0, dy: 0.5))
         let farSide = coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5))

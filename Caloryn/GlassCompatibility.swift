@@ -10,6 +10,11 @@ extension View {
         }
     }
 
+    /// Interactive circle glass with a body: tinted with a theme token, with an optional
+    /// hairline edge. Clear glass over a surface of nearly its own colour shows only a rim:
+    /// Today's day buttons all but vanished on the dark page, and Add Food's scanner on the
+    /// white sheet. Before iOS 26 there is no glass to tint, so the token is the fill rather
+    /// than a system material.
     @ViewBuilder
     func adaptiveCircleInteractiveGlass(tint: Color, edge: Color? = nil) -> some View {
         if #available(iOS 26.0, *) {

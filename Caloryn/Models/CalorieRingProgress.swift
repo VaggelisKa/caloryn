@@ -54,6 +54,9 @@ struct CalorieRingProgress: Equatable {
         )
     }
 
+    /// Stated as "not below the threshold" rather than "at or above" it, so a
+    /// progress that is not a number leaves the arc drawn instead of blanking
+    /// the ring — the behaviour the view had before this rule moved.
     private var isBaseArcVisible: Bool {
         !(animatedProgress < Self.minimumVisibleProgress)
     }

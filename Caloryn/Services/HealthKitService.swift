@@ -137,6 +137,9 @@ nonisolated struct HealthKitService: ActiveEnergyReading, Sendable {
             throw HealthKitServiceError.unavailable
         }
 
+        // HealthKit does not report the read-grant decision here. A completed
+        // request lets the app attempt reads; the activity queries below own
+        // the distinction between zero data and read failures.
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             Self.store.requestAuthorization(toShare: [], read: [Self.activeEnergyType]) { success, error in
                 if let error {
@@ -160,6 +163,9 @@ nonisolated struct HealthKitService: ActiveEnergyReading, Sendable {
         }
 
         let start = calendar.startOfDay(for: date)
+        // Falls back to a whole day from `start`, not to `date`: `date` is the
+        // instant asked about, so a midday request fell back to a window ending
+        // at midday and silently reported half a day's energy as the day's.
         let end = calendar.date(byAdding: .day, value: 1, to: start)
             ?? start.addingTimeInterval(86_400)
         let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: [.strictStartDate, .strictEndDate])

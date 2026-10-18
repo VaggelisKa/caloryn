@@ -301,6 +301,8 @@ struct MultiAddReviewView: View {
         errorMessage = nil
 
         Task { @MainActor in
+            // Give SwiftUI a render turn after disabling the controls so the
+            // progress state is visible before the synchronous transaction.
             await Task.yield()
             defer { isCommitting = false }
 

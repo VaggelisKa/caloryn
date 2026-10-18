@@ -338,6 +338,10 @@ struct SettingsView: View {
         let estimate = calorieEstimate(for: profile)
 
         return Section {
+            // The button is laid over the headline rather than wrapping it: a button's label
+            // collapses into the button for accessibility, and the number has to stay its own
+            // element (`settings.calorieTarget`) for a journey to read it. The headline's text
+            // takes no touches, so a tap anywhere on the row still lands on the button.
             SettingsDisclosureLabel {
                 SettingsGoalHeadline(
                     plate: goalPlate(for: profile),
@@ -616,6 +620,8 @@ private struct SettingsGoalHeadline: View {
             }
         }
         .padding(.vertical, 4)
+        // The hairline under the headline runs from the group's edge like every other row's,
+        // not from the text beside the plate, where the system would start it.
         .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
     }
 }

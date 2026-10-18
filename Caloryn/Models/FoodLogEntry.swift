@@ -341,6 +341,9 @@ final class FoodLogEntry {
                 recoveredByFallback: recoveredByFallbackSnapshotRaw ?? false
             )
         }
+        // Unlike pre-existing quality fields, provenance was never available
+        // before its snapshot columns were added. Reading the linked food here
+        // would let a later food edit rewrite legacy history.
         return .unknown
     }
 }

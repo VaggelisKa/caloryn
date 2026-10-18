@@ -434,6 +434,8 @@ struct AuditCalorieBudgetAutoAdjustTests {
         #expect(budget.baseTarget == 1_300)
         #expect(budget.adjustedTarget == 1_200)
         #expect(budget.hasDynamicReduction)
+        // Current behaviour, suspected bug: the target only dropped by 100, but the cue and
+        // the Nutrition Details row both report the unfloored −300 adjustment.
         #expect(budget.dynamicAdjustment == -300)
         #expect(cue == .reduction(-300))
         #expect(cue.text == "-300 dynamic")

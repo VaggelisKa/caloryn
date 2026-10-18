@@ -32,6 +32,9 @@ enum NutritionCalculator {
     }
 
     static func defaultTarget(energyExpenditure: Double, deficit: Double = 500) -> Int {
+        // `max` returns the floor for NaN. The result is clamped rather than
+        // merely made finite: callers subtract from it and sum it over a
+        // period, and `Int.max` would only move the trap to their arithmetic.
         let target = max(1200, energyExpenditure - deficit)
         guard target.isFinite else { return CalorieDomain.maximum }
         return CalorieDomain.clamped(target.truncatedSafely)

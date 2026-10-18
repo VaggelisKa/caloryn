@@ -44,6 +44,8 @@ struct FoodRowView: View {
 
         Group {
             if dynamicTypeSize.isAccessibilitySize {
+                // Side by side, the figure column and one-line name left "Smørr…" at AX5.
+                // Stacked, the name and subtitle may wrap and the figure reads inline.
                 VStack(alignment: .leading, spacing: 4) {
                     nameText.lineLimit(3)
 
@@ -123,6 +125,8 @@ struct FoodRowFigure: View {
     @ScaledMetric(relativeTo: .callout) private var minimumWidth: CGFloat = 44
 
     var body: some View {
+        // Not fixed-size: at the largest text sizes the caption wraps under the number
+        // rather than squeezing the food's name down to its first letters.
         VStack(alignment: .trailing, spacing: 1) {
             Text(figure)
                 .font(FoodRowTypography.figure)
@@ -151,6 +155,7 @@ struct FoodTypeBadge: View {
                 CalorynTheme.fillBadge,
                 in: RoundedRectangle(cornerRadius: 4, style: .continuous)
             )
+            // Never squeezed: "Recipe" cut to "Rec…" says nothing. The name gives way.
             .fixedSize()
     }
 }

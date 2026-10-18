@@ -221,6 +221,8 @@ struct TodayView: View {
             followCalendarRollover()
             activeEnergyTracker.refreshWhenActive()
         }
+        // Covers midnight passing while Today stays on screen, when no scene
+        // transition ever happens.
         .onReceive(
             NotificationCenter.default
                 .publisher(for: .NSCalendarDayChanged)
@@ -425,6 +427,8 @@ struct TodayView: View {
 
     private func recordDailyGoalSnapshotIfNeeded(calorieBudget: ActivityCalorieBudget) {
         guard let profile else { return }
+        // Skip transient budgets while Health data is still loading so a
+        // dynamic day is not momentarily snapshotted without its adjustment.
         guard !calorieBudget.isActivityLoading else { return }
 
         DailyGoalSnapshotStore.recordSnapshot(

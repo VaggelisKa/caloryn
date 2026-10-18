@@ -2,6 +2,7 @@ import Foundation
 
 enum CSVExporter {
     private static func escaped(_ field: String) -> String {
+        // `isNewline`, not `== "\n" || == "\r"`: "\r\n" is one Character and equals neither.
         guard field.contains(where: { $0 == "," || $0 == "\"" || $0.isNewline }) else {
             return field
         }

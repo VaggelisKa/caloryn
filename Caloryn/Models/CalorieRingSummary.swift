@@ -1,6 +1,9 @@
 import Foundation
 
 struct CalorieRingSummary: Equatable {
+    /// Loading wins over a result: while Apple Health is still being read, the
+    /// figures on screen are the previous day's answer and must not be
+    /// announced as this one's.
     enum Cue: Equatable {
         case none
         case updating

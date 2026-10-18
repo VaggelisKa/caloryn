@@ -2,6 +2,12 @@ import CoreText
 import SwiftUI
 import UIKit
 
+/// The variable font's default instance is its 96pt ExtraBold display cut, so it is not
+/// bundled as is: body text would get display letterforms. Instead there is a text cut at
+/// the 14pt optical size in five weights, family "Bricolage Grotesque", so `.fontWeight`
+/// and `.bold()` resolve inside it, and a display cut at 36pt in bold and extra bold for
+/// titles and the big numbers. Every text-style font is `relativeTo:` its style, so
+/// Dynamic Type scales it; fixed sizes come from callers' `@ScaledMetric`.
 enum CalorynTypeface {
     static func register() {
         let urls = Bundle.main.urls(forResourcesWithExtension: "ttf", subdirectory: nil) ?? []

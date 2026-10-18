@@ -99,6 +99,10 @@ struct GoalEditDraftTests {
         #expect(draft.isMacroValid)
     }
 
+    /// The tolerance is `<= 0.01` against a Double, and 0.99 is stored as
+    /// slightly less than 0.99 — so a total exactly one tolerance away is
+    /// rejected. Recorded rather than fixed: the sliders cannot produce it, and
+    /// widening the tolerance would let genuinely wrong totals through.
     @Test("A total exactly one tolerance from 100% is rejected")
     func exactToleranceBoundaryIsRejected() {
         var draft = makeDraft()
@@ -202,6 +206,8 @@ struct GoalEditDraftTests {
     func nutrientGoalsSurviveARoundTrip() {
         let profile = makeProfile()
         profile.setTarget(30, for: .fiber)
+        // Deliberately not fiber's default kind, so a round trip that silently
+        // reset to the default would be visible.
         profile.setGoalKind(.maximum, for: .fiber)
 
         var draft = GoalEditDraft(profile: profile)

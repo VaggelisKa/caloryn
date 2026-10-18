@@ -62,6 +62,10 @@ struct HistoryWeeklyConsistencyProjection {
 
 struct HistoryCalorieTrendProjection {
     let range: HistoryRange
+    /// Taken from the summary rather than accepted as a parameter: a defaulted
+    /// `calendar: Calendar = .current` silently succeeded at the wrong answer
+    /// whenever a caller forgot it, which is exactly how the detail screen came
+    /// to label foreign-zone days from the host calendar.
     let calendar: Calendar
     let dailyCalorieTarget: Int
     let totalDayCount: Int
@@ -151,6 +155,8 @@ struct HistoryCalorieTrendProjection {
     }
 
     var canDrillDown: Bool {
+        // Gated on logged days, not plotted points: in the 90-day range a point is a calendar
+        // week, so three days logged inside one week left the only data the user had unreachable.
         loggedDayCount >= 2
     }
 
@@ -192,6 +198,10 @@ struct HistoryCalorieTrendProjection {
         date.dayMonthFormatted(in: calendar)
     }
 
+    /// Non-finite indices are rejected rather than truncated: `truncatedSafely`
+    /// answers 0 for NaN and the infinities, which would silently select the
+    /// first day for a gesture value that means nothing. The equivalent
+    /// `HistoryChartIndexAxis.slot(for:)` draws the same line.
     func point(for index: Double) -> HistoryCalorieTrendPoint? {
         guard index.isFinite else { return nil }
         let roundedIndex = index.rounded().truncatedSafely

@@ -76,12 +76,15 @@ exit code and looks green.
    (muter cannot see this suite's failures — `docs/testing/mutation-testing.md`). CI
    wall-clock is noisy — the same commit ran 137s/206s/268s, so never claim a CI
    speed-up from one sample.
-8. **No comments in code — none, ever.** Do not add `//`, `///`, `/* */`, `// MARK:`,
-   `// TODO:`, trailing comments or Python docstrings/`#` comments to any Swift, Python,
-   shell or YAML file, including tests and scripts. Express intent through names, types
-   and tests instead; rationale belongs in the commit message or PR description. The
-   only exceptions are machine-read tool directives (`// swiftlint:disable…`, shebangs).
-   When editing a file that still has a comment, delete it rather than updating it.
+8. **No comments in code.** Do not add `//`, `///`, `/* */`, `// MARK:`, `// TODO:`,
+   trailing comments or Python docstrings/`#` comments to any Swift, Python, shell or
+   YAML file, including tests and scripts. Express intent through names, types and tests
+   instead; rationale belongs in the commit message or PR description. Two exceptions:
+   machine-read tool directives (`// swiftlint:disable…`, shebangs), and the rare
+   deliberate comment on code that looks wrong but isn't — a workaround, an ordering
+   constraint, a trap a reader would otherwise "fix" into a bug. The comments still in the
+   codebase are that set; keep them accurate when you touch their code, and do not add to
+   them for anything a name or a test could say.
 
 ## CI
 
