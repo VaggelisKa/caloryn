@@ -18,15 +18,11 @@ struct GoalEditSeed: Equatable {
         manualOverride = profile.manualOverride
         calorieDeficit = profile.calorieDeficit
 
-        let calories = Double(profile.dailyCalorieTarget)
-        guard calories > 0 else {
-            proteinRatio = 0.30
-            carbRatio = 0.40
-            fatRatio = 0.30
-            return
-        }
-        proteinRatio = (profile.proteinTargetG * 4.0) / calories
-        carbRatio = (profile.carbTargetG * 4.0) / calories
-        fatRatio = (profile.fatTargetG * 9.0) / calories
+        // The one derivation of a profile's split, so a stale split opens scaled back
+        // to 100% and a non-finite gram value opens on the default.
+        let ratios = profile.macroRatios
+        proteinRatio = ratios.protein
+        carbRatio = ratios.carbs
+        fatRatio = ratios.fat
     }
 }

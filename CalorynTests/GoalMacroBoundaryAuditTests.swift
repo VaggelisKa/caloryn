@@ -378,8 +378,8 @@ struct AuditGoalProfileRoundTripTests {
         }
     }
 
-    @Test("A stale split the profile scales back opens in the goal editor unscaled and unsaveable")
-    func staleSplitDivergesBetweenProfileAndSeed() {
+    @Test("A stale split opens in the goal editor scaled back the way the profile reads it")
+    func staleSplitMatchesBetweenProfileAndSeed() {
         let profile = auditProfile(dailyCalorieTarget: 1_000)
         profile.proteinTargetG = 150
         profile.carbTargetG = 200
@@ -390,14 +390,10 @@ struct AuditGoalProfileRoundTripTests {
         let profileTotal = profile.macroRatios.protein + profile.macroRatios.carbs + profile.macroRatios.fat
 
         #expect(abs(profileTotal - 1) < 1e-12)
-        // Current behaviour, suspected bug: the seed divides the grams itself instead of
-        // going through ProfileEditMacroRatios, so it keeps the impossible 60/80/60 split
-        // the profile has already scaled to 100% — and the editor opens with Save disabled.
-        #expect(abs(seed.proteinRatio - 0.6) < 1e-12)
-        #expect(abs(seed.carbRatio - 0.8) < 1e-12)
-        #expect(abs(seed.fatRatio - 0.603) < 1e-12)
-        #expect(draft.isMacroValid == false)
-        #expect(draft.canSave == false)
+        #expect(seed.proteinRatio == profile.macroRatios.protein)
+        #expect(seed.carbRatio == profile.macroRatios.carbs)
+        #expect(seed.fatRatio == profile.macroRatios.fat)
+        #expect(draft.isMacroValid)
     }
 
     @Test("A stale split is spent exactly once the profile screen saves new facts")
