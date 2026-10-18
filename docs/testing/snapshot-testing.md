@@ -28,7 +28,7 @@ Excluded, and why:
 - anything reading the clock — a snapshot that changes on its own trains people
   to ignore it
 - anything reading the store, which brings in ordering and migration state
-- anything mid-animation, including `CalorieRingView`, whose ring animates up
+- anything mid-animation, including `CalorieDonutView`, whose ring animates up
   from zero on appear
 
 `FoodRowView` reads `@AppStorage("showNutriscore")`, which would otherwise make
