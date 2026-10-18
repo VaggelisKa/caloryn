@@ -18,11 +18,14 @@ A skin change. Nothing else moves:
   back button. Glass is the chrome; the content underneath is what changes.
 - Deployment target iOS 18.6 built against the iOS 26 SDK. Every `#available(iOS 26.0, *)`
   branch keeps its `else`. Swift Charts `SectorMark` is iOS 17+, so it is fine on both.
-- Typeface stays the system font. The mocks use Schibsted Grotesk as a stand-in for a
-  bundled grotesk; that is a separate decision (licence file, Dynamic Type plumbing) and
-  is not part of this change. Get the feel from weight and tracking instead: heavy for
-  display numbers and screen titles, bold for section titles, medium for item titles,
-  `.default` design everywhere (no `.rounded`), tabular digits on every number.
+- Typeface is Bricolage Grotesque (SIL OFL), bundled as fixed cuts of the variable font in
+  `Caloryn/Theme/Fonts` and registered at launch by `CalorynTypeface`: a text cut at the
+  14pt optical size in five weights, and a display cut at 36pt in bold and extra bold that
+  takes over from 22pt up. Every token is `relativeTo:` its text style, so Dynamic Type
+  still scales it. Weight carries the feel: heavy for display numbers and screen titles,
+  bold for section titles, tabular digits on every number. Tracking is close to zero,
+  because the display cut is already tight. SF Symbols, inline navigation titles, the tab
+  bar and other system chrome keep the system font.
 
 ## Tokens
 
@@ -31,7 +34,7 @@ declared together (CLAUDE.md rule 6). Never a literal.
 
 | Asset | Light | Dark | Role |
 |---|---|---|---|
-| `PageBackground` | `#F6F5F1` | `#141614` | every page canvas |
+| `PageBackground` | `#FCFBF8` | `#141614` | every page canvas |
 | `CardBackground` | `#FFFFFF` | `#262A26` | sheet canvas, the few grouped surfaces |
 | `Surface` | `#F6F5F1` | `#262A26` | input wells inside a sheet (stepper pill, search well) |
 | `TextPrimary` | `#1E231F` | `#ECEBE8` | ink: text, controls, primary buttons |

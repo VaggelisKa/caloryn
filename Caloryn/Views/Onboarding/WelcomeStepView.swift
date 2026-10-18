@@ -88,7 +88,7 @@ struct WelcomeStepView: View {
                 VStack(spacing: 10) {
                     Text("Caloryn")
                         .font(CalorynTheme.brandTitle)
-                        .tracking(-1)
+                        .tracking(-0.5)
                         .foregroundStyle(CalorynTheme.textPrimary)
                         .accessibilityAddTraits(.isHeader)
 

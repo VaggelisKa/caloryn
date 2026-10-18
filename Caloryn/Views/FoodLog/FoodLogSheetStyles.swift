@@ -32,8 +32,8 @@ struct FoodLogSheetHeader: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .center, spacing: 8) {
                 Text(name)
-                    .font(.system(size: nameSize, weight: .heavy))
-                    .tracking(-nameSize * 0.02)
+                    .font(CalorynTypeface.fixed(size: nameSize, weight: .heavy))
+                    .tracking(-nameSize * 0.005)
                     .foregroundStyle(CalorynTheme.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
 
@@ -44,7 +44,7 @@ struct FoodLogSheetHeader: View {
 
             ForEach(lines, id: \.self) { line in
                 Text(line)
-                    .font(.system(.subheadline))
+                    .font(CalorynTypeface.text(.subheadline))
                     .foregroundStyle(CalorynTheme.textSecondary)
             }
         }
@@ -90,7 +90,7 @@ struct FoodLogCaloriePreview: View {
     private var figure: some View {
         Text("\(calories)")
             .font(CalorynTheme.heroNumber(size: figureSize))
-            .tracking(-figureSize * 0.035)
+            .tracking(-figureSize * 0.01)
             .lineLimit(1)
             .foregroundStyle(tint)
             .contentTransition(.numericText())
@@ -101,12 +101,12 @@ struct FoodLogCaloriePreview: View {
     private var caption: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text("kcal")
-                .font(.system(.subheadline, weight: .semibold))
+                .font(CalorynTypeface.text(.subheadline, weight: .semibold))
                 .foregroundStyle(tint)
 
             if let detail {
                 Text(detail)
-                    .font(.system(.footnote))
+                    .font(CalorynTypeface.text(.footnote))
                     .foregroundStyle(CalorynTheme.textSecondary)
                     .contentTransition(.numericText())
                     .animation(.smooth(duration: 0.3), value: detail)
@@ -125,7 +125,7 @@ struct FoodLogSectionTitle: View {
 
     var body: some View {
         Text(title)
-            .font(.system(.subheadline, weight: .bold))
+            .font(CalorynTypeface.text(.subheadline, weight: .bold))
             .foregroundStyle(CalorynTheme.textPrimary)
             .accessibilityAddTraits(.isHeader)
     }
@@ -163,7 +163,7 @@ struct FoodLogValueRows: View {
                             .contentTransition(.numericText())
                             .animation(.smooth(duration: 0.3), value: row.value)
                     }
-                    .font(.system(.subheadline))
+                    .font(CalorynTypeface.text(.subheadline))
                     .padding(.vertical, 9)
                     .accessibilityElement(children: .combine)
                 }

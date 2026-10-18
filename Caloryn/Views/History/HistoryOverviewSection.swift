@@ -44,7 +44,7 @@ struct HistoryOverviewSection: View {
                 averageLayout {
                     Text(overview.averageValueText)
                         .font(CalorynTheme.heroNumber(size: heroSize))
-                        .tracking(-heroSize * 0.03)
+                        .tracking(-heroSize * 0.01)
                         .foregroundStyle(CalorynTheme.textPrimary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
@@ -255,7 +255,7 @@ struct HistoryOnTrackSection: View {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(overview.onTrackValueText)
                     .font(CalorynTheme.heroNumber(size: countSize))
-                    .tracking(-countSize * 0.02)
+                    .tracking(-countSize * 0.005)
                     .foregroundStyle(CalorynTheme.textPrimary)
                     .contentTransition(.numericText())
 

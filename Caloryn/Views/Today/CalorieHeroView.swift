@@ -63,7 +63,7 @@ struct CalorieHeroView: View {
         VStack(alignment: .leading, spacing: 2) {
             Text(summary.headlineText)
                 .font(CalorynTheme.heroNumber(size: numberSize))
-                .tracking(-numberSize * 0.035)
+                .tracking(-numberSize * 0.01)
                 .foregroundStyle(CalorynTheme.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)

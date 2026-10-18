@@ -97,7 +97,7 @@ struct GoalSummaryStepView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(displayTarget.formatted())
                     .font(CalorynTheme.heroNumber(size: targetSize))
-                    .tracking(-targetSize * 0.035)
+                    .tracking(-targetSize * 0.01)
                     .foregroundStyle(CalorynTheme.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)

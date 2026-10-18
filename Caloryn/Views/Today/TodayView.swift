@@ -246,7 +246,7 @@ struct TodayView: View {
         HStack(spacing: 12) {
             Text(DayTitle.text(for: selectedDate))
                 .font(TodayPlateFont.dateTitle)
-                .tracking(-0.44)
+                .tracking(-0.2)
                 .foregroundStyle(CalorynTheme.textPrimary)
                 .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 1)
                 .minimumScaleFactor(0.7)
@@ -365,7 +365,6 @@ struct TodayView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Nutri-Score")
                 .font(CalorynTheme.sectionHeaderTitle)
-                .tracking(-0.17)
                 .foregroundStyle(CalorynTheme.textPrimary)
                 .accessibilityHidden(true)
 

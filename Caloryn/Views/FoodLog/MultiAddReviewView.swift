@@ -126,7 +126,7 @@ struct MultiAddReviewView: View {
                     .font(CalorynTheme.sectionHeaderTitle)
                     .foregroundStyle(CalorynTheme.textPrimary)
                 Text(destinationDescription)
-                    .font(.system(.footnote))
+                    .font(CalorynTypeface.text(.footnote))
                     .foregroundStyle(CalorynTheme.textSecondary)
                     .accessibilityIdentifier("multiAdd.destinationSummary")
             }
@@ -226,7 +226,7 @@ struct MultiAddReviewView: View {
             .accessibilityIdentifier("multiAdd.partialState")
 
             Text("Choose whether to replace the partial add or keep it and add only the missing items.")
-                .font(.system(.footnote))
+                .font(CalorynTypeface.text(.footnote))
                 .foregroundStyle(CalorynTheme.textSecondary)
 
             // Ink, not red: red is lunch now. Its sibling below is ink with the same

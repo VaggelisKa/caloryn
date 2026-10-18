@@ -17,7 +17,6 @@ struct HistorySectionTitle: View {
     var body: some View {
         Text(text)
             .font(CalorynTheme.sectionHeaderTitle)
-            .tracking(-0.17)
             .foregroundStyle(CalorynTheme.textPrimary)
             .fixedSize(horizontal: false, vertical: true)
             .accessibilityAddTraits(.isHeader)

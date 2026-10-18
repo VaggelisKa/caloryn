@@ -13,7 +13,6 @@ struct HistoryRecurringCaloriePatternCard: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(pattern.headline)
                         .font(CalorynTheme.sectionHeaderTitle)
-                        .tracking(-0.17)
                         .foregroundStyle(CalorynTheme.textPrimary)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)

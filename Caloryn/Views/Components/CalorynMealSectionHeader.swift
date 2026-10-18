@@ -88,7 +88,6 @@ struct CalorynMealSectionHeader: View {
     private var titleText: some View {
         Text(title)
             .font(CalorynTheme.sectionHeaderTitle)
-            .tracking(-0.17)
             .foregroundStyle(CalorynTheme.mealInk(meal))
     }
 

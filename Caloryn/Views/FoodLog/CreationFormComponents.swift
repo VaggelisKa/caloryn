@@ -95,13 +95,13 @@ struct CreationFormSection<Content: View, Trailing: View>: View {
 /// Type sizes the forms use that `CalorynTheme` has no name for, text-style-relative.
 enum CreationFormTypography {
     /// A row's label, 16pt.
-    static let rowLabel: Font = .system(.callout)
+    static let rowLabel: Font = CalorynTypeface.text(.callout)
     /// An item row's name, 16pt medium.
-    static let itemName: Font = .system(.callout, weight: .medium)
+    static let itemName: Font = CalorynTypeface.text(.callout, weight: .medium)
     /// Grams, units and footnotes, 13pt.
-    static let detail: Font = .system(.footnote)
+    static let detail: Font = CalorynTypeface.text(.footnote)
     /// The kcal on an item row, 16pt semibold tabular.
-    static let itemKcal: Font = .system(.callout, weight: .semibold).monospacedDigit()
+    static let itemKcal: Font = CalorynTypeface.text(.callout, weight: .semibold).monospacedDigit()
 }
 
 /// The 1pt rule between rows.
@@ -143,7 +143,7 @@ struct CreationFormTotal: View {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(kcal.formatted())
                     .font(CalorynTheme.heroNumber(size: figureSize))
-                    .tracking(-figureSize * 0.035)
+                    .tracking(-figureSize * 0.01)
                     .foregroundStyle(CalorynTheme.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
