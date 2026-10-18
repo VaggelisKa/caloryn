@@ -1,6 +1,6 @@
 # Theme
 
-CLAUDE.md rule 7 states the rules. This is why they exist.
+CLAUDE.md rule 6 states the rules. This is why they exist.
 
 ## The failure mode
 
@@ -43,7 +43,7 @@ its backing moved. Renaming it would have been a 978-site rewrite for no benefit
 Two gotchas worth knowing:
 
 - Xcode **strips a trailing `Color`** when generating symbols: an asset named `CarbColor`
-  yields `.carb`. Ours are named `Carb` and `Fiber` so name and symbol agree.
+  yields `.carb`. Name sets without the suffix so name and symbol agree.
 - The generated symbols do not exist until the catalog compiles, so SourceKit reports
   `cannot be resolved without a contextual type` on a clean checkout. Trust the build.
 
@@ -99,7 +99,7 @@ sheet — 64% of that screen was `#F2F2F7`.
 
 This is a genuine hole in the abstraction and it has no automated guard: SwiftLint's
 custom rules can ban a primitive but cannot detect a *missing* modifier. It is covered by
-convention (CLAUDE.md rule 7) and by looking at screenshots, nothing stronger.
+convention (CLAUDE.md rule 6) and by looking at screenshots, nothing stronger.
 
 **Since the Plate / Market palette, light mode cannot show this bug at all.**
 `CardBackground` is now `#FFFFFF` — exactly the `secondarySystemGroupedBackground` a row
@@ -166,9 +166,10 @@ because no iOS 26 capture can show it.
 
 iOS 26 renders navigation-bar and toolbar buttons inside a glass container that honours
 **neither** the `AccentColor` asset **nor** `.tint()`. Both were measured: with `.tint()`
-applied to the sheet canvas the close glyph still rendered `#000000`. Only
-`.foregroundStyle(CalorynTheme.sage)` on the label itself works, which is why a couple of
-buttons in the codebase already had it while their neighbours did not.
+applied to the sheet canvas the close glyph still rendered `#000000`. Only a
+`.foregroundStyle(...)` on the label itself works — `CalorynTheme.sage` when this was
+measured, `CalorynTheme.textPrimary` since the Plate redesign retired sage — which is why
+a couple of buttons in the codebase already had it while their neighbours did not.
 
 This is the same root cause as the back button above, and it means the `AccentColor` asset
 does *less* than it appears: it covers controls in content, not chrome.

@@ -36,7 +36,6 @@ struct OnboardingScreen: Screen {
     let app: XCUIApplication
 
     var getStarted: XCUIElement { element("onboarding.getStarted") }
-    var goalTarget: XCUIElement { element("onboarding.goalSummary.target") }
     var startTracking: XCUIElement { element("onboarding.startTracking") }
 
     /// One activity level choice. Which one is chosen shows up as the element's

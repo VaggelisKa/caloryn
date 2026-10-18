@@ -231,23 +231,6 @@ enum TrackedNutrient: String, CaseIterable, Identifiable, Hashable {
         }
     }
 
-    var color: Color {
-        switch self {
-        case .protein:
-            CalorynTheme.proteinColor
-        case .carbs, .sugars:
-            CalorynTheme.carbColor
-        case .fat, .addedSugars, .saturatedFat, .cholesterol:
-            CalorynTheme.fatColor
-        case .fiber:
-            CalorynTheme.fiberColor
-        case .sodium:
-            CalorynTheme.stone
-        case .alcohol:
-            CalorynTheme.textSecondary
-        }
-    }
-
     var unit: TrackedNutrientUnit {
         switch self {
         case .sodium, .cholesterol:
@@ -309,13 +292,6 @@ struct TrackedNutrientMetric: Identifiable {
     var progress: Double {
         guard let target, target > 0 else { return 0 }
         return min(value / target, 1.0)
-    }
-
-    var accentColor: Color {
-        if goalKind == .maximum, let target, value > target {
-            return CalorynTheme.terracotta
-        }
-        return nutrient.color
     }
 
     var accessibilityLabel: String {

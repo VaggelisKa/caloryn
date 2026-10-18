@@ -30,9 +30,6 @@ struct CustomFoodFormView: View {
 
     private var canSave: Bool { draft.canSave }
     private var previewCalories: Double { draft.previewCalories }
-    private var previewProtein: Double { draft.previewProtein }
-    private var previewCarbs: Double { draft.previewCarbs }
-    private var previewFat: Double { draft.previewFat }
 
     init(
         existingFood: FoodItem? = nil,

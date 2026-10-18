@@ -136,51 +136,9 @@ extension Screen {
         element.tap()
         return true
     }
-
-    /// Waits for a static text with exactly this label to appear anywhere on
-    /// screen. Used for values a user reads, like "7/7".
-    @discardableResult
-    func awaitText(
-        _ text: String,
-        timeout: TimeInterval = UITestCase.defaultTimeout,
-        file: StaticString = #filePath,
-        line: UInt = #line
-    ) -> Bool {
-        let element = app.staticTexts[text]
-        let found = element.waitForExistence(timeout: timeout)
-        if !found {
-            XCTFail("Timed out waiting for the text \"\(text)\"", file: file, line: line)
-        }
-        return found
-    }
 }
 
 extension XCUIElement {
-    /// Waits until the element's accessibility value contains `substring`.
-    ///
-    /// Values that animate (the calorie ring counts up) settle on a final
-    /// value, so tests wait for the settled value rather than sampling once.
-    @discardableResult
-    func awaitValue(
-        containing substring: String,
-        timeout: TimeInterval = UITestCase.defaultTimeout,
-        file: StaticString = #filePath,
-        line: UInt = #line
-    ) -> Bool {
-        let predicate = NSPredicate(format: "value CONTAINS %@", substring)
-        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: self)
-        let result = XCTWaiter().wait(for: [expectation], timeout: timeout)
-        if result != .completed {
-            XCTFail(
-                "Timed out waiting for a value containing \"\(substring)\"; last value was "
-                    + "\"\(String(describing: value))\"",
-                file: file,
-                line: line
-            )
-        }
-        return result == .completed
-    }
-
     /// Waits until the element's label contains `substring`.
     ///
     /// Used for values a user reads out of a label rather than a control's

@@ -14,15 +14,6 @@ enum EnergyCalculationMode: String, Codable, CaseIterable, Identifiable {
             "Auto-adjust Calories"
         }
     }
-
-    var shortDescription: String {
-        switch self {
-        case .lifestyleEstimate:
-            "Uses your selected activity level."
-        case .dynamicHealth:
-            "Uses Apple Health when activity data is available."
-        }
-    }
 }
 
 enum NutritionCalculator {

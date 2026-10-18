@@ -28,16 +28,6 @@ enum FoodDataSource: String, Codable, Sendable {
         case .unknown: "Source unknown"
         }
     }
-
-    var detailLabel: String {
-        switch self {
-        case .calorynCatalog: "Nutrition data from Caloryn"
-        case .openFoodFactsCommunity: "Community-provided data from Open Food Facts"
-        case .userEntered: "Nutrition data entered by you"
-        case .mixed: "Nutrition data combined from multiple sources"
-        case .unknown: "The original data source was not recorded"
-        }
-    }
 }
 
 enum NutritionCompleteness: String, Codable, Sendable {
