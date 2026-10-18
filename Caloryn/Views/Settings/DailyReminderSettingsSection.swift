@@ -21,6 +21,7 @@ struct DailyReminderSettingsSection: View {
             Toggle(isOn: enableBinding) {
                 SettingsToggleLabel(title: "Daily reminder")
             }
+            .accessibilityIdentifier("settings.dailyReminder.toggle")
 
             if isEnabled {
                 // The time as a value, as PlateSettings draws it ("20:30" in secondary
@@ -41,6 +42,7 @@ struct DailyReminderSettingsSection: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityHint(isPickingTime ? "Double tap to close the time picker" : "Double tap to change the time")
+                .accessibilityIdentifier("settings.dailyReminder.time")
 
                 if isPickingTime {
                     DatePicker(
@@ -51,6 +53,7 @@ struct DailyReminderSettingsSection: View {
                     .datePickerStyle(.wheel)
                     .labelsHidden()
                     .frame(maxWidth: .infinity)
+                    .accessibilityIdentifier("settings.dailyReminder.timePicker")
                 }
             }
 
@@ -76,6 +79,7 @@ struct DailyReminderSettingsSection: View {
                     .font(CalorynTheme.caption)
                     .buttonStyle(.borderless)
                     .accessibilityLabel("Open app settings")
+                    .accessibilityIdentifier("settings.dailyReminder.openSettings")
                 }
             }
         } header: {

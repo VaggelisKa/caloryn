@@ -166,6 +166,7 @@ struct MyFoodsView: View {
                         .libraryRowSeparatorInset()
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("myFoods.meal.\(meal.name)")
                 .swipeActions(edge: .trailing) {
                     Button(role: .destructive) {
                         delete(meal)
@@ -229,12 +230,14 @@ struct MyFoodsView: View {
             } label: {
                 Label("Create Recipe", systemImage: "list.bullet.rectangle")
             }
+            .accessibilityIdentifier("myFoods.createRecipe")
 
             Button {
                 showingMealForm = true
             } label: {
                 Label("Create Meal", systemImage: "fork.knife")
             }
+            .accessibilityIdentifier("myFoods.createMeal")
         } label: {
             Image(systemName: "plus")
                 .font(CalorynTheme.toolbarIcon)

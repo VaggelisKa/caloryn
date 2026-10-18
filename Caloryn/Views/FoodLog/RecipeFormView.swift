@@ -78,6 +78,7 @@ struct RecipeFormView: View {
                     }
                     .accessibilityLabel("Save")
                     .disabled(!draft.canSave)
+                    .accessibilityIdentifier("recipe.save")
                 }
             }
             .onAppear(perform: seedFromExisting)
@@ -124,6 +125,7 @@ struct RecipeFormView: View {
                 .textInputAutocapitalization(.words)
                 .focused($isNameFocused)
                 .calorynInputField(isFocused: isNameFocused)
+                .accessibilityIdentifier("recipe.name")
         }
     }
 
