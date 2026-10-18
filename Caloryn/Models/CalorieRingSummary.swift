@@ -1,29 +1,12 @@
 import Foundation
 
-/// What the calorie ring says: the figure in its centre, the auto-adjust cue
-/// beneath it, and how VoiceOver reads the whole thing.
-///
-/// Every number here is taken from `ActivityCalorieBudget`, which already owns
-/// remaining, over, rounded-consumed and the adjusted target. None of them is
-/// recomputed — the ring's colour, its caption and its number all follow the
-/// budget's single over/under decision, so they cannot contradict each other.
 struct CalorieRingSummary: Equatable {
-    /// The one line of auto-adjust status the ring has room for.
-    ///
-    /// Loading wins over a result: while Apple Health is still being read, the
-    /// figures on screen are the previous day's answer and must not be
-    /// announced as this one's.
     enum Cue: Equatable {
         case none
-        /// Activity is still being read.
         case updating
-        /// The auto-adjust added calories to today's target.
         case increase(Int)
-        /// The auto-adjust took calories off today's target.
         case reduction(Int)
 
-        /// The cue as it is shown. A reduction carries its own minus sign,
-        /// since the adjustment it reports is negative.
         var text: String? {
             switch self {
             case .none:
@@ -37,9 +20,6 @@ struct CalorieRingSummary: Equatable {
             }
         }
 
-        /// "dynamic" next to a signed number is too terse to read aloud, so the
-        /// two results spell themselves out. The loading cue keeps the
-        /// `ProgressView`'s own announcement.
         var accessibilityLabel: String? {
             switch self {
             case .none, .updating:
@@ -87,7 +67,6 @@ struct CalorieRingSummary: Equatable {
         self.isActivityLoading = isActivityLoading
     }
 
-    /// Takes the budget's answers as given rather than deriving a second set.
     init(budget: ActivityCalorieBudget) {
         self.init(
             isOver: budget.isOver,
@@ -103,16 +82,10 @@ struct CalorieRingSummary: Equatable {
         )
     }
 
-    // MARK: - Centre
-
-    /// The same accent the Nutrition Details sheet uses, from the same
-    /// over/under decision, so the ring and the sheet always agree. A semantic
-    /// case: mapping it onto `CalorynTheme` is the view's business.
     var accent: NutritionDetailsSummary.CalorieAccent {
         NutritionDetailsSummary.calorieAccent(isOver: isOver)
     }
 
-    /// The large figure: how far over when over, how much is left otherwise.
     var centerValue: Int {
         isOver ? overAmount : remaining
     }
@@ -124,8 +97,6 @@ struct CalorieRingSummary: Equatable {
     var eatenText: String {
         "\(roundedConsumed) eaten"
     }
-
-    // MARK: - Auto-adjust cue
 
     var cue: Cue {
         if isActivityLoading {
@@ -140,10 +111,6 @@ struct CalorieRingSummary: Equatable {
         return .none
     }
 
-    // MARK: - VoiceOver
-
-    /// The ring is read as one element, so the label has to carry everything the
-    /// centre shows — a caption alone would leave the number unexplained.
     var accessibilityLabel: String {
         let activityDescription = hasDynamicIncrease
             ? ", includes \(dynamicIncrease) calorie auto-adjust increase"
@@ -164,8 +131,6 @@ struct CalorieRingSummary: Equatable {
         return "\(roundedConsumed) eaten, \(remaining) remaining of \(adjustedTarget)"
     }
 
-    /// Silent when the ring is decoration: a hint that promises a tap does
-    /// nothing is worse than no hint.
     static func accessibilityHint(isInteractive: Bool) -> String {
         isInteractive ? "Tap or long press to show nutrition details." : ""
     }

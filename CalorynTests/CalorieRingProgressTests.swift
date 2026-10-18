@@ -2,8 +2,6 @@ import XCTest
 @testable import Caloryn
 
 final class CalorieRingProgressTests: XCTestCase {
-    // MARK: - Without an auto-adjust stretch
-
     func testTheBaseArcRunsFromTheTopToWhereverProgressHasReached() {
         let progress = makeProgress(animatedProgress: 0.62, baseProgressEnd: 1)
 
@@ -19,15 +17,11 @@ final class CalorieRingProgressTests: XCTestCase {
         XCTAssertFalse(progress.dynamicArc.isVisible)
     }
 
-    /// A hidden track is also collapsed to zero length, so it cannot flash into
-    /// view part-drawn while its opacity animates.
     func testTheHiddenAutoAdjustTrackHasNoLength() {
         let progress = makeProgress(animatedProgress: 0.4, baseProgressEnd: 0.9)
 
         XCTAssertEqual(progress.dynamicTrack.start, progress.dynamicTrack.end)
     }
-
-    // MARK: - The zero threshold
 
     func testAnEmptyDayLeavesTheBaseArcUndrawn() {
         XCTAssertFalse(makeProgress(animatedProgress: 0).baseArc.isVisible)
@@ -38,14 +32,9 @@ final class CalorieRingProgressTests: XCTestCase {
         XCTAssertTrue(makeProgress(animatedProgress: 0.01).baseArc.isVisible)
     }
 
-    /// Characterizing the view's original test, which asked whether progress was
-    /// *below* the threshold: a progress that is not a number is below nothing,
-    /// so the arc is drawn rather than the ring being blanked.
     func testAProgressThatIsNotANumberStillDrawsTheBaseArc() {
         XCTAssertTrue(makeProgress(animatedProgress: .nan).baseArc.isVisible)
     }
-
-    // MARK: - With an auto-adjust stretch
 
     func testTheAutoAdjustTrackSpansFromTheBaseGoalToAFullTurn() {
         let progress = makeProgress(
@@ -92,8 +81,6 @@ final class CalorieRingProgressTests: XCTestCase {
         XCTAssertEqual(progress.dynamicArc.start, progress.dynamicArc.end)
     }
 
-    /// The two arcs must meet exactly, or the ring shows a gap or an overlap at
-    /// the seam.
     func testTheTwoArcsMeetAtTheSeamWithoutAGap() {
         let progress = makeProgress(
             animatedProgress: 0.87,
@@ -115,11 +102,6 @@ final class CalorieRingProgressTests: XCTestCase {
         XCTAssertLessThanOrEqual(progress.baseArc.end, 1)
     }
 
-    // MARK: - Reading the budget
-
-    /// The progress figures have to come from the budget's own derivation; a
-    /// second one computed from calories here is how a ring and its number
-    /// drift apart.
     func testTheBudgetsOwnProgressFiguresAreUsedAsGiven() {
         let budget = makeBudget(consumed: 1_000, staticTarget: 2_000)
         let progress = CalorieRingProgress(budget: budget, animatedProgress: 0.5)
@@ -128,8 +110,6 @@ final class CalorieRingProgressTests: XCTestCase {
         XCTAssertEqual(progress.hasDynamicIncrease, budget.hasDynamicIncrease)
         XCTAssertEqual(progress.animatedProgress, 0.5)
     }
-
-    // MARK: - Helpers
 
     private func makeProgress(
         animatedProgress: Double,

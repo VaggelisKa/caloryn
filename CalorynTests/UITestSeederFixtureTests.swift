@@ -4,18 +4,9 @@ import SwiftData
 import Testing
 @testable import Caloryn
 
-/// The fixtures the E2E journeys launch into. A journey asserts what it sees on screen; these
-/// pin what it was given, so a changed fixture fails here, with its exact difference, rather
-/// than as a timed-out element lookup three minutes into the UI plan.
-///
-/// The seeder dates everything from the real current day (it has no injectable clock), so
-/// each seeding reads "today" before and after and re-seeds into a fresh store if midnight
-/// fell in between.
 @MainActor
 @Suite("UI test seeder fixtures")
 struct UITestSeederFixtureTests {
-
-    // MARK: - Empty and profile
 
     @Test("The empty fixture seeds nothing at all, so the app opens onboarding")
     func emptySeedsNothing() throws {
@@ -44,8 +35,6 @@ struct UITestSeederFixtureTests {
         #expect(try seeded.foods().isEmpty)
         #expect(try seeded.entries().isEmpty)
     }
-
-    // MARK: - Logged days
 
     @Test("loggedDay seeds one 100 g Rolled Oats breakfast today, 380 kcal")
     func loggedDaySeedsTodaysOats() throws {
@@ -85,8 +74,6 @@ struct UITestSeederFixtureTests {
         #expect(entries.contains { Calendar.current.isDate($0.date, inSameDayAs: seeded.today) } == false)
     }
 
-    // MARK: - Custom foods
-
     @Test("customFoods seeds the favourited smoothie and the salad the portion journeys do maths on")
     func customFoodsSeedsBothFoods() throws {
         let seeded = try seededStore(.customFoods)
@@ -103,15 +90,12 @@ struct UITestSeederFixtureTests {
         #expect(smoothie.caloriesPer100g == 60)
         #expect(smoothie.defaultServingG == 250)
 
-        // JourneyTests: "House Salad is 45 kcal per 100g and opens at its 180g serving".
         let salad = try #require(foods.first { $0.name == "House Salad" })
         #expect(salad.isFavorite == false)
         #expect(salad.caloriesPer100g == 45)
         #expect(salad.defaultServingG == 180)
         #expect(salad.fatPer100g == 1.5)
     }
-
-    // MARK: - History
 
     @Test("history seeds thirty consecutive days ending today, one oats breakfast each")
     func historySeedsThirtyConsecutiveDays() throws {
@@ -210,8 +194,6 @@ struct UITestSeederFixtureTests {
         #expect(try seeded.discoveredPattern() == nil)
     }
 
-    // MARK: - Over budget
-
     @Test("overBudgetDay logs eleven entries today, past the 2,000 kcal goal")
     func overBudgetDayIsOverBudget() throws {
         let seeded = try seededStore(.overBudgetDay)
@@ -251,8 +233,6 @@ struct UITestSeederFixtureTests {
     }
 }
 
-// MARK: - Helpers
-
 @MainActor
 private struct SeededStore {
     let container: ModelContainer
@@ -265,7 +245,6 @@ private struct SeededStore {
     func entries() throws -> [FoodLogEntry] { try context.fetch(FetchDescriptor<FoodLogEntry>()) }
     func snapshots() throws -> [DailyGoalSnapshot] { try context.fetch(FetchDescriptor<DailyGoalSnapshot>()) }
 
-    /// The recurring pattern History would show, resolved the way `HistoryView` resolves it.
     func discoveredPattern() throws -> HistoryRecurringCaloriePattern? {
         let resolver = HistoryDayTargetResolver(
             fallbackTarget: try profiles().first?.dailyCalorieTarget ?? 2_000,

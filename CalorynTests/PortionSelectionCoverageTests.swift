@@ -2,12 +2,8 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// The portion rules at their edges: what a food tells the picker about itself, how grams
-/// round onto a serving or a recipe fraction exactly at a half, and the bounds on what can
-/// be typed.
 @Suite("Portion selection at the edges")
 struct PortionSelectionCoverageTests {
-
     private var recipe: PortionSelection.Shape {
         PortionSelection.Shape(isRecipe: true, defaultServingGrams: 800)
     }
@@ -16,15 +12,12 @@ struct PortionSelectionCoverageTests {
         PortionSelection.Shape(servingGramsPerUnit: 45, defaultServingGrams: 45)
     }
 
-    // MARK: - What a food says about itself
-
     @MainActor
     @Test("A food with a countable serving description gives the grams in one unit")
     func shapeOfACountableFood() {
         let bread = makeTestFoodItem(defaultServingG: 90, servingDescription: "2 slices")
         let shape = PortionSelection.Shape(foodItem: bread)
 
-        // 90 g over 2 slices
         #expect(shape == PortionSelection.Shape(isRecipe: false, servingGramsPerUnit: 45, defaultServingGrams: 90))
         #expect(shape.hasCountableServing)
     }
@@ -71,8 +64,6 @@ struct PortionSelectionCoverageTests {
         #expect(PortionSelection.recipeServingOption(id: "bogus") == nil)
     }
 
-    // MARK: - A recipe weighed in grams
-
     @Test("Typing a weight for a recipe moves the fraction it would snap to")
     func typingMovesTheRecipeFraction() {
         var portion = PortionSelection(shape: recipe, initialGrams: 333, preservesExactGrams: true)
@@ -80,7 +71,6 @@ struct PortionSelectionCoverageTests {
 
         portion.gramsInput = "200"
         portion.gramsInputChanged()
-        // 200 / 800 = 1/4
         #expect(portion.portionGrams == 200)
         #expect(portion.recipeServingID == "quarter")
         #expect(portion.selectedRecipeServingOption?.label == "1/4")
@@ -89,7 +79,6 @@ struct PortionSelectionCoverageTests {
         #expect(portion.recipeServingID == "1")
 
         portion.gramsStepped(.more)
-        // 810 / 800 = 1.0125, still nearest the whole recipe
         #expect(portion.portionGrams == 810)
         #expect(portion.recipeServingID == "1")
     }
@@ -97,11 +86,11 @@ struct PortionSelectionCoverageTests {
     @Test(
         "A weight exactly between two recipe fractions snaps to the smaller one",
         arguments: [
-            (300.0, "quarter"),     // 0.375: 1/8 from both 1/4 and 1/2
-            (600.0, "half"),        // 0.75: 1/4 from both 1/2 and 1
-            (1_200.0, "1"),         // 1.5: 1/2 from both 1 and 2
-            (2_000.0, "2"),         // 2.5: 1/2 from both 2 and 3
-            (601.0, "1"),           // just past the midpoint goes up
+            (300.0, "quarter"),
+            (600.0, "half"),
+            (1_200.0, "1"),
+            (2_000.0, "2"),
+            (601.0, "1"),
             (599.0, "half"),
         ]
     )
@@ -124,7 +113,6 @@ struct PortionSelectionCoverageTests {
         portion.mode = .recipeServing
         portion.modeChanged()
 
-        // 0.75 of 800 sits between a half and a whole; it settles on the half.
         #expect(portion.recipeServingID == "half")
         #expect(portion.portionGrams == 400)
     }
@@ -155,7 +143,6 @@ struct PortionSelectionCoverageTests {
 
         portion.update(shape: PortionSelection.Shape(isRecipe: true, defaultServingGrams: 1_600))
 
-        // 400 / 1600 = 1/4
         #expect(portion.mode == .recipeServing)
         #expect(portion.portionGrams == 400)
         #expect(portion.recipeServingID == "quarter")
@@ -165,17 +152,15 @@ struct PortionSelectionCoverageTests {
         #expect(portion.portionGrams == 800)
     }
 
-    // MARK: - Countable servings at a half
-
     @Test(
         "Grams round to the nearest whole serving, a half rounding up, never below one or above the cap",
         arguments: [
-            (67.5, 2),      // 1.5 servings
-            (22.5, 1),      // 0.5 servings
-            (22.4, 1),      // 0.498 servings rounds to 0, held at 1
+            (67.5, 2),
+            (22.5, 1),
+            (22.4, 1),
             (0.0, 1),
-            (112.5, 3),     // 2.5 servings
-            (1_000.0, 10),  // 22.2 servings, capped
+            (112.5, 3),
+            (1_000.0, 10),
         ]
     )
     func servingCountRounding(grams: Double, expected: Int) {
@@ -191,13 +176,11 @@ struct PortionSelectionCoverageTests {
     @Test("Switching half-way servings onto the wheel rounds up and moves the grams with it")
     func switchingHalfServingsOntoTheWheel() {
         var portion = PortionSelection(shape: slicedFood, initialGrams: 112.5, preservesExactGrams: true)
-        // 2.5 servings is not a whole one, so it opens in grams.
         #expect(portion.mode == .grams)
 
         portion.mode = .serving
         portion.modeChanged()
 
-        // 3 × 45
         #expect(portion.servingCount == 3)
         #expect(portion.portionGrams == 135)
     }
@@ -205,13 +188,13 @@ struct PortionSelectionCoverageTests {
     @Test(
         "The wheel offers up to 500 g of servings, between two and ten of them",
         arguments: [
-            (45.0, 10),     // 11.1, capped at 10
-            (50.0, 10),     // exactly 10
-            (51.0, 9),      // 9.8 truncated
+            (45.0, 10),
+            (50.0, 10),
+            (51.0, 9),
             (100.0, 5),
             (250.0, 2),
-            (300.0, 2),     // 1.67 truncated to 1, floored at 2
-            (1_000.0, 2),   // 0.5 truncated to 0, floored at 2
+            (300.0, 2),
+            (1_000.0, 2),
         ]
     )
     func servingWheelSize(gramsPerUnit: Double, expected: Int) {
@@ -242,8 +225,6 @@ struct PortionSelectionCoverageTests {
         #expect(portion.portionGrams == 90)
     }
 
-    /// "12 crackers (60 g)" is 5 g a cracker, and the wheel stops at ten, so it cannot show
-    /// the default. The picker opens in grams on the 60 g that will be logged.
     @Test("A default serving with more units than the wheel holds opens in grams")
     func defaultServingPastTheWheelCap() {
         let crackers = PortionSelection.Shape(servingGramsPerUnit: 5, defaultServingGrams: 60)
@@ -256,7 +237,6 @@ struct PortionSelectionCoverageTests {
 
     @Test("A default serving the 500 g ceiling keeps off the wheel opens in grams")
     func defaultServingPastTheGramCeiling() {
-        // 500 g / 100 g caps the wheel at five pots; the default is six.
         let pots = PortionSelection.Shape(servingGramsPerUnit: 100, defaultServingGrams: 600)
         let portion = PortionSelection.opening(shape: pots, defaultServingGrams: 600)
 
@@ -275,17 +255,15 @@ struct PortionSelectionCoverageTests {
         #expect(portion.portionGrams == 50)
     }
 
-    // MARK: - Shortcut amounts
-
     @Test(
         "Shortcut amounts round each multiple to whole grams, a half rounding up, and keep both ends of the loggable range",
         arguments: [
-            (PortionSelection.Shape(servingGramsPerUnit: 37.5), [38, 75, 113]),   // 37.5, 75, 112.5
-            (PortionSelection.Shape(servingGramsPerUnit: 1.4), [1, 3, 4]),        // 1.4, 2.8, 4.2
-            (PortionSelection.Shape(isRecipe: true, defaultServingGrams: 5), [1, 3, 5]),  // 1.25, 2.5, 5
+            (PortionSelection.Shape(servingGramsPerUnit: 37.5), [38, 75, 113]),
+            (PortionSelection.Shape(servingGramsPerUnit: 1.4), [1, 3, 4]),
+            (PortionSelection.Shape(isRecipe: true, defaultServingGrams: 5), [1, 3, 5]),
             (PortionSelection.Shape(servingGramsPerUnit: 3_333.3), [3_333, 6_667, 10_000]),
-            (PortionSelection.Shape(servingGramsPerUnit: 1), [1, 2, 3]),          // exactly 1 g is loggable
-            (PortionSelection.Shape(isRecipe: true, defaultServingGrams: 10_000), [2_500, 5_000, 10_000]),  // exactly 10 kg is too
+            (PortionSelection.Shape(servingGramsPerUnit: 1), [1, 2, 3]),
+            (PortionSelection.Shape(isRecipe: true, defaultServingGrams: 10_000), [2_500, 5_000, 10_000]),
         ]
     )
     func shortcutRounding(shape: PortionSelection.Shape, expected: [Int]) {
@@ -295,10 +273,10 @@ struct PortionSelectionCoverageTests {
     @Test(
         "Shortcuts fall back to round numbers once a multiple leaves the loggable range",
         arguments: [
-            PortionSelection.Shape(servingGramsPerUnit: 4_000),      // 12 000 g is past 10 kg
-            PortionSelection.Shape(servingGramsPerUnit: 3_333.4),    // 10 000.2 g is past 10 kg
-            PortionSelection.Shape(servingGramsPerUnit: 0.5),        // 0.5 g is under a gram
-            PortionSelection.Shape(isRecipe: true, defaultServingGrams: 3),  // 0.75 g is under a gram
+            PortionSelection.Shape(servingGramsPerUnit: 4_000),
+            PortionSelection.Shape(servingGramsPerUnit: 3_333.4),
+            PortionSelection.Shape(servingGramsPerUnit: 0.5),
+            PortionSelection.Shape(isRecipe: true, defaultServingGrams: 3),
         ]
     )
     func shortcutFallback(shape: PortionSelection.Shape) {
@@ -311,10 +289,8 @@ struct PortionSelectionCoverageTests {
         let slice = ServingInfo(unitName: "slice", gramsPerUnit: 37.5, pluralName: "slices")
         let pot = ServingInfo(unitName: "pot", gramsPerUnit: 10, pluralName: "pots")
 
-        // 3 × 37.5 = 112.5, which rounds to the 113 g chip, so it is three slices.
         #expect(PortionSelection.quickGramOptionLabel(113, serving: slice) == "3 slices, 113 g")
         #expect(PortionSelection.quickGramOptionLabel(112, serving: slice) == "112 g")
-        // Ten is the most a label counts.
         #expect(PortionSelection.quickGramOptionLabel(100, serving: pot) == "10 pots, 100 g")
         #expect(PortionSelection.quickGramOptionLabel(110, serving: pot) == "110 g")
         #expect(PortionSelection.quickGramOptionLabel(0, serving: pot) == "0 g")
@@ -324,8 +300,6 @@ struct PortionSelectionCoverageTests {
             #expect(PortionSelection.quickGramOptionLabel(150, serving: broken) == "150 g")
         }
     }
-
-    // MARK: - What can be typed
 
     @Test(
         "Typed text is trimmed, read as whole grams and clamped to 1 g – 10 kg",

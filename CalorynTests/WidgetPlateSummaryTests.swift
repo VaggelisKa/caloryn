@@ -34,7 +34,6 @@ final class WidgetPlateSummaryTests: XCTestCase {
     }
 
     func testATotalWithoutMealsDrawsAsOneNeutralSector() {
-        // A snapshot from before meals were recorded has a total and nothing else.
         let calories = WidgetCalorieSummary(consumed: 800, baseTarget: 2_000, target: 2_000)
 
         let plate = WidgetPlateSummary(calories: calories)
@@ -58,7 +57,6 @@ final class WidgetPlateSummaryTests: XCTestCase {
     }
 
     func testARoundingGapBetweenMealsAndTheTotalDrawsNoExtraSector() {
-        // 600.4 + 600.4 rounds to 1_201 as a total but 600 + 600 as meals.
         let calories = WidgetCalorieSummary(
             consumed: 1_200.8,
             baseTarget: 2_000,
@@ -75,7 +73,6 @@ final class WidgetPlateSummaryTests: XCTestCase {
     }
 
     func testMealsRoundedPastTheTotalDoNotExceedIt() {
-        // 300.5 + 300.5 rounds to 301 + 301 as meals, a kcal past the 601 total.
         let calories = WidgetCalorieSummary(
             consumed: 601,
             baseTarget: 2_000,

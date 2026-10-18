@@ -116,7 +116,6 @@ private struct HistoryCalorieTrendRangeSummary: View {
     }
 }
 
-/// A figure over its label: 22pt bold tabular ink, then a quiet caption.
 private struct HistoryDetailMetric: View {
     let value: String
     let label: String
@@ -165,9 +164,6 @@ private struct HistoryCalorieTrendInteractiveChart: View {
                             y: .value("Calories", point.value),
                             width: .fixed(layout.barWidth)
                         )
-                        // Every bar keeps its status colour, selected or not: status is told
-                        // by lightness alone now, so dimming an ink "over" bar would turn it
-                        // into the "under" grey. The ring and the ink axis label mark the pick.
                         .foregroundStyle(point.status.tint)
                         .cornerRadius(4)
                         .accessibilityLabel(point.accessibilityLabel)
@@ -350,7 +346,6 @@ private struct HistoryCalorieTrendSelectedAnalysis: View {
     }
 }
 
-/// The selected period's title row: its date over what it is, and its status in words.
 private struct HistorySelectionHeader: View {
     let title: String
     let caption: String
@@ -375,8 +370,6 @@ private struct HistorySelectionHeader: View {
     }
 }
 
-/// A list row on the page: a title (optionally in a meal's ink) and an optional caption on
-/// the left, a tabular figure on the right.
 private struct HistoryDetailRow: View {
     let title: String
     var titleColor: Color = CalorynTheme.textPrimary
@@ -412,7 +405,6 @@ private struct HistoryDetailRow: View {
     }
 }
 
-/// Rows separated by a drawn hairline, as a scroll view's own list.
 private struct HistoryHairlineRows<Item: Identifiable, Row: View>: View {
     let items: [Item]
     @ViewBuilder let row: (Item) -> Row
@@ -499,8 +491,6 @@ private struct HistoryCalorieTrendSelectedDay: View {
         }
     }
 
-    /// The meal name carries its colour — in its ink, never an icon. An empty meal reads
-    /// "none" in the quietest text.
     private func mealSplit(_ breakdown: HistoryCalorieTrendDayBreakdown) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Meal split")

@@ -2,21 +2,11 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-// Boundary and consistency audit of the onboarding goal step and the Settings rows that
-// later describe the same numbers: every slider step, every corner of the About You
-// ranges, and every combination of the calorie-estimate facts.
-
-// MARK: - Fixtures
-
 nonisolated private let auditUS = Locale(identifier: "en_US")
 nonisolated private let auditDanish = Locale(identifier: "da_DK")
 
-/// Every value the onboarding adjustment slider can be left on: -500 to 1,000 in fifties.
-/// Written out rather than read off `OnboardingGoalPlate` so it can feed `@Test(arguments:)`;
-/// `keepSitsOnAStep` checks it against the plate's own range and step.
 nonisolated private let auditSliderSteps: [Double] = Array(stride(from: -500.0, through: 1_000.0, by: 50.0))
 
-/// People at the corners and the middle of the About You ranges.
 @MainActor
 private func auditPeople(calorieDeficit: Double) -> [OnboardingGoalSummaryDraft.Basis] {
     [
@@ -27,12 +17,9 @@ private func auditPeople(calorieDeficit: Double) -> [OnboardingGoalSummaryDraft.
     ]
 }
 
-/// "500 under what you burn" → "500 under what you burn"; "What you burn" → "what you burn".
 private func auditLowercasingFirst(_ text: String) -> String {
     text.prefix(1).lowercased() + text.dropFirst()
 }
-
-// MARK: - The onboarding plate
 
 @MainActor
 @Suite("Onboarding goal plate audit")
@@ -51,10 +38,8 @@ struct AuditOnboardingGoalPlateTests {
                 #expect(plate.difference == plate.burnKcal - target, "\(context)")
 
                 if target > NutritionCalculator.defaultTarget(energyExpenditure: 0) {
-                    // Above the floor the gap to the burn is exactly the slider's adjustment.
                     #expect(plate.difference == Int(deficit), "\(context)")
                 } else {
-                    // On the floor the plate is bigger than the slider asked for.
                     #expect(plate.difference <= Int(deficit), "\(context)")
                 }
 
@@ -154,8 +139,6 @@ struct AuditOnboardingGoalPlateTests {
     }
 }
 
-// MARK: - The calculation behind the step
-
 @MainActor
 @Suite("Onboarding goal calculation audit")
 struct AuditOnboardingGoalCalculationTests {
@@ -180,9 +163,7 @@ struct AuditOnboardingGoalCalculationTests {
                             let context = "\(sex) \(age)y \(height)cm \(weight)kg \(activity)"
 
                             #expect(targets.allSatisfy { $0 >= ActivityCalorieBudget.minimumTarget }, "\(context)")
-                            // A bigger deficit never raises the target.
                             #expect(zip(targets, targets.dropFirst()).allSatisfy { $0 >= $1 }, "\(context)")
-                            // A more active level never lowers it.
                             if let previousActivityTargets {
                                 #expect(zip(previousActivityTargets, targets).allSatisfy { $0 <= $1 }, "\(context)")
                             }
@@ -251,7 +232,6 @@ struct AuditOnboardingGoalCalculationTests {
                 #expect(target == (isManual ? 1_850 : basis.calculatedTarget), "\(context)")
                 #expect(OnboardingFlow.step(after: .goalSummary, calorieTarget: target) == .macroRatios(plate.targetKcal), "\(context)")
 
-                // What was saved is what the step showed.
                 #expect(profile.dailyCalorieTarget == plate.targetKcal, "\(context)")
                 #expect(profile.bmr.truncatedSafely == plate.restKcal, "\(context)")
                 #expect(profile.tdee.truncatedSafely == plate.burnKcal, "\(context)")
@@ -261,7 +241,6 @@ struct AuditOnboardingGoalCalculationTests {
                 #expect(profile.manualOverride == isManual, "\(context)")
                 #expect(profile.energyCalculationMode == (isManual ? .lifestyleEstimate : .dynamicHealth), "\(context)")
 
-                // A calculated target is the one the profile would calculate itself.
                 if !isManual {
                     #expect(
                         profile.dailyCalorieTarget
@@ -270,7 +249,6 @@ struct AuditOnboardingGoalCalculationTests {
                     )
                 }
 
-                // Today, Settings and the goal editor all open on the same number.
                 #expect(budget.adjustedTarget == plate.targetKcal, "\(context)")
                 #expect(hero.headline == plate.targetKcal, "\(context)")
                 #expect(hero.caption == "kcal left of \(plate.targetKcal.formatted(.number.locale(auditUS)))", "\(context)")
@@ -295,12 +273,9 @@ struct AuditOnboardingGoalCalculationTests {
     }
 }
 
-// MARK: - Nutrient selection
-
 @MainActor
 @Suite("Onboarding nutrient selection audit")
 struct AuditOnboardingNutrientSelectionTests {
-    /// Every subset of the optional nutrients, each in canonical order.
     private var everySubset: [[TrackedNutrient]] {
         let optional = TrackedNutrient.editableGoalNutrients
         return (0 ..< (1 << optional.count)).map { mask in
@@ -330,7 +305,6 @@ struct AuditOnboardingNutrientSelectionTests {
                 #expect(Array(toggled.selected.prefix(core.count)) == core, "\(subset) \(nutrient)")
                 #expect(toggled.extras.filter { $0 != nutrient } == subset.filter { $0 != nutrient }, "\(subset) \(nutrient)")
                 if subset.contains(nutrient) {
-                    // Removed and picked again, it rejoins at the end.
                     #expect(back == TrackedNutrient.rawSelection(from: core + subset.filter { $0 != nutrient } + [nutrient]))
                 } else {
                     #expect(back == raw, "\(subset) \(nutrient)")
@@ -350,14 +324,11 @@ struct AuditOnboardingNutrientSelectionTests {
             #expect(selection.normalizedRawValue == TrackedNutrient.rawSelection(from: core + subset), "\(subset)")
             #expect(selection.selected.count >= TrackedNutrient.minimumSelectionCount, "\(subset)")
             if subset.count >= TrackedNutrient.minimumSelectionCount {
-                // Reading tops up only to the minimum, so with three extras no macro is read back.
                 #expect(selection.isSelected(.protein) == false, "\(subset)")
             }
         }
     }
 }
-
-// MARK: - Settings calorie estimate
 
 @MainActor
 @Suite("Settings calorie estimate audit")
@@ -385,8 +356,6 @@ struct AuditSettingsCalorieEstimateTests {
                         #expect(estimate.modeIconName == (isOn ? "heart.text.square.fill" : "figure.walk"), "\(context)")
                         #expect(estimate.modeSubtitle.hasPrefix("On") == isOn, "\(context)")
                         #expect(estimate.isToggleDisabled == (isManual || isRequesting || (!isOn && !isHealthAvailable)), "\(context)")
-                        // Read from the stored mode, so a manual target over a stored auto-adjust
-                        // mode still reads its status line as information.
                         #expect(estimate.isDynamicStatusInformational == (mode == .dynamicHealth), "\(context)")
 
                         let footer = estimate.footerText
@@ -507,8 +476,6 @@ struct AuditSettingsCalorieEstimateTests {
         #expect((budget.dynamicStatus == .ready) == (days >= 7))
     }
 }
-
-// MARK: - Settings goal and profile rows
 
 @MainActor
 @Suite("Settings goal and profile rows audit")

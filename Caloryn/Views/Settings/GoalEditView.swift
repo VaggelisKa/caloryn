@@ -15,8 +15,6 @@ struct GoalEditView: View {
 
     @FocusState private var focusedField: GoalEditFocus?
 
-    /// Every rule this screen applies lives in the draft; the view reads it and
-    /// renders. See `GoalEditDraft`.
     @State private var draft: GoalEditDraft
 
     init(profile: UserProfile) {
@@ -189,8 +187,6 @@ struct GoalEditView: View {
     }
 }
 
-/// One macro's share of the day: its name, the grams the share comes to, the percentage in
-/// ink, and an ink slider. Macros are told apart by name, never colour.
 private struct MacroGoalSliderRow: View {
     let name: String
     @Binding var ratio: Double
@@ -252,8 +248,6 @@ private struct NutrientGoalEditRow: View {
                 Spacer()
 
                 if isInvalid {
-                    // The field's own text stays ink; this glyph says which field the
-                    // group's warning is about, without leaning on a colour.
                     Image(systemName: "exclamationmark.circle.fill")
                         .font(CalorynTheme.compactIcon)
                         .foregroundStyle(CalorynTheme.textPrimary)
@@ -297,10 +291,6 @@ private struct NutrientGoalEditRow: View {
         }
     }
 
-    /// Minimum / Target / Maximum as chips: a small choice, so the vocabulary's chips rather
-    /// than a segmented control, which ignores the ink tint. A wrapping layout, so at
-    /// accessibility text sizes the three choices go onto further lines instead of being
-    /// cut to a few letters each.
     private var goalKindChips: some View {
         ChipFlowLayout(spacing: 6, lineSpacing: 6) {
             ForEach(NutrientGoalKind.allCases) { kind in

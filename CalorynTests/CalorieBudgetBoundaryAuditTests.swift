@@ -2,16 +2,6 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-// Boundary audit of the calorie budget: the rounding every summary inherits, the clamp that
-// keeps those figures inside `CalorieDomain`, and the budget's answers exactly at, and one
-// calorie either side of, its target.
-//
-// Dynamic days are dated far in the past (2020) or far in the future (2099): the budget
-// compares its date with the real clock to decide whether a day is complete, and a fixed
-// date that far away gives the same answer on every run.
-
-// MARK: - Fixtures
-
 nonisolated private let auditCompletedDay = makeTestDate(year: 2020, month: 6, day: 15)
 nonisolated private let auditFutureDay = makeTestDate(year: 2099, month: 6, day: 15)
 
@@ -43,9 +33,6 @@ private func auditBudget(
     )
 }
 
-/// One sample a day for the `count` days before `date`. Only the order of the dates
-/// matters to the budget (most recent first), so they are spaced by whole days of seconds
-/// rather than through a calendar.
 @MainActor
 private func auditSamples(kcal: Double, count: Int, before date: Date) -> [DailyActiveEnergySample] {
     (0 ..< count).map { index in
@@ -56,7 +43,6 @@ private func auditSamples(kcal: Double, count: Int, before date: Date) -> [Daily
     }
 }
 
-/// A fractional distance from the target and the whole calories it rounds to.
 nonisolated private let auditTargetOffsets: [(Double, Int)] = [
     (-1, -1),
     (-0.6, -1),
@@ -68,8 +54,6 @@ nonisolated private let auditTargetOffsets: [(Double, Int)] = [
     (0.6, 1),
     (1, 1),
 ]
-
-// MARK: - Rounding and the calorie domain
 
 @MainActor
 @Suite("Calorie rounding and domain audit")
@@ -97,8 +81,6 @@ struct AuditCalorieRoundingTests {
         #expect(value.roundedCalories == expected)
     }
 
-    /// Pinned by `NonFiniteNumberSafetyTests` for the budget; this is the rounding rule
-    /// underneath it, so a NaN or an infinity counts as nothing rather than as a billion.
     @Test("A figure that is not a number rounds to zero", arguments: [Double.nan, .infinity, -.infinity])
     func nonFiniteFiguresRoundToZero(value: Double) {
         #expect(value.roundedCalories == 0)
@@ -123,8 +105,6 @@ struct AuditCalorieRoundingTests {
         #expect(CalorieDomain.clamped(value) == expected)
     }
 }
-
-// MARK: - Exactly at, and either side of, the target
 
 @MainActor
 @Suite("Calorie budget target boundary audit")
@@ -182,8 +162,6 @@ struct AuditCalorieBudgetTargetBoundaryTests {
     }
 }
 
-// MARK: - Progress
-
 @MainActor
 @Suite("Calorie budget progress audit")
 struct AuditCalorieBudgetProgressTests {
@@ -209,9 +187,6 @@ struct AuditCalorieBudgetProgressTests {
         #expect(abs(budget.displayedRingProgress - expectedRing) < 1e-12)
     }
 
-    /// The budget caps progress from above only. Nothing below zero is drawn because the
-    /// ring hides its base arc under one per cent (`CalorieRingProgress`), so the figure is
-    /// pinned here and the drawing is checked in the consistency audit.
     @Test("A negative total gives a negative progress rather than being floored at zero")
     func negativeTotalIsNotFloored() {
         let budget = auditBudget(consumed: -500, staticTarget: 2_000)
@@ -247,7 +222,6 @@ struct AuditCalorieBudgetProgressTests {
 
         #expect(lifestyle.baseProgressEnd == 1)
         #expect(reduced.hasDynamicReduction)
-        // The base target is larger than the reduced one, so its share is clamped to the ring.
         #expect(reduced.baseProgressEnd == 1)
     }
 
@@ -260,14 +234,11 @@ struct AuditCalorieBudgetProgressTests {
             date: auditFutureDay
         )
 
-        // 1,600 + 160 TEF + 300 baseline − 300 deficit = 1,760, plus the 500 above baseline.
         #expect(budget.baseTarget == 1_760)
         #expect(budget.adjustedTarget == 2_260)
         #expect(budget.baseProgressEnd == 1_760.0 / 2_260.0)
     }
 }
-
-// MARK: - Auto-adjust
 
 @MainActor
 @Suite("Calorie budget auto-adjust audit")
@@ -359,8 +330,6 @@ struct AuditCalorieBudgetAutoAdjustTests {
         #expect(budget.activityBaselineKcal == 300)
     }
 
-    /// For a ready budget the two flags are exactly "the target moved up" and "the target
-    /// moved down" — never set for an adjustment the floor or the domain swallowed.
     @Test(
         "A ready budget flags an increase or a reduction exactly when the target moved",
         arguments: [800.0, 1_000.0, 1_300.0, 1_600.0, 2_200.0, 1e12]
@@ -391,14 +360,12 @@ struct AuditCalorieBudgetAutoAdjustTests {
 
     @Test("A day far past the baseline adds at most 600, and one far under it takes off at most 300")
     func dailyAdjustmentIsCappedBothWays() {
-        // 1,600 + 160 TEF + 300 baseline − 300 deficit = 1,760; 1,500 active is 1,200 above.
         let busy = auditBudget(
             activeEnergyKcal: 1_500,
             samples: auditSamples(kcal: 300, count: 9, before: auditFutureDay),
             mode: .dynamicHealth,
             date: auditFutureDay
         )
-        // 2,000 + 200 TEF + 900 baseline − 300 deficit = 2,800; 50 active is 850 below.
         let quiet = auditBudget(
             bmr: 2_000,
             activeEnergyKcal: 50,
@@ -436,7 +403,6 @@ struct AuditCalorieBudgetAutoAdjustTests {
 
     @Test("At the safety floor a reduction is computed but cannot move the target, so no cue shows")
     func reductionSwallowedByTheFloor() {
-        // 1,000 + 100 TEF + 300 baseline − 500 deficit = 900, floored to 1,200.
         let budget = auditBudget(
             bmr: 1_000,
             calorieDeficit: 500,
@@ -455,7 +421,6 @@ struct AuditCalorieBudgetAutoAdjustTests {
 
     @Test("Partly above the floor, a reduction's cue and Nutrition Details report the full adjustment")
     func partlyFlooredReductionReportsTheUnflooredAdjustment() {
-        // 1,000 + 100 TEF + 300 baseline − 100 deficit = 1,300; a −300 day can only reach 1,200.
         let budget = auditBudget(
             bmr: 1_000,
             calorieDeficit: 100,
@@ -469,8 +434,6 @@ struct AuditCalorieBudgetAutoAdjustTests {
         #expect(budget.baseTarget == 1_300)
         #expect(budget.adjustedTarget == 1_200)
         #expect(budget.hasDynamicReduction)
-        // Current behaviour, suspected bug: the target only dropped by 100, but the cue and
-        // the Nutrition Details row both report the unfloored −300 adjustment.
         #expect(budget.dynamicAdjustment == -300)
         #expect(cue == .reduction(-300))
         #expect(cue.text == "-300 dynamic")

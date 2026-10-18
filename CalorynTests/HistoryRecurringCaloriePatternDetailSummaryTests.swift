@@ -2,14 +2,8 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// The evidence wording on the recurring-calorie pattern drill-down. The two
-/// pattern kinds count different things, and every label on the card turns on
-/// that distinction.
 @Suite("History recurring pattern detail summary")
 struct HistoryRecurringCaloriePatternDetailSummaryTests {
-
-    // MARK: - Weekday patterns
-
     @Test("given a weekday pattern, when titling the supporting group, then it names the weekday")
     func aWeekdayPatternNamesItsWeekday() {
         let summary = makeSummary(kind: .weekdayMeal, weekdayName: "Friday")
@@ -42,8 +36,6 @@ struct HistoryRecurringCaloriePatternDetailSummaryTests {
         #expect(summary.comparisonDetail == "above target")
     }
 
-    // MARK: - Meal-only patterns
-
     @Test("given a meal-only pattern, when titling the supporting group, then it names the outcome")
     func aMealOnlyPatternNamesItsOutcome() {
         let summary = makeSummary(kind: .mealOnly, outcomeTargetText: "below target")
@@ -65,8 +57,6 @@ struct HistoryRecurringCaloriePatternDetailSummaryTests {
         #expect(summary.comparisonValue == "11")
         #expect(summary.comparisonDetail == "comparison logged days")
     }
-
-    // MARK: - Meal comparison
 
     @Test(
         "given a meal, when titling the comparison, then the heading names it in the singular",
@@ -98,8 +88,6 @@ struct HistoryRecurringCaloriePatternDetailSummaryTests {
     func zeroReadsAsPositive() {
         #expect(makeSummary(mealDifferenceCalories: 0).mealDifferenceText == "+0 kcal")
     }
-
-    // MARK: - Supporting day rows
 
     @Test("given a supporting day, when summarising it, then the logged total and the day's own target are both named")
     func aSupportingDayNamesBothNumbers() {
@@ -145,8 +133,6 @@ struct HistoryRecurringCaloriePatternDetailSummaryTests {
         #expect(row.expandedSectionTitle == "Foods logged in snacks")
         #expect(row.expandedEmptyText == "No snacks calories were logged.")
     }
-
-    // MARK: - Helpers
 
     private func makeSummary(
         kind: HistoryRecurringCaloriePatternKind = .weekdayMeal,

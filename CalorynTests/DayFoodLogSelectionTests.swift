@@ -2,16 +2,12 @@ import XCTest
 @testable import Caloryn
 
 final class DayFoodLogSelectionTests: XCTestCase {
-    /// A stand-in for a log entry, carrying only the three facts the selection
-    /// rules read.
     private struct Entry: Equatable {
         let name: String
         let date: Date
         let mealType: MealType
         let createdAt: Date
     }
-
-    // MARK: - Picking a day
 
     func testOnlyTheSelectedDaysEntriesAreSelected() {
         let day = makeDate(year: 2026, month: 3, day: 14)
@@ -27,13 +23,10 @@ final class DayFoodLogSelectionTests: XCTestCase {
         XCTAssertEqual(selected.map(\.name), ["today-morning", "today-evening"])
     }
 
-    /// A day is matched as a calendar day, so the last hour of it belongs to it
-    /// even on a date where the clocks moved.
     func testADayKeepsItsOwnEntriesAcrossADaylightSavingChange() {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "Europe/Copenhagen") ?? .gmt
 
-        // Central European Summer Time begins on 29 March 2026; the day is 23h long.
         let springForward = makeDate(year: 2026, month: 3, day: 29, calendar: calendar)
         let entries = [
             makeEntry("before", date: springForward.addingTimeInterval(1 * 3_600)),
@@ -129,8 +122,6 @@ final class DayFoodLogSelectionTests: XCTestCase {
         XCTAssertEqual(projection.today.map(\.name), ["today-after-fallback"])
     }
 
-    // MARK: - Picking a meal
-
     func testAMealTakesOnlyItsOwnEntries() {
         let entries = [
             makeEntry("oats", mealType: .breakfast),
@@ -148,8 +139,6 @@ final class DayFoodLogSelectionTests: XCTestCase {
         XCTAssertEqual(lunch.map(\.name), ["soup"])
     }
 
-    /// A meal keeps the order things were added in, so editing a portion cannot
-    /// make a row jump up the section.
     func testAMealsEntriesStayInTheOrderTheyWereAdded() {
         let base = makeDate(year: 2026, month: 3, day: 14)
         let entries = [
@@ -168,10 +157,6 @@ final class DayFoodLogSelectionTests: XCTestCase {
         XCTAssertEqual(dinner.map(\.name), ["first", "second", "third"])
     }
 
-    // MARK: - Copy order
-
-    /// Copying walks the day meal by meal, and each meal oldest first, so the
-    /// new day is rebuilt in the order it was originally eaten.
     func testCopyingRunsDownTheDayMealByMealAndOldestFirst() {
         let base = makeDate(year: 2026, month: 3, day: 14)
         let entries = [
@@ -194,16 +179,12 @@ final class DayFoodLogSelectionTests: XCTestCase {
         )
     }
 
-    // MARK: - Copy availability
-
     func testCopyingIsOfferedIntoAnEmptyDayThatHasSomethingToCopy() {
         XCTAssertTrue(
             DayFoodLogSelection.canCopyYesterday(loggedTodayCount: 0, loggedYesterdayCount: 3)
         )
     }
 
-    /// Never offered into a day that already has entries: copying again would
-    /// silently double the day up.
     func testCopyingIsNotOfferedOnceTheDayHasAnythingInIt() {
         XCTAssertFalse(
             DayFoodLogSelection.canCopyYesterday(loggedTodayCount: 1, loggedYesterdayCount: 3)
@@ -216,13 +197,9 @@ final class DayFoodLogSelectionTests: XCTestCase {
         )
     }
 
-    // MARK: - Sections
-
     func testTheThreeCoreMealsAlwaysHaveASectionInDayOrder() {
         XCTAssertEqual(DayFoodLogSelection.coreMeals, [.breakfast, .lunch, .dinner])
     }
-
-    // MARK: - Helpers
 
     private func makeEntry(
         _ name: String,

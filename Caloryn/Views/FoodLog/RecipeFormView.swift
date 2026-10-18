@@ -267,7 +267,6 @@ struct RecipeFormView: View {
                 )
             }
         } catch {
-            // Keep the existing silent save behavior.
         }
         onSaved?(recipe)
         dismiss()
@@ -280,7 +279,6 @@ struct RecipeFormView: View {
                 try modelContext.save()
                 CalorynAppShortcutRefresh.favoritesChanged()
             } catch {
-                // Keep the existing silent deletion behavior.
             }
         }
         dismiss()

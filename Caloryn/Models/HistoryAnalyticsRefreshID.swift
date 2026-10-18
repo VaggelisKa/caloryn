@@ -1,12 +1,5 @@
 import Foundation
 
-/// Equality key for History's expensive analytics recompute.
-///
-/// `HistoryView` hands this value to `.task(id:)`: analytics rerun exactly when
-/// the value changes and never otherwise. The signatures below therefore have
-/// to capture every fact the analytics render. A field missing from a signature
-/// does not fail loudly — History just keeps showing stale numbers after that
-/// field changes, which is why each captured field is pinned by a unit test.
 struct HistoryAnalyticsRefreshID: Equatable {
     let dayStart: Date
     let profile: HistoryProfileSignature?
@@ -14,9 +7,6 @@ struct HistoryAnalyticsRefreshID: Equatable {
     let goalSnapshots: [HistoryGoalSnapshotSignature]
 }
 
-/// The facts of a `DailyGoalSnapshot` that History's per-day targets depend on.
-/// `updatedAt` stands in for the remaining snapshot values: every upsert that
-/// changes a day's values also rewrites `updatedAt`.
 struct HistoryGoalSnapshotSignature: Equatable {
     let dayKey: String
     let effectiveCalorieTarget: Int
@@ -29,8 +19,6 @@ struct HistoryGoalSnapshotSignature: Equatable {
     }
 }
 
-/// The facts of a `UserProfile` that History's fallback target and macro
-/// patterns depend on.
 struct HistoryProfileSignature: Equatable {
     let id: UUID
     let updatedAt: Date
@@ -55,11 +43,6 @@ struct HistoryProfileSignature: Equatable {
     }
 }
 
-/// The facts of a `FoodLogEntry` that History's summaries, patterns and quality
-/// charts depend on. The name and the quality fields go through the
-/// `historical*` reads so an entry's live-food fallback is re-evaluated on
-/// every comparison — the analytics read those same fallbacks, so capturing
-/// only the stored value would leave History stale after a food is renamed.
 struct HistoryEntrySignature: Equatable {
     let id: UUID
     let date: Date
@@ -81,12 +64,7 @@ struct HistoryEntrySignature: Equatable {
     let nutriscoreGrade: String?
     let produceKindRaw: String?
     let produceItemsSnapshotRaw: String?
-    /// The live food's name for an entry without a quality snapshot. The
-    /// produce summary counts such an entry under that name, not the stored
-    /// `foodName`, so a rename has to change the signature too.
     let legacyProduceName: String?
-    /// For such an entry that is a recipe, the live ingredients the produce
-    /// summary counts in its place — editing them changes nothing else here.
     let legacyRecipeIngredients: [LegacyIngredient]?
 
     struct LegacyIngredient: Equatable {

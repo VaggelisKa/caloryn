@@ -2,15 +2,9 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// How a day's fruit and veg are counted as kinds: the breakdown and preview wording for every
-/// mix, the ordering within a kind, which spellings collapse into one kind, and the legacy
-/// fallback through a recipe's live ingredients.
 @MainActor
 @Suite("Produce variety coverage")
 struct ProduceVarietyCoverageTests {
-
-    // MARK: - Wording
-
     @Test(
         "given only one kind of produce, when breaking the day down, then only that kind is named, singular for one",
         arguments: [
@@ -59,8 +53,6 @@ struct ProduceVarietyCoverageTests {
         #expect(summary.previewText == "Apple, Kale, Leek")
     }
 
-    // MARK: - Ordering
-
     @Test("given several kinds of the same produce type, when listing them, then fruit comes first and each type is in name order")
     func itemsAreOrderedByTypeThenName() {
         let summary = ProduceVarietySummary(entries: [
@@ -74,8 +66,6 @@ struct ProduceVarietyCoverageTests {
         #expect(summary.items.map(\.name) == ["Apple", "banana", "cherry", "Beetroot", "spinach"])
         #expect(summary.items.map(\.kind) == [.fruit, .fruit, .fruit, .vegetable, .vegetable])
     }
-
-    // MARK: - What counts as the same kind
 
     @Test(
         "given a singular and a plural spelling, when counting kinds, then they are one kind",
@@ -140,8 +130,6 @@ struct ProduceVarietyCoverageTests {
         #expect(summary.breakdownText == "No fruit or veg logged")
     }
 
-    // MARK: - Legacy recipes
-
     @Test("given a legacy recipe entry, when counting kinds, then its live ingredients with a portion are counted instead of the recipe")
     func legacyRecipeEntriesCountLiveIngredients() {
         let recipe = makeTestFoodItem(name: "Stew", produceKind: .unclassified, isRecipe: true)
@@ -170,8 +158,6 @@ struct ProduceVarietyCoverageTests {
         #expect(summary.items.map(\.name) == ["Fruit salad"])
         #expect(summary.fruitCount == 1)
     }
-
-    // MARK: - Fixtures
 
     private func produce(_ name: String, _ kind: ProduceKind, grams: Double = 80) -> FoodLogEntry {
         makeTestEntry(foodItem: makeTestFoodItem(name: name, produceKind: kind), portionGrams: grams)

@@ -1,6 +1,5 @@
 import Foundation
 
-/// Thresholds for the deterministic recurring-calorie observation shown in History.
 struct HistoryRecurringCaloriePatternPolicy {
     static let standard = HistoryRecurringCaloriePatternPolicy()
 
@@ -75,13 +74,8 @@ struct HistoryRecurringCaloriePattern: Identifiable {
     let rateSeparation: Double
     let windowStart: Date
     let windowEnd: Date
-    /// The calendar this pattern's window, weekday cohorts and supporting days
-    /// were derived in, carried on the pattern for the same reason the period
-    /// summary carries its own: the drill-down receives the pattern alone.
     let calendar: Calendar
 
-    /// Supporting-day label, produced here so it cannot be spelled without the
-    /// calendar the day was bucketed in. Routes through `Date+Helpers`.
     func dayText(for date: Date) -> String {
         date.shortFormatted(in: calendar)
     }
@@ -263,8 +257,6 @@ struct HistoryRecurringCaloriePatternEngine {
                     return nil
                 }
 
-                // The meal baseline is every other eligible logged day, including
-                // an occasional same-weekday day with a different outcome.
                 let supportingDates = Set(supporting.map(\.date))
                 let mealComparison = days.filter { !supportingDates.contains($0.date) }
                 guard !mealComparison.isEmpty,
@@ -382,16 +374,10 @@ struct HistoryRecurringCaloriePatternEngine {
     ) -> MealDifference? {
         guard !supporting.isEmpty, !comparison.isEmpty else { return nil }
 
-        // The meal with the largest absolute average calorie difference wins.
-        // Stable meal raw values resolve exact ties before direction/materiality
-        // are tested, so a weaker second-place meal cannot rescue a candidate.
         let differences = MealType.allCases.map { meal -> MealDifference in
             let calorieDifference = average(supporting.map { $0.calories(for: meal) })
                 - average(comparison.map { $0.calories(for: meal) })
 
-            // Average per-day meal/target shares rather than dividing aggregate
-            // calories by a current or blended target. This gives every exact
-            // historical target its own denominator and never reinterprets it.
             let targetRelativeDifference = average(
                 supporting.map { $0.targetRelativeCalories(for: meal) }
             ) - average(

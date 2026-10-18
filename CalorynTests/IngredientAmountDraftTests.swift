@@ -2,13 +2,9 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// Covers the ingredient amount sheet's rules: how a stored weight is shown
-/// when the sheet opens, what counts as a usable typed amount, and the
-/// nutrition preview that follows from it.
 @Suite("Ingredient amount draft")
 struct IngredientAmountDraftTests {
 
-    /// 50 kcal, 5g protein, 10g carbs, 2g fat per 100g.
     private var perHundredGrams: NutritionValues {
         NutritionValues(calories: 50, proteinG: 5, carbsG: 10, fatG: 2, fiberG: 1)
     }
@@ -23,8 +19,6 @@ struct IngredientAmountDraftTests {
         return draft
     }
 
-    // MARK: - Opening the sheet
-
     @Test("A whole-gram amount opens without a decimal point")
     func wholeGramsOpenWithoutDecimal() {
         #expect(draft(grams: 100).gramsText == "100")
@@ -35,8 +29,6 @@ struct IngredientAmountDraftTests {
         #expect(draft(grams: 42.5).gramsText == "42.5")
     }
 
-    /// Characterizes today's behaviour: the field shows one decimal place, so
-    /// reopening a finer amount and saving it rounds the ingredient to 100g.
     @Test("An amount finer than a tenth of a gram is shown rounded")
     func finerThanATenthIsRounded() {
         let opened = draft(grams: 100.04)
@@ -45,10 +37,6 @@ struct IngredientAmountDraftTests {
         #expect(opened.grams == 100)
     }
 
-    /// `Int(_:)` on a `Double` terminates the process rather than throwing, so
-    /// a weight no `Int` can hold has to come back as text. This cannot assert
-    /// the absence of a trap — a trap takes the runner with it — so it asserts
-    /// the result is text the field can hold instead.
     @Test("A weight beyond Int range opens the field with a number, not a crash")
     func unconvertibleWeightOpensAsText() {
         #expect(IngredientAmountDraft.fieldText(forGrams: 1e300) == "\(Int.max)")
@@ -64,8 +52,6 @@ struct IngredientAmountDraftTests {
         #expect(opened.gramsText == "")
         #expect(opened.canSave == false)
     }
-
-    // MARK: - The typed amount
 
     @Test("A typed whole number is the amount")
     func typedWholeNumberIsTheAmount() {
@@ -114,8 +100,6 @@ struct IngredientAmountDraftTests {
         #expect(typed.canSave == false)
     }
 
-    /// The field is a decimal keypad, so exponent notation can only arrive by
-    /// paste — and it arrives as an amount nobody weighed out.
     @Test("Exponent notation is not an amount")
     func exponentNotationIsRejected() {
         let typed = draft(typing: "1e3")
@@ -140,8 +124,6 @@ struct IngredientAmountDraftTests {
     func plainDecimalsStillParse(text: String, expected: Double) {
         #expect(draft(typing: text).grams == expected)
     }
-
-    // MARK: - Preview
 
     @Test("The preview scales the per-100g values by the typed amount")
     func previewScalesByAmount() {
@@ -195,7 +177,6 @@ struct IngredientAmountDraftTests {
         #expect(abs(opened.previewCalories - 27) < 0.0001)
     }
 
-    /// A food with no stated serving opens the sheet at 100g.
     @MainActor
     @Test("A food with no default serving opens at 100g")
     func foodWithoutServingOpensAtHundredGrams() {

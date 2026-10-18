@@ -2,17 +2,8 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// Covers the recipe form's own rules — what may be saved, what the summary
-/// card totals up, how ingredient order survives adds and deletions, and how a
-/// saved recipe is read back in. Until now none of it was reachable without
-/// driving the form.
 @Suite("Recipe draft")
 struct RecipeDraftTests {
-
-    // MARK: - Fixtures
-
-    /// 50 kcal, 5g protein, 10g carbs, 2g fat, 1g fibre per 100g — round
-    /// numbers so a portion's share is obvious by inspection.
     private func ingredient(
         _ name: String = "Tomato",
         grams: Double,
@@ -39,8 +30,6 @@ struct RecipeDraftTests {
         return draft
     }
 
-    // MARK: - Saving
-
     @Test("An empty form cannot be saved")
     func emptyFormCannotBeSaved() {
         #expect(RecipeDraft().canSave == false)
@@ -61,8 +50,6 @@ struct RecipeDraftTests {
         #expect(draftWith(name: "Greek Salad", ingredients: []).canSave == false)
     }
 
-    /// The per-100g nutrition of the saved recipe divides by this total, so a
-    /// weightless recipe has nothing to divide by.
     @Test("A recipe whose ingredients all weigh nothing cannot be saved")
     func weightlessRecipeCannotBeSaved() {
         let draft = draftWith(name: "Air", ingredients: [ingredient(grams: 0), ingredient(grams: 0)])
@@ -80,8 +67,6 @@ struct RecipeDraftTests {
     func savedNameIsTrimmed() {
         #expect(draftWith(name: "  Greek Salad  ", ingredients: []).trimmedName == "Greek Salad")
     }
-
-    // MARK: - Totals
 
     @Test("Totals are the sum of each ingredient's share of its per-100g values")
     func totalsSumIngredientPortions() {
@@ -122,9 +107,6 @@ struct RecipeDraftTests {
         #expect(draft.totalCaloriesCaption == "calories in 250 g")
     }
 
-    /// A recipe lighter than half a gram stays savable — the capability is
-    /// real — so the caption has to state a yield the form would accept rather
-    /// than rounding it away to "0 g".
     @Test("A sub-gram recipe is savable and states its real yield")
     func subGramRecipeStatesItsYield() {
         let draft = draftWith(name: "Pinch of salt", ingredients: [ingredient(grams: 0.4)])
@@ -148,9 +130,6 @@ struct RecipeDraftTests {
         #expect(draft.totalCaloriesCaption == "calories in 1 g")
     }
 
-    /// The yield is arithmetic on typed numbers, so it has to survive one that
-    /// no `Int` can hold rather than trapping on a conversion: it is written in
-    /// full, as any other weight is.
     @Test("An unconvertible yield is captioned rather than trapped on")
     func unconvertibleYieldIsCaptioned() {
         let draft = draftWith(name: "Overflow", ingredients: [ingredient(grams: 1e300)])
@@ -159,8 +138,6 @@ struct RecipeDraftTests {
         #expect(caption.hasPrefix("calories in 1,000,000,000,"))
         #expect(caption.hasSuffix(",000 g"))
     }
-
-    // MARK: - Adding and editing ingredients
 
     @Test("A new ingredient is appended at the end")
     func newIngredientIsAppended() {
@@ -172,7 +149,6 @@ struct RecipeDraftTests {
         #expect(draft.sortedIngredients.map(\.sortOrder) == [0, 1])
     }
 
-    /// Re-saving an amount is an edit, not a second row.
     @Test("Saving an amount for an ingredient already in the recipe replaces it in place")
     func upsertReplacesInPlace() {
         let tomatoID = UUID()
@@ -186,8 +162,6 @@ struct RecipeDraftTests {
         #expect(draft.totalGrams == 350)
     }
 
-    /// The incoming sort order is ignored on an append: position is decided by
-    /// the recipe, not by whatever the amount sheet was handed.
     @Test("An appended ingredient takes the next position regardless of the order it carries")
     func appendIgnoresIncomingSortOrder() {
         var draft = RecipeDraft()
@@ -233,8 +207,6 @@ struct RecipeDraftTests {
         #expect(draft.sortedIngredients.map(\.name) == ["Tomato"])
     }
 
-    // MARK: - Order for saving
-
     @Test("Ingredients are handed over for saving renumbered from zero")
     func ingredientsForSavingAreRenumbered() {
         let draft = draftWith(
@@ -248,8 +220,6 @@ struct RecipeDraftTests {
         #expect(draft.ingredientsForSaving.map(\.name) == ["Tomato", "Olive"])
         #expect(draft.ingredientsForSaving.map(\.sortOrder) == [0, 1])
     }
-
-    // MARK: - Seeding
 
     @Test("A new recipe starts empty and asks for the name field")
     func newRecipeStartsEmpty() {
@@ -277,8 +247,6 @@ struct RecipeDraftTests {
         #expect(draft.sortedIngredients.map(\.name) == ["Tomato", "Feta", "Olive"])
     }
 
-    /// `onAppear` can fire more than once; re-seeding would throw away the
-    /// amount the user just typed.
     @Test("Seeding a second time leaves the edited recipe alone")
     func secondSeedIsIgnored() {
         var draft = RecipeDraft()

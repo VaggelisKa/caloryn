@@ -2,9 +2,6 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// Barcode recovery paths not reached elsewhere: the coordinator's outcome for
-/// each provider result or failure, reconciling a legacy provider copy, field
-/// origins read back from persisted JSON, and an explicit produce edit.
 @MainActor
 struct BarcodeRecoveryCoverageTests {
 
@@ -34,8 +31,6 @@ struct BarcodeRecoveryCoverageTests {
     }
 
     private struct UnrelatedFailure: Error {}
-
-    // MARK: - Coordinator outcomes
 
     @Test("An unreadable barcode fails before the provider is asked", arguments: ["12", "abc123456", "", "١٢٣٤٥٦٧٨"])
     func invalidBarcode(_ barcode: String) async {
@@ -183,8 +178,6 @@ struct BarcodeRecoveryCoverageTests {
         #expect(error == .unavailable)
     }
 
-    // MARK: - Reconciliation
-
     @Test("Reconciling needs a readable scanned barcode and a provider code")
     func reconcileRejectsUnreadableIdentities() throws {
         let saved = Self.personalFood()
@@ -289,8 +282,6 @@ struct BarcodeRecoveryCoverageTests {
         #expect(changes == .none)
     }
 
-    // MARK: - Persisted field origins
-
     @Test("Unknown persisted origin entries are ignored and the rest still apply")
     func unknownPersistedOriginEntries() {
         let food = makeTestFoodItem(
@@ -342,8 +333,6 @@ struct BarcodeRecoveryCoverageTests {
         #expect(food.fieldOrigin(for: .name) == .missing)
     }
 
-    // MARK: - Produce edits
-
     private static func edit(
         produceKind: ProduceKind,
         userEditedFields: Set<FoodField>? = nil
@@ -362,7 +351,6 @@ struct BarcodeRecoveryCoverageTests {
         )
     }
 
-    /// A provider product saved from a scan, so every field carries an explicit origin.
     private static func appleProduct() throws -> FoodItem {
         let result = makeTestSearchResult(
             product: try product(
@@ -454,8 +442,6 @@ struct BarcodeRecoveryCoverageTests {
         #expect(food.categoryTags == ["en:apples"])
         #expect(food.fieldOrigin(for: .name) == .user)
     }
-
-    // MARK: - Edited products in search
 
     @Test("A provider result without a barcode is never hidden by an edited product")
     func codelessProviderResultsStayVisible() throws {

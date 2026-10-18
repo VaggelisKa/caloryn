@@ -2,12 +2,9 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// Quoting cases `CSVExporterEdgeCaseTests` leaves out: carriage returns, a field that is
-/// nothing but a quote, separators at the edges of a name, and snack meal labels.
 @MainActor
 @Suite("CSV exporter quoting round trips")
 struct CSVExporterQuotingCoverageTests {
-
     @Test(
         "Names that would break a row are quoted and parse back verbatim",
         arguments: [
@@ -32,8 +29,6 @@ struct CSVExporterQuotingCoverageTests {
         #expect(csv.contains("\"" + name.replacingOccurrences(of: "\"", with: "\"\"") + "\""))
     }
 
-    /// "\r\n" is a single `Character` in Swift, so a per-character check for "\r" or "\n"
-    /// alone never matches it.
     @Test("A CRLF inside a name is quoted and keeps the row whole")
     func crlfInNameIsQuoted() {
         let name = "Line\r\nBreak"
@@ -77,8 +72,6 @@ struct CSVExporterQuotingCoverageTests {
 
         #expect(Array(fields.dropFirst(3)) == ["150", "94", "16.5", "6.0", "0.3", "0.0"])
     }
-
-    // MARK: - RFC 4180 reader
 
     private func parsedRecords(_ csv: String) -> [[String]] {
         var records: [[String]] = []

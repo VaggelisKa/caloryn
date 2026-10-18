@@ -2,8 +2,6 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// Every field set to a different whole number, 1 to 30 in declaration order, so a value
-/// copied into the wrong field shows up as the wrong number. `scale` multiplies them all.
 private func distinctNutrition(scale: Double = 1) -> NutritionValues {
     NutritionValues(
         calories: 1 * scale,
@@ -48,9 +46,6 @@ private func distinctFood(defaultServingG: Double? = nil) -> FoodItem {
 
 @Suite("Nutrition values scaling")
 struct NutritionValuesScalingCoverageTests {
-
-    // MARK: - Reading one nutrient
-
     @Test(
         "Each tracked nutrient reads its own field",
         arguments: [
@@ -75,11 +70,8 @@ struct NutritionValuesScalingCoverageTests {
         #expect(NutritionValues(calories: 250).value(for: nutrient) == 0)
     }
 
-    // MARK: - Scaling
-
     @Test("Scaling multiplies every field by the same factor")
     func scalingReachesEveryField() {
-        // Each i × 2.5 is exact in binary, so the comparison can be exact.
         #expect(distinctNutrition().scaled(by: 2.5) == distinctNutrition(scale: 2.5))
     }
 
@@ -102,11 +94,8 @@ struct NutritionValuesScalingCoverageTests {
         #expect(scaled.alcoholG == -1)
     }
 
-    // MARK: - Adding
-
     @Test("Adding sums every field")
     func additionReachesEveryField() {
-        // i + 100 i = 101 i
         #expect(distinctNutrition() + distinctNutrition(scale: 100) == distinctNutrition(scale: 101))
     }
 
@@ -127,8 +116,6 @@ struct NutritionValuesScalingCoverageTests {
         #expect(NutritionValues.zero + .zero == .zero)
     }
 
-    // MARK: - Per 100 g
-
     @Test("A 30 g serving's values become per-100 g values")
     func per100gFromAServing() {
         let per100g = NutritionValues.per100g(
@@ -136,7 +123,6 @@ struct NutritionValuesScalingCoverageTests {
             servingGrams: 30
         )
 
-        // × 100 / 30
         #expect(abs(per100g.calories - 400) < 1e-9)
         #expect(abs(per100g.proteinG - 20) < 1e-9)
         #expect(abs((per100g.sugarsG ?? -1) - 15) < 1e-9)
@@ -157,7 +143,6 @@ struct NutritionValuesScalingCoverageTests {
 
     @Test("Portions are summed before being brought to 100 g")
     func per100gFromPortions() {
-        // (i + 100 i) × 100 / 202 = 50 i
         let per100g = NutritionValues.per100g(
             fromPortions: [distinctNutrition(), distinctNutrition(scale: 100)],
             totalGrams: 202
@@ -166,8 +151,6 @@ struct NutritionValuesScalingCoverageTests {
         #expect(abs(per100g.calories - 50) < 1e-9)
         #expect(abs((per100g.alcoholG ?? -1) - 1_500) < 1e-9)
     }
-
-    // MARK: - A food, a log entry and an ingredient
 
     @MainActor
     @Test("A food's per-100 g values land in the matching stored field and read back unchanged")
@@ -212,7 +195,6 @@ struct NutritionValuesScalingCoverageTests {
 
         let portion = apple.nutrition(forGrams: 250)
 
-        // × 2.5
         #expect(abs(portion.calories - 130) < 1e-9)
         #expect(abs(portion.proteinG - 0.75) < 1e-9)
         #expect(abs(portion.carbsG - 35) < 1e-9)

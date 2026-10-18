@@ -51,7 +51,6 @@ struct CalorynApp: App {
         }
 
         #if DEBUG
-        // Seed synchronously so the first `@Query` already sees the fixture.
         if UITestConfiguration.isActive, let fixture = UITestConfiguration.fixture {
             do {
                 try UITestSeeder.seed(fixture, into: sharedModelContainer.mainContext)
@@ -77,7 +76,6 @@ struct CalorynApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                // Text without a font of its own gets the app's body face, not the system's.
                 .font(CalorynTheme.bodyText)
                 .environment(router)
                 .onOpenURL(perform: router.handle)

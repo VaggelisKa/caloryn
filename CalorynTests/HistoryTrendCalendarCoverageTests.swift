@@ -2,16 +2,9 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// The calorie-trend projection and the consistency plate strip, built from analytics run in
-/// an injected calendar whose zone crosses a daylight-saving change. Every label a reader sees
-/// (axis initials, spoken dates, the biggest-swing line, week headings, plate labels) has to
-/// come from the calendar the days were bucketed in, never from the host's.
 @MainActor
 @Suite("History trend calendar coverage")
 struct HistoryTrendCalendarCoverageTests {
-
-    // MARK: - Daily points
-
     @Test("given a week across the spring change, when projecting the trend, then axis initials and spoken dates follow the injected calendar")
     func dailyPointLabelsFollowTheCalendar() {
         let projection = HistoryCalorieTrendProjection(range: .week, summary: springWeek().current)
@@ -28,7 +21,6 @@ struct HistoryTrendCalendarCoverageTests {
     func dailyPointIdsShiftWithTheOffset() {
         let projection = HistoryCalorieTrendProjection(range: .week, summary: springWeek().current)
 
-        // Local midnight is 05:00 UTC in standard time and 04:00 UTC once the clocks go forward.
         #expect(projection.points[3].id == "day-2026-03-07T05:00:00Z")
         #expect(projection.points[4].id == "day-2026-03-08T05:00:00Z")
         #expect(projection.points[5].id == "day-2026-03-09T04:00:00Z")
@@ -62,14 +54,11 @@ struct HistoryTrendCalendarCoverageTests {
     @Test("given an instant that is already the next day in UTC, when labelling it for the drill-down, then the injected calendar's day is used")
     func drillDownLabelsUseTheCalendar() {
         let projection = HistoryCalorieTrendProjection(range: .week, summary: springWeek().current)
-        // 02:00 UTC on 9 March is still 22:00 on Sunday 8 March in New York.
         let instant = Date(timeIntervalSince1970: 1_773_021_600)
 
         #expect(projection.dayText(for: instant) == "Sun, 8 Mar")
         #expect(projection.weekStartText(for: instant) == "8 Mar")
     }
-
-    // MARK: - Weekly points
 
     @Test("given a 90-day range across the spring change, when projecting the trend, then week points are labelled from the oldest and named by their Monday")
     func weeklyPointLabelsFollowTheCalendar() throws {
@@ -98,20 +87,11 @@ struct HistoryTrendCalendarCoverageTests {
     func theQuarterAverageLabel() {
         let projection = HistoryCalorieTrendProjection(range: .quarter, summary: springQuarter().current)
 
-        // Logged days: 2,400 on 9 and 10 March, 2,000 on 2 February: 2,266.67 on average.
         #expect(projection.averageDeltaText(value: 2_400, unit: "kcal") == "133 kcal above 90-day average")
         #expect(projection.averageDeltaText(value: 2_267, unit: "kcal") == "Matches 90-day average")
-        // 266.67 below rounds to 267, where cutting the fraction off would say 266.
         #expect(projection.averageDeltaText(value: 2_000, unit: "kcal") == "267 kcal below 90-day average")
-        // 0.83 above rounds to one, where cutting the fraction off would say it matches.
         #expect(projection.averageDeltaText(value: 2_267.5, unit: "kcal") == "1 kcal above 90-day average")
     }
-
-    // MARK: - A zone whose midnight is the day before nearly everywhere
-
-    // New York's midnight is the same calendar day in UTC and in Europe, so the labels above
-    // would still read right if they were spelled from the host calendar on those hosts.
-    // Auckland's midnight is the previous day from UTC-11 to UTC+11, so here they would not.
 
     @Test("given a week in Auckland across its autumn change, when labelling daily points, then initials, spoken dates and the biggest swing name Auckland's days")
     func dailyLabelsUseTheInjectedCalendarRatherThanTheHost() {
@@ -121,7 +101,6 @@ struct HistoryTrendCalendarCoverageTests {
         #expect(projection.points.map(\.accessibilityLabel) == [
             "Wed, 1 Apr", "Thu, 2 Apr", "Fri, 3 Apr", "Sat, 4 Apr", "Sun, 5 Apr", "Mon, 6 Apr", "Tue, 7 Apr"
         ])
-        // Midnight is 11:00 UTC the day before under daylight saving (UTC+13), 12:00 after it (UTC+12).
         #expect(projection.points[4].id == "day-2026-04-04T11:00:00Z")
         #expect(projection.points[5].id == "day-2026-04-05T12:00:00Z")
         #expect(projection.points[4].value == 2_600)
@@ -178,8 +157,6 @@ struct HistoryTrendCalendarCoverageTests {
         #expect(projection.biggestInconsistencyText == "Biggest swing: week of 30 Mar, 400 kcal/day over")
     }
 
-    // MARK: - Plate strip
-
     @Test("given a 30-day range across the spring change, when laying out plates, then each is labelled by its local day of the month")
     func monthPlatesAreLabelledByLocalDay() {
         let analytics = HistoryAnalytics(
@@ -196,7 +173,6 @@ struct HistoryTrendCalendarCoverageTests {
             today: Self.date(2026, 3, 20, hour: 23)
         )
 
-        // 19 February to 20 March: the short day (8 March) is still one plate.
         let februaryDays: [String] = (19...28).map { String($0) }
         let marchDays: [String] = (1...20).map { String($0) }
         #expect(strip.plates.map(\.label) == februaryDays + marchDays)
@@ -212,7 +188,6 @@ struct HistoryTrendCalendarCoverageTests {
         let strip = HistoryDayPlateStrip(
             range: .week,
             summary: springWeek().current,
-            // Late on Tuesday 10 March locally, already Wednesday in UTC.
             today: Self.date(2026, 3, 10, hour: 23)
         )
 
@@ -234,8 +209,6 @@ struct HistoryTrendCalendarCoverageTests {
         #expect(strip.plates.last?.consistencyText == "0/4 on track")
         #expect(strip.statusCounts.values.reduce(0, +) == 14)
     }
-
-    // MARK: - Fixtures
 
     private static let newYork: Calendar = {
         var calendar = Calendar(identifier: .gregorian)
@@ -259,8 +232,6 @@ struct HistoryTrendCalendarCoverageTests {
         auckland.date(from: DateComponents(year: year, month: month, day: day, hour: hour, minute: minute))!
     }
 
-    /// 1–7 April 2026 in Auckland, across the end of daylight saving on Sunday 5 April:
-    /// Sunday 600 over (logged late in the evening) and Tuesday on track.
     private func aucklandAutumnWeek() -> HistoryAnalytics {
         HistoryAnalytics(
             entries: [
@@ -274,8 +245,6 @@ struct HistoryTrendCalendarCoverageTests {
         )
     }
 
-    /// 4–10 March 2026, across the change on Sunday 8 March: Sunday over (logged late in the
-    /// evening, 600 over), Monday on track and Tuesday 500 under, against a 2,000 kcal goal.
     private func springWeek() -> HistoryAnalytics {
         HistoryAnalytics(
             entries: [
@@ -290,8 +259,6 @@ struct HistoryTrendCalendarCoverageTests {
         )
     }
 
-    /// 31 January to 30 April 2026: one on-track day in February and the week of 9 March
-    /// (the first full week after the change) over, at 2,400 a day.
     private func springQuarter() -> HistoryAnalytics {
         HistoryAnalytics(
             entries: [
@@ -317,8 +284,6 @@ struct HistoryTrendCalendarCoverageTests {
         )
     }
 
-    /// An entry at an exact instant. The factory normalises dates with the host calendar,
-    /// so the instant is put back and bucketing is left to the calendar under test.
     private func entry(at date: Date, calories: Double) -> FoodLogEntry {
         let entry = makeTestEntry(
             date: date,

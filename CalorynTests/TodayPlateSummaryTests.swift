@@ -2,13 +2,9 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// What the restyled Today screens print: the hero's number column, the date heading, a
-/// meal header's total and its empty row, and how Nutrition Details sorts and words a day.
 struct TodayPlateSummaryTests {
     private let us = Locale(identifier: "en_US")
     private let danish = Locale(identifier: "da_DK")
-
-    // MARK: - Hero
 
     @Test("Under budget the hero counts down what is left, against the target it names")
     func heroUnderBudget() {
@@ -72,7 +68,6 @@ struct TodayPlateSummaryTests {
         #expect(hero.headlineText == "2,000")
         #expect(hero.caption == "kcal left of 2,000")
         #expect(hero.eatenLine == "0 of 2,000 eaten")
-        // Logged meals roll from 0; the overshoot row arrives with the reveal.
         #expect(hero.donut.legend.map { hero.legendValue(for: $0) } == ["0", "0", "0", "0"])
     }
 
@@ -129,8 +124,6 @@ struct TodayPlateSummaryTests {
         #expect(totals[.lunch] == nil)
     }
 
-    // MARK: - Date heading
-
     @Test("The heading is weekday, day and month")
     func dayTitleText() {
         #expect(DayTitle.text(for: friday17October, in: calendar) == "Friday 17 October")
@@ -148,8 +141,6 @@ struct TodayPlateSummaryTests {
         #expect(DayTitle.accessibilityLabel(for: tomorrow, now: now, in: calendar) == "Tomorrow, Saturday 18 October")
         #expect(DayTitle.accessibilityLabel(for: lastWeek, now: now, in: calendar) == "Friday 10 October")
     }
-
-    // MARK: - Meal header and empty row
 
     @Test("A meal header totals its kcal rounded and grouped, and an empty meal says 'nothing yet'")
     func mealHeaderTotal() {
@@ -179,8 +170,6 @@ struct TodayPlateSummaryTests {
         #expect(dinner.emptyRowText(canCopyYesterday: false) == "Add dinner.")
         #expect(snack.emptyRowText(canCopyYesterday: false) == "Add a snack.")
     }
-
-    // MARK: - Nutrition Details
 
     @Test("Nutrients with a target become bars; the rest become amounts, in nutrient order")
     func detailsSortsTargetsFromAmounts() {
@@ -280,8 +269,6 @@ struct TodayPlateSummaryTests {
         #expect("".sentenceCased == "")
     }
 
-    // MARK: - Helpers
-
     private var calendar: Calendar {
         var calendar = Calendar(identifier: .gregorian)
         calendar.locale = Locale(identifier: "en_GB")
@@ -289,7 +276,6 @@ struct TodayPlateSummaryTests {
         return calendar
     }
 
-    /// Friday 17 October 2025, midnight UTC.
     private var friday17October: Date {
         calendar.date(from: DateComponents(year: 2025, month: 10, day: 17))!
     }

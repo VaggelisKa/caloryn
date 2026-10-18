@@ -2,9 +2,6 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// The hero fed straight from a real `ActivityCalorieBudget`, the way Today builds it, so
-/// the number, the caption, the eaten line and the legend all follow one rounding of what
-/// was eaten. The budget is a static estimate, so nothing here reads the clock.
 @Suite("Today hero from a budget")
 struct TodayHeroBudgetCoverageTests {
     private let us = Locale(identifier: "en_US")
@@ -27,7 +24,6 @@ struct TodayHeroBudgetCoverageTests {
     }
 
     private func hero(_ meals: [MealType: Double], target: Int = 2_000, locale: Locale? = nil) -> TodayHeroSummary {
-        // Summed in meal order, so the total does not depend on dictionary order.
         let eaten = MealType.allCases.compactMap { meals[$0] }.reduce(0, +)
         return TodayHeroSummary(mealTotals: meals, budget: budget(consumed: eaten, target: target), locale: locale ?? us)
     }
@@ -36,7 +32,6 @@ struct TodayHeroBudgetCoverageTests {
     func underBudget() {
         let summary = hero([.breakfast: 382, .lunch: 463, .snack: 118])
 
-        // 2000 − (382 + 463 + 118) = 1037
         #expect(summary.isOver == false)
         #expect(summary.headline == 1_037)
         #expect(summary.headlineText == "1,037")
@@ -59,7 +54,6 @@ struct TodayHeroBudgetCoverageTests {
 
     @Test("Half a kcal past the budget rounds up to one over, and the donut agrees")
     func halfAKcalOverRoundsUp() {
-        // 1000.25 + 1000.25 = 2000.5, which rounds half away from zero to 2001.
         let summary = hero([.breakfast: 1_000.25, .dinner: 1_000.25])
 
         #expect(summary.isOver)
@@ -67,14 +61,12 @@ struct TodayHeroBudgetCoverageTests {
         #expect(summary.caption == "kcal over")
         #expect(summary.eatenLine == "2,001 of 2,000 eaten")
         #expect(summary.donut.isOver)
-        // Each meal keeps its own rounded total; the Over row carries the one kcal.
         #expect(summary.donut.legend.map(summary.legendValue(for:)) == ["1,000", "not yet", "1,000", "not yet", "1"])
         #expect(summary.donut.legend.last.map(summary.legendName(for:)) == "Over")
     }
 
     @Test("Just under half a kcal past the budget rounds down and is still on budget")
     func justUnderHalfAKcalOverRoundsDown() {
-        // 2000.49 rounds to 2000.
         let summary = hero([.dinner: 2_000.49])
 
         #expect(summary.isOver == false)
@@ -87,7 +79,6 @@ struct TodayHeroBudgetCoverageTests {
 
     @Test("Well over budget the headline is the overshoot")
     func wellOverBudget() {
-        // 900 + 1200 + 640.4 = 2740.4 → 2740, 740 over a 2000 target.
         let summary = hero([.breakfast: 900, .dinner: 1_200, .snack: 640.4])
 
         #expect(summary.headline == 740)
@@ -108,7 +99,6 @@ struct TodayHeroBudgetCoverageTests {
 
     @Test("A budget below the safety floor is printed as the budget gives it")
     func staticTargetIsTakenAsGiven() {
-        // A static estimate passes the saved target through, so the hero names 1000.
         let summary = hero([.lunch: 400], target: 1_000)
 
         #expect(summary.headline == 600)

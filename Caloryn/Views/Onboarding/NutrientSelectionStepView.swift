@@ -5,8 +5,6 @@ struct NutrientSelectionStepView: View {
     var isCompleting = false
     var onComplete: () -> Void
 
-    /// The selection rules live here; the view reads them and renders. See
-    /// `OnboardingNutrientSelection`.
     private var selection: OnboardingNutrientSelection {
         OnboardingNutrientSelection(rawValue: selectedNutrientIDs)
     }
@@ -51,8 +49,6 @@ struct NutrientSelectionStepView: View {
                 Button(action: onComplete) {
                     HStack(spacing: 8) {
                         if isCompleting {
-                            // Only ever shown while the button is disabled, so it matches
-                            // the disabled label rather than the paper one.
                             ProgressView()
                                 .tint(CalorynTheme.textSecondary)
                         }
@@ -70,7 +66,6 @@ struct NutrientSelectionStepView: View {
         .onAppear(perform: ensureDefaultMacrosSelected)
     }
 
-    /// Always on, so they are shown chosen but are not buttons.
     private var coreMacroSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             OnboardingSectionTitle("Core macros")

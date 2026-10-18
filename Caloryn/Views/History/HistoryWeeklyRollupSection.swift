@@ -1,12 +1,9 @@
 import SwiftUI
 import Charts
 
-/// "Weekly consistency" for the 30- and 90-day ranges: the share of each week's logged days
-/// that landed on track, in the day palette's three weights.
 struct HistoryWeeklyRollupSection: View {
     let projection: HistoryWeeklyConsistencyProjection
 
-    /// False on the first frame, so the bars grow up from the axis.
     @State private var isRevealed = false
 
     private struct ChartWeek: Identifiable {

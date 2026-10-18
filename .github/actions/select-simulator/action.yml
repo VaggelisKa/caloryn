@@ -51,7 +51,6 @@ runs:
 
         candidates = []
         for runtime, devices in payload["devices"].items():
-            # Runtime keys look like com.apple.CoreSimulator.SimRuntime.iOS-26-5
             if "SimRuntime.iOS-" not in runtime:
                 continue
             version_part = runtime.split("SimRuntime.iOS-", 1)[1]
@@ -70,10 +69,6 @@ runs:
         if not candidates:
             sys.exit("No available iPhone simulator with iOS >= %d." % minimum)
 
-        # Prefer the pinned model, then the newest runtime. Pinning matters
-        # because coverage of code that merely runs at start-up differs
-        # between device models, which would make the ratchet compare unlike
-        # runs. Fall back to any eligible iPhone if the model is unavailable.
         def rank(item):
             (major, minor), device = item
             exact = device.get("name") == preferred
@@ -94,7 +89,6 @@ runs:
 
         simulator_id="$(echo "$selection" | sed -n 1p)"
         simulator_name="$(echo "$selection" | sed -n 2p)"
-        # Slugified so it is safe inside a cache key.
         device_slug="$(echo "$simulator_name" | tr ' ' '-' | tr -cd '[:alnum:]-')"
 
         echo "Selected simulator $simulator_name ($simulator_id)"

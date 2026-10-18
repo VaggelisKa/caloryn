@@ -45,9 +45,6 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationStack {
-            // The board's order: the goal first, because it is what Settings is opened for.
-            // The calorie estimate is part of the goal group (its toggle is the board's
-            // "adjust" row), and the profile the estimate is worked out from follows it.
             List {
                 if let profile {
                     goalSection(profile)
@@ -102,8 +99,6 @@ struct SettingsView: View {
         }
     }
 
-    /// The calorie estimate's rows, which close the goal group: the auto-adjust toggle (the
-    /// board's "Adjust with Apple Health"), the Health figures while it is on, and any notice.
     @ViewBuilder
     private func calorieEstimateRows(_ profile: UserProfile) -> some View {
         let budget = settingsBudget(for: profile)
@@ -207,9 +202,6 @@ struct SettingsView: View {
         )
     }
 
-    /// "Auto-adjust calories" stays the name: Today's caption and the budget's own status
-    /// lines call the feature that, so the board's "Adjust with Apple Health" would name it
-    /// twice. No mode glyph: the subtitle already says which mode is on.
     private func calorieEstimateModeToggleLabel(_ estimate: SettingsCalorieEstimate) -> some View {
         SettingsToggleLabel(title: "Auto-adjust calories", subtitle: estimate.modeSubtitle)
     }
@@ -269,8 +261,6 @@ struct SettingsView: View {
         await apply(step, to: profile)
     }
 
-    /// Performs a step's writes in order: the profile, then the tracker, then
-    /// the screen state the section renders.
     @MainActor
     private func apply(_ step: SettingsDynamicEnergyFlow.Step, to profile: UserProfile) async {
         if let energyCalculationMode = step.energyCalculationMode {
@@ -291,8 +281,6 @@ struct SettingsView: View {
         }
     }
 
-    /// `apply` for a step with no tracker work, so turning auto-adjust off still
-    /// happens in the same turn as the tap rather than a `Task` later.
     @MainActor
     private func applyImmediately(_ step: SettingsDynamicEnergyFlow.Step, to profile: UserProfile) {
         if let energyCalculationMode = step.energyCalculationMode {
@@ -342,8 +330,6 @@ struct SettingsView: View {
         }
     }
 
-    /// The goal group: the plate and the daily number as the way into Edit Goal, the saved
-    /// nutrient goals, then the calorie estimate that moves the number.
     private func goalSection(_ profile: UserProfile) -> some View {
         let summary = SettingsGoalSummary(
             targets: profile.nutrientTargets,
@@ -352,10 +338,6 @@ struct SettingsView: View {
         let estimate = calorieEstimate(for: profile)
 
         return Section {
-            // The button is laid over the headline rather than wrapping it: a button's label
-            // collapses into the button for accessibility, and the number has to stay its own
-            // element (`settings.calorieTarget`) for a journey to read it. The headline's text
-            // takes no touches, so a tap anywhere on the row still lands on the button.
             SettingsDisclosureLabel {
                 SettingsGoalHeadline(
                     plate: goalPlate(for: profile),
@@ -408,8 +390,6 @@ struct SettingsView: View {
         }
     }
 
-    /// Today's meals on the goal's plate, against the same budget Today draws its donut from,
-    /// so the two plates cannot disagree about whether the day is over.
     private func goalPlate(for profile: UserProfile) -> CalorieDonutSummary {
         let entries = DayFoodLogSelection.entries(allEntries, on: .now, date: \.date)
             .map { SettingsGoalPlate.Entry(meal: $0.mealType, calories: $0.calories) }
@@ -605,9 +585,6 @@ private struct PreviewActiveEnergyReader: ActiveEnergyReading {
     .modelContainer(container)
 }
 
-/// The goal group's first row, under the Edit Goal button: today's plate, the daily number
-/// and where it comes from. The number keeps `settings.calorieTarget`, so a journey can read
-/// the target the user saved.
 private struct SettingsGoalHeadline: View {
     let plate: CalorieDonutSummary
     let targetText: String
@@ -637,17 +614,10 @@ private struct SettingsGoalHeadline: View {
             }
         }
         .padding(.vertical, 4)
-        // The hairline under the headline runs from the group's edge like every other row's,
-        // not from the text beside the plate, where the system would start it.
         .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
     }
 }
 
-/// Light / Dark / System as the board's theme control: three segments in one page-coloured
-/// pill, the chosen one an ink capsule with a paper label. Built here rather than as a
-/// segmented `Picker`, which ignores the ink tint. Falls under its label when Dynamic Type
-/// leaves no room beside it, and when the pill is wider than the row itself (accessibility
-/// sizes) the three choices stack as chips, one per line, so none runs off the group.
 private struct SettingsThemeRow: View {
     @Binding var selection: String
 
@@ -664,7 +634,6 @@ private struct SettingsThemeRow: View {
                 segments
             }
 
-            // The last child is used even when it does not fit, so nothing in it is fixed-size.
             VStack(alignment: .leading, spacing: 10) {
                 title
                 stackedChoices
@@ -672,7 +641,6 @@ private struct SettingsThemeRow: View {
         }
     }
 
-    /// The fallback: one chip per choice, one under another, the chosen one ink.
     private var stackedChoices: some View {
         VStack(alignment: .leading, spacing: 8) {
             ForEach(ThemePreference.allCases, id: \.self) { preference in
@@ -700,8 +668,6 @@ private struct SettingsThemeRow: View {
             .accessibilityHidden(true)
     }
 
-    /// The pill is `pageBackground`, not `surface`: in dark mode `surface` is the group's
-    /// own colour, and the pill would vanish into it.
     private var segments: some View {
         HStack(spacing: 4) {
             ForEach(ThemePreference.allCases, id: \.self) { preference in
@@ -773,4 +739,3 @@ private struct ShareSheet: UIViewControllerRepresentable {
 
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
-

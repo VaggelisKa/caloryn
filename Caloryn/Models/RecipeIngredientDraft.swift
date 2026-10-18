@@ -1,13 +1,5 @@
 import Foundation
 
-/// One ingredient as the recipe and meal forms hold it while it is being
-/// edited: a flat snapshot of per-100g values plus the grams being used.
-///
-/// It is deliberately a value type rather than a `RecipeIngredient`, so an
-/// unsaved recipe never puts half-built rows in the store, and so the amount
-/// maths is reachable without a model context. The two initializers that take a
-/// `FoodItem` or a `RecipeIngredient` are the only places the store leaks in —
-/// every rule below works from the values, not the object.
 struct RecipeIngredientDraft: Identifiable, Hashable {
     var id: UUID
     var name: String
@@ -125,8 +117,6 @@ struct RecipeIngredientDraft: Identifiable, Hashable {
         self.provenance = provenance
     }
 
-    /// A food picked from search. It arrives at its own default serving, or
-    /// 100g when it has none, so the amount sheet opens on a sensible figure.
     init(from foodItem: FoodItem, sortOrder: Int) {
         self.init(
             name: foodItem.name,
@@ -168,8 +158,6 @@ struct RecipeIngredientDraft: Identifiable, Hashable {
         )
     }
 
-    /// A saved ingredient being edited again. The identity is carried over so
-    /// re-saving updates the row rather than adding a second one.
     init(from ingredient: RecipeIngredient) {
         self.init(
             id: ingredient.id,

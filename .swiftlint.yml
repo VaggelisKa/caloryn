@@ -1,18 +1,3 @@
-# Theme enforcement only.
-#
-# This config deliberately disables every default rule. It exists to stop one class of
-# regression — screens drifting off the theme — not to impose a general Swift style on a
-# codebase that has done without a linter until now. Adding stylistic rules here is a
-# separate decision, and a noisy one: it would flag hundreds of pre-existing lines.
-#
-# The rules below ban the *primitive* rather than requiring the abstraction. SwiftLint's
-# custom rules are per-match regexes with no whole-file logic, so "this file uses List but
-# not calorynGroupedListStyle" is not expressible. Banning `.listStyle(...)` outright is
-# both expressible and stronger: the unthemed state becomes unreachable rather than merely
-# discouraged.
-
-# `custom_rules` is itself a rule identifier, so listing it alone runs the rules below
-# and nothing else.
 only_rules:
   - custom_rules
 
@@ -21,8 +6,8 @@ included:
   - CalorynWidgets
 
 excluded:
-  - Caloryn/Theme          # defines the abstractions these rules point at
-  - Caloryn/GlassCompatibility.swift  # owns the material/glass surfaces
+  - Caloryn/Theme
+  - Caloryn/GlassCompatibility.swift
 
 custom_rules:
   raw_list_style:
@@ -40,16 +25,10 @@ custom_rules:
   raw_white_color:
     name: "Raw white"
     regex: 'Color\.white|Color\(\.white\)|UIColor\.white'
-    # The barcode scanner draws a UIKit overlay on top of a live camera feed. That text and
-    # its reticle are white against video, not against the theme, so they are correctly
-    # appearance-independent.
     excluded: ".*BarcodeScannerView\\.swift"
     message: "Use a CalorynTheme colour: cardBackground for the white of a sheet or group, mealOnFill(_:) for a label on a meal fill. A literal white has no dark appearance, so it turns into a glaring block in dark mode."
     severity: error
 
-  # Not the whole trap class: `Int(someDouble)` in general is indistinguishable by regex
-  # from `Int(someInt)` and `Int(someString)`, which are safe. `Int(x.rounded())` is
-  # unambiguously a floating-point conversion, and it is the form the crash arrived in.
   trapping_int_conversion:
     name: "Trapping Int conversion"
     regex: '\bInt\((?:[^()]|\([^()]*\))*\.rounded\(\)\)'

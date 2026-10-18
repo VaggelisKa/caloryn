@@ -2,17 +2,8 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// The words a food's provenance puts on screen, and the raw values it
-/// persists.
-///
-/// The raw values are written into SwiftData and CloudKit rows
-/// (`lookupProviderRaw`, `dataSourceRaw`, `nutritionCompletenessRaw`), so
-/// renaming one would silently turn every saved food into "Source unknown".
 @MainActor
 struct FoodProvenanceLabelCoverageTests {
-
-    // MARK: - Providers
-
     @Test("Each provider names itself for display")
     func providerDisplayNames() {
         #expect(FoodSearchProvider.calorynAPI.displayName == "Caloryn")
@@ -25,8 +16,6 @@ struct FoodProvenanceLabelCoverageTests {
         #expect(FoodSearchProvider(rawValue: "open_food_facts") == .openFoodFacts)
         #expect(FoodSearchProvider.allCases.map(\.rawValue) == ["caloryn_api", "open_food_facts"])
     }
-
-    // MARK: - Data sources
 
     @Test(
         "Each data source has a short badge",
@@ -50,8 +39,6 @@ struct FoodProvenanceLabelCoverageTests {
         #expect(FoodDataSource(rawValue: "mixed") == .mixed)
         #expect(FoodDataSource(rawValue: "unknown") == .unknown)
     }
-
-    // MARK: - Completeness
 
     @Test("Only incomplete or unknown nutrition carries a warning label")
     func completenessWarningLabels() {
@@ -85,8 +72,6 @@ struct FoodProvenanceLabelCoverageTests {
             ) == expected
         )
     }
-
-    // MARK: - Provenance values
 
     @Test("A manual entry is attributed to the user with no provider or fallback")
     func manuallyEntered() {

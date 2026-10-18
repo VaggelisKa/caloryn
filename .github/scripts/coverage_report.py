@@ -1,9 +1,4 @@
 #!/usr/bin/env python3
-"""Turn an `xccov --report --json` payload into a readable per-file summary.
-
-Writes a Markdown table for the job summary and the overall line-coverage
-percentage used by the coverage ratchet.
-"""
 
 from __future__ import annotations
 
@@ -18,8 +13,6 @@ def build_summary(report: dict) -> tuple[str, float]:
     rows: list[tuple[str, float, int]] = []
 
     for target in report.get("targets", []):
-        # Test bundles inflate the number without saying anything about the
-        # app's own coverage, so they are excluded.
         if target.get("name", "").endswith(".xctest"):
             continue
 
@@ -34,7 +27,6 @@ def build_summary(report: dict) -> tuple[str, float]:
 
     overall = (100.0 * covered_lines / executable_lines) if executable_lines else 0.0
 
-    # Least-covered first: that is where the next test is most valuable.
     rows.sort(key=lambda row: (row[1], -row[2]))
 
     lines = [

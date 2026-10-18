@@ -28,8 +28,6 @@ enum BarcodeRecoveryAnalyticsResult: String, Sendable {
     case failed
 }
 
-/// Deliberately allowlisted aggregate dimensions. This type cannot carry a
-/// barcode, food/provider payload, persistent ID, nutrition value, or context.
 struct BarcodeRecoveryAnalyticsEvent: Equatable, Sendable {
     let path: BarcodeRecoveryAnalyticsPath
     let result: BarcodeRecoveryAnalyticsResult
@@ -178,9 +176,6 @@ extension FoodItem {
     private func inferredLegacyOrigin(for field: FoodField) -> FoodFieldOrigin {
         guard hasStoredValue(for: field) else { return .missing }
 
-        // A legacy personal food cannot distinguish an entered zero from a
-        // provider placeholder. Preserving it as user data is the only
-        // migration-safe choice that cannot destroy a correction.
         if isCustom {
             return .user
         }
@@ -619,8 +614,6 @@ enum BarcodeRecoveryService {
                 return .local(local, .none)
             }
         } else if local.isCustom {
-            // A migrated personal version without stable provider identity is
-            // intentionally preserved rather than attached by barcode alone.
             return .local(local, .none)
         }
 

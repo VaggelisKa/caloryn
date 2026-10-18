@@ -1,12 +1,6 @@
 import SwiftUI
 import UIKit
 
-/// Today's hero: the meal donut on the left and the number column on the right — kcal left
-/// (or over), its caption, the dynamic-target cue, what was eaten, and the legend.
-///
-/// Renders `TodayHeroSummary` and decides nothing. The whole hero is one accessibility
-/// element carrying the ring's label, value and hint (`CalorieRingSummary`), and it is a
-/// native `Button` that opens Nutrition Details — the same contract the ring had.
 struct CalorieHeroView: View {
     let summary: TodayHeroSummary
     var onDetailsRequested: (() -> Void)? = nil
@@ -17,23 +11,13 @@ struct CalorieHeroView: View {
     @ScaledMetric(relativeTo: .largeTitle) private var numberSize: CGFloat = 56
     @ScaledMetric(relativeTo: .footnote) private var legendKeySize: CGFloat = 12
 
-    /// Flipped on the runloop after the first frame, as the donut flips its own, so the
-    /// figures roll from the full budget while the meals grow in. The hero is rebuilt for
-    /// each day Today shows, so every day gets the same entrance.
     @State private var isRevealed = false
 
     private static let donutSize: CGFloat = 168
-    /// What the number column prints: the day's figures, or before the entrance the same
-    /// budget with nothing eaten. VoiceOver always reads `summary` — the entrance is visual.
     private var displayed: TodayHeroSummary {
         isRevealed || accessibilityReduceMotion ? summary : summary.unrevealed
     }
 
-    /// Side by side as the board draws it; stacked from xxxLarge, where a 168pt donut leaves
-    /// the number column (176pt on a 402pt phone) narrower than a legend row
-    /// ("Breakfast … not yet" needs about 189pt there). Between Large and xxLarge on a
-    /// narrower phone the legend's names and values shrink a little instead (see
-    /// `legendRow`).
     private var layout: AnyLayout {
         dynamicTypeSize >= .xxxLarge
             ? AnyLayout(VStackLayout(alignment: .leading, spacing: 18))
@@ -67,7 +51,6 @@ struct CalorieHeroView: View {
         .accessibilityLabel(summary.ring.accessibilityLabel)
         .accessibilityValue(summary.ring.accessibilityValue)
         .accessibilityHint(CalorieRingSummary.accessibilityHint(isInteractive: onDetailsRequested != nil))
-        // The donut's own curve, so the numbers land when the ring does.
         .revealOnAppear($isRevealed)
     }
 
@@ -103,8 +86,6 @@ struct CalorieHeroView: View {
         }
     }
 
-    // MARK: - Legend
-
     private var legend: some View {
         VStack(alignment: .leading, spacing: 6) {
             ForEach(displayed.donut.legend) { entry in
@@ -135,14 +116,9 @@ struct CalorieHeroView: View {
                 .contentTransition(numberTransition(for: entry.kcal))
         }
         .font(CalorynTheme.legendText)
-        // The "Over" row arrives with the overshoot, sliding in under the meals.
         .transition(.opacity.combined(with: .move(edge: .top)))
     }
 
-    /// A filled circle in the meal's fill; a hollow ring for a meal nothing is logged in yet.
-    /// The overshoot is a heavier ink ring, the mark History rings an over-goal day with,
-    /// rather than an ink dot that sat beside the dinner purple as one more dark blob. The
-    /// only keys on the screen — headers carry no glyphs.
     @ViewBuilder
     private func legendKey(_ entry: CalorieDonutSummary.LegendEntry) -> some View {
         if let meal = entry.meal {
@@ -162,9 +138,6 @@ struct CalorieHeroView: View {
         }
     }
 
-    // MARK: - Dynamic target cue
-
-    /// The auto-adjust status, under the caption exactly as it sat under the ring's number.
     @ViewBuilder
     private var dynamicTargetCue: some View {
         switch summary.ring.cue {
@@ -203,20 +176,13 @@ struct CalorieHeroView: View {
         .accessibilityLabel(summary.ring.cue.accessibilityLabel ?? "")
     }
 
-    // MARK: - Reduce Motion
-
-    /// Digits roll when the number changes, counting up or down with it, unless Reduce
-    /// Motion is on: then they swap.
     private func numberTransition(for value: Int) -> ContentTransition {
         accessibilityReduceMotion ? .identity : .numericText(value: Double(value))
     }
 
-    /// Sentences that carry figures ("963 of 2,000 eaten") roll only their changed digits.
     private var textTransition: ContentTransition {
         accessibilityReduceMotion ? .identity : .numericText()
     }
-
-    // MARK: - Opening details
 
     private func requestDetails() {
         guard let onDetailsRequested else { return }
@@ -226,8 +192,6 @@ struct CalorieHeroView: View {
     }
 }
 
-/// The pressed state of the hero's native `Button`: a slight shrink, and none at all under
-/// Reduce Motion.
 private struct CalorieRingButtonStyle: ButtonStyle {
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
 

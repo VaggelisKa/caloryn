@@ -2,8 +2,6 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-// MARK: - Fixtures
-
 private func makeInvariantBudget(
     consumed: Double = 1_800,
     staticTarget: Int = 2_000,
@@ -56,7 +54,6 @@ private func makeInvariantSamples(
     }
 }
 
-/// A completed day well in the past, where downward adjustments are permitted.
 private func completedPastDay(daysAgo: Int = 30) -> Date {
     Calendar.current.date(byAdding: .day, value: -daysAgo, to: Date.now.startOfDay)!
 }
@@ -66,8 +63,6 @@ private func futureDay(daysAhead: Int = 3) -> Date {
 }
 
 private let activeEnergySweep: [Double] = [0, 25, 50, 120, 200, 299, 300, 301, 450, 600, 900, 1_500, 5_000]
-
-// MARK: - Mode and readiness
 
 @Suite("ActivityCalorieBudget readiness invariants")
 struct ActivityCalorieBudgetReadinessInvariantTests {
@@ -242,8 +237,6 @@ struct ActivityCalorieBudgetReadinessInvariantTests {
     }
 }
 
-// MARK: - Baseline and base target
-
 @Suite("ActivityCalorieBudget baseline invariants")
 struct ActivityCalorieBudgetBaselineInvariantTests {
     @Test("Given an odd number of valid days, when the baseline is derived, then it is the middle value")
@@ -343,12 +336,9 @@ struct ActivityCalorieBudgetBaselineInvariantTests {
             mode: .dynamicHealth
         )
 
-        // 1800 + 180 (TEF) + 500 (baseline) - 500 (deficit) = 1980
         #expect(budget.baseTarget == 1_980)
     }
 }
-
-// MARK: - Daily adjustment
 
 @Suite("ActivityCalorieBudget daily adjustment invariants")
 struct ActivityCalorieBudgetAdjustmentInvariantTests {
@@ -430,8 +420,7 @@ struct ActivityCalorieBudgetAdjustmentInvariantTests {
 
     @Test("Given a fractional surplus, when the adjustment is derived, then it rounds half away from zero")
     func fractionalAdjustmentsRoundHalfAwayFromZero() {
-        let baselineValues: [Double] = [100, 200, 300, 400, 500, 600, 700, 800] // median 450
-
+        let baselineValues: [Double] = [100, 200, 300, 400, 500, 600, 700, 800]
         let increase = makeInvariantBudget(
             activeEnergyKcal: 650.5,
             samples: makeInvariantSamples(kcalValues: baselineValues),
@@ -535,8 +524,6 @@ struct ActivityCalorieBudgetAdjustmentInvariantTests {
     }
 }
 
-// MARK: - Consumption reporting
-
 @Suite("ActivityCalorieBudget consumption invariants")
 struct ActivityCalorieBudgetConsumptionInvariantTests {
     @Test(
@@ -614,7 +601,6 @@ struct ActivityCalorieBudgetConsumptionInvariantTests {
 
     @Test("Given fractional consumption just above the target, when the budget reports, then it is not over budget by zero")
     func fractionalOverConsumptionAgreesWithTheOverAmount() {
-        // A sub-half-calorie overshoot rounds down to the target, so no over-budget treatment.
         let budget = makeInvariantBudget(consumed: 2_000.4, staticTarget: 2_000)
 
         #expect(budget.isOver == false)

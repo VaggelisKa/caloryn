@@ -1,30 +1,15 @@
 import CoreGraphics
 import Foundation
 
-/// How the calorie-trend bar chart is sized and which bar is emphasised.
-///
-/// The same series is drawn twice — compactly on the History card and larger in
-/// the drill-down — and the only thing that varies is bar width and height. Both
-/// decisions turn on the range (the 7-day range plots seven bars, the others up
-/// to thirty) and on which of the two surfaces is asking, so both facts are taken
-/// and neither surface computes its own.
 struct HistoryCalorieTrendChartLayout: Equatable {
     enum Surface: Equatable {
-        /// The summary card on the History screen.
         case card
-        /// The pushed drill-down, which is taller and tappable.
         case detail
     }
 
-    /// Where one bar stands relative to the selection. The drill-down marks the selected bar
-    /// with a ring and an ink axis label; no colour is decided here.
     enum BarEmphasis: Equatable {
-        /// Nothing is selected, so every bar reads at full strength.
         case normal
-        /// This bar is the selection.
         case selected
-        /// Another bar is the selection. It still keeps its status colour: status is told by
-        /// lightness alone, so a dimmed ink "over" bar would read as an "under" one.
         case muted
     }
 
@@ -38,8 +23,6 @@ struct HistoryCalorieTrendChartLayout: Equatable {
         axis = HistoryChartIndexAxis(slotCount: pointCount)
     }
 
-    /// Only the 7-day range has room for wide bars; every longer range plots at
-    /// least fourteen and has to fit them in the same width.
     var barWidth: CGFloat {
         switch surface {
         case .card:
@@ -66,17 +49,11 @@ struct HistoryCalorieTrendChartLayout: Equatable {
         axis.hitTargetWidth(plotWidth: plotWidth)
     }
 
-    /// The slot a tap landed on, or `nil` when it missed the plot entirely.
-    ///
-    /// Takes the already-resolved chart-space x value rather than the chart
-    /// proxy, so the containment and rounding rules are reachable without a
-    /// rendered chart.
     func selectedSlot(chartValue: Double?) -> Int? {
         guard let chartValue else { return nil }
         return axis.slot(for: chartValue)
     }
 
-    /// Selecting a bar sets it apart from its neighbours; selecting nothing sets none apart.
     static func barEmphasis(pointID: String, selectedPointID: String?) -> BarEmphasis {
         guard let selectedPointID else { return .normal }
         return selectedPointID == pointID ? .selected : .muted

@@ -1,8 +1,6 @@
 import Testing
 @testable import Caloryn
 
-/// The stepped value the onboarding sliders settle on now that they no longer pass `step:`
-/// to `Slider` (which draws a tick per step on iOS 26).
 @Suite("Slider step")
 struct SliderStepTests {
 

@@ -1,9 +1,5 @@
 import Foundation
 
-/// The privacy-minimized input used by contextual suggestion ranking.
-///
-/// Names, barcodes, nutrition, health data, and search traffic never enter the
-/// ranker. The adapter below creates this snapshot entirely from local models.
 struct ContextualSuggestionCandidate: Equatable {
     let foodID: UUID
     let isAvailable: Bool
@@ -266,9 +262,6 @@ enum ContextualFoodSuggestionAdapter {
             )
         }
         let observations = entries.compactMap { entry -> ContextualSuggestionObservation? in
-            // A missing relationship means the source was deleted. Never fall
-            // back to names: duplicate names remain distinct and deletions do
-            // not leak stale candidates back into suggestions.
             guard let foodID = entry.foodItem?.id else { return nil }
             return ContextualSuggestionObservation(
                 entryID: entry.id,

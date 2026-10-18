@@ -24,7 +24,6 @@ struct CalorynInputFieldModifier: ViewModifier {
                 in: RoundedRectangle(cornerRadius: CalorynTheme.smallCornerRadius, style: .continuous)
             )
             .overlay {
-                // A well, not a card: `surface` with a hairline edge, and ink when focused.
                 RoundedRectangle(cornerRadius: CalorynTheme.smallCornerRadius, style: .continuous)
                     .strokeBorder(
                         isFocused ? CalorynTheme.textPrimary : CalorynTheme.hairline,

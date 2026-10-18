@@ -1,11 +1,5 @@
 import Foundation
 
-/// Every rule the Settings "Calorie Estimate" section applies.
-///
-/// Takes the four facts the rules depend on rather than the profile, so the
-/// section's behaviour is reachable without a SwiftData store: whether a manual
-/// target is in force, which energy mode is stored, whether Apple Health exists
-/// on this device, and whether an authorization request is in flight.
 struct SettingsCalorieEstimate: Equatable {
     let isManualOverride: Bool
     let energyCalculationMode: EnergyCalculationMode
@@ -24,23 +18,16 @@ struct SettingsCalorieEstimate: Equatable {
         self.isRequestingAuthorization = isRequestingAuthorization
     }
 
-    /// A manual target always wins: the stored mode is ignored while it is on.
     var effectiveEnergyCalculationMode: EnergyCalculationMode {
         isManualOverride ? .lifestyleEstimate : energyCalculationMode
     }
 
-    // MARK: - Toggle
-
-    /// Whether the toggle drives the profile. With a manual target it is shown
-    /// fixed off instead, so flipping it cannot silently discard the target.
     var isToggleBound: Bool { !isManualOverride }
 
     var isToggleOn: Bool {
         !isManualOverride && energyCalculationMode == .dynamicHealth
     }
 
-    /// Off and unavailable means there is nothing to turn on; already on stays
-    /// tappable so it can always be turned back off.
     var isToggleDisabled: Bool {
         if isManualOverride {
             return true
@@ -65,16 +52,10 @@ struct SettingsCalorieEstimate: Equatable {
         return "Off - using your activity level"
     }
 
-    // MARK: - Section content
-
-    /// The per-day metric rows only mean anything while Health is actually
-    /// driving the target.
     var showsDynamicMetrics: Bool {
         !isManualOverride && energyCalculationMode == .dynamicHealth
     }
 
-    /// The budget's status line reads as information while auto-adjust is on and
-    /// as a warning while it is off.
     var isDynamicStatusInformational: Bool {
         energyCalculationMode == .dynamicHealth
     }
@@ -100,8 +81,6 @@ struct SettingsCalorieEstimate: Equatable {
         return "Your activity level sets the estimate. Auto-adjust can use Apple Health activity instead."
     }
 
-    // MARK: - Metric values
-
     static let validActivityDaysDescription =
         "Active Energy days found; \(ActivityCalorieBudget.requiredDynamicActivityDays) days are needed before auto-adjust starts."
 
@@ -109,12 +88,6 @@ struct SettingsCalorieEstimate: Equatable {
         "\(validActivityDays)/\(ActivityCalorieBudget.requiredDynamicActivityDays)"
     }
 
-    /// A dash until there are enough valid days to have a baseline at all.
-    ///
-    /// Both this and `todayText` come from Apple Health, so `Int(_:)` cannot be
-    /// used to round them: it terminates the process on a NaN, an infinity or
-    /// anything past `Int.max` rather than throwing. `truncatedSafely`, via
-    /// `Double.kcalFormatted`, renders those as text instead.
     static func baselineText(activityBaselineKcal: Double?) -> String {
         guard let activityBaselineKcal else {
             return "-"
@@ -123,15 +96,10 @@ struct SettingsCalorieEstimate: Equatable {
         return activityBaselineKcal.rounded().kcalFormatted
     }
 
-    /// Today's Active Energy as read from Apple Health.
     static func todayText(activeEnergyKcal: Double) -> String {
         activeEnergyKcal.rounded().kcalFormatted
     }
 
-    // MARK: - Tracker fallback
-
-    /// The tracker reporting a problem while auto-adjust is on drops the profile
-    /// back to the lifestyle estimate rather than leaving the target frozen.
     static func fallsBackToLifestyle(
         energyCalculationMode: EnergyCalculationMode,
         trackerMessage: String?

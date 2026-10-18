@@ -1,24 +1,12 @@
 import Foundation
 
-/// How a meal is named in a History per-meal row.
-///
-/// Snacks are the one meal a single row can hold several of, so the row reads
-/// plural where `MealType.displayName` reads singular. Two screens needed the
-/// same exception, which is why it is here rather than in either of them.
 enum HistoryMealLabel {
     static func rowTitle(for mealType: MealType) -> String {
         mealType == .snack ? "Snacks" : mealType.displayName
     }
 }
 
-/// What the calorie-trend drill-down says about a selected day.
-///
-/// Takes the day's totals and its per-meal calories rather than the day detail,
-/// so the unlogged wording, the meal split and the food-driver framing are
-/// reachable without entries or a store.
 struct HistoryCalorieTrendDayBreakdown {
-    /// Beyond this the list is summarised as a count; three rows is as much as
-    /// the card can show without pushing the meal split off screen.
     static let visibleFoodLimit = 3
 
     struct MealRow: Identifiable, Equatable {
@@ -29,8 +17,6 @@ struct HistoryCalorieTrendDayBreakdown {
         var title: String { HistoryMealLabel.rowTitle(for: mealType) }
         var iconName: String { mealType.iconName }
 
-        /// A meal with no calories is still listed, so the split always has the
-        /// same four rows — it just reads as absent rather than as zero.
         var hasCalories: Bool { calories > 0 }
 
         var caloriesText: String {
@@ -58,7 +44,6 @@ struct HistoryCalorieTrendDayBreakdown {
         self.foods = foods
     }
 
-    /// Every meal, in the canonical order, whether or not it was logged.
     var mealRows: [MealRow] {
         MealType.allCases.map { mealType in
             MealRow(mealType: mealType, calories: mealCalories[mealType] ?? 0)
@@ -82,8 +67,6 @@ struct HistoryCalorieTrendDayBreakdown {
         !visibleFoods.isEmpty
     }
 
-    /// Over target the foods are read as an explanation; at or under target
-    /// there is nothing to explain, so they are just a list.
     var foodSectionTitle: String {
         calorieDifference > 0 ? "Top contributors" : "Foods logged"
     }
@@ -97,13 +80,7 @@ struct HistoryCalorieTrendDayBreakdown {
     }
 }
 
-/// What the calorie-trend drill-down says about a selected week.
-///
-/// The 90-day range plots one bar per calendar week, so a selection there is a
-/// week rather than a day. Takes the week's counts and its days' swings — the
-/// dates already rendered — rather than the week summary.
 struct HistoryCalorieTrendWeekBreakdown {
-    /// One logged day, reduced to what the biggest-swing rule needs.
     struct DaySwing: Equatable {
         let dateText: String
         let calorieDifference: Int
@@ -142,9 +119,6 @@ struct HistoryCalorieTrendWeekBreakdown {
 
     var coverageRatioText: String { "\(loggedDays)/\(totalDays)" }
 
-    /// The furthest logged day from its own target, in either direction. An
-    /// exact tie goes to the earlier day, so the reader is always sent to the
-    /// first day the swing appeared.
     var biggestSwing: DaySwing? {
         loggedDaySwings.max { abs($0.calorieDifference) < abs($1.calorieDifference) }
     }

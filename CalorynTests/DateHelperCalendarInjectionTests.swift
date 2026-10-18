@@ -2,25 +2,7 @@ import Testing
 import Foundation
 @testable import Caloryn
 
-/// `Date+Helpers` derives every day/week rule against an injected `Calendar`.
-/// These tests drive the helpers with calendars that differ from the host's in
-/// each of the three ways that can change an answer:
-///
-/// * **time zone** — the same instant is a different calendar day in Kolkata
-///   than in Los Angeles, so `startOfDay`, `daysFrom`, `datesInRange` and the
-///   Today/Yesterday labels all move with it;
-/// * **week start** — `startOfWeek` is deliberately Monday-based no matter what
-///   the calendar's `firstWeekday` says, because History's weekly rollups are
-///   defined as Mon-Sun rather than as the user's locale week;
-/// * **calendar identity and locale** — a non-Gregorian calendar renumbers the
-///   day and renames the month, and a foreign locale renames the weekday.
-///
-/// Nothing here reads the ambient calendar for an expected value, and nothing
-/// mutates global state, so the results are the same on any host.
 struct DateHelperCalendarInjectionTests {
-
-    // MARK: - Calendars under test
-
     private static func calendar(
         _ timeZone: String,
         identifier: Calendar.Identifier = .gregorian,
@@ -34,8 +16,6 @@ struct DateHelperCalendarInjectionTests {
         return cal
     }
 
-    /// An absolute instant, named by its UTC wall clock so no test depends on
-    /// where it is being run.
     private static func instant(
         utcYear year: Int,
         month: Int,
@@ -54,21 +34,17 @@ struct DateHelperCalendarInjectionTests {
     }
 
     private static let utc = calendar("UTC")
-    private static let kolkata = calendar("Asia/Kolkata")        // UTC+5:30
-    private static let losAngeles = calendar("America/Los_Angeles") // UTC-7/-8
-
-    // MARK: - A time zone that shifts the date across a day boundary
+    private static let kolkata = calendar("Asia/Kolkata")
+    private static let losAngeles = calendar("America/Los_Angeles")
 
     @Test("startOfDay resolves one instant to two different days when the injected zone straddles midnight")
     func startOfDayFollowsTheInjectedTimeZoneAcrossMidnight() {
-        // 23:45 UTC on New Year's Eve is already 05:15 on New Year's Day in Kolkata.
         let newYearsEve = Self.instant(utcYear: 2025, month: 12, day: 31, hour: 23, minute: 45)
 
         let inUTC = newYearsEve.startOfDay(in: Self.utc)
         let inKolkata = newYearsEve.startOfDay(in: Self.kolkata)
 
         #expect(inUTC == Self.instant(utcYear: 2025, month: 12, day: 31))
-        // Kolkata's Jan 1 midnight is 18:30 UTC on Dec 31.
         #expect(inKolkata == Self.instant(utcYear: 2025, month: 12, day: 31, hour: 18, minute: 30))
         #expect(inUTC != inKolkata)
     }
@@ -78,13 +54,8 @@ struct DateHelperCalendarInjectionTests {
         let lateEvening = Self.instant(utcYear: 2026, month: 6, day: 15, hour: 23)
         let nextMorning = Self.instant(utcYear: 2026, month: 6, day: 16, hour: 3)
 
-        // Four hours apart, but they land either side of UTC midnight...
         #expect(nextMorning.daysFrom(lateEvening, in: Self.utc) == 1)
-        // ...and inside a single Los Angeles afternoon/evening (16:00 and 20:00 PDT),
         #expect(nextMorning.daysFrom(lateEvening, in: Self.losAngeles) == 0)
-        // ...and inside a single Kolkata day too, which rolled over first (04:30
-        // and 08:30 on the 16th). The same pair of instants is one day apart or
-        // zero depending purely on the injected zone.
         #expect(nextMorning.daysFrom(lateEvening, in: Self.kolkata) == 0)
     }
 
@@ -102,7 +73,6 @@ struct DateHelperCalendarInjectionTests {
         let instant = Self.instant(utcYear: 2026, month: 1, day: 2, hour: 12)
         let dates = Date.datesInRange(from: instant, days: 3, in: Self.kolkata)
 
-        // Kolkata midnights sit 5:30 before the corresponding UTC midnight.
         #expect(dates == [
             Self.instant(utcYear: 2026, month: 1, day: 1, hour: 18, minute: 30),
             Self.instant(utcYear: 2025, month: 12, day: 31, hour: 18, minute: 30),
@@ -121,11 +91,6 @@ struct DateHelperCalendarInjectionTests {
         #expect(Self.kolkata.component(.day, from: next) == 16)
         #expect(Self.kolkata.component(.day, from: previous) == 14)
     }
-
-    // MARK: - Today / Yesterday labels follow the injected zone
-    //
-    // Anchored on each calendar's own "now" rather than a fixed date, so the
-    // assertion holds whenever it runs, and never borrows the host calendar.
 
     @Test(
         "shortFormatted labels the second after the injected zone's midnight as Today",
@@ -159,15 +124,12 @@ struct DateHelperCalendarInjectionTests {
         #expect(sevenDaysOut.isAtFutureLogLimit(from: now, in: Self.utc))
     }
 
-    // MARK: - A week start that differs from the injected calendar's
-
     @Test(
         "startOfWeek stays Monday-based even when the calendar's own week starts on another day",
-        arguments: [1, 2, 6, 7] // Sunday, Monday, Friday, Saturday
+        arguments: [1, 2, 6, 7]
     )
     func startOfWeekIgnoresTheCalendarsFirstWeekday(firstWeekday: Int) {
         let cal = Self.calendar("UTC", firstWeekday: firstWeekday)
-        // 2026-01-04 is a Sunday; the Monday of its Mon-Sun week is 2025-12-29.
         let sunday = Self.instant(utcYear: 2026, month: 1, day: 4, hour: 15)
 
         #expect(sunday.startOfWeek(in: cal) == Self.instant(utcYear: 2025, month: 12, day: 29))
@@ -190,8 +152,8 @@ struct DateHelperCalendarInjectionTests {
         let week = Date.datesForCurrentWeek(from: thursday, in: Self.utc)
 
         #expect(week.count == 7)
-        #expect(week.first == Self.instant(utcYear: 2026, month: 1, day: 5)) // Monday
-        #expect(week.last == Self.instant(utcYear: 2026, month: 1, day: 11)) // Sunday
+        #expect(week.first == Self.instant(utcYear: 2026, month: 1, day: 5))
+        #expect(week.last == Self.instant(utcYear: 2026, month: 1, day: 11))
         #expect(week == week.sorted())
         #expect(week.allSatisfy { $0 == $0.startOfDay(in: Self.utc) })
     }
@@ -205,11 +167,8 @@ struct DateHelperCalendarInjectionTests {
         #expect(monday.startOfWeek(in: cal) == monday)
     }
 
-    // MARK: - weekdayInitial
-
     @Test("weekdayInitial names the weekday of the injected zone's day")
     func weekdayInitialFollowsTheInjectedZone() {
-        // 2026-01-05 is a Monday. At 22:00 UTC it is already Tuesday in Kolkata.
         let mondayEvening = Self.instant(utcYear: 2026, month: 1, day: 5, hour: 22)
 
         #expect(mondayEvening.weekdayInitial(in: Self.utc) == "M")
@@ -222,7 +181,6 @@ struct DateHelperCalendarInjectionTests {
         arguments: Array(zip(4...10, ["S", "M", "T", "W", "T", "F", "S"]))
     )
     func weekdayInitialWalksTheWholeWeek(day: Int, expected: String) {
-        // 2026-01-04 is a Sunday.
         let date = Self.instant(utcYear: 2026, month: 1, day: day, hour: 12)
         #expect(date.weekdayInitial(in: Self.utc) == expected)
     }
@@ -237,8 +195,6 @@ struct DateHelperCalendarInjectionTests {
         #expect(wednesday.weekdayInitial(in: saturdayStart) == "W")
     }
 
-    // MARK: - Calendar identity and locale
-
     @Test("dayMonthFormatted renumbers and renames the day under a non-Gregorian calendar")
     func dayMonthFormattedUsesANonGregorianCalendar() {
         var islamic = Calendar(identifier: .islamicUmmAlQura)
@@ -247,7 +203,6 @@ struct DateHelperCalendarInjectionTests {
 
         let date = Self.instant(utcYear: 2026, month: 6, day: 15, hour: 12)
 
-        // The rendered day number is the Islamic day of month, not the Gregorian 15.
         let islamicDay = islamic.component(.day, from: date)
         #expect(date.dayMonthFormatted(in: islamic).hasPrefix("\(islamicDay)"))
         #expect(date.dayMonthFormatted(in: islamic) != date.dayMonthFormatted(in: Self.utc))
@@ -268,8 +223,6 @@ struct DateHelperCalendarInjectionTests {
 
     @Test("the day named by dayMonthFormatted is the day the date lands on in that zone")
     func dayMonthFormattedFollowsTheInjectedZone() {
-        // 20:00 UTC on Jun 15 is already Jun 16 in Kolkata (+5:30) and still
-        // Jun 15 in Los Angeles (-7).
         let evening = Self.instant(utcYear: 2026, month: 6, day: 15, hour: 20)
         let kolkataEnglish = Self.calendar("Asia/Kolkata")
         let losAngelesEnglish = Self.calendar("America/Los_Angeles")
@@ -279,12 +232,8 @@ struct DateHelperCalendarInjectionTests {
     }
 }
 
-/// The History projections are built from an injected calendar too, so a run
-/// can be pinned to a foreign zone end-to-end: the day a calorie total is
-/// bucketed into and the day it is labelled with must be the same day.
 @MainActor
 struct HistoryCalendarInjectionTests {
-
     private func calendar(_ timeZone: String) -> Calendar {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = TimeZone(identifier: timeZone)!
@@ -305,7 +254,6 @@ struct HistoryCalendarInjectionTests {
     @Test("a weekly rollup buckets days by the analytics calendar's Monday, not the host's")
     func weeklyRollupsUseTheInjectedCalendar() {
         let cal = calendar("Asia/Kolkata")
-        // Thursday 2026-01-08 back through the preceding month.
         let analytics = HistoryAnalytics(
             entries: [],
             profile: nil,
@@ -315,7 +263,6 @@ struct HistoryCalendarInjectionTests {
         )
 
         for week in analytics.current.weeklyRollups {
-            // Every rollup starts on a Monday midnight *in Kolkata*.
             #expect(cal.component(.weekday, from: week.startDate) == 2)
             #expect(week.startDate == cal.startOfDay(for: week.startDate))
         }
@@ -328,19 +275,18 @@ struct HistoryCalendarInjectionTests {
             entries: [],
             profile: nil,
             range: .week,
-            endDate: date(utcYear: 2026, month: 1, day: 10), // Saturday
+            endDate: date(utcYear: 2026, month: 1, day: 10),
             calendar: cal
         )
         let discovery = HistoryPatternDiscovery(analytics: analytics)
         let labels = discovery.calorieTrend.points.map(\.xAxisLabel)
 
-        // Sun 4th through Sat 10th.
         #expect(labels == ["S", "M", "T", "W", "T", "F", "S"])
     }
 
     @Test("a trend point's label and its accessibility description name the same day")
     func trendPointLabelAndAccessibilityLabelAgreeUnderAForeignZone() {
-        let cal = calendar("Pacific/Kiritimati") // UTC+14
+        let cal = calendar("Pacific/Kiritimati")
         let analytics = HistoryAnalytics(
             entries: [],
             profile: nil,
@@ -356,12 +302,9 @@ struct HistoryCalendarInjectionTests {
         }
     }
 
-    /// The drill-down is reached with a summary alone -- History pushes
-    /// `(range, summary)` and nothing else -- so the calendar has to survive
-    /// that hop or the detail screen relabels a foreign-zone day from the host.
     @Test("a summary rebuilt into the detail projection keeps the calendar it was derived under")
     func detailProjectionRebuiltFromASummaryKeepsItsCalendar() {
-        let cal = calendar("Pacific/Kiritimati") // UTC+14
+        let cal = calendar("Pacific/Kiritimati")
         let analytics = HistoryAnalytics(
             entries: [],
             profile: nil,
@@ -370,7 +313,6 @@ struct HistoryCalendarInjectionTests {
             calendar: cal
         )
 
-        // Exactly what HistoryCalorieTrendDetailView does with the pushed snapshot.
         let projection = HistoryCalorieTrendProjection(
             range: analytics.range,
             summary: analytics.current
@@ -382,14 +324,12 @@ struct HistoryCalendarInjectionTests {
             #expect(projection.dayText(for: day.date) == day.date.shortFormatted(in: cal))
         }
 
-        // Noon UTC on the 10th is already the 11th in Kiritimati, so the seven
-        // Kiritimati days are Mon 5th through Sun 11th -- not the host's week.
         #expect(projection.points.map(\.xAxisLabel) == ["M", "T", "W", "T", "F", "S", "S"])
     }
 
     @Test("the detail projection's week labels name the week its rollups were bucketed into")
     func detailProjectionWeekLabelsUseTheSummaryCalendar() {
-        let cal = calendar("Pacific/Kiritimati") // UTC+14
+        let cal = calendar("Pacific/Kiritimati")
         let analytics = HistoryAnalytics(
             entries: [],
             profile: nil,
@@ -411,10 +351,8 @@ struct HistoryCalendarInjectionTests {
 
     @Test("a recurring pattern labels its supporting days in the calendar it was discovered under")
     func recurringPatternDayLabelsUseItsDiscoveryCalendar() {
-        let cal = calendar("Pacific/Kiritimati") // UTC+14
+        let cal = calendar("Pacific/Kiritimati")
         let now = date(utcYear: 2026, month: 2, day: 2)
-        // Five Mondays in the 30-day window, each blowing past a saved target
-        // at dinner; every other eligible day sits on target.
         let entries = Self.recurringDinnerEntries(now: now, calendar: cal)
         let resolver = HistoryDayTargetResolver(
             fallbackTarget: 2_000,

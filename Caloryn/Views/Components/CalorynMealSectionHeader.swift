@@ -1,13 +1,5 @@
 import SwiftUI
 
-/// A meal's section header on the Plate / Market palette: the meal's name in its ink, the
-/// meal's total in secondary text ("382 kcal", "nothing yet"), and a round add button: the
-/// meal's fill as a light wash with the plus in the meal's ink, the same for every meal.
-///
-/// The whole row is the add button, as the header on Today has always been, so the
-/// accessibility identifier, label and hint land on an element that still does the same
-/// thing (`today.mealHeader.<raw>` keeps working). Callers own those strings. It is a
-/// heading as well as a button, so the VoiceOver rotor can jump from meal to meal.
 struct CalorynMealSectionHeader: View {
     let meal: MealType
     let title: String
@@ -21,11 +13,6 @@ struct CalorynMealSectionHeader: View {
     @ScaledMetric(relativeTo: .headline) private var addButtonSize: CGFloat = 30
     @ScaledMetric(relativeTo: .headline) private var plusSize: CGFloat = 14
 
-    /// - Parameters:
-    ///   - title: defaults to the meal's display name; pass the snack slot's name for a snack.
-    ///   - totalText: "382 kcal", "nothing yet", or nil for no trailing text. Both read in
-    ///     secondary text: "nothing yet" is words, not a figure, so it cannot be mistaken for
-    ///     a total, and in tertiary it fell to 2.8:1 on the page.
     init(
         meal: MealType,
         title: String? = nil,
@@ -44,9 +31,6 @@ struct CalorynMealSectionHeader: View {
         self.onAdd = onAdd
     }
 
-    /// Name, total and plus on one line as the board draws them. At accessibility sizes the
-    /// three overflow the row (from AX2 a total could read "1.3…"), so the total moves under
-    /// the name and the plus stays on the trailing edge; a number is never truncated.
     var body: some View {
         Button(action: onAdd) {
             HStack(spacing: 10) {
@@ -70,8 +54,6 @@ struct CalorynMealSectionHeader: View {
                     .font(.system(size: plusSize, weight: .bold))
                     .foregroundStyle(meal.ink)
                     .frame(width: addButtonSize, height: addButtonSize)
-                    // Over the header's opaque page fill, so the wash is the same colour
-                    // whether the header is pinned or scrolling with its meal.
                     .background(meal.wash, in: Circle())
             }
             .textCase(nil)

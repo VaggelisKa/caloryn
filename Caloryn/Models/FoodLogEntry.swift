@@ -1,9 +1,6 @@
 import Foundation
 import SwiftData
 
-/// A produce-counting item captured from a recipe's ingredients when a recipe
-/// entry is logged, so History keeps counting the ingredients' fruit/vegetable
-/// variety even after the recipe is edited or deleted.
 struct FoodLogProduceItemSnapshot: Codable, Equatable {
     var name: String
     var kindRaw: String
@@ -18,11 +15,6 @@ struct FoodLogProduceItemSnapshot: Codable, Equatable {
     }
 }
 
-/// The complete, reusable payload of a logged food entry.
-///
-/// Copy and template flows must use this payload instead of recalculating from
-/// a live `FoodItem`. A saved food can change or disappear after logging, while
-/// the nutrition and quality values recorded in the log must remain stable.
 struct FoodLogEntrySnapshot: Codable, Equatable {
     var sourceFoodID: UUID?
     var mealType: MealType
@@ -145,34 +137,10 @@ final class FoodLogEntry {
     var replicationItemIndex: Int?
     var replicationPlanFingerprint: String?
 
-    // MARK: Food-quality snapshot (issue #71)
-    //
-    // Nutri-Score and produce classification are captured on the entry at
-    // create/update time so History remains accurate after the saved food is
-    // edited or deleted.
-    //
-    // Migration/fallback for legacy entries (created before these fields
-    // existed): lightweight migration leaves all three fields nil.
-    // `produceKindSnapshotRaw == nil` unambiguously marks a legacy entry,
-    // because every snapshot writes at least "unclassified". Legacy entries
-    // fall back to the live saved-food relationship (the pre-snapshot
-    // behavior) and surface no quality data once that relationship is gone —
-    // values are never fabricated.
-
-    /// Nutri-Score grade ("a"–"e") of the food at logging time. On a
-    /// snapshotted entry, nil means the food genuinely had no grade.
     var nutriscoreGradeSnapshot: String?
-    /// `ProduceKind` raw value at logging time; nil only on legacy entries.
     var produceKindSnapshotRaw: String?
-    /// JSON-encoded `[FoodLogProduceItemSnapshot]` captured from recipe
-    /// ingredients; nil for non-recipe entries and legacy entries.
     var produceItemsSnapshotRaw: String?
 
-    // MARK: Food provenance snapshot (issue #72)
-    //
-    // Optional fields migrate existing entries without fabricating a source.
-    // New and updated entries always snapshot the saved food's provider,
-    // source, completeness, and fallback-recovery state.
     var lookupProviderSnapshotRaw: String?
     var dataSourceSnapshotRaw: String?
     var nutritionCompletenessSnapshotRaw: String?
@@ -196,9 +164,6 @@ final class FoodLogEntry {
         )
     }
 
-    /// Creates a normal editable log entry from an immutable logged snapshot.
-    /// The live food relationship is retained when available, but it is never
-    /// used to recalculate the recorded nutrition or quality values.
     init(
         date: Date,
         mealType: MealType,
@@ -322,13 +287,10 @@ final class FoodLogEntry {
         recoveredByFallbackSnapshotRaw = provenance.recoveredByFallback
     }
 
-    /// True when this entry carries a quality snapshot. False only for legacy
-    /// entries created before quality snapshots existed.
     var hasQualitySnapshot: Bool {
         produceKindSnapshotRaw != nil
     }
 
-    /// Snapshotted produce classification; nil only on legacy entries.
     var produceKindSnapshot: ProduceKind? {
         guard let raw = produceKindSnapshotRaw else { return nil }
         return ProduceKind(rawValue: raw) ?? .unclassified
@@ -350,9 +312,6 @@ final class FoodLogEntry {
         }
     }
 
-    /// Display name for historical reads: the name stored on the entry at log
-    /// time; entries stored without one fall back to the live saved-food
-    /// relationship and read as "Unnamed food" once that food is gone.
     var historicalFoodName: String {
         let storedName = foodName.trimmingCharacters(in: .whitespacesAndNewlines)
         if !storedName.isEmpty { return storedName }
@@ -361,17 +320,10 @@ final class FoodLogEntry {
         return liveName.isEmpty ? "Unnamed food" : liveName
     }
 
-    /// Nutri-Score grade for historical reads: the snapshot when available;
-    /// legacy entries fall back to the live saved-food relationship and
-    /// report nil (unknown) once that food is gone.
     var historicalNutriscoreGrade: String? {
         hasQualitySnapshot ? nutriscoreGradeSnapshot : foodItem?.nutriscoreGrade
     }
 
-    /// Produce classification for historical reads: the snapshot when
-    /// available; legacy entries fall back to the live saved-food
-    /// relationship. nil means unknown (legacy entry whose food is gone),
-    /// which is distinct from a known `.unclassified` value.
     var historicalProduceKind: ProduceKind? {
         hasQualitySnapshot ? produceKindSnapshot : foodItem?.produceKind
     }
@@ -389,9 +341,6 @@ final class FoodLogEntry {
                 recoveredByFallback: recoveredByFallbackSnapshotRaw ?? false
             )
         }
-        // Unlike pre-existing quality fields, provenance was never available
-        // before its snapshot columns were added. Reading the linked food here
-        // would let a later food edit rewrite legacy history.
         return .unknown
     }
 }

@@ -14,8 +14,6 @@ enum DailyWidgetState: String, Codable, Hashable, Sendable {
     case unavailable
 }
 
-/// One meal's share of today, for the widget's plate: only meals with something logged
-/// are listed, in `WidgetMeal.allCases` order.
 struct WidgetMealCalories: Codable, Hashable, Sendable {
     let meal: WidgetMeal
     let kcal: Int
@@ -26,9 +24,6 @@ struct WidgetCalorieSummary: Codable, Hashable, Sendable {
     let baseTarget: Int
     let target: Int
     let dynamicAdjustment: Int
-    /// What each logged meal contributed to `consumed`, so the widget can draw the day as
-    /// the app's plate rather than a single arc. Empty in a snapshot written before meals
-    /// were recorded; the plate then draws the total as one neutral slice.
     let meals: [WidgetMealCalories]
 
     init(
@@ -48,11 +43,6 @@ struct WidgetCalorieSummary: Codable, Hashable, Sendable {
         }
     }
 
-    /// `Int(_:)` is a trap, not a conversion: NaN, an infinity or anything past `Int64`
-    /// terminates the process, and `consumed` is a raw sum of logged calories.
-    /// `Double.truncatedSafely` says the same thing, but it lives in the app target, which
-    /// this shared file is compiled into the widget without — so the guard is spelled out
-    /// here. Anything that is not a positive finite number floors at 0.
     private static func clamped(_ kcal: Double) -> Int {
         let rounded = kcal.rounded()
         if !rounded.isFinite || rounded <= 0 {
@@ -64,8 +54,6 @@ struct WidgetCalorieSummary: Codable, Hashable, Sendable {
         }
     }
 
-    // Derived from the stored inputs above so they can never drift out of sync
-    // and don't bloat the serialized snapshot.
     var remaining: Int { max(0, target - consumed) }
     var overAmount: Int { max(0, consumed - target) }
     var progress: Double { min(max(Double(consumed) / Double(target), 0), 1) }
@@ -74,16 +62,10 @@ struct WidgetCalorieSummary: Codable, Hashable, Sendable {
         overAmount > 0
     }
 
-    /// What `meal` contributed today; nil when nothing was logged to it.
     func kcal(for meal: WidgetMeal) -> Int? {
         meals.first { $0.meal == meal }?.kcal
     }
 
-    // MARK: Codable
-
-    // Hand-written so a snapshot saved before `meals` existed still decodes: the widget
-    // reads it until the app next publishes, and a decode failure would show "Open
-    // Caloryn" in its place.
     private enum CodingKeys: String, CodingKey {
         case consumed, baseTarget, target, dynamicAdjustment, meals
     }
@@ -152,8 +134,6 @@ struct DailyWidgetSnapshot: Codable, Hashable, Sendable {
         fixed(state: .unavailable, consumed: 0, at: date, calendar: calendar)
     }
 
-    /// Builds a snapshot with the fixed 2,000 kcal fallback target used by the
-    /// onboarding / placeholder / unavailable states.
     private static func fixed(
         state: DailyWidgetState,
         consumed: Double,
@@ -174,8 +154,6 @@ struct DailyWidgetSnapshot: Codable, Hashable, Sendable {
         )
     }
 
-    /// Everything that affects what the widget draws, excluding `generatedAt`.
-    /// Used both to skip redundant publishes and as a change-detection key in the app.
     struct RenderIdentity: Hashable, Sendable {
         let schemaVersion: Int
         let dayStart: Date

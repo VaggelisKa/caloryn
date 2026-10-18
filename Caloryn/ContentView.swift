@@ -24,11 +24,7 @@ struct ContentView: View {
             }
         }
         .preferredColorScheme(colorScheme)
-        // Ink, the same value as `AccentColor`. Stock controls read the asset already; a
-        // `Toggle` does not — it stays system green unless tinted.
         .tint(CalorynTheme.textPrimary)
-        // Switches take `controlTint` instead: ink is near-white in dark mode, and the
-        // switch's white knob vanished on an ink track.
         .toggleStyle(CalorynToggleStyle())
         .animation(.smooth(duration: 0.4), value: hasCompletedOnboarding)
         .background {

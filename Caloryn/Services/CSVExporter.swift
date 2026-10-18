@@ -1,13 +1,7 @@
 import Foundation
 
 enum CSVExporter {
-    /// Quotes a field per RFC 4180, so the value survives the round trip.
-    ///
-    /// Only fields that would otherwise break the format are quoted, which
-    /// keeps the common case — a plain food name — byte-identical to what
-    /// this exporter has always produced.
     private static func escaped(_ field: String) -> String {
-        // `isNewline`, not `== "\n" || == "\r"`: "\r\n" is one Character and equals neither.
         guard field.contains(where: { $0 == "," || $0 == "\"" || $0.isNewline }) else {
             return field
         }

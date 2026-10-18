@@ -62,10 +62,6 @@ struct HistoryWeeklyConsistencyProjection {
 
 struct HistoryCalorieTrendProjection {
     let range: HistoryRange
-    /// Taken from the summary rather than accepted as a parameter: a defaulted
-    /// `calendar: Calendar = .current` silently succeeded at the wrong answer
-    /// whenever a caller forgot it, which is exactly how the detail screen came
-    /// to label foreign-zone days from the host calendar.
     let calendar: Calendar
     let dailyCalorieTarget: Int
     let totalDayCount: Int
@@ -155,8 +151,6 @@ struct HistoryCalorieTrendProjection {
     }
 
     var canDrillDown: Bool {
-        // Gated on logged days, not plotted points: in the 90-day range a point is a calendar
-        // week, so three days logged inside one week left the only data the user had unreachable.
         loggedDayCount >= 2
     }
 
@@ -180,8 +174,6 @@ struct HistoryCalorieTrendProjection {
         totalCalories.roundedCalories - loggedDayTargetTotal
     }
 
-    /// Shown when some days in range use the documented fallback target
-    /// instead of a persisted daily goal snapshot.
     var estimatedTargetNoteText: String? {
         guard hasEstimatedTargets else { return nil }
         return "Days without a saved daily goal are compared with your current target."
@@ -192,10 +184,6 @@ struct HistoryCalorieTrendProjection {
         return "\(Self.deltaText(totalTargetDelta, unit: "kcal")) target total"
     }
 
-    /// Day and week labels for the detail screen. They exist here, not in the
-    /// view, so that a label cannot be produced without the calendar its date
-    /// was bucketed in; both still route through the single `Date+Helpers`
-    /// rule.
     func dayText(for date: Date) -> String {
         date.shortFormatted(in: calendar)
     }
@@ -204,12 +192,6 @@ struct HistoryCalorieTrendProjection {
         date.dayMonthFormatted(in: calendar)
     }
 
-    /// The point a chart-space x value falls on, or `nil` outside the series.
-    ///
-    /// Non-finite indices are rejected rather than truncated: `truncatedSafely`
-    /// answers 0 for NaN and the infinities, which would silently select the
-    /// first day for a gesture value that means nothing. The equivalent
-    /// `HistoryChartIndexAxis.slot(for:)` draws the same line.
     func point(for index: Double) -> HistoryCalorieTrendPoint? {
         guard index.isFinite else { return nil }
         let roundedIndex = index.rounded().truncatedSafely
@@ -339,7 +321,6 @@ struct HistoryCalorieTrendProjection {
             "90-day"
         }
     }
-
 }
 
 struct HistoryCalorieTrendPoint: Identifiable {

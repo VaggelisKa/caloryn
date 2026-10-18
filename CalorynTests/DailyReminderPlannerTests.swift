@@ -2,7 +2,6 @@ import XCTest
 @testable import Caloryn
 
 final class DailyReminderPlannerTests: XCTestCase {
-    // makeTestDate defaults to 12:00 local time.
     private let noon = makeTestDate(year: 2026, month: 7, day: 15)
 
     func testDisabledProducesEmptyPlan() {

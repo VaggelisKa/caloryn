@@ -7,7 +7,6 @@ private func isNear(_ lhs: Double?, _ rhs: Double, tolerance: Double = 1e-9) -> 
     return abs(lhs - rhs) <= tolerance * max(1, abs(lhs), abs(rhs))
 }
 
-/// A profile whose calorie target is fixed, so the macro grams follow only from the split.
 @MainActor
 private func manualProfile(
     target: Int,
@@ -32,15 +31,11 @@ private func manualProfile(
 @MainActor
 @Suite("User profile nutrient targets")
 struct UserProfileNutrientTargetCoverageTests {
-
-    // MARK: - Targets for a calorie figure
-
     @Test("Without a calorie figure the targets are the saved macros alone")
     func savedTargetsWithoutACalorieFigure() {
         let profile = manualProfile(target: 2_000)
         let targets = profile.nutrientTargets(forCalorieTarget: nil)
 
-        // 2000 × 0.30 / 4, 2000 × 0.40 / 4, 2000 × 0.30 / 9
         #expect(Set(targets.keys) == [.protein, .carbs, .fat])
         #expect(isNear(targets[.protein], 150))
         #expect(isNear(targets[.carbs], 200))
@@ -52,7 +47,6 @@ struct UserProfileNutrientTargetCoverageTests {
     func defaultSplitScalesToANewFigure() {
         let targets = manualProfile(target: 2_000).nutrientTargets(forCalorieTarget: 2_400)
 
-        // 2400 × 0.30 / 4, 2400 × 0.40 / 4, 2400 × 0.30 / 9
         #expect(isNear(targets[.protein], 180))
         #expect(isNear(targets[.carbs], 240))
         #expect(isNear(targets[.fat], 80))
@@ -60,14 +54,12 @@ struct UserProfileNutrientTargetCoverageTests {
 
     @Test("A calorie figure re-applies the user's own split, not the default one")
     func customSplitScalesToANewFigure() {
-        // Saved at 1800 kcal: 157.5 g protein, 157.5 g carbs, 60 g fat (35/35/30).
         let profile = manualProfile(target: 1_800, protein: 0.35, carbs: 0.35, fat: 0.30)
         #expect(isNear(profile.proteinTargetG, 157.5))
         #expect(isNear(profile.fatTargetG, 60))
 
         let targets = profile.nutrientTargets(forCalorieTarget: 2_200)
 
-        // 2200 × 0.35 / 4 = 192.5, 2200 × 0.30 / 9 = 73.33…
         #expect(isNear(targets[.protein], 192.5))
         #expect(isNear(targets[.carbs], 192.5))
         #expect(isNear(targets[.fat], 73.333_333_333_333_33))
@@ -76,18 +68,15 @@ struct UserProfileNutrientTargetCoverageTests {
     @Test("Grams that claim more than the saved target scale with their proportions intact")
     func staleGramsKeepTheirProportions() {
         let profile = manualProfile(target: 1_000)
-        // 150 g × 4 + 150 g × 4 + 50 g × 9 = 1650 kcal against a 1000 kcal target.
         profile.setTarget(150, for: .protein)
         profile.setTarget(150, for: .carbs)
         profile.setTarget(50, for: .fat)
 
-        // The split is rescaled to total 1, so at 1650 kcal the grams come back as saved…
         let atSavedTotal = profile.nutrientTargets(forCalorieTarget: 1_650)
         #expect(isNear(atSavedTotal[.protein], 150))
         #expect(isNear(atSavedTotal[.carbs], 150))
         #expect(isNear(atSavedTotal[.fat], 50))
 
-        // …and doubling the figure doubles every macro.
         let doubled = profile.nutrientTargets(forCalorieTarget: 3_300)
         #expect(isNear(doubled[.protein], 300))
         #expect(isNear(doubled[.carbs], 300))
@@ -98,7 +87,6 @@ struct UserProfileNutrientTargetCoverageTests {
     func zeroSavedTargetFallsBackToTheDefaultSplit() {
         let profile = manualProfile(target: 0)
 
-        // Zero grams are not targets at all.
         #expect(profile.nutrientTargets.isEmpty)
 
         let targets = profile.nutrientTargets(forCalorieTarget: 2_000)
@@ -125,14 +113,10 @@ struct UserProfileNutrientTargetCoverageTests {
     func zeroCalorieFigureWritesZeroMacros() {
         let targets = manualProfile(target: 2_000).nutrientTargets(forCalorieTarget: 0)
 
-        // Unlike `nutrientTargets`, which drops a non-positive goal, this keeps the keys;
-        // every reader treats a target of 0 as no target.
         #expect(targets[.protein] == 0)
         #expect(targets[.carbs] == 0)
         #expect(targets[.fat] == 0)
     }
-
-    // MARK: - Setting a target
 
     @Test("Setting one nutrient's target touches no other nutrient", arguments: TrackedNutrient.allCases)
     func setTargetIsIndependent(nutrient: TrackedNutrient) {
@@ -158,10 +142,7 @@ struct UserProfileNutrientTargetCoverageTests {
         profile.setTarget(-20, for: nutrient)
         #expect(profile.target(for: nutrient) == nil)
         #expect(profile.nutrientTargets[nutrient] == nil)
-        // Macros are always enabled; it is the zero that removes them.
         #expect(profile.isGoalEnabled(for: nutrient))
-        // Stored as 0 g rather than −20 g, so the split it leaves gives this macro nothing at
-        // a new calorie figure; a kept −20 g would come back as a −20 g target.
         #expect(profile.nutrientTargets(forCalorieTarget: 2_000)[nutrient] == 0)
 
         profile.setTarget(90, for: nutrient)
@@ -188,8 +169,6 @@ struct UserProfileNutrientTargetCoverageTests {
         #expect(profile.isGoalEnabled(for: nutrient) == false)
         #expect(profile.nutrientTargets[nutrient] == nil)
     }
-
-    // MARK: - Goal kinds
 
     @Test("A fresh profile carries each nutrient's default goal kind")
     func defaultGoalKinds() {
@@ -239,7 +218,6 @@ struct UserProfileNutrientTargetCoverageTests {
         let profile = manualProfile(target: 2_000)
         profile.proteinGoalKindRaw = ""
         profile.carbGoalKindRaw = "legacy"
-        // Close to a real kind, but not one: a lenient parse would read it as `.minimum`.
         profile.alcoholGoalKindRaw = "minimum "
 
         #expect(profile.goalKind(for: .protein) == .minimum)
@@ -247,21 +225,16 @@ struct UserProfileNutrientTargetCoverageTests {
         #expect(profile.goalKind(for: .alcohol) == .maximum)
     }
 
-    // MARK: - Degenerate bodies
-
     @Test("An empty body recalculates onto the 1200 kcal floor and its macros")
     func emptyBodyRecalculatesOntoTheFloor() {
         let profile = UserProfile(age: 0, sex: .female, heightCm: 0, weightKg: 0, activityLevel: .extraActive)
 
-        // BMR = −161, TDEE = −161 × 1.9 = −305.9, target floored at 1200.
         #expect(isNear(profile.bmr, -161))
         #expect(isNear(profile.tdee, -305.9))
         #expect(profile.dailyCalorieTarget == 1_200)
-        // 1200 × 0.30 / 4, 1200 × 0.40 / 4, 1200 × 0.30 / 9
         #expect(isNear(profile.proteinTargetG, 90))
         #expect(isNear(profile.carbTargetG, 120))
         #expect(isNear(profile.fatTargetG, 40))
-        // The active-energy base is also built from BMR, so it is floored too.
         #expect(profile.calorieBaseTarget(usesActiveEnergy: true) == 1_200)
     }
 
@@ -270,7 +243,6 @@ struct UserProfileNutrientTargetCoverageTests {
         let profile = UserProfile(age: 0, sex: .male, heightCm: 0, weightKg: 1e12, activityLevel: .sedentary)
 
         #expect(profile.dailyCalorieTarget == CalorieDomain.maximum)
-        // 1e9 × 0.30 / 4, 1e9 × 0.40 / 4, 1e9 × 0.30 / 9
         #expect(isNear(profile.proteinTargetG, 75_000_000))
         #expect(isNear(profile.carbTargetG, 100_000_000))
         #expect(isNear(profile.fatTargetG, 33_333_333.333_333_33))
@@ -286,21 +258,15 @@ struct UserProfileNutrientTargetCoverageTests {
         profile.calorieDeficit = 250
         profile.recalculate(proteinRatio: 0.25, carbRatio: 0.45, fatRatio: 0.30)
 
-        // BMR 1534.625, TDEE × 1.725 = 2647.228125, − 250 = 2397.228125 → 2397
         #expect(isNear(profile.bmr, 1_534.625))
         #expect(isNear(profile.tdee, 2_647.228125))
         #expect(profile.dailyCalorieTarget == 2_397)
-        // 2397 × 0.25 / 4, 2397 × 0.45 / 4, 2397 × 0.30 / 9
         #expect(isNear(profile.proteinTargetG, 149.8125))
         #expect(isNear(profile.carbTargetG, 269.6625))
         #expect(isNear(profile.fatTargetG, 79.9))
-        // The active-energy base takes the same new deficit from BMR alone, not from TDEE:
-        // 1534.625 − 250 = 1284.625 → 1284.
         #expect(profile.calorieBaseTarget(usesActiveEnergy: true) == 1_284)
         #expect(profile.calorieBaseTarget(usesActiveEnergy: false) == 2_397)
     }
-
-    // MARK: - Calculation mode
 
     @Test("A manual target forces the activity-level estimate even when auto-adjust is chosen")
     func manualTargetForcesTheEstimate() {
@@ -343,13 +309,11 @@ struct UserProfileNutrientTargetCoverageTests {
 
         #expect(budget.dynamicStatus == .staticEstimate)
         #expect(budget.adjustedTarget == 2_150)
-        // 2150 − round(1000.4)
         #expect(budget.remaining == 1_150)
     }
 
     @Test("An auto-adjust profile without activity history hands Today a learning budget on its own target")
     func autoAdjustProfileWithoutHistoryIsLearning() {
-        // BMR 1780 (male 80 kg / 180 cm / 30 y), TDEE × 1.2 = 2136, − 500 = 1636.
         let profile = UserProfile(
             age: 30, sex: .male, heightCm: 180, weightKg: 80, activityLevel: .sedentary,
             energyCalculationMode: .dynamicHealth

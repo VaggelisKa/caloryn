@@ -1,6 +1,5 @@
 import Foundation
 
-/// One sub-nutrient line in the Nutrition Details breakdown.
 struct DetailNutrient: Identifiable, Equatable {
     enum Unit: Equatable {
         case grams
@@ -19,18 +18,10 @@ struct DetailNutrient: Identifiable, Equatable {
         self.unit = unit
     }
 
-    /// "3.6 g", "1.200 mg": a space before the unit and the number in the reader's locale,
-    /// on the Portion sheet and in Nutrition Details alike.
     var spacedFormattedValue: String {
         spacedFormattedValue(locale: .current)
     }
 
-    /// `spacedFormattedValue` in a given locale. `locale` exists for tests.
-    ///
-    /// Scaling to milligrams multiplies whatever the product data held by a
-    /// thousand, so `Int(_:)` cannot do the rounding: it terminates the process
-    /// past `Int.max` rather than throwing, and nothing bounds a nutrient value
-    /// on the way in.
     func spacedFormattedValue(locale: Locale) -> String {
         switch unit {
         case .grams:
@@ -41,13 +32,6 @@ struct DetailNutrient: Identifiable, Equatable {
     }
 }
 
-/// The sub-nutrient breakdowns the Nutrition Details sheet offers.
-///
-/// Which lines exist is a property of the data, not of the layout: a nutrient
-/// with nothing recorded for it is absent rather than shown as zero, because a
-/// zero would claim the food genuinely contains none of it. A whole group
-/// disappears once every line in it is missing, which is why `populatedGroups`
-/// and not the view decides what to draw.
 enum NutrientDetailGroup: String, CaseIterable, Identifiable {
     case protein
     case carbs
@@ -82,8 +66,6 @@ enum NutrientDetailGroup: String, CaseIterable, Identifiable {
         }
     }
 
-    /// The lines this group would show, in order, for the day's totals. Absent
-    /// values are dropped rather than rendered as zero.
     func items(in nutrition: NutritionValues) -> [DetailNutrient] {
         Self.definitions(for: self).compactMap { definition in
             guard let value = nutrition[keyPath: definition.keyPath] else { return nil }
@@ -96,7 +78,6 @@ enum NutrientDetailGroup: String, CaseIterable, Identifiable {
         }
     }
 
-    /// Every group that has at least one line for these totals.
     static func populatedGroups(in nutrition: NutritionValues) -> [PopulatedNutrientDetailGroup] {
         allCases.compactMap { group in
             let items = group.items(in: nutrition)
@@ -104,8 +85,6 @@ enum NutrientDetailGroup: String, CaseIterable, Identifiable {
             return PopulatedNutrientDetailGroup(group: group, items: items)
         }
     }
-
-    // MARK: - Definitions
 
     private struct Definition {
         let id: String
@@ -149,8 +128,6 @@ enum NutrientDetailGroup: String, CaseIterable, Identifiable {
     }
 }
 
-/// A group together with the lines it actually has, so the view never renders
-/// an empty card.
 struct PopulatedNutrientDetailGroup: Identifiable, Equatable {
     let group: NutrientDetailGroup
     let items: [DetailNutrient]

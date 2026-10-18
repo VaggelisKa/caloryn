@@ -121,8 +121,6 @@ final class CalorynAppIntentsTests: XCTestCase {
         )
         context.insert(earlierInvocation)
 
-        // A later invocation may deliberately log to an older calendar day.
-        // "Most recent overall" follows the literal logging time, not meal or date.
         let laterInvocation = makeTestEntry(
             date: makeTestDate(year: 2026, month: 7, day: 20),
             mealType: .dinner,

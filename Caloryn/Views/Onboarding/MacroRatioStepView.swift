@@ -70,16 +70,9 @@ struct MacroRatioStepView: View {
             }
         }
         .calorynPageCanvas()
-        // The existing toolbar item is `topBarTrailing`; the drill-down modifier
-        // owns `topBarLeading`, so this screen does not end up with two back
-        // buttons the way `PortionPickerView` would.
         .calorynDrillDownNavigation()
     }
 
-    // MARK: - Macro Slider
-
-    /// Macros are told apart by their label, never by colour: one ink for all three. At
-    /// accessibility sizes the name goes above its figures, so it is never broken mid-word.
     private func macroSlider(
         macro: MacroRatioSelection.Macro,
         ratio: Binding<Double>

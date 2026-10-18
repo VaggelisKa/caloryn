@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""Counting rules of line_coverage.py. Run: python3 -m unittest discover .github/scripts"""
 
 from __future__ import annotations
 
@@ -14,7 +13,6 @@ import line_coverage
 
 
 def archive_line(number: int, count: int | None) -> dict:
-    """One line of `xccov view --archive --json`; `None` means not executable."""
     if count is None:
         return {"line": number, "isExecutable": False}
     return {"line": number, "isExecutable": True, "executionCount": count}
@@ -67,7 +65,7 @@ class CombineTests(unittest.TestCase):
             unit={"Caloryn/A.swift": {"executable": [1, 2, 3, 4], "covered": [1, 2]}},
             ui={"Caloryn/A.swift": {"executable": [1, 2, 3, 4], "covered": [2, 3]}},
         )
-        self.assertEqual(overall, 75.0)  # {1, 2, 3} of 4
+        self.assertEqual(overall, 75.0)
         self.assertIn("(3/4 executable lines", summary)
         self.assertIn("| unit alone | 50.0% |", summary)
         self.assertIn("| ui alone | 50.0% |", summary)
@@ -87,7 +85,7 @@ class CombineTests(unittest.TestCase):
             },
             ui={"Caloryn/A.swift": {"executable": [1, 2], "covered": [1]}},
         )
-        self.assertEqual(overall, 50.0)  # 2 of 4
+        self.assertEqual(overall, 50.0)
         self.assertIn("| CalorynWidgets | 0.0% | 2 |", summary)
 
     def test_a_covered_line_that_is_not_executable_is_ignored(self):

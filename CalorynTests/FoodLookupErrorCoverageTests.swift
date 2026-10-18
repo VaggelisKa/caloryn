@@ -2,11 +2,6 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// What a failed food lookup tells the user, and how it is reported.
-///
-/// Every `FoodLookupError` becomes a full-screen message on the food search
-/// sheet, so each case's title, message, icon and retry affordance is pinned
-/// here, together with the fallback and telemetry contracts it carries.
 @MainActor
 struct FoodLookupErrorCoverageTests {
 
@@ -97,8 +92,6 @@ struct FoodLookupErrorCoverageTests {
         ),
     ]
 
-    // MARK: - Presentation
-
     @Test("Each failure shows its own title, message, icon and retry button", arguments: matrix)
     func presentation(_ expected: Expectation) {
         let presentation = expected.error.presentation
@@ -149,8 +142,6 @@ struct FoodLookupErrorCoverageTests {
         #expect(expected.error.dismissesWhenNameSearchBegins == (expected.error != .cancelled))
     }
 
-    // MARK: - Fallback and telemetry contracts
-
     @Test("Only content failures may fall back to the secondary provider", arguments: matrix)
     func fallbackPermission(_ expected: Expectation) {
         #expect(expected.error.permitsFallback == expected.permitsFallback)
@@ -165,8 +156,6 @@ struct FoodLookupErrorCoverageTests {
     func successOutcome() {
         #expect(FoodLookupOutcome.success.rawValue == "success")
     }
-
-    // MARK: - Latency classes
 
     @Test(
         "Latency is bucketed at 500 ms and 2 s",

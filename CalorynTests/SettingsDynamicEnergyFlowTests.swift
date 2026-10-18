@@ -1,9 +1,6 @@
 import XCTest
 @testable import Caloryn
 
-/// Drives the Settings auto-adjust flow through the reader seam: the branches
-/// that used to need a device with Apple Health, an entitlement and a tap on a
-/// permission sheet.
 @MainActor
 final class SettingsDynamicEnergyFlowTests: XCTestCase {
     override func setUp() {
@@ -15,8 +12,6 @@ final class SettingsDynamicEnergyFlowTests: XCTestCase {
         clearAppleHealthDefaults()
         super.tearDown()
     }
-
-    // MARK: - Turning auto-adjust on
 
     func testGrantedAuthorizationMovesTheProfileAndStartsTheTracker() async {
         let reader = StubActiveEnergyReader()
@@ -54,7 +49,6 @@ final class SettingsDynamicEnergyFlowTests: XCTestCase {
         )
     }
 
-    /// A refusal must leave the profile where it was; only the message changes.
     func testRefusedAuthorizationReportsTheReasonAndLeavesTheProfileAlone() async {
         let reader = StubActiveEnergyReader(
             authorizationError: HealthKitServiceError.authorizationFailed
@@ -92,7 +86,6 @@ final class SettingsDynamicEnergyFlowTests: XCTestCase {
         XCTAssertEqual(step?.state?.statusMessage, AppleHealthAdjustmentSettings.unavailableMessage)
     }
 
-    /// The request already running owns the outcome; a second one would race it.
     func testASecondRequestWhileOneIsInFlightChangesNothing() async {
         var statesWhileAsking: [SettingsDynamicEnergyFlow.State] = []
         let reader = StubActiveEnergyReader()
@@ -107,8 +100,6 @@ final class SettingsDynamicEnergyFlowTests: XCTestCase {
         XCTAssertEqual(reader.authorizationRequestCount, 0)
         XCTAssertTrue(statesWhileAsking.isEmpty)
     }
-
-    // MARK: - Turning auto-adjust off
 
     func testTurningOffAlwaysSucceedsAndReturnsToTheLifestyleEstimate() async {
         _ = await SettingsDynamicEnergyFlow.enable(
@@ -128,15 +119,11 @@ final class SettingsDynamicEnergyFlowTests: XCTestCase {
         XCTAssertFalse(UserDefaults.standard.bool(forKey: AppleHealthAdjustmentSettings.adjustmentEnabledKey))
     }
 
-    /// Turning off never asks anything, so it must not clear the flag of a
-    /// request that is still running.
     func testTurningOffLeavesAnInFlightRequestsFlagAlone() {
         let step = SettingsDynamicEnergyFlow.disable(isRequestingAuthorization: true)
 
         XCTAssertEqual(step.state?.isRequestingAuthorization, true)
     }
-
-    // MARK: - The toggle
 
     func testTheToggleDoesNothingWhenItAlreadyReadsWhatItIsSetTo() {
         XCTAssertNil(
@@ -158,8 +145,6 @@ final class SettingsDynamicEnergyFlowTests: XCTestCase {
         )
     }
 
-    // MARK: - Coming back from the Health privacy screen
-
     func testNothingToDoChangesNoStateAndAsksNothing() async {
         let reader = StubActiveEnergyReader()
 
@@ -174,8 +159,6 @@ final class SettingsDynamicEnergyFlowTests: XCTestCase {
         XCTAssertEqual(reader.authorizationRequestCount, 0)
     }
 
-    /// Auto-adjust is already on: only the day's figures are re-read, and the
-    /// message on screen is left as it is.
     func testAnAlreadyEnabledScreenOnlyRefreshesTheTracker() async {
         let reader = StubActiveEnergyReader()
 
@@ -192,7 +175,6 @@ final class SettingsDynamicEnergyFlowTests: XCTestCase {
         XCTAssertEqual(reader.authorizationRequestCount, 0)
     }
 
-    /// The one path that re-asks: permission may have been granted off-screen.
     func testAPendingPromptIsAskedAgainAndTurnsAutoAdjustOnWhenGranted() async {
         let reader = StubActiveEnergyReader()
 
@@ -226,8 +208,6 @@ final class SettingsDynamicEnergyFlowTests: XCTestCase {
             HealthKitServiceError.authorizationFailed.localizedDescription
         )
     }
-
-    // MARK: - Helpers
 
     private func clearAppleHealthDefaults() {
         UserDefaults.standard.removeObject(forKey: AppleHealthAdjustmentSettings.adjustmentEnabledKey)

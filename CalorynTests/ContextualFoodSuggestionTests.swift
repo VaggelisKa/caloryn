@@ -47,7 +47,7 @@ final class ContextualFoodSuggestionRankerTests: XCTestCase {
 
     func testScoreUsesDocumentedMealTimeWeekdayRecencyAndFrequencyWeights() throws {
         let foodID = UUID()
-        let now = date(2026, 7, 22, 11) // Wednesday, midday bucket
+        let now = date(2026, 7, 22, 11)
         let result = rank(
             foodIDs: [foodID],
             observations: [

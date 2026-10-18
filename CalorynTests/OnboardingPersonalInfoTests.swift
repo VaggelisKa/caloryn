@@ -2,7 +2,6 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// Covers the bounds and readouts of the About You step.
 @MainActor
 @Suite("Onboarding personal info")
 struct OnboardingPersonalInfoTests {

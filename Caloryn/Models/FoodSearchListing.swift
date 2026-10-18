@@ -1,17 +1,6 @@
 import Foundation
 
-/// Decides what the food search screen shows for a given query.
-///
-/// `FoodSearchView` owns a search field, three `@Query` collections, a provider
-/// service and a suggestion snapshot, and derived roughly a dozen filtered
-/// lists from them inline. Those rules are the part that can be wrong, so they
-/// live here where a test can reach them without a view.
 struct FoodSearchListing {
-    /// The facts about the presentation mode that filtering depends on.
-    ///
-    /// `FoodSearchMode` carries selection callbacks and screen titles that mean
-    /// nothing to these rules, so this takes the two answers they actually ask
-    /// for rather than the mode itself.
     struct Mode: Equatable {
         var includesRecipes: Bool
         var supportsMultiSelection: Bool
@@ -29,7 +18,6 @@ struct FoodSearchListing {
         }
     }
 
-    /// How many recent foods the list shows before the user has typed anything.
     static let recentFoodLimit = 20
 
     var mode: Mode
@@ -55,21 +43,13 @@ struct FoodSearchListing {
         self.suggestions = suggestions
     }
 
-    // MARK: - Query
-
-    /// The query the local filters match on: trimmed and case-folded once.
     var query: String {
         searchText.lowercased().trimmingCharacters(in: .whitespaces)
     }
 
-    /// Whether the screen is in its resting state, listing recents rather than
-    /// results. Whitespace alone is still resting — it is what a stray space
-    /// leaves behind, not a search.
     var showingRecent: Bool {
         searchText.trimmingCharacters(in: .whitespaces).isEmpty
     }
-
-    // MARK: - Partitions of the local library
 
     var recipes: [FoodItem] {
         guard mode.includesRecipes else { return [] }
@@ -84,13 +64,6 @@ struct FoodSearchListing {
         recentFoods.filter(\.isEditedCatalogProduct)
     }
 
-    // MARK: - Resting state
-
-    /// Recents, minus anything already shown as a suggestion above them and
-    /// minus the user's own foods, which have their own sections.
-    ///
-    /// Edited catalog products are the exception: they are user-created but
-    /// stand in for a real product, so they belong with the recents.
     var displayedRecentFoods: [FoodItem] {
         let suggestedIDs = Set(suggestions.map(\.foodID))
         return Array(
@@ -103,8 +76,6 @@ struct FoodSearchListing {
         )
     }
 
-    /// Suggestions paired with the food each one points at, dropping any whose
-    /// food is no longer in the library.
     var contextualSuggestions: [(FoodItem, ContextualFoodSuggestion)] {
         guard mode.supportsMultiSelection else { return [] }
         let foodsByID = recentFoods.reduce(into: [UUID: FoodItem]()) { result, food in
@@ -114,8 +85,6 @@ struct FoodSearchListing {
             foodsByID[suggestion.foodID].map { ($0, suggestion) }
         }
     }
-
-    // MARK: - Search results
 
     var matchingManualEntries: [FoodItem] {
         let query = query
@@ -134,8 +103,6 @@ struct FoodSearchListing {
         )
     }
 
-    /// Provider hits with the ones the user has already edited removed, so a
-    /// product never appears twice under two different names.
     var visibleProviderSearchResults: [FoodSearchResult] {
         EditedProductCatalog.providerResults(
             providerResults,
@@ -156,8 +123,6 @@ struct FoodSearchListing {
         return mealTemplates.filter { $0.name.lowercased().contains(query) }
     }
 
-    // MARK: - Emptiness
-
     var hasCategorizedLocalMatches: Bool {
         !matchingMeals.isEmpty
             || !matchingManualEntries.isEmpty
@@ -172,13 +137,6 @@ struct FoodSearchListing {
         !matchingEditedProducts.isEmpty || !visibleProviderSearchResults.isEmpty
     }
 
-    // MARK: - Multi-selection
-
-    /// How many rows the user could tick right now.
-    ///
-    /// A barcode lookup that is running or has failed replaces the whole list
-    /// with an overlay, so nothing is selectable underneath it however many
-    /// rows the query would otherwise produce.
     func selectableOptionCount(
         isLookingUpBarcode: Bool = false,
         hasBarcodeLookupError: Bool = false

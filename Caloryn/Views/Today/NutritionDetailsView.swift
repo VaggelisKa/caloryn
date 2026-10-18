@@ -1,12 +1,5 @@
 import SwiftUI
 
-/// The day's nutrition, opened from Today's hero: the big number, the nutrients that have a
-/// target as ink bars, fruit and veg variety, the day's Nutri-Scores, everything else as
-/// hairline rows, and a note on where the figures come from.
-///
-/// Sections and their wording come from `NutritionDetailsSections`, the calorie rules from
-/// `NutritionDetailsSummary` and the day's `ActivityCalorieBudget`; this view only lays them
-/// out on the white sheet canvas.
 struct NutritionDetailsView: View {
     let date: Date
     let entries: [FoodLogEntry]
@@ -123,12 +116,6 @@ struct NutritionDetailsView: View {
         }
     }
 
-    // MARK: - Calories
-
-    /// The big number with the target and the food amount beside it, or under it at the
-    /// accessibility text sizes: there a four-digit total took most of the row and the two
-    /// lines beside it were cut off. One layout swapped for the other, so the figure keeps its
-    /// identity and still rolls when it changes.
     private func calorieSummary(_ summary: NutritionDetailsSummary) -> some View {
         let isStacked = dynamicTypeSize.isAccessibilitySize
         let layout = isStacked
@@ -166,8 +153,6 @@ struct NutritionDetailsView: View {
             .padding(.bottom, isStacked ? 0 : 4)
         }
     }
-
-    // MARK: - Auto-adjusted calories
 
     @ViewBuilder
     private var dynamicTDEESummary: some View {
@@ -229,8 +214,6 @@ struct NutritionDetailsView: View {
         NutritionDetailsSummary.dynamicAdjustmentText(calorieBudget.dynamicAdjustment)
     }
 
-    /// Ink when auto-adjust cannot run at all, secondary otherwise. Weight, not colour: red
-    /// means lunch on this palette.
     private var dynamicStatusNoticeColor: Color {
         switch NutritionDetailsSummary.statusNoticeStyle(for: calorieBudget.dynamicStatus) {
         case .warning:
@@ -252,8 +235,6 @@ struct NutritionDetailsView: View {
                 in: RoundedRectangle(cornerRadius: CalorynTheme.smallCornerRadius, style: .continuous)
             )
     }
-
-    // MARK: - Targets
 
     private func targetsSection(_ rows: [NutritionDetailsSections.TargetRow]) -> some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -284,9 +265,6 @@ struct NutritionDetailsView: View {
         }
     }
 
-    /// "46g of 150g min", and past a maximum "34.8g of 20g max, 14.8g over" with the amount
-    /// bold and the overshoot in ink: weight and words, not colour, because red means lunch on
-    /// this palette. One `Text`, so a long line wraps under itself instead of truncating.
     private func targetFigures(_ row: NutritionDetailsSections.TargetRow) -> Text {
         let value = Text(row.valueText)
             .font(TodayPlateFont.detailsRowValue)
@@ -320,8 +298,6 @@ struct NutritionDetailsView: View {
         .clipShape(Capsule())
         .accessibilityHidden(true)
     }
-
-    // MARK: - Fruit and veg
 
     private var produceSection: some View {
         let produce = produceSummary
@@ -367,8 +343,6 @@ struct NutritionDetailsView: View {
         )
     }
 
-    // MARK: - Nutri-Score
-
     private var nutriscoreSection: some View {
         let distribution = NutriscoreDayDistribution.distribution(of: nutriscoreGrades)
         let graded = distribution.reduce(0) { $0 + $1.count }
@@ -383,8 +357,6 @@ struct NutritionDetailsView: View {
         }
     }
 
-    // MARK: - Amounts
-
     private func amountSection(_ title: String, rows: [NutritionDetailsSections.AmountRow]) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             sectionTitle(title)
@@ -396,8 +368,6 @@ struct NutritionDetailsView: View {
         }
     }
 
-    /// A hairline above, label left, figure right: the board's rows, drawn by the stack
-    /// itself because this is a scroll view, not a `List`.
     private func amountRow(label: String, value: String) -> some View {
         VStack(spacing: 0) {
             Rectangle()
@@ -426,8 +396,6 @@ struct NutritionDetailsView: View {
             .fixedSize(horizontal: false, vertical: true)
             .accessibilityIdentifier("nutritionDetails.dataQualityNote")
     }
-
-    // MARK: - Section headings
 
     private func sectionTitle(_ title: String) -> some View {
         Text(title)

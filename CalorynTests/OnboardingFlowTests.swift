@@ -1,13 +1,9 @@
 import Testing
 @testable import Caloryn
 
-/// Covers the onboarding step order and its two branches, which until now were
-/// only reachable by driving the whole first-run flow.
 @MainActor
 @Suite("Onboarding flow")
 struct OnboardingFlowTests {
-
-    // MARK: - Order
 
     @Test("The steps run welcome, personal info, activity, calorie estimate, goal, macros, nutrients")
     func stepsRunInOrder() {
@@ -53,8 +49,6 @@ struct OnboardingFlowTests {
         )
     }
 
-    // MARK: - Calorie estimate branch
-
     @Test("Choosing the lifestyle estimate switches Apple Health adjustment off and advances")
     func lifestyleEstimateDisablesAppleHealth() {
         #expect(
@@ -79,8 +73,6 @@ struct OnboardingFlowTests {
             )
         }
     }
-
-    // MARK: - Apple Health answer
 
     @Test("Granted authorization advances the flow")
     func grantedAuthorizationAdvances() {
@@ -107,8 +99,6 @@ struct OnboardingFlowTests {
     func grantedAuthorizationDropsAnyMessage() {
         #expect(OnboardingFlow.appleHealthOutcome(isEnabled: true, message: "ignored") == .advance)
     }
-
-    // MARK: - Completing
 
     @Test("A double tap on Start Tracking cannot run the save twice")
     func completionIsNotReentrant() {

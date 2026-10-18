@@ -2,13 +2,9 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// Covers the rules the meal form applies, which until now were only
-/// reachable by driving the form.
 @MainActor
 @Suite("Meal form draft")
 struct MealFormDraftTests {
-
-    // MARK: - Save gating
 
     @Test("A blank name blocks saving even with items")
     func blankNameBlocksSave() {
@@ -48,8 +44,6 @@ struct MealFormDraftTests {
         #expect(draft.canSave)
     }
 
-    // MARK: - Totals
-
     @Test("Total nutrition sums every component's snapshot")
     func totalNutritionSumsComponents() {
         var draft = MealFormDraft()
@@ -67,8 +61,6 @@ struct MealFormDraftTests {
 
         #expect(draft.totalNutrition == .zero)
     }
-
-    // MARK: - Editing components
 
     @Test("Upserting an unknown id appends a new component")
     func upsertAppendsNewComponent() {
@@ -107,8 +99,6 @@ struct MealFormDraftTests {
         #expect(draft.components.map(\.id) == [toKeep.id])
     }
 
-    // MARK: - Seeding from an existing meal
-
     @Test("Seeding from an existing meal copies its name and decodes its items")
     func seedsNameAndComponentsFromExistingMeal() throws {
         let firstSnapshot = FoodLogEntrySnapshot(foodItem: makeTestFoodItem(name: "Oats"), portionGrams: 80)
@@ -140,8 +130,6 @@ struct MealFormDraftTests {
 
         #expect(draft.components.map(\.snapshot.foodName) == ["Oats"])
     }
-
-    // MARK: - Helpers
 
     private func makeComponent(portionGrams: Double, caloriesPer100g: Double = 100) -> MealComponentDraft {
         let food = makeTestFoodItem(caloriesPer100g: caloriesPer100g)

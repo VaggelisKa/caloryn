@@ -88,8 +88,6 @@ private struct HistoryPatternContextHeader: View {
     }
 }
 
-/// How often the outcome happened on the pattern's days against the rest, and how much
-/// heavier (or lighter) the meal ran.
 private struct HistoryPatternEvidence: View {
     let pattern: HistoryRecurringCaloriePattern
 
@@ -197,8 +195,6 @@ private struct HistoryPatternFrequencyStat: View {
     }
 }
 
-/// One supporting day as a hairline row: the date and its totals on the left, the meal's
-/// kcal over its name (in the meal's ink) on the right, and a chevron that opens the foods.
 private struct HistoryPatternSupportingDayRow: View {
     let day: HistoryRecurringCaloriePatternDay
     let dateText: String

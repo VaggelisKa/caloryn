@@ -3,8 +3,6 @@ import Testing
 import XCTest
 @testable import Caloryn
 
-/// Reader fake for this file: records every date range and calendar it is
-/// asked about so day-boundary and time-zone handling can be asserted.
 nonisolated private final class CoverageActiveEnergyReader: ActiveEnergyReading, @unchecked Sendable {
     var isAvailable = true
     var activeEnergy: @MainActor (Date) async throws -> Double = { _ in 0 }
@@ -81,11 +79,6 @@ private func clearCoverageHealthDefaults() {
     AppleHealthAdjustmentSettings.clearEmptyActiveEnergyTracking()
 }
 
-// MARK: - Day tracker
-
-/// XCTest rather than Swift Testing: the tracker writes the Apple Health flags
-/// to `UserDefaults.standard` (no injection point), and every other suite that
-/// touches those keys is an XCTest class, so they stay serial with each other.
 @MainActor
 final class ActiveEnergyDayTrackerCoverageTests: XCTestCase {
     override func setUp() {
@@ -110,8 +103,6 @@ final class ActiveEnergyDayTrackerCoverageTests: XCTestCase {
         reader.activeEnergy = { _ in 200 }
         tracker.refreshWhenActive()
 
-        // The first observer attempt returned nil, so coming back to the
-        // foreground tries again before re-reading.
         XCTAssertEqual(reader.observeCallCount, 2)
         await waitUntil { tracker.activeEnergyKcal == 200 }
         XCTAssertEqual(tracker.activeEnergyKcal, 200, accuracy: 0.001)
@@ -158,8 +149,6 @@ final class ActiveEnergyDayTrackerCoverageTests: XCTestCase {
         XCTAssertEqual(tracker.activeEnergyKcal, 180, accuracy: 0.001)
 
         await tracker.configure(date: makeTestDate(year: 2026, month: 2, day: 14), isEnabled: false)
-        // HealthKit can deliver one last change notification after the
-        // observer was stopped; a disabled tracker must ignore it.
         reader.latestOnChange?()
         await settle()
 
@@ -170,8 +159,6 @@ final class ActiveEnergyDayTrackerCoverageTests: XCTestCase {
     }
 
     func testAFutureSelectedDayReadsHistoryOnlyUpToTheStartOfToday() async {
-        // The tracker reads the wall clock itself (no injection point), so the
-        // future day is expressed relative to it.
         let today = Date.now.startOfDay
         let future = Calendar.current.date(byAdding: .day, value: 3, to: today)!
             .addingTimeInterval(9 * 3_600)
@@ -183,8 +170,6 @@ final class ActiveEnergyDayTrackerCoverageTests: XCTestCase {
         XCTAssertEqual(reader.activeEnergyRequests.map(\.date), [future.startOfDay])
         XCTAssertEqual(reader.historyRequests.count, 1)
         XCTAssertEqual(reader.historyRequests.first?.end, today)
-        // Three weeks of history, counted back from today rather than from the
-        // future day.
         XCTAssertEqual(
             reader.historyRequests.first?.start,
             Calendar.current.date(byAdding: .day, value: -21, to: today)
@@ -271,8 +256,6 @@ final class ActiveEnergyDayTrackerCoverageTests: XCTestCase {
         }
     }
 }
-
-// MARK: - Apple Health settings persistence
 
 final class AppleHealthAdjustmentSettingsCoverageTests: XCTestCase {
     private let t0 = Date(timeIntervalSinceReferenceDate: 800_000_000)
@@ -380,8 +363,6 @@ final class AppleHealthAdjustmentSettingsCoverageTests: XCTestCase {
 
         AppleHealthAdjustmentSettings.disable()
 
-        // Two more empty refreshes after disabling: without the reset the
-        // second of them would be the third overall and show the hint.
         XCTAssertNil(record(empty: true, at: t0.addingTimeInterval(120)))
         XCTAssertNil(record(empty: true, at: t0.addingTimeInterval(180)))
     }
@@ -430,8 +411,6 @@ final class AppleHealthAdjustmentSettingsCoverageTests: XCTestCase {
     }
 }
 
-// MARK: - HealthKit service errors
-
 @MainActor
 @Suite("HealthKit service error copy")
 struct HealthKitServiceErrorCoverageTests {
@@ -451,7 +430,6 @@ struct HealthKitServiceErrorCoverageTests {
     )
     func errorDescription(error: HealthKitServiceError, expected: String) {
         #expect(error.errorDescription == expected)
-        // Callers surface `localizedDescription`, which must carry the same copy.
         #expect((error as Error).localizedDescription == expected)
     }
 
@@ -460,8 +438,6 @@ struct HealthKitServiceErrorCoverageTests {
         #expect(HealthKitServiceError.unavailable.errorDescription == AppleHealthAdjustmentSettings.unavailableMessage)
     }
 }
-
-// MARK: - Current activity budget (App Intents / widgets path)
 
 @MainActor
 @Suite("Current activity calorie budget across time zones")
@@ -483,7 +459,6 @@ struct CurrentActivityCalorieBudgetCoverageTests {
     @Test("The day and history window come from the injected calendar, not the device's")
     func usesInjectedCalendarForDayBoundaries() async {
         let tokyo = coverageCalendar("Asia/Tokyo")
-        // 01:00 in Tokyo is still the previous afternoon in UTC.
         let now = coverageDate(tokyo, 2026, 7, 25, 1)
         let expectedDayStart = coverageDate(tokyo, 2026, 7, 25, 0)
         let reader = CoverageActiveEnergyReader()

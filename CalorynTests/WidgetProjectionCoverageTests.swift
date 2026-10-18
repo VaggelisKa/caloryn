@@ -4,8 +4,6 @@ import Testing
 
 nonisolated private let projectionCalendar: Calendar = {
     var calendar = Calendar(identifier: .gregorian)
-    // Entries normalise their date with the device calendar, so the projection
-    // calendar must share its time zone; see IntentDomainCoverageTests.
     calendar.timeZone = TimeZone.current
     return calendar
 }()
@@ -16,7 +14,6 @@ nonisolated private func localDate(_ year: Int, _ month: Int, _ day: Int, _ hour
     )!
 }
 
-/// The widget's plate sectors and today's projection at its day boundaries.
 @MainActor
 struct WidgetProjectionCoverageTests {
     @Test("Each plate sector is identified by its kind, so the chart keys are unique")
@@ -47,8 +44,6 @@ struct WidgetProjectionCoverageTests {
         )
         let food = makeTestFoodItem(caloriesPer100g: 100)
         let now = localDate(2026, 7, 25, 9)
-        // `makeTestEntry` normalises to the start of the day, so each entry's exact time is
-        // set afterwards: these sit on, and one second either side of, both midnights.
         let todayStart = localDate(2026, 7, 25, 0)
         let tomorrowStart = localDate(2026, 7, 26, 0)
         func entry(at date: Date, _ meal: MealType, grams: Double) -> FoodLogEntry {
@@ -73,7 +68,6 @@ struct WidgetProjectionCoverageTests {
         )
 
         #expect(snapshot.dayStart == localDate(2026, 7, 25, 0))
-        // Only 00:00, 00:00:01 and 23:59:59 count: 250 + 10 + 100.
         #expect(snapshot.calories.consumed == 360)
         #expect(snapshot.calories.target == 1_800)
         #expect(snapshot.calories.remaining == 1_440)

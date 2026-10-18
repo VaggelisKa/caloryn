@@ -3,13 +3,9 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// The launch-argument contract with `CalorynUITests/UITestCase.swift`, which launches with
-/// `["-uitest-reset", "-uitest-seed", fixture.rawValue]` and mirrors the fixture names in
-/// its own `UITestCase.Fixture`. A renamed flag or case breaks every journey at launch.
 @MainActor
 @Suite("UI test launch configuration")
 struct UITestConfigurationContractTests {
-
     @Test("The flags are the exact strings UITestCase passes")
     func flagSpellings() {
         #expect(UITestConfiguration.resetFlag == "-uitest-reset")
@@ -43,8 +39,6 @@ struct UITestConfigurationContractTests {
         #expect(UITestConfiguration.Fixture(rawValue: name) == nil)
     }
 
-    /// The unit plan launches its host app with no arguments, so the app must keep its real
-    /// store and seed nothing. This is the branch every non-UI-test launch takes.
     @Test("Without the flags the app is not in UI-test mode and requests no fixture")
     func hostLaunchHasNoUITestMode() {
         let arguments = ProcessInfo.processInfo.arguments

@@ -243,12 +243,10 @@ final class FoodLogEntryTests: XCTestCase {
 
         let entry = makeTestEntry(foodItem: food, portionGrams: 40)
 
-        // Snapshotted entry with genuinely unknown grade / unclassified kind.
         XCTAssertTrue(entry.hasQualitySnapshot)
         XCTAssertNil(entry.nutriscoreGradeSnapshot)
         XCTAssertEqual(entry.produceKindSnapshot, .unclassified)
 
-        // Later edits to the food must not backfill the unknown snapshot.
         food.nutriscoreGrade = "b"
         food.produceKind = .fruit
         XCTAssertNil(entry.historicalNutriscoreGrade)
@@ -347,7 +345,6 @@ final class FoodLogEntryTests: XCTestCase {
         XCTAssertEqual(legacyEntry.historicalNutriscoreGrade, "b")
         XCTAssertEqual(legacyEntry.historicalProduceKind, .fruit)
 
-        // Once the saved food is gone, a legacy entry reports unknown.
         legacyEntry.foodItem = nil
         XCTAssertNil(legacyEntry.historicalNutriscoreGrade)
         XCTAssertNil(legacyEntry.historicalProduceKind)

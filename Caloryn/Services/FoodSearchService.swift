@@ -65,8 +65,6 @@ final class FoodSearchService {
         searchTask?.cancel()
 
         #if DEBUG
-        // The in-flight fixture stays in flight: a real search resolves in milliseconds,
-        // which is too fast for the screenshot harness to photograph.
         if Self.pinsSearchInFlight {
             isSearching = true
             return
@@ -90,7 +88,6 @@ final class FoodSearchService {
                 try Task.checkCancellation()
                 await performSearch(query: trimmed)
             } catch {
-                // Search cancellation is expected when the query changes or the view clears.
             }
         }
     }
@@ -207,9 +204,6 @@ final class FoodSearchService {
             isSearching = false
             failure = nil
         } catch let lookupError as FoodLookupError {
-            // Only this task's own cancellation means a newer search took over. A request
-            // cancelled underneath a live search (URLError.cancelled) still has to end it,
-            // or the spinner never stops.
             guard !Task.isCancelled else { return }
 
             searchResults = []
@@ -521,10 +515,6 @@ final class FoodSearchService {
         guard ProcessInfo.processInfo.environment["CALORYN_LOOKUP_FIXTURE"]?.hasPrefix("search-") == true else {
             return ""
         }
-        // The in-flight fixture wants the list that shows *results and* skeleton rows,
-        // which needs a local match: with none, the view shows the full-screen skeleton
-        // instead. "salad" matches the `customFoods` seed — and matches nothing in
-        // `loggedDay`, which is how the full-screen state gets photographed too.
         return pinsSearchInFlight ? "salad" : "fixture"
     }
 
@@ -543,10 +533,6 @@ final class FoodSearchService {
             .hasPrefix("barcode-") == true ? "5711953150388" : nil
     }
 
-    /// Holds the loading skeleton on screen instead of letting it resolve. The trailing
-    /// "still searching" rows are only visible for a few hundred milliseconds in a real
-    /// search, so every settled capture misses them — which is how the spinner they
-    /// replaced painted its own white background over the sheet canvas unnoticed.
     static var pinsSearchInFlight: Bool {
         ProcessInfo.processInfo.environment["CALORYN_LOOKUP_FIXTURE"] == "search-loading"
     }

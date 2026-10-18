@@ -2,13 +2,8 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// The top of History: the daily-average headline, the line under it and the "On track"
-/// count, plus the range chips' titles and the macro rows' wording.
 @Suite("History overview summary")
 struct HistoryOverviewSummaryTests {
-
-    // MARK: - Headline
-
     @Test("given logged days, when stating the average, then it is whole kcal a day")
     func theHeadlineIsTheRoundedDailyAverage() {
         let summary = makeSummary(averageCaloriesPerLoggedDay: 1_952.6)
@@ -66,8 +61,6 @@ struct HistoryOverviewSummaryTests {
         #expect(summary.accessibilityLabel.hasPrefix("\(1_953.formatted()) kcal a day on average. 47 under"))
     }
 
-    // MARK: - On track
-
     @Test(
         "given the change from the period before, when comparing, then small counts read as words",
         arguments: [
@@ -106,14 +99,10 @@ struct HistoryOverviewSummaryTests {
         #expect(summary.onTrackSupportText == "of 1 logged day, one more than last week")
     }
 
-    // MARK: - Range chips
-
     @Test("given the range chips, when titling them, then only the first carries the unit")
     func onlyTheFirstChipCarriesTheUnit() {
         #expect(HistoryRange.allCases.map(\.chipTitle) == ["7 days", "14", "30", "90"])
     }
-
-    // MARK: - Macro rows
 
     @Test("given a macro, when describing its row, then the average and the hit count are stated")
     func aMacroRowStatesAverageAndHits() {
@@ -175,8 +164,6 @@ struct HistoryOverviewSummaryTests {
                 == "Protein, 80 grams a day, hit on 3 of 6 logged days, 5 grams less than last week"
         )
     }
-
-    // MARK: - Helpers
 
     private func makeSummary(
         range: HistoryRange = .week,

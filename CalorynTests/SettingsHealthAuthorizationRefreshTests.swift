@@ -9,8 +9,6 @@ final class SettingsHealthAuthorizationRefreshTests: XCTestCase {
         )
     }
 
-    /// A manual target outranks a stored dynamic mode, so not even the tracker
-    /// refresh happens.
     func testManualOverrideWithADynamicModeStillDoesNothing() {
         XCTAssertEqual(
             action(isManualOverride: true, energyCalculationMode: .dynamicHealth, isAuthorizationRequested: true),
@@ -50,7 +48,6 @@ final class SettingsHealthAuthorizationRefreshTests: XCTestCase {
         )
     }
 
-    /// A request already in flight owns the outcome; a second one would race it.
     func testAnInFlightRequestIsNotDuplicated() {
         XCTAssertEqual(
             action(

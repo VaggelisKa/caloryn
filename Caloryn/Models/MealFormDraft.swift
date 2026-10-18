@@ -1,8 +1,5 @@
 import Foundation
 
-/// One item on the meal form: a food, recipe, or manual entry captured as a
-/// snapshot so the meal keeps working even if the source food is later edited
-/// or removed.
 struct MealComponentDraft: Identifiable, Equatable {
     let id: UUID
     var snapshot: FoodLogEntrySnapshot
@@ -15,9 +12,6 @@ struct MealComponentDraft: Identifiable, Equatable {
         )
     }
 
-    /// Rehydrates a component from a saved meal's item. Fails when the stored
-    /// snapshot can't be decoded, which the caller drops via `compactMap`
-    /// rather than surfacing as an error.
     init?(item: MealTemplateItem) {
         guard let data = item.snapshotData,
               let snapshot = try? JSONDecoder().decode(FoodLogEntrySnapshot.self, from: data) else {
@@ -27,9 +21,6 @@ struct MealComponentDraft: Identifiable, Equatable {
         self.snapshot = snapshot
     }
 
-    /// The facts the amount picker needs, expressed per 100g so the picker's
-    /// own scaling stays independent of whatever portion this component
-    /// currently holds.
     var amountDraft: RecipeIngredientDraft {
         let portionGrams = snapshot.portionGrams
         let nutritionPer100g = portionGrams > 0
@@ -84,20 +75,12 @@ struct MealComponentDraft: Identifiable, Equatable {
     }
 }
 
-/// The editable state of the meal form, and every rule that acts on it.
-///
-/// The form's job is bookkeeping over a list of components: seed it from an
-/// existing meal, add/replace/remove items, total their nutrition, and decide
-/// whether the result may be saved. Keeping that here rather than in
-/// `MealFormView` means the rules are reachable without driving a form.
 struct MealFormDraft: Equatable {
     var name = ""
     var components: [MealComponentDraft] = []
 
     init() {}
 
-    /// Seeds the draft from a saved meal. Items whose snapshot fails to
-    /// decode are silently dropped, matching `MealComponentDraft.init(item:)`.
     @MainActor
     init(existingMeal: MealTemplate) {
         name = existingMeal.name
@@ -108,15 +91,12 @@ struct MealFormDraft: Equatable {
         components.reduce(.zero) { $0 + $1.snapshot.nutrition }
     }
 
-    /// A meal needs a non-blank name and at least one component, each with a
-    /// positive portion.
     var canSave: Bool {
         !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !components.isEmpty
             && components.allSatisfy { $0.snapshot.portionGrams > 0 }
     }
 
-    /// Replaces the component with a matching id, or appends it as new.
     mutating func upsert(_ component: MealComponentDraft) {
         if let index = components.firstIndex(where: { $0.id == component.id }) {
             components[index] = component

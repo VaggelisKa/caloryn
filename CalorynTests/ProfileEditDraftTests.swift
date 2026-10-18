@@ -1,14 +1,9 @@
 import Testing
 @testable import Caloryn
 
-/// Covers the profile editor's draft: seeding, the discard contract, and the
-/// save-time recalculation that used to be reachable only by driving the form.
 @MainActor
 @Suite("Profile edit draft")
 struct ProfileEditDraftTests {
-
-    // MARK: - Seeding
-
     @Test("Seeding from a profile copies every editable fact")
     func seedingCopiesTheProfile() {
         let profile = makeProfile()
@@ -21,8 +16,6 @@ struct ProfileEditDraftTests {
         #expect(draft.weightKg == profile.weightKg)
         #expect(draft.activityLevel == profile.activityLevel)
     }
-
-    // MARK: - Discard contract
 
     @Test("Mutating the draft leaves the profile untouched until apply")
     func mutationDoesNotTouchTheProfile() {
@@ -44,8 +37,6 @@ struct ProfileEditDraftTests {
         #expect(profile.activityLevel == .moderatelyActive)
         #expect(profile.dailyCalorieTarget == targetBefore)
     }
-
-    // MARK: - Apply
 
     @Test("Apply writes every edited fact back")
     func applyWritesAllFields() {
@@ -79,14 +70,9 @@ struct ProfileEditDraftTests {
         #expect(profile.dailyCalorieTarget > targetBefore)
     }
 
-    /// The user's chosen split must survive the edit: the ratios are derived
-    /// from the pre-edit targets and re-applied to the recalculated calorie
-    /// target, so the grams move but the proportions do not.
     @Test("Apply preserves the macro split the saved grams represented")
     func applyPreservesTheMacroSplit() {
         let profile = makeProfile()
-        // A deliberately non-default split, so preservation is distinguishable
-        // from a silent reset to 30/40/30.
         profile.recalculate(proteinRatio: 0.40, carbRatio: 0.35, fatRatio: 0.25)
         let splitBefore = profile.macroRatios
 
@@ -100,8 +86,6 @@ struct ProfileEditDraftTests {
         #expect(abs(splitAfter.carbs - splitBefore.carbs) < 0.01)
         #expect(abs(splitAfter.fat - splitBefore.fat) < 0.01)
 
-        // And the grams reconcile to the new target, proving the split was
-        // re-applied rather than the old grams kept.
         let calories = profile.proteinTargetG * 4
             + profile.carbTargetG * 4
             + profile.fatTargetG * 9
@@ -133,8 +117,6 @@ struct ProfileEditDraftTests {
 
         #expect(profile.dailyCalorieTarget == 1_800)
     }
-
-    // MARK: - Helpers
 
     private func makeProfile() -> UserProfile {
         UserProfile(

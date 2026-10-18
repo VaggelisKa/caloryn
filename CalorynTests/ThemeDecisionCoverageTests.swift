@@ -2,8 +2,6 @@ import SwiftUI
 import Testing
 @testable import Caloryn
 
-/// The decisions the theme layer makes, never the colours it paints: colour is only
-/// verified by looking (`scripts/theme-screenshots.sh`, CLAUDE.md rule 6).
 @MainActor
 @Suite("Theme preference decisions")
 struct ThemePreferenceDecisionTests {
@@ -20,8 +18,6 @@ struct ThemePreferenceDecisionTests {
         #expect(preference.colorScheme == expected)
     }
 
-    /// `@AppStorage("themePreference")` stores the raw value, so renaming a case would
-    /// silently reset every user's choice to System on the next launch.
     @Test(
         "The stored raw values are the strings already on users' devices",
         arguments: [
@@ -61,8 +57,6 @@ struct ThemePreferenceDecisionTests {
     }
 }
 
-/// `MealType.fill` and friends exist only to save call sites a lookup; what matters is that
-/// each one reaches the matching role in `CalorynTheme` for the same meal.
 @MainActor
 @Suite("Meal theme role mapping")
 struct MealThemeMappingTests {
@@ -75,8 +69,6 @@ struct MealThemeMappingTests {
     }
 }
 
-/// The two font rules with a decision in them: which x-axis size a chart takes, and that a
-/// fixed display size honours the size it is given.
 @MainActor
 @Suite("Theme font rules")
 struct CalorynThemeFontRuleTests {

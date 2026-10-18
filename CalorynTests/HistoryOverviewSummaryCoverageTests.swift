@@ -2,16 +2,9 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// The rest of the top-of-History wording: what VoiceOver hears for the headline and the
-/// on-track count, the status badge's sentence case, where small counts stop being words,
-/// how half-calorie averages round in the headline and its support line alike, and the
-/// trend breakdown's per-meal row identity.
 @MainActor
 @Suite("History overview summary coverage")
 struct HistoryOverviewSummaryCoverageTests {
-
-    // MARK: - Spoken headline
-
     @Test("given logged days, when speaking the headline alone, then it is the rounded average a day")
     func theHeadlineIsSpokenAsAnAverage() {
         let summary = makeSummary(averageCaloriesPerLoggedDay: 1_952.6)
@@ -47,8 +40,6 @@ struct HistoryOverviewSummaryCoverageTests {
         #expect(summary.onTrackAccessibilityLabel == "On track: 0 of 0 logged days, the same as the 30 days before.")
     }
 
-    // MARK: - Rounding the headline and its support together
-
     @Test(
         "given an average with a half calorie, when stating it, then the headline and the difference round the same way",
         arguments: [
@@ -64,8 +55,6 @@ struct HistoryOverviewSummaryCoverageTests {
         #expect(summary.averageValueText == headline.formatted())
         #expect(summary.supportText.hasPrefix(supportPrefix))
     }
-
-    // MARK: - Counting words
 
     @Test(
         "given a count, when wording it, then zero to nine are words and ten upwards are figures",
@@ -108,8 +97,6 @@ struct HistoryOverviewSummaryCoverageTests {
         #expect(summary.onTrackSupportText == "of 12 logged days, \(expected)")
     }
 
-    // MARK: - Status badge
-
     @Test(
         "given each status, when badging it, then it reads in sentence case",
         arguments: [
@@ -122,8 +109,6 @@ struct HistoryOverviewSummaryCoverageTests {
     func statusSentenceLabels(status: HistoryGoalStatus, expected: String) {
         #expect(status.sentenceLabel == expected)
     }
-
-    // MARK: - Macro rows
 
     @Test(
         "given hit and logged counts out of step, when filling the bar, then the share stays between empty and full",
@@ -153,8 +138,6 @@ struct HistoryOverviewSummaryCoverageTests {
         #expect(row.changeText == expected)
     }
 
-    // MARK: - Trend breakdown meal rows
-
     @Test(
         "given each meal, when building its breakdown row, then the row is keyed by the meal and carries its icon",
         arguments: [
@@ -179,8 +162,6 @@ struct HistoryOverviewSummaryCoverageTests {
         #expect(row?.caloriesText == "420 kcal")
         #expect(breakdown.mealRows.map(\.id) == ["breakfast", "lunch", "dinner", "snack"])
     }
-
-    // MARK: - Helpers
 
     private func makeSummary(
         range: HistoryRange = .week,

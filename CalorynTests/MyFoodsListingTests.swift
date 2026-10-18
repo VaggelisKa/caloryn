@@ -2,14 +2,8 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// Behaviour of the "My Foods" screen's partitioning and section-visibility
-/// rules, extracted from `MyFoodsView` so they can be exercised without a
-/// view.
 @MainActor
 struct MyFoodsListingTests {
-
-    // MARK: - Helpers
-
     private func listing(
         foodItems: [FoodItem],
         mealTemplateCount: Int = 0,
@@ -43,8 +37,6 @@ struct MyFoodsListingTests {
         food.providerProductIdentityRaw = barcode
         return food
     }
-
-    // MARK: - Partitions
 
     @Test("Manual entries, edited products and recipes are three disjoint kinds")
     func partitionsByKind() {
@@ -95,8 +87,6 @@ struct MyFoodsListingTests {
         #expect(listing.nonFavoriteManualEntries.map(\.name) == ["Milk"])
         #expect(listing.nonFavoriteRecipes.map(\.name) == ["Soup"])
     }
-
-    // MARK: - Section visibility
 
     @Test("An empty library hides every section in favour of the whole-screen empty state")
     func emptyLibraryHidesEverySection() {
@@ -179,8 +169,6 @@ struct MyFoodsListingTests {
         #expect(!withEditedProduct.showsMealsSection)
         #expect(!withMeal.showsEditedProductCatalogSection)
     }
-
-    // MARK: - Favorites disclosure
 
     @Test("The disclosure control only appears once favorites exceed the collapsed limit")
     func disclosureAppearsOnlyAboveTheLimit() {

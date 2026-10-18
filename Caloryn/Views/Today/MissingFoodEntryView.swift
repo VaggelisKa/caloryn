@@ -1,8 +1,6 @@
 import SwiftUI
 import SwiftData
 
-/// Editor for a log entry whose saved food has been deleted: edits use the
-/// nutrition snapshot recorded on the entry itself.
 struct MissingFoodEntryView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
@@ -100,8 +98,6 @@ struct MissingFoodEntryView: View {
                 .listRowSeparatorTint(CalorynTheme.hairline)
 
                 Section {
-                    // Ink, not red: red is lunch now. The confirmation dialog that follows
-                    // is where the destructive colour belongs, as on the Portion sheet.
                     Button(role: .destructive) {
                         showingDeleteConfirmation = true
                     } label: {
@@ -161,9 +157,6 @@ struct MissingFoodEntryView: View {
 
     private static let snackSlots = 1...20
 
-    /// The date as a value, like the rows above it; tapping it opens a calendar under the
-    /// row. A compact `DatePicker` drew its date in a system-grey pill beside the
-    /// `surface` portion well, and no token reaches that fill.
     @ViewBuilder
     private var dateRow: some View {
         Button {
@@ -198,15 +191,10 @@ struct MissingFoodEntryView: View {
             )
             .datePickerStyle(.graphical)
             .labelsHidden()
-            // Not ink: the selected day is drawn white on the tint, and ink is near-white
-            // in dark mode.
             .tint(CalorynTheme.controlTint)
         }
     }
 
-    /// The meal as chips in each meal's own colour — the Portion sheet's vocabulary — rather
-    /// than a menu picker. They wrap onto a second line rather than truncating once larger
-    /// text or a narrower phone stops all four fitting on one.
     private var mealChips: some View {
         ChipFlowLayout(spacing: 6, lineSpacing: 6) {
             ForEach(MealType.allCases) { meal in

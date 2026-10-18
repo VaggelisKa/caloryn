@@ -2,9 +2,6 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-// MARK: - Day title
-
-/// `DayTitle` takes its locale and time zone from the calendar it is handed.
 @MainActor
 @Suite("Day title locale and zone")
 struct DayTitleLocaleTests {
@@ -16,7 +13,6 @@ struct DayTitleLocaleTests {
         return calendar
     }
 
-    /// Saturday 17 October 2026, 12:00 UTC.
     private static let noonUTC = Date(timeIntervalSince1970: 1_792_238_400)
 
     @Test(
@@ -34,7 +30,6 @@ struct DayTitleLocaleTests {
 
     @Test("The calendar's time zone decides which day an instant falls on")
     func titleFollowsZone() {
-        // 23:30 UTC on Saturday is already Sunday lunchtime in Auckland, still Saturday afternoon in Los Angeles.
         let lateSaturdayUTC = Self.noonUTC.addingTimeInterval(11.5 * 3_600)
 
         #expect(DayTitle.text(for: lateSaturdayUTC, in: Self.calendar("en_GB", zone: "Pacific/Auckland")) == "Sunday 18 October")
@@ -52,8 +47,6 @@ struct DayTitleLocaleTests {
     @Test("Relative day is judged in the calendar's zone, not by 24 hours")
     func accessibilityRelativeDayInZone() {
         let auckland = Self.calendar("en_GB", zone: "Pacific/Auckland")
-        // Auckland is on NZDT (UTC+13) in October. now: Sunday 18 October 00:30 there;
-        // saturdayNight is Saturday 23:00, only ninety minutes earlier.
         let now = Self.noonUTC.addingTimeInterval(-30 * 60)
         let saturdayNight = now.addingTimeInterval(-90 * 60)
         let sundayLate = now.addingTimeInterval(23 * 3_600)
@@ -73,11 +66,6 @@ struct DayTitleLocaleTests {
     }
 }
 
-// MARK: - Date helpers, ambient spelling
-
-/// The no-argument `isAtFutureLogLimit` reads the real clock, so only offsets far from the
-/// seven-day boundary are deterministic; the boundary itself is pinned with an injected
-/// clock in `DateHelperCalendarInjectionTests`.
 @Suite("Ambient future log limit")
 struct AmbientFutureLogLimitTests {
 
@@ -100,8 +88,6 @@ struct AmbientFutureLogLimitTests {
     }
 }
 
-// MARK: - Decimal input and number formatting
-
 @Suite("Decimal input and number formatting edges")
 struct DecimalInputLocaleEdgeTests {
 
@@ -116,8 +102,6 @@ struct DecimalInputLocaleEdgeTests {
         #expect(text.decimalInputValue == expected)
     }
 
-    /// A comma is always the decimal separator, never grouping: the keypad has no grouping
-    /// key, and a Danish keypad writes "1,5" for one and a half.
     @Test("A comma is read as the decimal point, so 1,000 is one")
     func commaIsNeverGrouping() {
         #expect("1,000".decimalInputValue == 1.0)
@@ -159,7 +143,6 @@ struct DecimalInputLocaleEdgeTests {
     )
     func spacedGrams(locale: String, value: Double, expected: String) {
         let formatted = value.spacedMacroFormatted(locale: Locale(identifier: locale))
-        // fr_FR groups with a narrow no-break space; compare with plain spaces.
         #expect(formatted.replacingOccurrences(of: "\u{202F}", with: " ") == expected)
     }
 
@@ -181,8 +164,6 @@ struct DecimalInputLocaleEdgeTests {
         #expect("BMR Target".sentenceCased == "Bmr target")
     }
 }
-
-// MARK: - Selected day rollover in an injected zone
 
 @Suite("Selected day rollover in an injected zone")
 struct SelectedDayRolloverZoneTests {

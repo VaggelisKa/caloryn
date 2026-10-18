@@ -1,18 +1,10 @@
 import Testing
 @testable import Caloryn
 
-/// Covers the nutrient multi-select on the last onboarding step, whose rules
-/// were until now only reachable by tapping tiles.
 @MainActor
 @Suite("Onboarding nutrient selection")
 struct OnboardingNutrientSelectionTests {
 
-    // MARK: - Core macros
-
-    /// Reading a stored value only tops it up to the shared minimum tracked
-    /// count, which a single extra plus two macros already meets — so reading
-    /// alone does not put every macro back. Normalizing, which the step does as
-    /// soon as it appears, is what guarantees all three.
     @Test("Reading a thin stored value tops it up to the minimum but need not restore every macro")
     func readingOnlyTopsUpToTheMinimum() {
         let selection = OnboardingNutrientSelection(rawValue: TrackedNutrient.rawSelection(from: [.fiber]))
@@ -65,8 +57,6 @@ struct OnboardingNutrientSelectionTests {
 
         #expect(selection.normalizedRawValue == TrackedNutrient.defaultSelectionRaw)
     }
-
-    // MARK: - Toggling extras
 
     @Test("Toggling an unselected extra adds it")
     func togglingAddsAnExtra() {

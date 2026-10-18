@@ -55,8 +55,6 @@ final class WidgetSnapshotStoreTests: XCTestCase {
     }
 
     func testASnapshotSavedBeforeMealsWereRecordedStillLoads() throws {
-        // What the store wrote before `meals` existed. The widget reads it until the app
-        // next publishes, so it must decode rather than fall back to "Open Caloryn".
         let json = """
         {"activityRefreshedAt":null,"calories":{"baseTarget":2000,"consumed":800,"dynamicAdjustment":0,"target":2000},\
         "dayStart":"2023-11-14T00:00:00Z","generatedAt":"2023-11-14T22:13:20Z","schemaVersion":1,"state":"ready",\
@@ -166,7 +164,6 @@ final class WidgetSnapshotStoreTests: XCTestCase {
             calories: WidgetCalorieSummary(consumed: 800, baseTarget: 2_000, target: 2_000, mealCalories: [.lunch: 800])
         )
 
-        // The total is the same, but the plate is not.
         XCTAssertFalse(breakfast.hasSameRenderableContent(as: lunch))
     }
 }

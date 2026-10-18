@@ -76,8 +76,6 @@ enum MultiAddCommands {
         return MultiAddCommitPlan(replicationPlan: replicationPlan, items: items)
     }
 
-    /// Delegates the transaction to #74's isolated-context command path so an
-    /// unrelated pending view edit is never saved or rolled back with a batch.
     static func commit(
         plan: MultiAddCommitPlan,
         modelContainer: ModelContainer,
@@ -202,8 +200,6 @@ enum MultiAddCommands {
     }
 }
 
-/// This allowlisted envelope is intentionally incapable of carrying food,
-/// barcode, nutrition, meal, time, weekday, score, or identifier data.
 struct MultiAddAnalyticsEvent: Equatable {
     enum Kind: String, CaseIterable {
         case suggestionsShown = "multi_add_suggestions_shown"

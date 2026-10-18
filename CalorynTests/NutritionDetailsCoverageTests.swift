@@ -2,16 +2,11 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// The Nutrition Details sheet's sub-nutrient groups and how the sheet sorts them into
-/// sections: each group's title and symbol, the breakdown sections it heads, salt joining the
-/// plain amounts, and the over-a-maximum wording at the precision of milligram figures.
 @MainActor
 @Suite("Nutrition details coverage")
 struct NutritionDetailsCoverageTests {
     private let us = Locale(identifier: "en_US")
     private let danish = Locale(identifier: "da_DK")
-
-    // MARK: - Groups
 
     @Test(
         "given each sub-nutrient group, when titling it, then it has its own heading and symbol",
@@ -63,8 +58,6 @@ struct NutritionDetailsCoverageTests {
 
     @Test("given no locale, when spelling a line, then it is the reader's own locale's spelling with the unit after a space")
     func theDefaultSpellingIsTheReadersLocale() {
-        // Figures with a decimal and a thousands group, which most locales spell differently,
-        // compared against the explicit spelling so the result does not depend on the host.
         let starch = DetailNutrient(id: "starch", label: "Starch", value: 1_234.56)
         let salt = DetailNutrient(id: "salt", label: "Salt", value: 2.5, unit: .milligramsFromGrams)
 
@@ -73,8 +66,6 @@ struct NutritionDetailsCoverageTests {
         #expect(starch.spacedFormattedValue.hasSuffix(" g"))
         #expect(salt.spacedFormattedValue.hasSuffix(" mg"))
     }
-
-    // MARK: - Sections
 
     @Test("given recorded sub-nutrients, when sorting the sheet, then protein, carb and fat each head a breakdown in group order")
     func subNutrientsHeadBreakdowns() {

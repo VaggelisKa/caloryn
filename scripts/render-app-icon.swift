@@ -1,28 +1,4 @@
 #!/usr/bin/env swift
-//
-// Renders the app icon from the welcome screen's mark: the four-meal plate with a bite out
-// of its top-left, in the Market palette.
-//
-//   swift scripts/render-app-icon.swift
-//
-// Writes the three 1024×1024 PNGs the icon set lists (`Caloryn/Assets.xcassets/
-// AppIcon.appiconset/Contents.json`): light, dark and tinted. Colours are read from the
-// Color Sets in `CalorynShared/SharedColors.xcassets`, so the icon cannot drift from the
-// app — re-run this after changing a meal colour or the page.
-//
-// Geometry follows `WelcomePlateMark`: a ring whose outer radius is 94% of the mark and
-// whose hole is 70% of that (the Today donut's `innerRadius`), four equal sectors from
-// twelve o'clock in `MealType.sortOrder`, each parted from the next by the page showing
-// through, and a disc of 34% of the mark centred at (21%, 19%) taken out of the ring. The
-// mark fills 76% of the icon, the circle of Apple's icon grid, so the ring clears the
-// system's rounded mask with the same margin a glyph gets.
-//
-// - Light: the ring on the page, opaque, as the icon set requires.
-// - Dark: the dark-appearance fills on a transparent background; the system supplies the
-//   dark backdrop, and the bite is transparent so the backdrop shows through it.
-// - Tinted: a grey ring on a transparent background; the system maps luminance to the
-//   tint, so the four sectors step from light to dark in their meals' order of brightness
-//   and stay tellable apart.
 
 import AppKit
 import Foundation
@@ -37,7 +13,6 @@ enum Appearance: String {
     case light, dark
 }
 
-/// One Color Set's value for an appearance, as the catalog declares it.
 func color(_ name: String, _ appearance: Appearance) throws -> CGColor {
     let url = colorsURL.appendingPathComponent("\(name).colorset/Contents.json")
     let json = try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as! [String: Any]
@@ -62,28 +37,22 @@ func color(_ name: String, _ appearance: Appearance) throws -> CGColor {
 }
 
 let size: CGFloat = 1024
-/// The mark's edge, as a fraction of the icon.
 let markScale: CGFloat = 0.76
 let meals = ["MealBreakfast", "MealLunch", "MealDinner", "MealSnack"]
 
-/// The mark as the welcome screen lays it out, scaled to the icon.
 struct Mark {
-    /// The mark's own size: what `WelcomePlateMark` calls 200pt.
     let mark = size * markScale
     let center = CGPoint(x: size / 2, y: size / 2)
     var origin: CGPoint { CGPoint(x: center.x - mark / 2, y: center.y - mark / 2) }
     var outerRadius: CGFloat { mark * 0.94 / 2 }
     var innerRadius: CGFloat { outerRadius * 0.7 }
-    /// The Today donut's 1.5pt inset at 168pt, as a gap between sectors.
     var gap: CGFloat { mark * 1.5 / 168 }
     var biteRadius: CGFloat { mark * 0.34 / 2 }
-    /// Core Graphics' origin is bottom-left; the mark's bite is at (21%, 19%) from the top.
     var biteCenter: CGPoint { CGPoint(x: origin.x + mark * 0.21, y: origin.y + mark * (1 - 0.19)) }
 
     func draw(in context: CGContext, fills: [CGColor], bite: CGColor?) {
         let quarter = CGFloat.pi / 2
         for (index, fill) in fills.enumerated() {
-            // Clockwise from twelve o'clock, in a bottom-left origin.
             let start = quarter - CGFloat(index) * quarter
             let end = start - quarter
             context.saveGState()
@@ -95,8 +64,6 @@ struct Mark {
             context.restoreGState()
         }
 
-        // The page between sectors: four strokes along the sector edges, which is how the
-        // chart's angular inset reads at this size.
         context.saveGState()
         context.setBlendMode(bite == nil ? .clear : .normal)
         if let bite { context.setStrokeColor(bite) }
@@ -112,7 +79,6 @@ struct Mark {
         context.strokePath()
         context.restoreGState()
 
-        // The bite: the page, or nothing at all where the system draws the backdrop.
         context.saveGState()
         context.setBlendMode(bite == nil ? .clear : .normal)
         if let bite { context.setFillColor(bite) }
@@ -167,7 +133,6 @@ try render(
     fills: try meals.map { try color($0, .dark) },
     bite: nil
 )
-// Breakfast is the brightest meal and dinner the darkest; lunch and snack sit between.
 try render(
     "AppIconTinted.png",
     background: nil,

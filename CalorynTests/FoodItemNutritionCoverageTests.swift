@@ -2,11 +2,6 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// Per-portion nutrition, produce classification, serving units and recipe
-/// provenance on `FoodItem`.
-///
-/// Every expected value is computed by hand: a portion is `per100g × grams / 100`,
-/// so a 150 g portion of an integer per-100 g value is exactly that value × 1.5.
 @MainActor
 struct FoodItemNutritionCoverageTests {
 
@@ -45,8 +40,6 @@ struct FoodItemNutritionCoverageTests {
             alcoholPer100g: 27
         )
     }
-
-    // MARK: - Per-portion nutrition
 
     @Test("Every nutrient scales linearly with the portion")
     func everyNutrientScales() {
@@ -137,8 +130,6 @@ struct FoodItemNutritionCoverageTests {
         #expect(food.alcohol(forGrams: 330) == 0)
     }
 
-    // MARK: - Produce classification
-
     @Test("Produce kinds name themselves and say whether they count toward variety")
     func produceKindLabels() {
         #expect(ProduceKind.unclassified.displayName == "Not counted")
@@ -196,8 +187,6 @@ struct FoodItemNutritionCoverageTests {
 
         #expect(food.produceKind == .unclassified)
     }
-
-    // MARK: - Serving units
 
     struct ServingCase: Sendable, CustomTestStringConvertible {
         let description: String
@@ -300,8 +289,6 @@ struct FoodItemNutritionCoverageTests {
         #expect(makeTestFoodItem(defaultServingG: nil, servingDescription: "2 bars").servingInfo == nil)
         #expect(makeTestFoodItem(defaultServingG: 100, servingDescription: nil).servingInfo == nil)
     }
-
-    // MARK: - Recipe provenance
 
     private static func ingredient(
         _ name: String,
@@ -423,9 +410,7 @@ struct FoodItemNutritionCoverageTests {
 
         recipe.updateRecipeNutritionFromIngredients()
 
-        // 50 g × 380 / 100 = 190 kcal across 200 g → 95 kcal per 100 g
         #expect(recipe.caloriesPer100g == 95)
-        // 50 g × 13 / 100 = 6.5 g across 200 g → 3.25 g per 100 g
         #expect(recipe.proteinPer100g == 3.25)
         #expect(recipe.calories(forGrams: recipe.defaultServingG ?? 0) == 190)
     }

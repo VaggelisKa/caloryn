@@ -2,11 +2,6 @@
 import Foundation
 import SwiftData
 
-/// Populates an in-memory store with a known fixture before the UI appears.
-///
-/// Seeding is deliberately synchronous and happens during app start-up so the
-/// first `@Query` a view runs already sees the fixture. Dates are derived from
-/// the current day so "today" means today from the test's point of view.
 enum UITestSeeder {
     static func seed(_ fixture: UITestConfiguration.Fixture, into context: ModelContext) throws {
         switch fixture {
@@ -58,8 +53,6 @@ enum UITestSeeder {
             insertProfile(into: context)
             let oats = insertOats(into: context)
             let calendar = Calendar.current
-            // Thirty consecutive logged days with a deterministic calorie pattern,
-            // so History assertions can rely on exact totals.
             for dayOffset in 0..<30 {
                 guard let date = calendar.date(byAdding: .day, value: -dayOffset, to: today) else {
                     continue

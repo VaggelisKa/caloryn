@@ -3,8 +3,6 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// The weekly-consistency chart's layout and labelling. Weeks are numbered by
-/// position, so a week with nothing logged still holds its place.
 @Suite("History weekly consistency chart")
 struct HistoryWeeklyConsistencyChartTests {
 

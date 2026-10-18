@@ -68,10 +68,6 @@ struct ProduceVarietySummary {
                     )
                 }
             } else if let foodItem = entry.foodItem {
-                // Legacy entries (pre-snapshot) fall back to the live
-                // saved-food relationship, exactly as before snapshots
-                // existed. Once that food is deleted nothing is counted —
-                // classifications are never fabricated.
                 if foodItem.isRecipe, let ingredients = foodItem.recipeIngredients, !ingredients.isEmpty {
                     for ingredient in ingredients where ingredient.portionGrams > 0 {
                         Self.insert(
@@ -137,7 +133,6 @@ struct ProduceVarietySummary {
 
         if word.hasSuffix("es") {
             let stem = String(word.dropLast(2))
-            // "-oes" too: tomatoes, potatoes, mangoes.
             if stem.hasSuffix("ch") || stem.hasSuffix("sh") || stem.hasSuffix("s") || stem.hasSuffix("x") || stem.hasSuffix("z")
                 || stem.hasSuffix("o") {
                 return stem

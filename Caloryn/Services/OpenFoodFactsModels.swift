@@ -45,8 +45,6 @@ struct OpenFoodFactsProduct: Decodable, Identifiable, Hashable {
         return labels
     }
 
-    /// Internal rather than fileprivate: `FoodSearchService.reconcile` and
-    /// `deduplicate` key on it from their own file.
     var reconciliationKey: String {
         if let code {
             let normalizedCode = String(code.filter { $0.isLetter || $0.isNumber }).lowercased()
@@ -114,8 +112,6 @@ struct OpenFoodFactsProduct: Decodable, Identifiable, Hashable {
         return (nil, nil)
     }
 
-    /// Per the same serving `effectiveServingInfo` picks, so a zero
-    /// serving_quantity defers to the pack size here too.
     var caloriesPerServing: Double? {
         guard let grams = effectiveServingInfo.defaultServingG,
               let caloriesPer100g = nutriments?.energyKcal100g else { return nil }
@@ -306,7 +302,6 @@ struct OFFNutriments: Decodable, Hashable {
         case energyKj100g = "energy-kj_100g"
     }
 
-    /// The kilojoules in a kilocalorie, for products labelled only in kJ.
     static let kilojoulesPerKilocalorie = 4.184
 
     #if DEBUG
@@ -353,15 +348,9 @@ struct OFFNutriments: Decodable, Hashable {
     #endif
 }
 
-/// Declared in an extension so the memberwise initializer the fixture uses survives.
 extension OFFNutriments {
-    /// Open Food Facts sometimes sends a nutrient as a string ("370"). One such
-    /// value used to fail the whole decode and, with it, every hit in the
-    /// response; it is read as the number it spells instead, and anything that
-    /// is not a finite number is treated as missing.
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        // Many EU labels give energy only in kJ; converted rather than dropping the product.
         energyKcal100g = container.lenientDouble(forKey: .energyKcal100g)
             ?? container.lenientDouble(forKey: .energyKj100g).map { $0 / Self.kilojoulesPerKilocalorie }
         proteins100g = container.lenientDouble(forKey: .proteins100g)
@@ -401,7 +390,6 @@ private extension KeyedDecodingContainer {
         if let number = try? decodeIfPresent(Double.self, forKey: key) {
             return number
         }
-        // `Double(_:)` also spells "nan" and "inf"; those are as missing as "trace".
         if let string = try? decodeIfPresent(String.self, forKey: key),
            let value = Double(string.trimmingCharacters(in: .whitespaces)),
            value.isFinite {

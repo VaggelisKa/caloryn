@@ -2,19 +2,9 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// The arithmetic under History: how a range is cut into calendar days and Monday weeks under
-/// an injected calendar (daylight-saving changes, month ends, the leap day, the year end), how
-/// averages behave over windows with nothing logged, how the per-status counts always add up
-/// to the range, and how a day's foods and grades are merged and ordered.
-///
-/// Every date is built in a fixed New York calendar, a zone with daylight saving and one the
-/// test host is unlikely to share, so a rule that silently read `Calendar.current` fails here.
 @MainActor
 @Suite("History analytics coverage")
 struct HistoryAnalyticsCoverageTests {
-
-    // MARK: - Labels and identities
-
     @Test(
         "given each range, when naming it, then its id is its raw value and its label its day count",
         arguments: [
@@ -56,8 +46,6 @@ struct HistoryAnalyticsCoverageTests {
         #expect(level.label == label)
     }
 
-    // MARK: - Calorie status rule
-
     @Test("given a day with nothing logged, when rating it, then it is not logged whatever the calories say")
     func nothingLoggedIsNotLoggedEvenWithCalories() {
         #expect(HistoryGoalStatus.calorieStatus(calories: 2_500, loggedCount: 0, targetCalories: 2_000) == .notLogged)
@@ -86,8 +74,6 @@ struct HistoryAnalyticsCoverageTests {
         #expect(HistoryGoalStatus.calorieStatus(calories: calories, loggedCount: 1, targetCalories: 2_000) == expected)
     }
 
-    // MARK: - Coverage
-
     @Test(
         "given a share of days logged, when grading coverage, then 80 percent is high and 50 percent medium",
         arguments: [
@@ -110,8 +96,6 @@ struct HistoryAnalyticsCoverageTests {
         #expect(summary.coverageRatio == ratio)
         #expect(summary.coverageLevel == expected)
     }
-
-    // MARK: - Windows with nothing in them
 
     @Test("given a period with no days at all, when summarising it, then every ratio and average is zero rather than a division by zero")
     func aPeriodWithNoDaysHasZeroRatios() {
@@ -187,7 +171,6 @@ struct HistoryAnalyticsCoverageTests {
         )
 
         let week = try #require(summary.weeklyRollups.first)
-        // (1,800 + 1,801 + 5 × 2,000) / 7 = 1,943.0
         #expect(week.targetPerLoggedDay == 1_943)
         #expect(week.loggedDays == 0)
         #expect(week.onTrackRatio == 0)
@@ -204,8 +187,6 @@ struct HistoryAnalyticsCoverageTests {
         #expect(summary.hasEstimatedTargets == false)
     }
 
-    // MARK: - Averages and rounding
-
     @Test("given two logged days with goals half a calorie apart on average, when averaging the goal, then it rounds half up")
     func theAverageGoalRoundsHalfUp() {
         let monday = Self.date(2026, 1, 5)
@@ -220,7 +201,6 @@ struct HistoryAnalyticsCoverageTests {
         #expect(summary.loggedDayTargetTotal == 4_001)
         #expect(summary.averageTargetPerLoggedDay == 2_001)
         #expect(summary.averageCaloriesPerLoggedDay == 1_000.5)
-        // The reference target averages all seven days: (6 × 2,000 + 2,001) / 7 = 2,000.14.
         #expect(summary.dailyCalorieTarget == 2_000)
     }
 
@@ -242,8 +222,6 @@ struct HistoryAnalyticsCoverageTests {
         #expect(summary.days[3].calorieDifference == 800)
     }
 
-    // MARK: - Counts that must add up
-
     @Test(
         "given a mix of statuses, when counting each, then the four counts add up to every day in the range",
         arguments: HistoryRange.allCases
@@ -251,7 +229,6 @@ struct HistoryAnalyticsCoverageTests {
     func statusCountsCoverTheWholeRange(range: HistoryRange) {
         let end = Self.date(2026, 3, 20)
         let dates = Self.days(endingAt: end, count: range.days)
-        // A repeating pattern of under, on-track, over and missing days.
         let entries = dates.enumerated().compactMap { offset, date -> FoodLogEntry? in
             switch offset % 4 {
             case 0: entry(at: date, calories: 1_200)
@@ -298,8 +275,6 @@ struct HistoryAnalyticsCoverageTests {
         #expect(analytics.current.calendar == Self.newYork)
     }
 
-    // MARK: - Calendar boundaries
-
     @Test("given a week across the spring daylight-saving change, when cutting days, then each day starts at local midnight and the short day is still one day")
     func springForwardKeepsWholeDays() throws {
         let lateSunday = Self.date(2026, 3, 8, hour: 23, minute: 30)
@@ -316,7 +291,6 @@ struct HistoryAnalyticsCoverageTests {
         #expect(days.map(\.date) == (4...10).map { Self.date(2026, 3, $0, hour: 0) })
         let sunday = try #require(days.first { $0.date == Self.date(2026, 3, 8, hour: 0) })
         let monday = try #require(days.first { $0.date == Self.date(2026, 3, 9, hour: 0) })
-        // The clocks go forward overnight, so local Sunday is 23 hours long.
         #expect(monday.date.timeIntervalSince(sunday.date) == 23 * 3_600)
         #expect(sunday.calories == 500)
         #expect(monday.calories == 700)
@@ -344,7 +318,6 @@ struct HistoryAnalyticsCoverageTests {
         #expect(days.first?.date == Self.date(2025, 10, 29, hour: 0))
         let sunday = try #require(days.first { $0.date == Self.date(2025, 11, 2, hour: 0) })
         let monday = try #require(days.first { $0.date == Self.date(2025, 11, 3, hour: 0) })
-        // The clocks go back overnight, so local Sunday is 25 hours long.
         #expect(monday.date.timeIntervalSince(sunday.date) == 25 * 3_600)
         #expect(sunday.calories == 900)
         #expect(monday.calories == 400)
@@ -353,7 +326,6 @@ struct HistoryAnalyticsCoverageTests {
 
     @Test("given an entry late in the evening in the analytics zone, when bucketing, then it belongs to that zone's day rather than the UTC one")
     func entriesAreBucketedInTheInjectedZone() throws {
-        // 22:00 in New York on 4 March is already 5 March in UTC.
         let lateEvening = Self.date(2026, 3, 4, hour: 22)
         let analytics = HistoryAnalytics(
             entries: [entry(at: lateEvening, calories: 1_234)],
@@ -405,7 +377,6 @@ struct HistoryAnalyticsCoverageTests {
         #expect(weeks.map(\.startDate) == [Self.date(2025, 12, 22, hour: 0), Self.date(2025, 12, 29, hour: 0)])
         #expect(weeks.map(\.totalDays) == [2, 5])
         #expect(weeks.allSatisfy { calendar.component(.weekday, from: $0.startDate) == 2 })
-        // Days inside a week stay in date order.
         #expect(weeks.allSatisfy { $0.days.map(\.date) == $0.days.map(\.date).sorted() })
     }
 
@@ -425,13 +396,10 @@ struct HistoryAnalyticsCoverageTests {
         #expect(Set(weeks.map(\.startDate)).count == weeks.count)
         #expect(weeks.allSatisfy { Self.newYork.component(.weekday, from: $0.startDate) == 2 })
         #expect(weeks.allSatisfy { $0.totalDays <= 7 })
-        // 31 Jan (Sat) to 30 Apr (Thu): a two-day first week, twelve full weeks, a four-day last.
         #expect(weeks.count == 14)
         #expect(weeks.first?.totalDays == 2)
         #expect(weeks.last?.totalDays == 4)
     }
-
-    // MARK: - Macro patterns
 
     @Test("given a profile macro with no target, when listing macro patterns, then that macro is left out")
     func aMacroWithoutATargetIsLeftOut() {
@@ -482,7 +450,6 @@ struct HistoryAnalyticsCoverageTests {
             entries: [
                 entry(at: end, calories: 2_000, protein: 120),
                 entry(at: Self.date(2026, 1, 29), calories: 2_000, protein: 140),
-                // The equally long week before.
                 entry(at: Self.date(2026, 1, 22), calories: 2_000, protein: 100)
             ],
             profile: Self.makeProfile(),
@@ -496,8 +463,6 @@ struct HistoryAnalyticsCoverageTests {
         #expect(protein.previous.averageValue == 100)
         #expect(protein.averageValueDelta == 30)
     }
-
-    // MARK: - Nutrient values
 
     @Test(
         "given a day's entries, when reading any tracked nutrient, then the summary and its detail both add it up",
@@ -555,8 +520,6 @@ struct HistoryAnalyticsCoverageTests {
         #expect(day.value(for: nutrient) == 0)
         #expect(day.makeDetail().value(for: nutrient) == 0)
     }
-
-    // MARK: - Day detail
 
     @Test("given a day detail built without a status, when rating it, then it rates itself against its own target")
     func aDetailWithoutAStatusRatesItself() {
@@ -616,8 +579,6 @@ struct HistoryAnalyticsCoverageTests {
         #expect(detail.mealSummaries.map(\.entryCount) == [1, 2])
     }
 
-    // MARK: - Food ordering
-
     @Test("given foods with equal calories, when ranking the day's foods, then they are ordered by name, numbers numerically")
     func equalCalorieFoodsAreOrderedByName() {
         let date = Self.date(2026, 1, 30)
@@ -651,11 +612,8 @@ struct HistoryAnalyticsCoverageTests {
         #expect(latte.id == "cafe latte")
         #expect(latte.entryCount == 3)
         #expect(latte.portionGrams == 700)
-        // 120 kcal/100 g × 250 g twice, then 90 kcal/100 g × 200 g.
         #expect(latte.calories == 780)
     }
-
-    // MARK: - Nutri-Score distribution
 
     @Test("given grades in either case and an unknown one, when distributing them, then they are counted a to e and the unknown is dropped")
     func nutriscoreGradesAreCaseInsensitiveAndOrdered() {
@@ -669,11 +627,8 @@ struct HistoryAnalyticsCoverageTests {
         #expect(distribution.map(\.grade) == ["a", "c", "e"])
         #expect(distribution.map(\.id) == ["a", "c", "e"])
         #expect(distribution.map(\.count) == [2, 1, 2])
-        // Every recognised grade is counted once: five of the seven entries.
         #expect(distribution.reduce(0) { $0 + $1.count } == 5)
     }
-
-    // MARK: - Selection identity
 
     @Test("given a selected day or week, when identifying the selection, then it is keyed by kind and the UTC instant of its start")
     func selectionsAreKeyedByKindAndInstant() throws {
@@ -687,12 +642,9 @@ struct HistoryAnalyticsCoverageTests {
         let monday = try #require(analytics.current.days.first { $0.date == Self.date(2026, 3, 9, hour: 0) })
         let week = try #require(analytics.current.weeklyRollups.last)
 
-        // Midnight in New York is 04:00 UTC once daylight saving has begun.
         #expect(HistoryCalorieTrendSelection.day(monday).id == "day-2026-03-09T04:00:00Z")
         #expect(HistoryCalorieTrendSelection.week(week).id == "week-2026-03-09T04:00:00Z")
     }
-
-    // MARK: - Fixtures
 
     private static let newYork: Calendar = {
         var calendar = Calendar(identifier: .gregorian)
@@ -705,7 +657,6 @@ struct HistoryAnalyticsCoverageTests {
         newYork.date(from: DateComponents(year: year, month: month, day: day, hour: hour, minute: minute))!
     }
 
-    /// `count` calendar days starting at `start`'s day, as midnights in the fixture calendar.
     private static func days(from start: Date, count: Int) -> [Date] {
         let first = newYork.startOfDay(for: start)
         return (0..<count).compactMap { newYork.date(byAdding: .day, value: $0, to: first) }
@@ -728,8 +679,6 @@ struct HistoryAnalyticsCoverageTests {
         )
     }
 
-    /// An entry at an exact instant. The factory normalises dates with the host calendar,
-    /// so the instant is put back afterwards and bucketing is left to the calendar under test.
     private func entry(
         at date: Date,
         calories: Double,

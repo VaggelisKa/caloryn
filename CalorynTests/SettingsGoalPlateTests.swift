@@ -12,7 +12,6 @@ final class SettingsGoalPlateTests: XCTestCase {
         XCTAssertEqual(totals, [.breakfast: 275, .lunch: 352])
     }
 
-    /// Two snack slots are one snack on the plate.
     func testSnacksFromDifferentSlotsShareOneTotal() {
         let totals = SettingsGoalPlate.mealTotals([
             .init(meal: .snack, calories: 118),

@@ -1,8 +1,5 @@
 import SwiftUI
 
-/// "Macros": the least consistent macro in a line under the title, then each tracked macro's
-/// daily average, how many logged days met its goal as an ink bar, and how the average moved
-/// from the period before. Macros are told apart by their names, never by colour.
 struct HistoryMacroPatternsSection: View {
     let range: HistoryRange
     let projection: HistoryMacroPatternsProjection

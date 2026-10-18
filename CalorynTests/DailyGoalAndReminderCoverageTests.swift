@@ -33,8 +33,6 @@ private func goalValues(base: Int, adjustment: Int) -> DailyGoalSnapshotValues {
     )
 }
 
-// MARK: - Snapshot store
-
 @MainActor
 @Suite("Daily goal snapshot store: duplicates and time zones")
 struct DailyGoalSnapshotStoreCoverageTests {
@@ -78,8 +76,6 @@ struct DailyGoalSnapshotStoreCoverageTests {
         context.insert(newer)
         try context.save()
 
-        // The values already match the newest copy, so only the duplicate
-        // removal makes this a change worth saving.
         let didRecord = DailyGoalSnapshotStore.recordSnapshot(
             values: goalValues(base: 1_900, adjustment: 150),
             for: now, profile: profile, in: context, now: now, calendar: utc
@@ -90,7 +86,6 @@ struct DailyGoalSnapshotStoreCoverageTests {
         #expect(stored.count == 1)
         #expect(stored.first?.id == newer.id)
         #expect(stored.first?.effectiveCalorieTarget == 2_050)
-        // Untouched values keep the original recording time.
         #expect(stored.first?.updatedAt == goalDate(utc, 2026, 3, 9, 18))
     }
 
@@ -149,9 +144,7 @@ struct DailyGoalSnapshotStoreCoverageTests {
     @Test("Whether a date is today depends on the injected calendar's time zone")
     func todayIsJudgedInTheInjectedTimeZone() throws {
         let context = try makeContext()
-        // 10:00 UTC on 9 March is 23:00 in Auckland (NZDT, UTC+13).
         let now = goalDate(utc, 2026, 3, 9, 10)
-        // 12:00 UTC is the same UTC day but already 01:00 on 10 March in Auckland.
         let date = goalDate(utc, 2026, 3, 9, 12)
 
         let recordedInAuckland = DailyGoalSnapshotStore.recordSnapshot(
@@ -183,7 +176,6 @@ struct DailyGoalSnapshotStoreCoverageTests {
             values: goalValues(base: 2_000, adjustment: 0),
             for: justAfterMidnight, profile: nil, in: context, now: justAfterMidnight, calendar: auckland
         )
-        // Yesterday is final once midnight has passed.
         let rewroteYesterday = DailyGoalSnapshotStore.recordSnapshot(
             values: goalValues(base: 2_000, adjustment: 500),
             for: lateEvening, profile: nil, in: context, now: justAfterMidnight, calendar: auckland
@@ -239,15 +231,12 @@ struct DailyGoalSnapshotStoreCoverageTests {
     }
 }
 
-// MARK: - History target resolution
-
 @Suite("History day target resolution across time zones")
 struct HistoryDayTargetResolverCoverageTests {
     @Test("A snapshot keyed in the local day is found only through that day's calendar")
     func lookupUsesTheInjectedCalendar() {
         let utc = goalCalendar("UTC")
         let auckland = goalCalendar("Pacific/Auckland")
-        // 12:00 UTC on 9 March is 01:00 on 10 March in Auckland.
         let instant = goalDate(utc, 2026, 3, 9, 12)
         let resolver = HistoryDayTargetResolver(
             fallbackTarget: 1_800,
@@ -272,8 +261,6 @@ struct HistoryDayTargetResolverCoverageTests {
     }
 }
 
-// MARK: - Reminder planning
-
 @Suite("Daily reminder planner: time zones, configurable time and the skip threshold")
 struct DailyReminderPlannerCoverageTests {
     private let tokyo = goalCalendar("Asia/Tokyo")
@@ -282,7 +269,6 @@ struct DailyReminderPlannerCoverageTests {
 
     @Test("The same instant plans from a different calendar day in each time zone")
     func timeZoneDecidesToday() {
-        // Noon in Tokyo on 15 July is 17:00 on 14 July in Honolulu.
         let now = goalDate(tokyo, 2026, 7, 15, 12)
 
         let tokyoPlan = DailyReminderPlanner.makePlan(
@@ -301,7 +287,6 @@ struct DailyReminderPlannerCoverageTests {
 
     @Test("Reminders keep their local wall-clock time across a daylight-saving change")
     func wallClockSurvivesDST() {
-        // US daylight saving starts on Sunday 8 March 2026.
         let now = goalDate(newYork, 2026, 3, 7, 12)
 
         let plan = DailyReminderPlanner.makePlan(
@@ -349,8 +334,6 @@ struct DailyReminderPlannerCoverageTests {
         )
 
         #expect(plan.allSatisfy { $0.fireDateComponents.hour == hour && $0.fireDateComponents.minute == minute })
-        // A midnight reminder at exactly midnight has already passed, so it
-        // starts tomorrow; every later time still fires today.
         let expectedFirstDay = minutes == 0 ? 16 : 15
         #expect(plan.first?.fireDateComponents.day == expectedFirstDay)
         #expect(plan.count == (minutes == 0 ? 6 : 7))
@@ -408,7 +391,6 @@ struct DailyReminderPlannerCoverageTests {
     @Test("Identifiers zero-pad the month and day in the given calendar")
     func identifierPadding() {
         #expect(DailyReminderPlanner.identifier(for: goalDate(tokyo, 2026, 1, 5), calendar: tokyo) == "daily-reminder-2026-01-05")
-        // 01:00 on 1 Jan in Tokyo is still 31 Dec in Honolulu.
         #expect(
             DailyReminderPlanner.identifier(for: goalDate(tokyo, 2026, 1, 1, 1), calendar: honolulu)
                 == "daily-reminder-2025-12-31"
@@ -433,14 +415,10 @@ struct DailyReminderPlannerCoverageTests {
 
     @Test("A non-finite consumed total is treated as nothing eaten")
     func nonFiniteConsumed() {
-        // `roundedCalories` maps non-finite values to 0 by design
-        // (see `Double.truncatedSafely`), so the full target remains.
         #expect(DailyReminderPlanner.remainingToday(target: 2_000, consumed: .infinity) == 2_000)
         #expect(DailyReminderPlanner.remainingToday(target: 2_000, consumed: .nan) == 2_000)
     }
 }
-
-// MARK: - Reminder scheduling
 
 private final class CoverageReminderCenter: ReminderNotificationCenter, @unchecked Sendable {
     var status: UNAuthorizationStatus = .authorized
@@ -562,8 +540,6 @@ struct DailyReminderSchedulerCoverageTests {
         #expect(center.pending.count == reminders.count)
     }
 }
-
-// MARK: - Settings authorization refresh
 
 @Suite("Settings Health authorization refresh truth table")
 struct SettingsHealthAuthorizationRefreshCoverageTests {

@@ -2,13 +2,8 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// The numbers around the calorie-trend chart: the figures, the section's support line,
-/// and how the chart describes itself when there is nothing to describe.
 @Suite("History calorie trend card summary")
 struct HistoryCalorieTrendCardSummaryTests {
-
-    // MARK: - Empty range
-
     @Test("given nothing logged, when describing the chart, then it says zero days rather than an average")
     func anEmptyRangeIsSpokenWithoutAnAverage() {
         let summary = makeSummary(
@@ -50,8 +45,6 @@ struct HistoryCalorieTrendCardSummaryTests {
         )
     }
 
-    // MARK: - Stat values
-
     @Test("given fractional totals, when showing them, then they are rounded to whole calories")
     func statValuesAreRoundedForDisplay() {
         let summary = makeSummary(
@@ -74,8 +67,6 @@ struct HistoryCalorieTrendCardSummaryTests {
         #expect(summary.onTrackRatioText == "3/5")
     }
 
-    // MARK: - Section support line
-
     @Test(
         "given a logged total, when supporting the section title, then it is set against the same days' goals",
         arguments: [
@@ -94,8 +85,6 @@ struct HistoryCalorieTrendCardSummaryTests {
     func anEmptyRangeHasNoSupportLine() {
         #expect(makeSummary(loggedDayCount: 0, hasLoggedData: false).totalSupportText == nil)
     }
-
-    // MARK: - Helpers
 
     private func makeSummary(
         range: HistoryRange = .week,

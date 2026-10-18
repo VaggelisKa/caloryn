@@ -2,7 +2,6 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// What a food row says on its right and under its name. See `FoodRowSummary`.
 @Suite("Food row summary")
 struct FoodRowSummaryTests {
     @Test("A food with a weighed serving prices that amount in plain kcal and says what 100 g is worth")
@@ -156,7 +155,6 @@ struct FoodRowSummaryTests {
     }
 }
 
-/// The sentences the Add Food and Portion sheets build out of data.
 @Suite("Food log sheet copy")
 struct FoodLogSheetCopyTests {
     @Test(
