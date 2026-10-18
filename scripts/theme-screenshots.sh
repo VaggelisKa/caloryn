@@ -75,7 +75,7 @@ shutil.rmtree(raw)
 # Colour census. Drift is visible as a number before anyone opens an image.
 # Keep these in step with CalorynShared/SharedColors.xcassets (docs/design/plate-market.md).
 TOKENS = {
-    "page":  {"light": (246,245,241), "dark": (20,22,20)},    # PageBackground #F6F5F1 / #141614
+    "page":  {"light": (252,251,248), "dark": (20,22,20)},    # PageBackground #FCFBF8 / #141614
     "card":  {"light": (255,255,255), "dark": (38,42,38)},    # CardBackground #FFFFFF / #262A26
     "sage":  {"light": (124,142,107), "dark": (150,171,131)}, # retired Sage #7C8E6B / #96AB83
 }
