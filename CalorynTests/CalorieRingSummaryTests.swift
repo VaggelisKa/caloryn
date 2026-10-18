@@ -2,8 +2,6 @@ import XCTest
 @testable import Caloryn
 
 final class CalorieRingSummaryTests: XCTestCase {
-    // MARK: - The figure in the centre
-
     func testAnUnderBudgetDayCountsDownWhatIsLeft() {
         let summary = makeSummary(isOver: false, remaining: 480, roundedConsumed: 1_520)
 
@@ -20,8 +18,6 @@ final class CalorieRingSummaryTests: XCTestCase {
         XCTAssertEqual(summary.eatenText, "2130 eaten")
     }
 
-    /// The ring shares the sheet's accent so one day cannot read as over on one
-    /// screen and within budget on the other.
     func testTheAccentIsTheSameDecisionTheNutritionSheetMakes() {
         XCTAssertEqual(makeSummary(isOver: false).accent, .withinBudget)
         XCTAssertEqual(makeSummary(isOver: true).accent, .overBudget)
@@ -30,8 +26,6 @@ final class CalorieRingSummaryTests: XCTestCase {
             NutritionDetailsSummary.calorieAccent(isOver: true)
         )
     }
-
-    // MARK: - The auto-adjust cue
 
     func testAQuietDayShowsNoCue() {
         XCTAssertEqual(makeSummary().cue, .none)
@@ -55,8 +49,6 @@ final class CalorieRingSummaryTests: XCTestCase {
         XCTAssertEqual(cue.accessibilityLabel, "90 calorie auto-adjust reduction")
     }
 
-    /// While activity is still being read the adjustment on screen belongs to
-    /// the previous answer, so loading has to win over it.
     func testLoadingActivityWinsOverAnAdjustmentStillOnScreen() {
         let summary = makeSummary(
             dynamicIncrease: 180,
@@ -72,8 +64,6 @@ final class CalorieRingSummaryTests: XCTestCase {
     func testTheLoadingCueLeavesTheSpinnerToAnnounceItself() {
         XCTAssertNil(makeSummary(isActivityLoading: true).cue.accessibilityLabel)
     }
-
-    // MARK: - VoiceOver
 
     func testTheLabelReadsWhatIsLeftAgainstTheTarget() {
         let summary = makeSummary(
@@ -105,8 +95,6 @@ final class CalorieRingSummaryTests: XCTestCase {
         XCTAssertEqual(summary.accessibilityValue, "2130 eaten, 130 calories over target of 2000")
     }
 
-    /// A target that moved has to be explained, or the number read out looks
-    /// wrong against the goal the user set.
     func testAnAddedAllowanceIsExplainedInTheLabel() {
         let summary = makeSummary(
             isOver: false,
@@ -120,8 +108,6 @@ final class CalorieRingSummaryTests: XCTestCase {
         XCTAssertTrue(summary.accessibilityLabel.hasSuffix(", includes 180 calorie auto-adjust increase"))
     }
 
-    /// A reduction is not called out: the label would otherwise read as an
-    /// accusation every time the day was quiet.
     func testAReductionIsNotSpelledOutInTheLabel() {
         let summary = makeSummary(dynamicAdjustment: -90, hasDynamicReduction: true)
 
@@ -136,10 +122,6 @@ final class CalorieRingSummaryTests: XCTestCase {
         )
     }
 
-    // MARK: - Reading the budget
-
-    /// Everything the ring says is the budget's answer, not a second derivation
-    /// of it.
     func testTheBudgetsFiguresAreTakenAsGiven() {
         let budget = ActivityCalorieBudget(
             consumed: 2_130,
@@ -161,8 +143,6 @@ final class CalorieRingSummaryTests: XCTestCase {
         XCTAssertEqual(summary.adjustedTarget, budget.adjustedTarget)
         XCTAssertEqual(summary.roundedConsumed, budget.roundedConsumed)
     }
-
-    // MARK: - Helpers
 
     private func makeSummary(
         isOver: Bool = false,

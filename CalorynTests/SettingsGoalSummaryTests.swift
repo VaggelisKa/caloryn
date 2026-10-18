@@ -2,8 +2,6 @@ import XCTest
 @testable import Caloryn
 
 final class SettingsGoalSummaryTests: XCTestCase {
-    // MARK: - Which rows appear
-
     func testOnlyNutrientsWithASavedGoalGetARow() {
         let summary = SettingsGoalSummary(
             targets: [.protein: 150, .fiber: 30],
@@ -25,8 +23,6 @@ final class SettingsGoalSummaryTests: XCTestCase {
     func testNoGoalsMeansNoRows() {
         XCTAssertTrue(SettingsGoalSummary(targets: [:], goalKinds: [:]).nutrients.isEmpty)
     }
-
-    // MARK: - Row wording
 
     func testMinimumGoalReadsAsAFloor() {
         let summary = SettingsGoalSummary(targets: [.protein: 150], goalKinds: [.protein: .minimum])
@@ -66,8 +62,6 @@ final class SettingsGoalSummaryTests: XCTestCase {
         XCTAssertEqual(summary.text(for: .protein), "Not set")
     }
 
-    // MARK: - Spoken labels
-
     func testSpokenLabelSpellsTheGramUnitOut() {
         let summary = SettingsGoalSummary(targets: [.protein: 150], goalKinds: [.protein: .minimum])
 
@@ -86,8 +80,6 @@ final class SettingsGoalSummaryTests: XCTestCase {
         XCTAssertEqual(summary.spokenText(for: .fiber), "1 gram")
     }
 
-    // MARK: - Headline
-
     func testTheHeadlineGroupsTheDailyTargetForTheLocale() {
         XCTAssertEqual(
             SettingsGoalSummary.dailyTargetText(2400, locale: Locale(identifier: "da_DK")),
@@ -103,9 +95,6 @@ final class SettingsGoalSummaryTests: XCTestCase {
         )
     }
 
-    // MARK: - Where the number comes from
-
-    /// A manual target is not derived from a deficit, so there is no adjustment to name.
     func testAManualTargetNamesNoAdjustment() {
         XCTAssertEqual(
             SettingsGoalSummary.goalSubtitle(calorieDeficit: 500, isManualOverride: true),
@@ -134,8 +123,6 @@ final class SettingsGoalSummaryTests: XCTestCase {
         )
     }
 
-    /// The slider steps in whole 50s, so a fraction can only arrive from stored
-    /// data — and it is truncated, not rounded.
     func testFractionalAdjustmentsAreTruncatedTowardZero() {
         XCTAssertEqual(
             SettingsGoalSummary.goalSubtitle(calorieDeficit: 499.9, isManualOverride: false),
@@ -147,8 +134,6 @@ final class SettingsGoalSummaryTests: XCTestCase {
         )
     }
 
-    /// The adjustment reads like the target above it: grouped for the reader's locale, so
-    /// "1.000" on a Danish phone is never read as one.
     func testALargeAdjustmentIsGroupedForTheLocale() {
         XCTAssertEqual(
             SettingsGoalSummary.goalSubtitle(
@@ -168,7 +153,6 @@ final class SettingsGoalSummaryTests: XCTestCase {
         )
     }
 
-    /// Under one kcal truncates to nothing, which is no adjustment rather than "About 0 under".
     func testASubCalorieAdjustmentIsNoAdjustment() {
         XCTAssertEqual(
             SettingsGoalSummary.goalSubtitle(calorieDeficit: 0.4, isManualOverride: false),

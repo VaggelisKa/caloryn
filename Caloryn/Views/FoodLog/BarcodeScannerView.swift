@@ -269,8 +269,6 @@ final class ScannerViewController: UIViewController, AVCaptureMetadataOutputObje
     }
 }
 
-// MARK: - Scan Region Overlay
-
 private final class ScannerOverlayView: UIView {
     private let cutoutSize = CGSize(width: 280, height: 160)
 

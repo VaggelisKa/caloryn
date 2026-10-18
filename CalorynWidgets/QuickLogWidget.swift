@@ -21,8 +21,6 @@ struct QuickLogProvider: TimelineProvider {
         in context: Context,
         completion: @escaping (Timeline<QuickLogEntry>) -> Void
     ) {
-        // The buttons are static deep links, so a single entry that never
-        // needs refreshing is all we need.
         completion(Timeline(entries: [QuickLogEntry(date: .now)], policy: .never))
     }
 }
@@ -54,8 +52,6 @@ private struct QuickLogWidgetView: View {
         }
     }
 }
-
-// MARK: - Previews
 
 #Preview("Small", as: .systemSmall) {
     QuickLogWidget()

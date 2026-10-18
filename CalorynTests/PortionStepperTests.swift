@@ -1,7 +1,6 @@
 import Testing
 @testable import Caloryn
 
-/// The Portion sheet's stepper pill: minus and plus move the portion ten grams.
 @Suite("Portion stepper")
 struct PortionStepperTests {
     private var plainFood: PortionSelection.Shape { PortionSelection.Shape() }

@@ -2,8 +2,6 @@ import XCTest
 @testable import Caloryn
 
 final class SettingsCalorieEstimateTests: XCTestCase {
-    // MARK: - Toggle
-
     func testToggleIsBoundAndOnWhileAutoAdjustIsEnabled() {
         let estimate = makeEstimate(energyCalculationMode: .dynamicHealth)
 
@@ -55,8 +53,6 @@ final class SettingsCalorieEstimateTests: XCTestCase {
         XCTAssertFalse(estimate.isToggleDisabled)
     }
 
-    // MARK: - Mode presentation
-
     func testEffectiveModeIgnoresStoredModeUnderManualOverride() {
         let estimate = makeEstimate(isManualOverride: true, energyCalculationMode: .dynamicHealth)
 
@@ -86,8 +82,6 @@ final class SettingsCalorieEstimateTests: XCTestCase {
         )
     }
 
-    // MARK: - Section content
-
     func testDynamicMetricsOnlyAppearWhileHealthDrivesTheTarget() {
         XCTAssertTrue(makeEstimate(energyCalculationMode: .dynamicHealth).showsDynamicMetrics)
         XCTAssertFalse(makeEstimate(energyCalculationMode: .lifestyleEstimate).showsDynamicMetrics)
@@ -101,8 +95,6 @@ final class SettingsCalorieEstimateTests: XCTestCase {
         XCTAssertFalse(makeEstimate(energyCalculationMode: .lifestyleEstimate).isDynamicStatusInformational)
     }
 
-    /// The stored mode is what the tracker follows, but a manual override
-    /// silences it.
     func testActiveEnergyTrackingFollowsTheEffectiveMode() {
         XCTAssertTrue(makeEstimate(energyCalculationMode: .dynamicHealth).isActiveEnergyTrackingEnabled)
         XCTAssertFalse(
@@ -144,8 +136,6 @@ final class SettingsCalorieEstimateTests: XCTestCase {
         )
     }
 
-    // MARK: - Metric values
-
     func testValidDaysReadsAgainstTheRequiredCount() {
         XCTAssertEqual(
             SettingsCalorieEstimate.validActivityDaysText(validActivityDays: 3),
@@ -167,10 +157,6 @@ final class SettingsCalorieEstimateTests: XCTestCase {
         XCTAssertEqual(SettingsCalorieEstimate.todayText(activeEnergyKcal: 512.4), "512 kcal")
     }
 
-    /// Both rows render Health-derived values, which `Int(_:)` would trap on
-    /// rather than throw. A test cannot assert the absence of a trap — it would
-    /// take the runner down with it — so these assert that the value that used
-    /// to trap now comes out as text.
     func testANonFiniteHealthValueStillRendersAsText() {
         XCTAssertEqual(SettingsCalorieEstimate.baselineText(activityBaselineKcal: .nan), "0 kcal")
         XCTAssertEqual(SettingsCalorieEstimate.todayText(activeEnergyKcal: .nan), "0 kcal")
@@ -181,7 +167,6 @@ final class SettingsCalorieEstimateTests: XCTestCase {
         XCTAssertEqual(SettingsCalorieEstimate.todayText(activeEnergyKcal: -.infinity), "0 kcal")
     }
 
-    /// A value past what an `Int` can hold is clamped, not trapped on.
     func testAHealthValueBeyondIntRangeStillRendersAsText() {
         XCTAssertEqual(
             SettingsCalorieEstimate.baselineText(activityBaselineKcal: 1e30),
@@ -189,8 +174,6 @@ final class SettingsCalorieEstimateTests: XCTestCase {
         )
         XCTAssertEqual(SettingsCalorieEstimate.todayText(activeEnergyKcal: -1e30), "\(Int.min) kcal")
     }
-
-    // MARK: - Tracker fallback
 
     func testTrackerProblemDropsAutoAdjustBackToTheLifestyleEstimate() {
         XCTAssertTrue(

@@ -2,18 +2,9 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// Recipe maths from the ingredient grams up: each ingredient's share of its
-/// per-100g values, the recipe's derived per-100g nutrition, what a logged
-/// portion of the recipe carries, and what the library row says about it.
-/// Every expectation below is worked out by hand from the inputs.
 @MainActor
 @Suite("Recipe nutrition coverage")
 struct RecipeNutritionCoverageTests {
-
-    // MARK: - Ingredient optional nutrients
-
-    /// Distinct per-100g values (1...25) so a getter wired to the wrong field
-    /// reads the wrong number rather than an equal one.
     private static let optionalPer100g: [Double] = (1...25).map(Double.init)
 
     @Test("Every optional nutrient of a saved ingredient is its per-100g value scaled to the ingredient's grams")
@@ -67,7 +58,6 @@ struct RecipeNutritionCoverageTests {
             ingredient.serumProteinsG, ingredient.alcoholG,
         ]
 
-        // 50 g is half of 100 g, so each figure is exactly half its per-100g value.
         #expect(actual == v.map { Optional($0 / 2) })
         #expect(ingredient.calories == 100)
         #expect(ingredient.proteinG == 5)
@@ -128,7 +118,6 @@ struct RecipeNutritionCoverageTests {
             draft.serumProteinsG, draft.alcoholG,
         ]
 
-        // 250 g is two and a half 100 g portions.
         #expect(actual == v.map { Optional($0 * 2.5) })
         #expect(draft.calories == 500)
         #expect(draft.proteinG == 25)
@@ -177,10 +166,6 @@ struct RecipeNutritionCoverageTests {
         #expect(ingredient.produceKind == .unclassified)
     }
 
-    // MARK: - Recipe per 100 g from ingredient grams
-
-    /// Rice 200 g @130 kcal, chicken 150 g @165 kcal, oil 10 g @884 kcal and a
-    /// 0 g garnish. Stored out of order to prove the snapshot re-sorts.
     private func makeStirFry() -> FoodItem {
         let recipe = makeTestFoodItem(
             name: "Stir fry",
@@ -220,8 +205,6 @@ struct RecipeNutritionCoverageTests {
     func recipePer100gFromIngredientGrams() {
         let recipe = makeStirFry()
 
-        // 360 g in total. kcal: 260 + 247.5 + 0 + 88.4 = 595.9; protein: 5.4 + 46.5 = 51.9;
-        // carbs: 56; fat: 0.6 + 5.4 + 10 = 16. Each divided by 3.6.
         #expect(recipe.defaultServingG == 360)
         #expect(abs(recipe.caloriesPer100g - 595.9 / 3.6) < 1e-9)
         #expect(abs(recipe.proteinPer100g - 51.9 / 3.6) < 1e-9)
@@ -239,7 +222,6 @@ struct RecipeNutritionCoverageTests {
         #expect(abs(snapshot.nutrition.proteinG - 51.9 / 2) < 1e-9)
         #expect(abs(snapshot.nutrition.carbsG - 28) < 1e-9)
         #expect(abs(snapshot.nutrition.fatG - 8) < 1e-9)
-        // The 0 g pepper is dropped; the rest follow sort order, not storage order.
         #expect(snapshot.produceItemsSnapshot?.map(\.name) == ["Chicken", "Oil", "Rice"])
         #expect(snapshot.produceItemsSnapshot?.map(\.kind) == [.unclassified, .unclassified, .unclassified])
     }
@@ -265,7 +247,6 @@ struct RecipeNutritionCoverageTests {
 
         #expect(snapshot.produceItemsSnapshot?.map(\.name) == ["Mint", "Kiwi"])
         #expect(snapshot.produceItemsSnapshot?.map(\.kind) == [.vegetable, .fruit])
-        // 85 g is the whole recipe: 48.8 + 2.2 kcal.
         #expect(abs(snapshot.nutrition.calories - 51) < 1e-9)
     }
 
@@ -303,8 +284,6 @@ struct RecipeNutritionCoverageTests {
         #expect(RecipeDraft().totalCaloriesCaption == "calories")
     }
 
-    // MARK: - Library rows built from stored foods
-
     @Test("A stored recipe's library row totals its whole yield from its per-100g values")
     func recipeLibraryRowFromStoredRecipe() {
         let recipe = makeStirFry()
@@ -314,7 +293,6 @@ struct RecipeNutritionCoverageTests {
         #expect(summary.name == "Stir fry")
         #expect(summary.ingredientCount == 4)
         #expect(summary.totalGrams == 360)
-        // 595.9 kcal across the whole yield.
         #expect(abs(summary.calories - 595.9) < 1e-9)
         #expect(abs(summary.protein - 51.9) < 1e-9)
         #expect(abs(summary.carbs - 56) < 1e-9)
@@ -351,7 +329,6 @@ struct RecipeNutritionCoverageTests {
         let summary = LibraryFoodRowSummary(food: food)
 
         #expect(summary.name == "Skyr")
-        // 63 kcal × 1.5 = 94.5, rounded to the nearest kcal.
         #expect(summary.caloriesText == "95")
         #expect(summary.caloriesCaption == "kcal")
         #expect(summary == LibraryFoodRowSummary(
@@ -362,7 +339,6 @@ struct RecipeNutritionCoverageTests {
             servingGrams: 150
         ))
     }
-
 
     @Test("A stored food with no serving is priced per 100 g")
     func libraryFoodRowFromStoredFoodWithoutServing() {

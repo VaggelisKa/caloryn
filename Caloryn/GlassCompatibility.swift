@@ -36,21 +36,10 @@ extension View {
         }
     }
 
-    // MARK: - Button style
-
-    /// The app's prominent button: `.glassProminent` on iOS 26, `.borderedProminent` before
-    /// it, with a paper label (`textOnAccent`, or `textSecondary` while disabled).
-    ///
-    /// The label colour is the point. Both system styles fill with the tint — the `Accent` set,
-    /// which is ink — and draw the label in their own white, which vanishes on the near-white
-    /// ink of dark mode. Paper on ink reads in both appearances. A call site that tints the
-    /// button some other colour must set its own label colour; `calorynPrimaryButton()` does.
     func adaptiveGlassProminentButton() -> some View {
         buttonStyle(CalorynProminentButtonStyle())
     }
 
-    /// The bare system prominent style, label colour untouched — for a style that sets its
-    /// own (`calorynPrimaryButton()`). Everything else wants `adaptiveGlassProminentButton()`.
     @ViewBuilder
     func systemProminentButtonStyle() -> some View {
         if #available(iOS 26.0, *) {
@@ -61,11 +50,6 @@ extension View {
     }
 }
 
-/// Rebuilds the button so the colour is set on the label itself, inside the style, where the
-/// system style cannot override it and every call site gets it — the string initialiser
-/// (`Button("Retry")`) included, which has no label view of its own to colour. A view so it
-/// can read `isEnabled`, because the system greys a disabled bezel and paper on that grey
-/// disappears.
 private struct CalorynProminentButtonStyle: PrimitiveButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         CalorynProminentButton(configuration: configuration)

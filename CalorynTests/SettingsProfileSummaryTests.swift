@@ -18,15 +18,12 @@ final class SettingsProfileSummaryTests: XCTestCase {
         XCTAssertEqual(makeSummary(weightKg: 72.46).weightText(locale: Self.us), "72.5 kg")
     }
 
-    /// Pointed for the locale, as the gram figures beside it on Settings are.
     func testWeightIsPointedForTheLocale() {
         XCTAssertEqual(makeSummary(weightKg: 72.5).weightText(locale: Locale(identifier: "da_DK")), "72,5 kg")
     }
 
     private static let us = Locale(identifier: "en_US")
 
-    /// The height slider only produces whole centimetres, so a fraction can only
-    /// come from stored data — and it is dropped rather than rounded.
     func testHeightTruncatesAnyFraction() {
         XCTAssertEqual(makeSummary(heightCm: 179.9).heightText, "179 cm")
     }

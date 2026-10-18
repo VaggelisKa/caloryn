@@ -2,30 +2,14 @@ import Testing
 import Foundation
 @testable import Caloryn
 
-/// Edge-case coverage for `Caloryn/Services/CSVExporter.swift`.
-///
-/// `CSVExporterTests.swift` already covers the happy path (sorting, meal
-/// naming, basic comma escaping, file export). This file focuses on the
-/// bug classes most likely to bite a multilingual, European user base:
-/// commas, quotes, newlines, emoji, and accented characters in food names;
-/// empty/large logs; and numeric-formatting edge cases in the exported
-/// columns.
 @MainActor
 struct CSVExporterEdgeCaseTests {
-
     private static let header = "Date,Meal,Food,Portion (g),Calories,Protein (g),Carbs (g),Fat (g),Fiber (g)"
 
-    /// Splits a generated CSV blob into its non-empty physical lines.
     private func physicalLines(of csv: String) -> [String] {
         csv.split(separator: "\n", omittingEmptySubsequences: true).map(String.init)
     }
 
-    /// Parses a CSV blob into records of unescaped fields, per RFC 4180.
-    ///
-    /// A naive comma split was the right oracle while the exporter quoted
-    /// nothing. Now that it quotes, only a parser that honours quoting can
-    /// tell a field separator from a comma inside a name -- which is the
-    /// whole point of the format.
     private func records(of csv: String) -> [[String]] {
         var records: [[String]] = []
         var fields: [String] = []
@@ -38,7 +22,6 @@ struct CSVExporterEdgeCaseTests {
             pending = nil
             if inQuotes {
                 if character == "\"" {
-                    // A doubled quote is one literal quote; a lone one closes.
                     if let next = iterator.next() {
                         if next == "\"" { field.append("\"") } else { inQuotes = false; pending = next }
                     } else {
@@ -63,20 +46,15 @@ struct CSVExporterEdgeCaseTests {
         return records
     }
 
-    /// The parsed fields of the single data record in a one-entry export.
     private func onlyDataRecord(of csv: String) -> [String] {
         let parsed = records(of: csv)
         #expect(parsed.count == 2, "expected a header record and exactly one data record")
         return parsed.count == 2 ? parsed[1] : []
     }
 
-    /// Naive column count for a single CSV line, used only where the test is
-    /// about a field that needs no quoting and so is written through verbatim.
     private func columnCount(of line: String) -> Int {
         line.split(separator: ",", omittingEmptySubsequences: false).count
     }
-
-    // MARK: - Empty / single / large logs
 
     @Test("An empty log produces only the header row, with no trailing data lines")
     func emptyLogProducesOnlyHeaderRow() {
@@ -105,8 +83,6 @@ struct CSVExporterEdgeCaseTests {
     func largeLogPreservesLineCountAndSortOrder() {
         let base = makeTestDate(year: 2026, month: 1, day: 1)
         let calendar = Calendar.current
-        // Build 500 entries in reverse-chronological insertion order so a
-        // correct sort is actually exercised, not just a stable no-op.
         let entries = (0..<500).map { offset -> FoodLogEntry in
             let date = calendar.date(byAdding: .day, value: -offset, to: base) ?? base
             return makeTestEntry(
@@ -123,7 +99,7 @@ struct CSVExporterEdgeCaseTests {
         let dataLines = lines.dropFirst()
         let dates = dataLines.map { String($0.prefix(10)) }
         #expect(dates == dates.sorted())
-        #expect(dates.first == "2024-08-20") // base minus 499 days
+        #expect(dates.first == "2024-08-20")
         #expect(dates.last == "2026-01-01")
     }
 
@@ -147,8 +123,6 @@ struct CSVExporterEdgeCaseTests {
 
         #expect(csv.contains("2026-02-01,Breakfast,Legacy Food,50,100,4.0,15.0,3.0,1.0"))
     }
-
-    // MARK: - Special characters in food names
 
     @Test("A comma in the food name is quoted, not substituted, so the name survives the round trip")
     func commaInFoodNameIsQuotedAndPreservedVerbatim() {
@@ -234,9 +208,6 @@ struct CSVExporterEdgeCaseTests {
 
         #expect(fields.count == 9)
         #expect(fields[2] == "Multi\nLine Snack")
-        // The quoted newline is still a real newline in the file, so the blob
-        // spans three physical lines -- which is exactly why a CSV reader has
-        // to track quoting rather than split on "\n".
         #expect(physicalLines(of: csv).count == 3)
     }
 
@@ -272,8 +243,6 @@ struct CSVExporterEdgeCaseTests {
         #expect(parsed[2][2] == "Quote \" and, comma")
     }
 
-    // MARK: - Numeric column formatting edge cases
-
     @Test("Portion and calorie columns round using printf-style .0f rounding, including the round-half-to-even quirk at .5")
     func portionAndCalorieColumnsUseZeroDecimalRounding() {
         let entry = makeTestEntry(
@@ -284,7 +253,6 @@ struct CSVExporterEdgeCaseTests {
         let dataLine = physicalLines(of: csv)[1]
         let fields = dataLine.split(separator: ",", omittingEmptySubsequences: false)
 
-        // 2.5 calories at %.0f resolves to "2" (round-half-to-even), not "3".
         #expect(fields[4] == "2")
     }
 
@@ -314,8 +282,6 @@ struct CSVExporterEdgeCaseTests {
         #expect(fields[4] == "90000")
         #expect(columnCount(of: dataLine) == 9)
     }
-
-    // MARK: - exportURL file round-trip
 
     @Test("exportURL writes a CSV file whose contents contain names with special characters intact")
     func exportURLWritesSpecialCharacterNamesToFile() throws {

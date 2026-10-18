@@ -4,9 +4,6 @@ import XCTest
 
 @MainActor
 final class DailyGoalSnapshotTests: XCTestCase {
-
-    // MARK: Day identity
-
     func testDayKeyIsStableAcrossTimesOfDay() {
         let morning = makeTestDate(year: 2026, month: 3, day: 9, hour: 0, minute: 1)
         let night = makeTestDate(year: 2026, month: 3, day: 9, hour: 23, minute: 59)
@@ -30,8 +27,6 @@ final class DailyGoalSnapshotTests: XCTestCase {
 
         XCTAssertEqual(DailyGoalSnapshot.dayKey(for: date, calendar: calendar), "2026-03-09")
     }
-
-    // MARK: Shared effective-target definition
 
     func testSnapshotValuesMatchTheBudgetTodayDisplays() {
         let budget = makeBudget(staticTarget: 2_000, mode: .lifestyleEstimate)
@@ -69,8 +64,6 @@ final class DailyGoalSnapshotTests: XCTestCase {
         XCTAssertEqual(values.effectiveCalorieTarget, 1_800)
         XCTAssertEqual(values.healthAdjustment, 0, "Manual days never take a Health adjustment")
     }
-
-    // MARK: Store upsert behavior
 
     func testRecordingCreatesOneSnapshotForTheCurrentDay() throws {
         let context = try makeContext()
@@ -180,8 +173,6 @@ final class DailyGoalSnapshotTests: XCTestCase {
         XCTAssertEqual(collapsed["2026-03-09"]?.effectiveCalorieTarget, 2_300)
     }
 
-    // MARK: Target resolution
-
     func testResolverUsesTheSnapshotWhenOneExists() {
         let date = makeTestDate(year: 2026, month: 3, day: 9)
         let resolver = HistoryDayTargetResolver(
@@ -204,8 +195,6 @@ final class DailyGoalSnapshotTests: XCTestCase {
         XCTAssertTrue(target.isEstimated, "Legacy days must be marked, not presented as precise")
     }
 
-    // MARK: History date accuracy
-
     func testChangingTheProfileTargetDoesNotChangeSnapshottedDayStatus() {
         let entries = [
             makeEntry(date: makeTestDate(year: 2026, month: 3, day: 9), calories: 2_000),
@@ -223,8 +212,6 @@ final class DailyGoalSnapshotTests: XCTestCase {
             endDate: makeTestDate(year: 2026, month: 3, day: 9),
             targetResolver: HistoryDayTargetResolver(fallbackTarget: 2_000, valuesByDayKey: snapshots)
         )
-        // The user later drops their target to 1,500. The same past days must
-        // keep the status they were given when they were lived.
         let afterChange = HistoryAnalytics(
             entries: entries,
             profile: makeProfile(dailyCalorieTarget: 1_500),
@@ -261,7 +248,6 @@ final class DailyGoalSnapshotTests: XCTestCase {
 
     func testHealthAdjustedDayIsScoredAgainstTheTargetThatApplied() {
         let day = makeTestDate(year: 2026, month: 3, day: 9)
-        // 2,450 kcal eaten on a day whose target was raised to 2,500 by Health.
         let entries = [makeEntry(date: day, calories: 2_450)]
         let resolver = HistoryDayTargetResolver(
             fallbackTarget: 2_000,
@@ -365,8 +351,6 @@ final class DailyGoalSnapshotTests: XCTestCase {
         )
     }
 
-    // MARK: Weekly rollups
-
     func testWeeklyRollupUsesPerDayTargetsRatherThanTheCurrentProfile() {
         let end = makeTestDate(year: 2026, month: 3, day: 9)
         var valuesByDayKey: [String: DailyGoalSnapshotValues] = [:]
@@ -390,8 +374,6 @@ final class DailyGoalSnapshotTests: XCTestCase {
         XCTAssertEqual(loggedWeek?.onTrackDays, loggedWeek?.loggedDays)
         XCTAssertEqual(loggedWeek?.hasEstimatedTargets, false)
     }
-
-    // MARK: Helpers
 
     private func makeContext() throws -> ModelContext {
         let container = try ModelContainer(

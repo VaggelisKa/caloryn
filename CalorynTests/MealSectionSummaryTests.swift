@@ -2,15 +2,11 @@ import XCTest
 @testable import Caloryn
 
 final class MealSectionSummaryTests: XCTestCase {
-    // MARK: - Title
-
     func testAMealIsNamedAfterItself() {
         XCTAssertEqual(makeSummary(mealType: .breakfast).title, "Breakfast")
         XCTAssertEqual(makeSummary(mealType: .dinner).title, "Dinner")
     }
 
-    /// Snacks are the one meal that repeats in a day, so a snack section names
-    /// its slot.
     func testASnackIsNamedAfterItsSlot() {
         XCTAssertEqual(makeSummary(mealType: .snack, snackIndex: 2).title, "Snack 2")
     }
@@ -32,8 +28,6 @@ final class MealSectionSummaryTests: XCTestCase {
             "Add food or meal to Snacks"
         )
     }
-
-    // MARK: - Totals
 
     func testHeaderTotalsAddUpAcrossTheSectionsEntries() {
         let summary = makeSummary(entries: [
@@ -59,9 +53,6 @@ final class MealSectionSummaryTests: XCTestCase {
         XCTAssertEqual(summary.fatText, "5.7g F")
     }
 
-    // MARK: - What the header shows
-
-    /// An empty meal's header stays quiet rather than printing a row of zeroes.
     func testAnEmptyMealShowsNoTotalsAtAll() {
         let summary = makeSummary(entries: [])
 
@@ -72,8 +63,6 @@ final class MealSectionSummaryTests: XCTestCase {
         XCTAssertFalse(summary.showsFat)
     }
 
-    /// A macro nothing contributed to is omitted, so a plain sugar snack does
-    /// not claim "0.0g P".
     func testAMacroNothingContributedToIsOmitted() {
         let summary = makeSummary(entries: [
             makeEntry(calories: 96, proteinG: 0, carbsG: 25, fatG: 0)
@@ -86,8 +75,6 @@ final class MealSectionSummaryTests: XCTestCase {
         XCTAssertFalse(summary.showsFat)
     }
 
-    /// A zero-calorie food is still logged food, so the macro line appears even
-    /// with no calorie figure above it.
     func testAZeroCalorieEntryStillShowsItsMacroBreakdown() {
         let summary = makeSummary(entries: [
             makeEntry(calories: 0, proteinG: 2, carbsG: 0, fatG: 0)
@@ -98,10 +85,6 @@ final class MealSectionSummaryTests: XCTestCase {
         XCTAssertTrue(summary.showsProtein)
     }
 
-    // MARK: - Rows
-
-    /// Zero and one entry both go through the cross-fading slot, so deleting the
-    /// last item can fade into the empty state instead of the row vanishing.
     func testAtMostOneEntryIsDrawnThroughTheFadingSlot() {
         XCTAssertTrue(makeSummary(entries: []).usesSingleRowTransition)
         XCTAssertTrue(makeSummary(entries: [makeEntry()]).usesSingleRowTransition)
@@ -110,8 +93,6 @@ final class MealSectionSummaryTests: XCTestCase {
     func testSeveralEntriesAreDrawnAsPlainRows() {
         XCTAssertFalse(makeSummary(entries: [makeEntry(), makeEntry()]).usesSingleRowTransition)
     }
-
-    // MARK: - Helpers
 
     private func makeSummary(
         mealType: MealType = .breakfast,

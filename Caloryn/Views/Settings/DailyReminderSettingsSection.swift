@@ -5,9 +5,6 @@ import UserNotifications
 import UIKit
 #endif
 
-/// Settings section for the daily remaining-calories reminder: opt-in toggle
-/// (which drives the system permission prompt), reminder-time picker, and a
-/// recovery path when permission is denied at the system level.
 struct DailyReminderSettingsSection: View {
     @Environment(\.openURL) private var openURL
     @Environment(\.scenePhase) private var scenePhase
@@ -24,10 +21,6 @@ struct DailyReminderSettingsSection: View {
             .accessibilityIdentifier("settings.dailyReminder.toggle")
 
             if isEnabled {
-                // The time as a value, as PlateSettings draws it ("20:30" in secondary
-                // text), opening a wheel under the row on tap. A compact `DatePicker` drew
-                // the time in a system-filled pill, the same off-token grey as a stock
-                // stepper's.
                 Button {
                     withAnimation(.smooth(duration: 0.25)) {
                         isPickingTime.toggle()
@@ -129,8 +122,6 @@ struct DailyReminderSettingsSection: View {
     @MainActor
     private func enableReminder() async {
         let center = UNUserNotificationCenter.current()
-        // Only prompts the first time; afterwards it resolves immediately
-        // from the stored system permission.
         let granted = (try? await center.requestAuthorization(options: [.alert, .sound])) ?? false
         isEnabled = granted
         isPermissionDenied = !granted

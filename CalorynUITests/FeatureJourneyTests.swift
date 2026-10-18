@@ -1,18 +1,6 @@
 import XCTest
 
-/// One journey per feature whose screens nothing else drives: multi-add, recipes, meal
-/// templates, the missing-food editor, profile editing and the daily reminder.
-///
-/// Their rules are unit-tested as plain structs; these prove the screens wire those rules
-/// to what a user sees. Every outcome is read off a screen the user would check — Today's
-/// rows and calorie ring, My Foods, the Settings summary — never off the form that wrote it.
-///
-/// The figures are arithmetic on the `customFoods` and `overBudgetDay` fixtures: House Salad
-/// is 45 kcal per 100g at a 180g serving, Morning Smoothie 60 kcal per 100g at 250g, and the
-/// orphaned red wine 68 kcal per 100g logged at 250g.
 final class FeatureJourneyTests: UITestCase {
-    // MARK: Multi-add
-
     func testGivenTwoSelectedFoodsWhenOnePortionIsEditedAndBothAreLoggedThenTodayCountsBoth() {
         let app = launch(fixture: .customFoods)
         let today = TodayScreen(app: app)
@@ -23,25 +11,19 @@ final class FeatureJourneyTests: UITestCase {
             today.tap(today.mealHeader("breakfast"))
             search.awaitTappable(search.searchField)
             search.searchField.typeText("Salad")
-            // Select stays disabled until there is something to select, and a disabled
-            // button is still hittable, so wait for the result rather than the button.
             search.awaitTappable(search.result(named: "House Salad"))
             multiAdd.tap(multiAdd.selectMultiple)
             search.tap(search.result(named: "House Salad"))
 
             search.searchField.replaceText("Smoothie")
             search.tap(search.result(named: "Morning Smoothie"))
-            // Ticking a row leaves the keyboard up, over the review button. Return submits
-            // the query and puts it away.
             search.searchField.typeText("\n")
             multiAdd.tap(multiAdd.review)
         }
 
         when("the salad's portion is doubled in the editor and the batch is logged") {
             multiAdd.tap(multiAdd.item(named: "House Salad"))
-            // The shortcuts scale off the portion being edited: half, same, double.
             multiAdd.tap(multiAdd.editorQuickGrams(360))
-            // 360g of a 45 kcal/100g food.
             awaitLabel(of: multiAdd.editorCalories, equalTo: "162")
             multiAdd.tap(multiAdd.editorSave)
             XCTAssertTrue(
@@ -54,12 +36,9 @@ final class FeatureJourneyTests: UITestCase {
         then("both foods are on Today and the ring counts the edited portion") {
             XCTAssertTrue(today.entry(named: "House Salad").awaitLabel(containing: ", 162 kcal"))
             XCTAssertTrue(today.entry(named: "Morning Smoothie").awaitLabel(containing: ", 150 kcal"))
-            // 162 + 150.
             XCTAssertTrue(today.calorieRing.awaitLabel(containing: ", 312 eaten"))
         }
     }
-
-    // MARK: Recipes
 
     func testGivenARecipeBuiltFromAnIngredientWhenItIsSavedThenItLogsAtItsWholeWeight() {
         let app = launch(fixture: .customFoods)
@@ -84,7 +63,6 @@ final class FeatureJourneyTests: UITestCase {
             search.searchField.typeText("Salad")
             search.tap(search.result(named: "House Salad"))
             retype("200", into: forms.amountGrams)
-            // 200g of a 45 kcal/100g food.
             awaitLabel(of: forms.amountCalories, equalTo: "90")
             forms.tap(forms.saveAmount)
             forms.tap(forms.saveRecipe)
@@ -111,8 +89,6 @@ final class FeatureJourneyTests: UITestCase {
         }
     }
 
-    // MARK: Meal templates
-
     func testGivenASavedMealWhenItIsChosenFromAddFoodThenItsItemsAreLogged() {
         let app = launch(fixture: .customFoods)
         let tabs = TabBar(app: app)
@@ -131,7 +107,6 @@ final class FeatureJourneyTests: UITestCase {
             search.awaitTappable(search.searchField)
             search.searchField.typeText("Smoothie")
             search.tap(search.result(named: "Morning Smoothie"))
-            // The item opens at the food's 250g serving.
             awaitLabel(of: forms.amountCalories, equalTo: "150")
             forms.tap(forms.saveAmount)
             forms.tap(forms.saveMeal)
@@ -156,8 +131,6 @@ final class FeatureJourneyTests: UITestCase {
         }
     }
 
-    // MARK: Missing food
-
     func testGivenAnEntryWhoseFoodWasDeletedWhenItsPortionIsEditedThenTodayRecountsIt() {
         let app = launch(fixture: .overBudgetDay)
         let today = TodayScreen(app: app)
@@ -167,14 +140,11 @@ final class FeatureJourneyTests: UITestCase {
         given("the red wine, logged at 250g from a food that no longer exists") {
             XCTAssertTrue(today.isVisible)
             today.revealTowardBottom(wine)
-            // 250g at 68 kcal per 100g.
             XCTAssertTrue(wine.label.contains(", 170 kcal"), "Unexpected starting row: \(wine.label)")
         }
 
         when("the user opens it and changes the portion to 100g") {
             today.tap(wine)
-            // The field's frame spans the whole row and ends on the "g" beside the well, and
-            // the well's padding takes no taps, so the text's trailing edge is further in.
             retype("100", into: editor.portion, atTrailingOffset: 0.88)
             editor.tap(editor.save)
         }
@@ -183,8 +153,6 @@ final class FeatureJourneyTests: UITestCase {
             XCTAssertTrue(today.revealTowardBottom(wine).awaitLabel(containing: ", 68 kcal"))
         }
     }
-
-    // MARK: Profile
 
     func testGivenAProfileWhenAgeAndSexAreEditedThenSettingsSummarisesTheNewValues() {
         let app = launch(fixture: .profileOnly)
@@ -203,8 +171,6 @@ final class FeatureJourneyTests: UITestCase {
 
         when("the user edits the profile: one year older, female") {
             settings.tap(settings.editProfile)
-            // The stepper is one adjustable element, minus at its leading end and plus at
-            // its trailing end; iOS has no `increment()`, so tap where the plus is drawn.
             profile.awaitTappable(profile.age)
                 .coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5))
                 .tap()
@@ -219,8 +185,6 @@ final class FeatureJourneyTests: UITestCase {
         }
     }
 
-    // MARK: Daily reminder
-
     func testGivenTheReminderIsOffWhenItIsTurnedOnThenItsTimeCanBeChosenUntilItIsTurnedOff() {
         let app = launch(fixture: .profileOnly)
         let tabs = TabBar(app: app)
@@ -230,8 +194,6 @@ final class FeatureJourneyTests: UITestCase {
             XCTAssertTrue(tabs.isVisible)
             tabs.go(to: .settings)
             scroll(to: reminder.toggle, in: app)
-            // The switch lives in UserDefaults, which `-uitest-reset` does not clear, so an
-            // earlier run can leave it on.
             if reminder.isOn {
                 reminder.flip()
                 XCTAssertTrue(awaitAbsence(of: reminder.time))
@@ -246,8 +208,6 @@ final class FeatureJourneyTests: UITestCase {
         then("a different time chosen on the wheel is the one the row reports") {
             let before = reminder.time.label
             reminder.tap(reminder.time)
-            // The wheel's columns are not elements of their own, so drag the hour column
-            // (the leading third) up by about two rows.
             let picker = reminder.awaitTappable(reminder.timePicker)
             picker.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.5))
                 .press(
@@ -264,7 +224,6 @@ final class FeatureJourneyTests: UITestCase {
                 "Turning the wheel should change the reminder time, still \(before)"
             )
 
-            // Closing the picker keeps the new time.
             let chosen = reminder.time.label
             reminder.tap(reminder.time)
             XCTAssertTrue(awaitAbsence(of: reminder.timePicker), "Tapping the row again should close the wheel")
@@ -277,11 +236,6 @@ final class FeatureJourneyTests: UITestCase {
         }
     }
 
-    // MARK: - Helpers
-
-    /// Settings is a lazy `List`: rows below the fold are not in the accessibility tree
-    /// until scrolled toward. A short drag rather than `swipeUp()`, whose momentum carried
-    /// the profile rows clean off the top while it brought the button under them in.
     private func scroll(to element: XCUIElement, in app: XCUIApplication, maxDrags: Int = 10) {
         let window = app.windows.firstMatch
         var drags = 0
@@ -296,13 +250,7 @@ final class FeatureJourneyTests: UITestCase {
         XCTAssertTrue(element.isHittable, "Never scrolled to \(element)")
     }
 
-    /// Replaces a number field's contents. Both fields here are right-aligned, so a tap at
-    /// the centre can land the cursor before the old digits and `replaceText`'s deletes
-    /// then remove nothing: "200" typed over "180" became 200180g. Tapping the trailing
-    /// edge puts the cursor after the last digit.
     private func retype(_ text: String, into field: XCUIElement, atTrailingOffset offset: CGFloat = 0.97) {
-        // Hittable rather than merely existing: a field in a sheet exists while the sheet
-        // is still sliding up, and a tap aimed at it then lands where it used to be.
         let hittable = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isHittable == true"), object: field)
         XCTAssertEqual(XCTWaiter().wait(for: [hittable], timeout: UITestCase.defaultTimeout), .completed, "\(field) never became tappable")
         field.coordinate(withNormalizedOffset: CGVector(dx: offset, dy: 0.5)).tap()
@@ -311,8 +259,6 @@ final class FeatureJourneyTests: UITestCase {
         field.typeText(text)
     }
 
-    /// Waits for a figure to read exactly `expected`. Containment would pass "90" for
-    /// "90.081", which is how a mistyped amount once slipped through.
     private func awaitLabel(
         of element: XCUIElement,
         equalTo expected: String,
@@ -333,17 +279,6 @@ final class FeatureJourneyTests: UITestCase {
         return XCTWaiter().wait(for: [gone], timeout: UITestCase.defaultTimeout) == .completed
     }
 
-    /// The first request on a simulator raises the system's notification prompt; later
-    /// runs resolve from the stored answer and raise nothing. One wait covers both: it
-    /// ends on whichever of the prompt and `element` appears first.
-    ///
-    /// The prompt is SpringBoard's, so it carries no identifier this app could set — its
-    /// button is found by its label, the one exception to finding elements by identifier.
-    ///
-    /// A simulator that once answered "Don't Allow" never prompts again, and neither
-    /// `simctl privacy` nor `resetAuthorizationStatus(for:)` covers notifications, so the
-    /// test cannot put it back. The wait also ends on the app's own denied state so that
-    /// case fails saying what to do, rather than as a timeout that reads like a bug.
     private func allowNotificationsIfAsked(thenAwait element: XCUIElement, deniedSign: XCUIElement) {
         let allow = XCUIApplication(bundleIdentifier: "com.apple.springboard").buttons["Allow"]
         let settled = XCTNSPredicateExpectation(

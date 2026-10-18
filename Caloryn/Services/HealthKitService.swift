@@ -120,8 +120,6 @@ private final class HealthKitContinuationGate<Value>: @unchecked Sendable {
     }
 }
 
-/// The live `ActiveEnergyReading`. Stateless — the HealthKit store it talks to
-/// is process-wide — so `shared` exists only to spell the default argument.
 nonisolated struct HealthKitService: ActiveEnergyReading, Sendable {
     static let shared = HealthKitService()
 

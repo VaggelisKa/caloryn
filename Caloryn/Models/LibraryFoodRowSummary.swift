@@ -1,19 +1,8 @@
 import Foundation
 
-/// What one food's row in the My Foods library says about itself: its name, where it comes
-/// from and what a serving is, and the kcal figure with what it counts.
-///
-/// Takes the facts the row prints rather than the `FoodItem`. The detail line, the figure and
-/// its caption come from `FoodRowSummary`, the Add Food row's rules, so the same food reads
-/// the same on both tabs: a serving is priced as itself, "95" over "kcal" beside
-/// "Arla, 1 pot 150 g · per 100 g: 63 kcal", and a food with no serving falls back to
-/// "kcal per 100 g". A serving with no description is written as its weight ("250 g"), so
-/// the figure always says what amount it is for. Any part can be missing; a food with none
-/// has no detail line at all.
 struct LibraryFoodRowSummary: Equatable {
     let name: String
     let detail: String?
-    /// The detail line as VoiceOver reads it.
     let detailAccessibilityLabel: String?
     let caloriesText: String
     let caloriesCaption: String
@@ -41,8 +30,6 @@ struct LibraryFoodRowSummary: Equatable {
 }
 
 extension LibraryFoodRowSummary {
-    /// The serving the Portion sheet opens on: the food's own, or per 100 g when it records
-    /// no serving.
     init(food: FoodItem) {
         self.init(
             name: food.name,

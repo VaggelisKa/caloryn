@@ -181,17 +181,11 @@ final class FoodItem {
     var isCustom: Bool = false
     var isRecipe: Bool = false
 
-    // Optional raw fields provide a lightweight SwiftData migration path.
-    // Existing foods retain nil (unknown) rather than being assigned a source
-    // or completeness level that was never recorded.
     var lookupProviderRaw: String?
     var dataSourceRaw: String?
     var nutritionCompletenessRaw: String?
     var recoveredByFallbackRaw: Bool?
 
-    // Optional scalar metadata keeps barcode overlays compatible with
-    // SwiftData lightweight migration and CloudKit. Legacy rows leave both
-    // values nil and are interpreted conservatively by computed accessors.
     var providerProductIdentityRaw: String?
     var fieldOriginsRaw: String?
 
@@ -544,7 +538,6 @@ final class FoodItem {
         let singular: String
         let plural: String
         if unit.hasSuffix("ies") {
-            // "berries" is a berry, but "cookies" is a cookie, not a cooky.
             let ieSingular = String(unit.dropLast())
             singular = Self.servingUnitsEndingInIE.contains(where: { ieSingular.hasSuffix($0) })
                 ? ieSingular
@@ -566,10 +559,8 @@ final class FoodItem {
         return ServingInfo(unitName: singular, gramsPerUnit: gramsPerUnit, pluralName: plural)
     }
 
-    /// Serving units whose singular ends in "-ie", so their "-ies" plural keeps the "e".
     private static let servingUnitsEndingInIE = ["cookie", "pie", "brownie", "smoothie", "veggie", "hoagie"]
 
-    /// "glass" → "glasses", "box" → "boxes", "patty" → "patties", "cup" → "cups".
     private static func pluralized(_ unit: String) -> String {
         if ["s", "x", "z", "ch", "sh"].contains(where: { unit.hasSuffix($0) }) {
             return unit + "es"

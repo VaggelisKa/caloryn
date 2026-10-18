@@ -2,13 +2,7 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// Which state the food search screen resolves to, and in what order.
-///
-/// The precedence is the rule: these tests fix which fact wins when several are
-/// true at once, because that is what two nested `if`/`else if` chains in a
-/// view used to decide silently.
 struct FoodSearchScreenContentTests {
-
     private func content(
         isLookingUpBarcode: Bool = false,
         hasBarcodeLookupError: Bool = false,
@@ -29,8 +23,6 @@ struct FoodSearchScreenContentTests {
         )
     }
 
-    // MARK: - The resting state
-
     @Test("An empty query with no barcode in flight rests on the recent list")
     func restsOnRecents() {
         #expect(content(showingRecent: true) == .recent)
@@ -46,8 +38,6 @@ struct FoodSearchScreenContentTests {
             ) == .recent
         )
     }
-
-    // MARK: - Barcode precedence
 
     @Test("A barcode lookup covers the list, empty query or not")
     func barcodeLookupOutranksTheList() {
@@ -78,8 +68,6 @@ struct FoodSearchScreenContentTests {
         )
     }
 
-    // MARK: - Search states
-
     @Test("A query in flight with nothing local yet shows the spinner")
     func searchProgress() {
         #expect(content(isSearching: true) == .searchProgress)
@@ -100,8 +88,6 @@ struct FoodSearchScreenContentTests {
         #expect(content(hasLocalMatches: true) == .results)
         #expect(content(hasProductSearchResults: true) == .results)
     }
-
-    // MARK: - Local matches beat the network
 
     @Test("A local match shows the list rather than the spinner")
     func localMatchesOutrankTheSpinner() {
@@ -129,8 +115,6 @@ struct FoodSearchScreenContentTests {
         )
     }
 
-    // MARK: - Covering the search field
-
     @Test("Only the two barcode states cover the search field")
     func coversSearchField() {
         for state in FoodSearchScreenContent.allCases {
@@ -142,8 +126,6 @@ struct FoodSearchScreenContentTests {
             )
         }
     }
-
-    // MARK: - Typing past a barcode failure
 
     @Test("A real query dismisses a barcode failure that yields to name search")
     func typingDismissesADismissibleFailure() {
@@ -189,9 +171,7 @@ struct FoodSearchScreenContentTests {
     }
 }
 
-/// The copy the multi-add selection UI reads out.
 struct MultiAddSelectionLabelsTests {
-
     @Test("The review button pluralises on the item count, not the group count")
     func reviewButtonTitlePluralises() {
         #expect(

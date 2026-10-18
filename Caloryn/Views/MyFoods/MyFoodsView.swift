@@ -26,8 +26,6 @@ struct MyFoodsView: View {
 
     var body: some View {
         NavigationStack {
-            // The canvas goes inside the stack: a plain list paints nothing of its own, and
-            // outside it the stack's system background covers the page.
             libraryContent
             .calorynPageCanvas()
             .calorynLargeTitle("My Foods")
@@ -83,12 +81,6 @@ struct MyFoodsView: View {
         }
     }
 
-    /// An empty section is dropped rather than filled with a placeholder, so
-    /// a library with one manual entry is one section with one row. When
-    /// there is nothing at all the list gives way to a single empty state.
-    ///
-    /// A page, not cards: hairline lists straight on the canvas, in the board's
-    /// order — what you reach for most, then whole meals, then what you made.
     @ViewBuilder
     private var libraryContent: some View {
         let listing = listing
@@ -127,19 +119,6 @@ struct MyFoodsView: View {
         }
     }
 
-    /// No buttons: the + already sits in the toolbar above this text, and a stack of
-    /// three CTAs duplicating its menu would make the emptiest screen in the app the
-    /// busiest one. The copy says what the tab holds rather than narrating the control
-    /// — the + is a foot away from the sentence and does not need naming.
-    ///
-    /// The explicit background is load-bearing. `ContentUnavailableView` paints its own
-    /// system background *over* `calorynPageCanvas()`, exactly as a `List` does — this
-    /// shipped at 77.8% pure white in light mode with every test green, and only the
-    /// colour census caught it.
-    ///
-    /// `ContentUnavailableView` draws its title and description in the primary level of the
-    /// foreground style and only its glyph in the secondary, so the description names its own
-    /// secondary text; without these they are the system's own label greys.
     private var emptyLibraryView: some View {
         ContentUnavailableView {
             Label("Your food library is empty", systemImage: "takeoutbag.and.cup.and.straw")
@@ -313,9 +292,6 @@ struct MyFoodsView: View {
         } label: {
             Group {
                 if food.isRecipe {
-                    // Among favorites a recipe or a food of your own sits with other kinds of
-                    // food, so it says what it is; under "Recipes" and "Your own entries" the
-                    // section title already does.
                     RecipeLibraryRow(recipe: food, showsTypeBadge: food.isFavorite)
                 } else {
                     manualEntryRow(for: food)
@@ -341,7 +317,6 @@ struct MyFoodsView: View {
             try modelContext.save()
             CalorynAppShortcutRefresh.favoritesChanged()
         } catch {
-            // Keep the existing silent deletion behavior.
         }
     }
 
@@ -353,11 +328,6 @@ struct MyFoodsView: View {
         }
     }
 
-    /// A swipe action draws its label in white whatever the tint, so the tint has to be dark
-    /// in both appearances: ink is near-white in dark mode, and the retired terracotta is out
-    /// of the palette. `fillAction` is a neutral dark grey in both (`dataSecondary`, used
-    /// before, lightens to 3:1 under white in dark), and a favorite is not a meal, so it
-    /// takes no meal colour.
     private func favoriteButton(for food: FoodItem) -> some View {
         Button {
             toggleFavorite(food)
@@ -418,7 +388,6 @@ struct MyFoodsView: View {
             }
         )
     }
-
 }
 
 private struct EditedProductCatalogView: View {
@@ -438,8 +407,6 @@ private struct EditedProductCatalogView: View {
     var body: some View {
         Group {
             if products.isEmpty {
-                // Each is the whole screen, the shape that painted a system background over
-                // the canvas on My Foods' own empty state, so each covers it the same way.
                 if hasEditedProducts {
                     ContentUnavailableView.search(text: searchText)
                         .onCatalogCanvas()
@@ -455,9 +422,6 @@ private struct EditedProductCatalogView: View {
                     .onCatalogCanvas()
                 }
             } else {
-                // A page list like the library it drills down from: hairline rows on the
-                // canvas. As a grouped list it had no row backgrounds, so its rows painted
-                // the system's own grouped white over the theme.
                 List {
                     Section {
                         ForEach(products) { product in
@@ -495,9 +459,6 @@ private struct EditedProductCatalogView: View {
 }
 
 private extension View {
-    /// A full-screen `ContentUnavailableView` on the page colour, edge to edge, with its text
-    /// in the theme's ink and secondary rather than the system's label greys. See
-    /// `emptyLibraryView`.
     func onCatalogCanvas() -> some View {
         self
             .foregroundStyle(CalorynTheme.textPrimary, CalorynTheme.textSecondary)
@@ -509,13 +470,6 @@ private extension View {
     }
 }
 
-/// A library section's title: 17pt bold ink, with the section's count on the right. Favorites
-/// keeps its outline star, which is what marks a food as one, not decoration.
-///
-/// A plain list pins its section headers, and before iOS 26 it paints a pinned header's band in
-/// a system grey over the page. The header covers that band with the page colour, edge to edge
-/// (no row insets; its margins are padding inside), which also keeps rows scrolling under a
-/// pinned title from showing through it.
 private struct LibrarySectionHeader: View {
     let title: String
     let count: Int

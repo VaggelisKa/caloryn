@@ -2,9 +2,6 @@ import XCTest
 @testable import Caloryn
 
 final class RecipeLibraryRowSummaryTests: XCTestCase {
-    // MARK: - Ingredient label
-
-    /// One ingredient is one ingredient, not "1 ingredients".
     func testASingleIngredientIsCountedInTheSingular() {
         XCTAssertEqual(makeSummary(ingredientCount: 1).ingredientLabel, "1 ingredient")
     }
@@ -13,16 +10,10 @@ final class RecipeLibraryRowSummaryTests: XCTestCase {
         XCTAssertEqual(makeSummary(ingredientCount: 4).ingredientLabel, "4 ingredients")
     }
 
-    /// Zero takes the plural too, so a recipe still being written reads
-    /// "0 ingredients".
     func testNoIngredientsIsCountedInThePlural() {
         XCTAssertEqual(makeSummary(ingredientCount: 0).ingredientLabel, "0 ingredients")
     }
 
-    // MARK: - Absent facts
-
-    /// A recipe whose ingredient list was never loaded has no ingredients,
-    /// which is an absence rather than an error.
     func testAMissingIngredientListCountsAsNoIngredients() {
         let summary = makeSummary(ingredientCount: nil)
 
@@ -30,8 +21,6 @@ final class RecipeLibraryRowSummaryTests: XCTestCase {
         XCTAssertEqual(summary.ingredientLabel, "0 ingredients")
     }
 
-    /// Likewise a recipe with no recorded serving weighs nothing, so every
-    /// macro scaled from it comes out at zero.
     func testAMissingServingSizeWeighsNothing() {
         let summary = makeSummary(
             servingGrams: nil,
@@ -48,10 +37,6 @@ final class RecipeLibraryRowSummaryTests: XCTestCase {
         XCTAssertEqual(summary.fat, 0, accuracy: 0.0001)
     }
 
-    // MARK: - Macros
-
-    /// The row shows the whole recipe, so its per-100g figures are scaled to
-    /// the serving the recipe actually makes.
     func testMacrosAreScaledFromPerHundredGramsToTheWholeRecipe() {
         let summary = makeSummary(
             servingGrams: 450,
@@ -74,16 +59,12 @@ final class RecipeLibraryRowSummaryTests: XCTestCase {
         )
     }
 
-    /// A nutrition figure that never became a number must come out as text
-    /// rather than trapping.
     func testANonFiniteCalorieFigureStillRendersAsText() {
         XCTAssertEqual(
             makeSummary(servingGrams: 100, caloriesPer100g: .nan).caloriesText,
             "0"
         )
     }
-
-    // MARK: - Detail line
 
     func testTheDetailLineNamesTheIngredientsAndWeight() {
         let summary = makeSummary(
@@ -98,8 +79,6 @@ final class RecipeLibraryRowSummaryTests: XCTestCase {
         XCTAssertEqual(summary.detail, "3 ingredients, 450 g")
     }
 
-    /// A recipe that weighs nothing skips the gram figure rather than claiming
-    /// "0 g".
     func testARecipeWithNoWeightLeavesTheGramFigureOut() {
         let summary = makeSummary(
             servingGrams: 0,
@@ -123,13 +102,9 @@ final class RecipeLibraryRowSummaryTests: XCTestCase {
         XCTAssertEqual(makeSummary(servingGrams: 312.6).gramsText, "313 g")
     }
 
-    // MARK: - Name
-
     func testTheRowIsNamedAfterTheRecipe() {
         XCTAssertEqual(makeSummary(name: "Sunday chilli").name, "Sunday chilli")
     }
-
-    // MARK: - Helpers
 
     private func makeSummary(
         name: String = "Recipe",

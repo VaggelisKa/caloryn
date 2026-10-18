@@ -40,8 +40,6 @@ enum MealType: String, Codable, CaseIterable, Identifiable {
         return "Snack \(snackIndex)"
     }
 
-    /// The widget's name for this meal: the two enums share raw values, but the mapping is
-    /// spelled out so a renamed case cannot silently drop a meal from the widget's plate.
     var widgetMeal: WidgetMeal {
         switch self {
         case .breakfast: .breakfast

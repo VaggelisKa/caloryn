@@ -1,15 +1,5 @@
 import SwiftUI
 
-// The rows of the My Foods library, all drawn with `LibraryRowStyle` so a list that mixes
-// foods, recipes and meals (Favorites does) reads as one list. Each renders a summary from
-// `Caloryn/Models/` and decides nothing.
-
-/// One food — a manual entry, a favorite, an edited catalog product: its name with its
-/// Nutri-Score, brand and serving underneath, and the kcal figure with what it counts
-/// ("kcal" for the serving shown, "kcal per 100 g"), worded as Add Food words the same food.
-///
-/// `showsTypeBadge` adds "Yours" for a food listed among other kinds of food (Favorites),
-/// as `RecipeLibraryRow` adds "Recipe"; under "Your own entries" the title already says it.
 struct LibraryFoodRow: View {
     let summary: LibraryFoodRowSummary
     var nutriscoreGrade: String?
@@ -43,8 +33,6 @@ struct LibraryFoodRow: View {
     }
 }
 
-/// One saved recipe: its name, how many ingredients and how much it makes, and the whole
-/// recipe's kcal. Renders `RecipeLibraryRowSummary`.
 struct RecipeLibraryRow: View {
     let recipe: FoodItem
     var showsTypeBadge = false
@@ -70,8 +58,6 @@ struct RecipeLibraryRow: View {
     }
 }
 
-/// One saved meal: its name, its items by name, and the meal's total. Renders
-/// `MealTemplateLibraryRowSummary`.
 struct LibraryMealRow: View {
     let template: MealTemplate
 
@@ -97,8 +83,6 @@ struct LibraryMealRow: View {
 }
 
 extension MealTemplateLibraryRowSummary {
-    /// A template whose items cannot all be read is listed as unavailable, the same rule
-    /// `MealTemplateCommands` applies before logging one.
     init(template: MealTemplate) {
         let snapshots = (try? MealTemplateCommands.snapshots(for: template)) ?? []
         self.init(

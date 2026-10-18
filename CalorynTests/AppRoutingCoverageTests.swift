@@ -2,9 +2,6 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// Deep-link parsing and building for `AppRoute`, beyond the round trips in
-/// `AppRouteTests`: every host, every malformed or unknown shape the system
-/// could hand the app, and the meal labels the widget shows.
 struct AppRouteParsingCoverageTests {
     private static func route(_ string: String) throws -> AppRoute? {
         AppRoute(url: try #require(URL(string: string)))
@@ -77,8 +74,6 @@ struct AppRouteParsingCoverageTests {
     }
 }
 
-/// `AppRouter` state transitions. Each test owns a fresh router — never the
-/// shared one the hosted app is observing.
 @MainActor
 struct AppRouterStateCoverageTests {
     @Test("A fresh router starts on Today with nothing pending")

@@ -3,15 +3,12 @@ import XCTest
 
 @MainActor
 final class GoalEditSeedTests: XCTestCase {
-
     func testManualProfileSeedsTheStoredTargetNotARecalculation() {
         let profile = makeProfile()
         OnboardingProfileSave.apply(
             makeSelections(calorieTarget: 1_800, isManualTarget: true),
             to: profile
         )
-        // The calculation for this profile lands well away from 1,800, so a
-        // recalculated seed would be obvious.
         XCTAssertNotEqual(
             NutritionCalculator.defaultTarget(tdee: profile.tdee, deficit: profile.calorieDeficit),
             1_800
@@ -61,8 +58,6 @@ final class GoalEditSeedTests: XCTestCase {
         XCTAssertEqual(seed.carbRatio, 0.40, accuracy: 0.001)
         XCTAssertEqual(seed.fatRatio, 0.30, accuracy: 0.001)
     }
-
-    // MARK: Helpers
 
     private func makeProfile() -> UserProfile {
         UserProfile(

@@ -2,23 +2,12 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-// Cross-surface audit: one day, fed to every summary that reports how it stands against its
-// budget — the ring summary, the Today donut and hero, the Settings goal plate and the
-// Nutrition Details caption — must give one answer. Each test walks a grid of days around
-// the target (exactly on it, a calorie either side, fractions around .5, far over) across
-// static, manual and auto-adjusted budgets.
-
-// MARK: - Fixtures
-
 nonisolated private let auditUS = Locale(identifier: "en_US")
 nonisolated private let auditPast = makeTestDate(year: 2020, month: 6, day: 15)
 nonisolated private let auditFuture = makeTestDate(year: 2099, month: 6, day: 15)
 
-/// Offsets from the budget's target that a day's total is placed at.
 nonisolated private let auditDayOffsets: [Double] = [-1, -0.6, -0.5, -0.4, 0, 0.4, 0.5, 0.6, 1]
 
-/// Each budget the grid is evaluated against: static targets, a manual target that blocks
-/// auto-adjust, an auto-adjust increase on an incomplete day and a reduction on a past one.
 private enum AuditBudgetKind: CaseIterable {
     case staticFloor
     case staticRound
@@ -73,8 +62,6 @@ private func auditBudget(_ kind: AuditBudgetKind, consumed: Double) -> ActivityC
     }
 }
 
-/// A day whose entries total `total`, logged snack first so that the order entries were
-/// logged in differs from the meal order the donut sums in.
 @MainActor
 private func auditEntries(total: Double) -> [SettingsGoalPlate.Entry] {
     guard total > 0 else { return [] }
@@ -87,13 +74,10 @@ private func auditEntries(total: Double) -> [SettingsGoalPlate.Entry] {
     ]
 }
 
-/// The totals a day is evaluated at for a budget of `target`.
 private func auditTotals(around target: Int) -> [Double] {
     let target = Double(target)
     return [0, target / 2] + auditDayOffsets.map { target + $0 } + [target * 1.5, target * 3]
 }
-
-// MARK: - One day, every summary
 
 @MainActor
 @Suite("Calorie summary cross-surface consistency audit")
@@ -116,13 +100,11 @@ struct AuditCalorieSurfaceConsistencyTests {
 
             #expect(budget.adjustedTarget == target, "total \(total)")
 
-            // One over/under decision.
             #expect(ring.isOver == budget.isOver, "total \(total)")
             #expect(hero.isOver == budget.isOver, "total \(total)")
             #expect(donut.isOver == budget.isOver, "total \(total)")
             #expect(donut.hasOverSector == budget.isOver, "total \(total)")
 
-            // One set of figures.
             let headline = budget.isOver ? budget.overAmount : budget.remaining
             #expect(ring.centerValue == headline, "total \(total)")
             #expect(hero.headline == headline, "total \(total)")
@@ -131,16 +113,13 @@ struct AuditCalorieSurfaceConsistencyTests {
             #expect(donut.eatenKcal == budget.roundedConsumed, "total \(total)")
             #expect(donut.budgetKcal == budget.adjustedTarget, "total \(total)")
 
-            // The legend's Over row carries the same overshoot the hero prints.
             let overRows = donut.legend.filter { $0.key == .over }
             #expect(overRows == (budget.isOver ? [.over(kcal: budget.overAmount)] : []), "total \(total)")
 
-            // The ring's whole is the budget while under it, everything eaten once over.
             let ringTotal = donut.sectors.reduce(0) { $0 + $1.kcal }
             let expectedWhole = max(Double(budget.adjustedTarget), budget.consumed)
             #expect(abs(ringTotal - expectedWhole) < 1e-6, "total \(total)")
 
-            // The words around the figures.
             let targetText = budget.adjustedTarget.formatted(.number.locale(auditUS))
             #expect(hero.caption == (budget.isOver ? "kcal over" : "kcal left of \(targetText)"), "total \(total)")
             #expect(
@@ -159,7 +138,6 @@ struct AuditCalorieSurfaceConsistencyTests {
                 "total \(total)"
             )
 
-            // Settings draws the same plate from the same entries.
             #expect(settingsPlate == donut, "total \(total)")
         }
     }
@@ -210,9 +188,6 @@ struct AuditCalorieSurfaceConsistencyTests {
         #expect(hero.eatenLine == "0 of 2,000 eaten")
     }
 
-    /// Today and Settings total a day in the order its entries were logged; the donut's
-    /// meals re-total it meal by meal. At an exact .5 the two floating-point sums can land
-    /// either side of it, so the donut's figures are rounded from the budget's total.
     @Test("A total summed in a different order still rounds the same on the donut as on the hero")
     func summationOrderCannotSplitTheRounding() {
         let entries: [SettingsGoalPlate.Entry] = [
@@ -244,19 +219,15 @@ struct AuditCalorieSurfaceConsistencyTests {
         #expect(hero.isOver)
         #expect(hero.headline == 1)
         #expect(hero.caption == "kcal over")
-        // The meals re-sum to 1,999.4999…, but the donut rounds the budget's own total.
         #expect(hero.donut.eatenKcal == 2_000)
         #expect(hero.donut.overKcal == 1)
         #expect(hero.donut.legend.last == .over(kcal: 1))
     }
 }
 
-// MARK: - The ring's arcs
-
 @MainActor
 @Suite("Calorie ring arc audit")
 struct AuditCalorieRingArcTests {
-    /// The length the ring actually draws: every visible arc's span added up.
     private func drawnLength(_ progress: CalorieRingProgress) -> Double {
         [progress.baseArc, progress.dynamicArc]
             .filter(\.isVisible)
@@ -324,13 +295,9 @@ struct AuditCalorieRingArcTests {
     }
 }
 
-// MARK: - Donut identity
-
 @MainActor
 @Suite("Calorie donut identity audit")
 struct AuditCalorieDonutIdentityTests {
-    /// The donut takes the over decision as given. Told it is over while its own meal sum
-    /// is still under the budget, it reports nothing left rather than re-deciding.
     @Test("A day the budget calls over has nothing remaining on the donut, whatever the meals add up to")
     func overDecisionWinsOverTheMealSum() {
         let donut = CalorieDonutSummary(mealTotals: [.lunch: 500], budget: 2_000, isOver: true)

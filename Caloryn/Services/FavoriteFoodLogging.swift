@@ -217,9 +217,6 @@ enum FavoriteFoodLogging {
         return true
     }
 
-    /// Returns the literal portion from the favorite's most recently created
-    /// live log entry, regardless of meal. Ambiguous or unsafe latest entries
-    /// are intentionally not replaced with an older value.
     static func mostRecentlyLoggedSafePortion(for food: FoodItem) -> Double? {
         reusablePortion(
             from: food.logEntries ?? [],

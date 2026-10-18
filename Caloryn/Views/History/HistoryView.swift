@@ -6,8 +6,6 @@ struct HistoryView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    // Keep newest-first ordering in sync with relevantEntries(startingAt:);
-    // that helper early-exits when it reaches entries older than its window.
     @Query(sort: \FoodLogEntry.date, order: .reverse) private var allEntries: [FoodLogEntry]
     @Query(sort: \UserProfile.updatedAt, order: .reverse) private var profiles: [UserProfile]
     @Query private var goalSnapshots: [DailyGoalSnapshot]
@@ -15,8 +13,6 @@ struct HistoryView: View {
     @State private var historyState: HistoryViewState
     @State private var navigationPath: [HistoryDrillDownRoute] = []
     @State private var analyticsDayStart = Calendar.current.startOfDay(for: .now)
-    /// False until the first refresh lands. `historyState` opens on empty analytics, so
-    /// drawing before then flashed the empty state for a frame before the real one.
     @State private var hasLoadedAnalytics = false
 
     #if DEBUG
@@ -151,9 +147,6 @@ struct HistoryView: View {
         }
         .calorynPageCanvas()
         .task(id: analyticsRefreshID) {
-            // Range changes refresh synchronously through selectRange; data/profile
-            // changes should recalculate for the range current when this task runs.
-            // The first load fades in on its own; later data changes animate in place.
             withAnimation(hasLoadedAnalytics ? changeAnimation : nil) {
                 refreshAnalytics(for: historyState.range)
             }
@@ -170,8 +163,6 @@ struct HistoryView: View {
             guard newPhase == .active else { return }
             followCalendarRollover()
         }
-        // Covers local midnight passing while History remains visible and the
-        // app stays active, so the fixed evidence window advances immediately.
         .onReceive(
             NotificationCenter.default
                 .publisher(for: .NSCalendarDayChanged)
@@ -204,8 +195,6 @@ struct HistoryView: View {
         )
     }
 
-    /// A range switch or a data change: figures roll, bars and plates morph, and sections
-    /// that come or go fade. Under Reduce Motion the new range simply replaces the old.
     private var changeAnimation: Animation? {
         reduceMotion ? nil : .smooth(duration: 0.4)
     }
@@ -234,8 +223,6 @@ struct HistoryView: View {
     }
 
     #if DEBUG
-    /// Pushes the drill-down named by `-CalorynHistoryDrillDown` once, after the first
-    /// analytics refresh, so a simulator capture can reach it without a tap.
     private func openDebugDrillDownIfRequested() {
         guard let drillDown = debugLaunch.drillDown else { return }
         debugLaunch.drillDown = nil
@@ -283,12 +270,6 @@ struct HistoryView: View {
         }
     }
 
-    /// The range as ink chips. One container carries `history.rangePicker`; each chip is
-    /// a button labelled with the full range name ("14 Days") and marked selected, which is
-    /// what VoiceOver and the UI journeys read.
-    ///
-    /// One row while it fits; at accessibility sizes the four overflow it and the selected
-    /// chip read "7…", so they wrap to two rows, or one a row. A chip never truncates.
     private var rangePicker: some View {
         let ranges = HistoryRange.allCases
         let half = (ranges.count + 1) / 2
@@ -376,18 +357,6 @@ private struct HistoryRecurringCaloriePatternSnapshot: Hashable {
 }
 
 #if DEBUG
-/// Simulator-only launch arguments for reaching History's screens without taps, since
-/// `xcrun simctl` can capture but cannot tap. Pair them with `-CalorynHistoryFixture
-/// recurringInsight` (or `noRecurringInsight`), which seeds History and opens its tab:
-///
-/// - `-CalorynHistoryRange week|twoWeeks|month|quarter` opens on that range.
-/// - `-CalorynHistoryDrillDown calorieTrend|calorieTrendSelected|recurringPattern|recurringPatternExpanded`
-///   pushes that drill-down after the first refresh; the `Selected` form selects the last
-///   logged bar, the `Expanded` form opens the first supporting day.
-/// - `-CalorynHistoryScrolledToBottom` opens History's scroll views at their bottom, to
-///   capture what sits below the fold.
-///
-/// Compiled out of release builds, and inert unless the argument is passed.
 struct HistoryDebugLaunch {
     enum DrillDown: String {
         case calorieTrend
@@ -420,7 +389,6 @@ struct HistoryDebugLaunch {
 #endif
 
 extension View {
-    /// `-CalorynHistoryScrolledToBottom` in DEBUG (see `HistoryDebugLaunch`); nothing otherwise.
     @ViewBuilder
     func historyDebugScrollAnchor() -> some View {
         #if DEBUG

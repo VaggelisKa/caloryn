@@ -1,8 +1,5 @@
 import Foundation
 
-/// One scheduled daily-reminder notification: a stable per-day identifier,
-/// local wall-clock fire components, and the finished message. The remaining
-/// count lives in the title because iOS renders titles bold and bodies plain.
 struct PlannedReminder: Hashable {
     let identifier: String
     let fireDateComponents: DateComponents
@@ -10,23 +7,12 @@ struct PlannedReminder: Hashable {
     let body: String
 }
 
-/// Pure planning logic for the daily remaining-calories reminder (issue #60).
-/// Local notification content is baked in at scheduling time, so the caller
-/// re-plans whenever the log or the reminder settings change.
 enum DailyReminderPlanner {
-    /// All daily-reminder identifiers share this prefix so the scheduler can
-    /// clear stale requests without touching unrelated notifications.
     static let identifierPrefix = "daily-reminder"
-    /// Below this the reminder is noise, not help (issue #60 discussion).
     static let minimumRemainingKcal = 100
     static let defaultReminderMinutes = 21 * 60
-    /// Today plus six future days keeps reminders flowing when the app
-    /// isn't opened every day.
     static let planHorizonDays = 7
 
-    /// Today's remaining calories, as the reminder title states them. Lives
-    /// here rather than in `DailyReminderBridge` so the arithmetic can be
-    /// driven with a number no view would ever be asked to render.
     static func remainingToday(target: Int, consumed: Double) -> Int {
         max(0, CalorieDomain.clamped(target) - consumed.roundedCalories)
     }
@@ -52,8 +38,6 @@ enum DailyReminderPlanner {
                 return nil
             }
 
-            // Future days have no logged meals yet, so if the app never opens
-            // again the full target is the correct remaining amount.
             let remaining = dayOffset == 0 ? (remainingToday ?? fullDayTarget) : fullDayTarget
             guard remaining >= minimumRemainingKcal else { return nil }
 

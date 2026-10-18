@@ -13,7 +13,6 @@ struct CalorynInputFieldModifier: ViewModifier {
                 in: RoundedRectangle(cornerRadius: CalorynTheme.smallCornerRadius, style: .continuous)
             )
             .overlay {
-                // A well, not a card: `backgroundTertiary` with a `separator` edge, and `accent` when focused.
                 RoundedRectangle(cornerRadius: CalorynTheme.smallCornerRadius, style: .continuous)
                     .strokeBorder(
                         isFocused ? CalorynTheme.accent : CalorynTheme.separator,

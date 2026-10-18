@@ -2,11 +2,9 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// Covers the bounds and readouts of the About You step.
 @MainActor
 @Suite("Onboarding personal info")
 struct OnboardingPersonalInfoTests {
-
     @Test("The default answers the flow starts from are all inside their bounds")
     func defaultsAreInRange() {
         #expect(OnboardingPersonalInfo.ageRange.contains(30))

@@ -1,8 +1,6 @@
 import XCTest
 @testable import Caloryn
 
-/// Stands in for `HealthKitService`. Nonisolated so `isHealthDataAvailable`
-/// can be read from the same synchronous contexts the real reader serves.
 nonisolated final class StubActiveEnergyReader: ActiveEnergyReading, @unchecked Sendable {
     private let isHealthAvailable: @Sendable () -> Bool
     private let readActiveEnergy: @MainActor (Date) async throws -> Double
@@ -58,9 +56,6 @@ nonisolated final class StubActiveEnergyReader: ActiveEnergyReading, @unchecked 
     }
 }
 
-/// Drives the Apple Health callers through the reader seam: the paths that
-/// previously needed a device with Health data, an entitlement and a tap on a
-/// permission sheet.
 @MainActor
 final class ActiveEnergyReadingTests: XCTestCase {
     override func setUp() {
@@ -72,8 +67,6 @@ final class ActiveEnergyReadingTests: XCTestCase {
         clearAppleHealthDefaults()
         super.tearDown()
     }
-
-    // MARK: - Enabling the adjustment
 
     func testEnablingAsksForAuthorizationOnceAndTurnsTheAdjustmentOn() async {
         let reader = StubActiveEnergyReader()
@@ -117,8 +110,6 @@ final class ActiveEnergyReadingTests: XCTestCase {
     }
 
     func testEnablingClearsAnEarlierEmptyActivityStreak() async {
-        // Two empty refreshes short of the warning; enabling must reset the
-        // streak so the hint does not fire on the first refresh afterwards.
         for _ in 0..<2 {
             _ = AppleHealthAdjustmentSettings.recordActiveEnergyRefresh(
                 activeEnergyKcal: 0,
@@ -133,8 +124,6 @@ final class ActiveEnergyReadingTests: XCTestCase {
             recentActiveEnergySamples: []
         ))
     }
-
-    // MARK: - Reading a day's budget
 
     func testBudgetIsUnavailableWithoutHealthData() async {
         let reader = StubActiveEnergyReader(
@@ -203,8 +192,6 @@ final class ActiveEnergyReadingTests: XCTestCase {
         )
     }
 
-    // MARK: - Tracking a day
-
     func testTimedOutReadSurfacesTheServiceMessageAndTurnsTheAdjustmentOff() async {
         AppleHealthAdjustmentSettings.persist(
             isEnabled: true,
@@ -262,8 +249,6 @@ final class ActiveEnergyReadingTests: XCTestCase {
         XCTAssertEqual(stopCount, 1)
         XCTAssertEqual(tracker.activeEnergyKcal, 240, accuracy: 0.001)
     }
-
-    // MARK: - Helpers
 
     private func makeDynamicHealthProfile() -> UserProfile {
         UserProfile(

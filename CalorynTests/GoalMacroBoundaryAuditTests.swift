@@ -2,13 +2,6 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-// Boundary audit of the goal editor and the macro split: the manual-target floor and the
-// calorie domain, macro ratios that must total 100% over every split the sliders can
-// reach, the round trip from a saved profile back into the editor, and nutrient goals
-// typed with either decimal separator.
-
-// MARK: - Fixtures
-
 @MainActor
 private func auditProfile(dailyCalorieTarget: Int? = nil) -> UserProfile {
     UserProfile(
@@ -21,8 +14,6 @@ private func auditProfile(dailyCalorieTarget: Int? = nil) -> UserProfile {
     )
 }
 
-/// Every split the three macro sliders can be left on: each slider snapped to its own
-/// 5% steps over its own range, exactly as the onboarding slider binding snaps it.
 @MainActor
 private func auditReachableSplits() -> [(protein: Double, carbs: Double, fat: Double, percentTotal: Int)] {
     func steps(_ macro: MacroRatioSelection.Macro) -> [(ratio: Double, percent: Int)] {
@@ -49,8 +40,6 @@ private func auditReachableSplits() -> [(protein: Double, carbs: Double, fat: Do
     }
     return splits
 }
-
-// MARK: - Manual calorie target
 
 @MainActor
 @Suite("Goal edit manual target audit")
@@ -166,8 +155,6 @@ struct AuditGoalManualTargetTests {
         #expect(SettingsGoalSummary.dailyTargetText(profile.dailyCalorieTarget, locale: Locale(identifier: "en_US")) == "1,050 kcal a day")
     }
 }
-
-// MARK: - Macro ratios
 
 @MainActor
 @Suite("Macro ratio total audit")
@@ -310,8 +297,6 @@ struct AuditMacroRatioTotalTests {
     }
 }
 
-// MARK: - Profile round trip
-
 @MainActor
 @Suite("Goal profile round trip audit")
 struct AuditGoalProfileRoundTripTests {
@@ -334,12 +319,10 @@ struct AuditGoalProfileRoundTripTests {
                 let draft = GoalEditDraft(seed: seed)
                 let context = "target \(target), \(split)"
 
-                // The onboarding preview is what was saved.
                 #expect(profile.proteinTargetG == selection.grams(for: .protein), "\(context)")
                 #expect(profile.carbTargetG == selection.grams(for: .carbs), "\(context)")
                 #expect(profile.fatTargetG == selection.grams(for: .fat), "\(context)")
 
-                // The profile, the goal editor's seed and the editor agree on the split.
                 for (derived, expected) in [
                     (profile.macroRatios.protein, split.protein),
                     (profile.macroRatios.carbs, split.carbs),
@@ -428,8 +411,6 @@ struct AuditGoalProfileRoundTripTests {
         #expect(seed.fatRatio == ProfileEditMacroRatios.defaultSplit.fat)
     }
 }
-
-// MARK: - Nutrient goals and decimal separators
 
 @MainActor
 @Suite("Nutrient goal input audit")
@@ -554,8 +535,6 @@ struct AuditNutrientGoalInputTests {
         #expect(profile.target(for: .fiber) == 30)
     }
 }
-
-// MARK: - Deficit wording
 
 @MainActor
 @Suite("Goal deficit wording audit")

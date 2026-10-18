@@ -1,24 +1,8 @@
 import SwiftUI
 
-// The Plate / Market vocabulary for the three creation sheets — custom food, recipe and
-// saved meal (`docs/design/plate-market.md`, "Everything else"). They share one look, so it
-// is written once here rather than three times.
-//
-// The forms are stacks in a `ScrollView`, not `Form`s, and they follow the Portion sheet
-// (`PlatePortion`): input wells sit straight on the white sheet under a bold title ("How
-// much"), and lists of values are hairline rows on the sheet ("In this portion"). A well is
-// already a surface, so it never goes inside another one. Only a list of plain rows (a
-// recipe's ingredients, a meal's items) gets a group, `calorynGroupSurface()`: on the white
-// sheet its hairline edge is what shows the group at all.
-
-/// A titled section: a bold sentence-case title, an optional control beside it, the content
-/// and an optional footnote.
 struct CreationFormSection<Content: View, Trailing: View>: View {
-    /// What the content sits on.
     enum Surface {
-        /// Straight on the sheet: wells, and hairline rows that hold one well each.
         case sheet
-        /// A white group with a hairline edge, for a list of plain rows.
         case group
     }
 
@@ -51,8 +35,6 @@ struct CreationFormSection<Content: View, Trailing: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            // The add chip beside the title while both fit; under it once they do not
-            // (from AX1 "Ingredients" and "Add ingredient" need about 372pt of 362).
             ViewThatFits(in: .horizontal) {
                 HStack(alignment: .center, spacing: 8) {
                     titleText
@@ -92,19 +74,13 @@ struct CreationFormSection<Content: View, Trailing: View>: View {
     }
 }
 
-/// Type sizes the forms use that `CalorynTheme` has no name for, text-style-relative.
 enum CreationFormTypography {
-    /// A row's label, 16pt.
     static let rowLabel: Font = CalorynTypeface.text(.callout)
-    /// An item row's name, 16pt medium.
     static let itemName: Font = CalorynTypeface.text(.callout, weight: .medium)
-    /// Grams, units and footnotes, 13pt.
     static let detail: Font = CalorynTypeface.text(.footnote)
-    /// The kcal on an item row, 16pt semibold tabular.
     static let itemKcal: Font = CalorynTypeface.text(.callout, weight: .semibold).monospacedDigit()
 }
 
-/// The 1pt rule between rows.
 struct CreationFormDivider: View {
     var body: some View {
         Rectangle()
@@ -114,8 +90,6 @@ struct CreationFormDivider: View {
     }
 }
 
-/// A row straight on the sheet with a hairline above it, the way `PlatePortion` draws "In
-/// this portion": every row, the first included, starts with a rule.
 struct CreationFormSheetRow<Content: View>: View {
     @ViewBuilder let content: Content
 
@@ -128,9 +102,6 @@ struct CreationFormSheetRow<Content: View>: View {
     }
 }
 
-/// The form's running total: the kcal figure big and heavy in ink, its caption beside it,
-/// and the macros under it as plain label-and-value pairs, told apart by label, not colour.
-/// Straight on the sheet, as the Portion sheet draws its preview — not in a card.
 struct CreationFormTotal: View {
     let kcal: Int
     let caption: String
@@ -177,13 +148,6 @@ struct CreationFormTotal: View {
     }
 }
 
-/// An ingredient or meal item: name and grams on the left, its kcal right-aligned in a
-/// fixed column over "kcal", and a remove control. Tapping the row edits the amount.
-///
-/// At accessibility sizes the kcal column and the remove control left the name about
-/// 100pt ("Ho…" for "House Salad" at AX5). There the name and detail may wrap, the kcal
-/// reads inline under them ("81 kcal"), and the remove control stays on the trailing edge,
-/// as `LibraryRowLayout` does for the library rows.
 struct CreationFormItemRow: View {
     let name: String
     let detail: String
@@ -285,8 +249,6 @@ struct CreationFormItemRow: View {
     }
 }
 
-/// The empty state inside an items group: a quiet line, not a full `ContentUnavailableView`,
-/// so the group keeps its shape and the add control beside its title stays the way in.
 struct CreationFormEmptyRow: View {
     let title: String
     let detail: String
@@ -296,8 +258,6 @@ struct CreationFormEmptyRow: View {
             Text(title)
                 .font(CreationFormTypography.itemName)
                 .foregroundStyle(CalorynTheme.textSecondary)
-            // Secondary, not tertiary: this sentence is the instruction, and tertiary is
-            // 3.1:1 on the sheet, for placeholders only.
             Text(detail)
                 .font(CreationFormTypography.detail)
                 .foregroundStyle(CalorynTheme.textSecondary)
@@ -309,8 +269,6 @@ struct CreationFormEmptyRow: View {
     }
 }
 
-/// The add control beside an items group's title ("Add ingredient", "Add item"): a hairline
-/// chip with a functional plus, so it reads as an action without competing with Save.
 struct CreationFormAddButton: View {
     let title: String
     let action: () -> Void
@@ -325,8 +283,6 @@ struct CreationFormAddButton: View {
     }
 }
 
-/// The sheet's close glyph, in ink rather than the retired sage. Glass comes from the
-/// toolbar on iOS 26.
 struct CreationFormCloseButton: View {
     let action: () -> Void
 
@@ -340,11 +296,6 @@ struct CreationFormCloseButton: View {
     }
 }
 
-/// The sheet's save glyph: an ink tick on the toolbar's own glass, like the close glyph
-/// beside it, and `textTertiary` while the form cannot be saved (the spec's colour for a
-/// disabled control). Drawn on the glass rather than as a prominent ink button: a toolbar
-/// item keeps its regular glass whichever placement it takes, so a paper tick meant for an
-/// ink capsule vanished into it in both appearances.
 struct CreationFormSaveGlyph: View {
     let isEnabled: Bool
     var isSaving = false
@@ -361,8 +312,6 @@ struct CreationFormSaveGlyph: View {
     }
 }
 
-/// The favourite star on an existing food or recipe: filled ink when it is a favourite,
-/// outlined ink when not.
 struct CreationFormFavoriteGlyph: View {
     let isFavorite: Bool
 
@@ -373,9 +322,6 @@ struct CreationFormFavoriteGlyph: View {
     }
 }
 
-/// Delete, at the foot of an edit form: a capsule with an ink label. Red now means lunch, so
-/// the destructive weight is carried by the confirmation dialog it opens, whose button keeps
-/// the system's destructive role.
 struct CreationFormDeleteButton: View {
     let title: String
     let action: () -> Void
@@ -407,11 +353,6 @@ struct CreationFormDeleteButton: View {
     }
 }
 
-/// Delete's capsule before iOS 26, drawn here rather than by `.borderedProminent`. That style
-/// fills with the tint and draws no edge, so any quiet fill vanished into the sheet (the
-/// `backgroundTertiary` tint is the sheet's own colour in dark mode), and a destructive role can turn it
-/// system red. A page-coloured capsule with the hairline edge `calorynGroupSurface()` uses
-/// reads as a control in both appearances.
 private struct CreationFormOutlinedCapsuleStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label

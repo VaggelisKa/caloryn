@@ -87,11 +87,8 @@ struct ActivityCalorieBudget: Equatable {
     }
 
     var baseTarget: Int {
-        // Clamped, not just passed through: `staticTarget` is whatever was
-        // saved on the profile, and every reader subtracts from it.
         guard let activityBaselineKcal else { return CalorieDomain.clamped(staticTarget) }
         let maintenanceTDEE = bmr + (bmr * Self.thermicEffectOfFoodRatio) + activityBaselineKcal
-        // `defaultTarget` clamps its own result.
         return NutritionCalculator.defaultTarget(
             energyExpenditure: maintenanceTDEE,
             deficit: calorieDeficit
@@ -104,7 +101,6 @@ struct ActivityCalorieBudget: Equatable {
 
     var adjustedTarget: Int {
         guard dynamicStatus == .ready else { return baseTarget }
-        // `baseTarget` is already floored, but a negative activity adjustment can push today's target below the safe minimum.
         return CalorieDomain.clamped(max(Self.minimumTarget, baseTarget + dynamicAdjustment))
     }
 
@@ -121,9 +117,6 @@ struct ActivityCalorieBudget: Equatable {
     }
 
     var isOver: Bool {
-        // Derived from the same rounded value as `remaining` and `overAmount`: comparing the
-        // raw total here let a sub-half-calorie overshoot show an over-budget treatment that
-        // then reported being over by 0 kcal.
         roundedConsumed > adjustedTarget
     }
 
@@ -138,7 +131,6 @@ struct ActivityCalorieBudget: Equatable {
     var dynamicAdjustment: Int {
         guard dynamicStatus == .ready, let activityBaselineKcal else { return 0 }
         let rawDelta: Double
-        // For today and future dates the day isn't complete, so only add calories — never reduce.
         if date.startOfDay >= Date.now.startOfDay {
             rawDelta = max(0, activeEnergyKcal - activityBaselineKcal)
         } else {

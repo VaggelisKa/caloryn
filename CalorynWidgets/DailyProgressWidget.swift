@@ -124,9 +124,6 @@ private struct DailyProgressWidgetView: View {
     }
 }
 
-/// Header, then the plate with its figures beside it, then the eaten line: the Today hero
-/// folded into a square. The figures column takes what the plate leaves; at a four-digit
-/// total the number scales down rather than wrapping.
 private struct SmallProgressView: View {
     let entry: DailyProgressEntry
 
@@ -152,8 +149,6 @@ private struct SmallProgressView: View {
     }
 }
 
-/// The plate on the left, the log rows on the right, a hairline between: the medium widget
-/// is about 158pt tall, so the plate is bound by its column's height, not its width.
 private struct MediumProgressView: View {
     let entry: DailyProgressEntry
 
@@ -189,7 +184,6 @@ private struct MediumProgressView: View {
     }
 }
 
-/// The full hero — plate, figures and legend — over the log rows, parted by a hairline.
 private struct LargeProgressView: View {
     let entry: DailyProgressEntry
 
@@ -213,7 +207,6 @@ private struct LargeProgressView: View {
             }
             .privacySensitive()
             .accessibilityElement(children: .combine)
-            // The legend is on screen here, so VoiceOver gets each meal as well.
             .accessibilityLabel(WidgetAccessibility.summary(for: entry.snapshot.calories, withMeals: true))
 
             Rectangle()
@@ -257,8 +250,6 @@ private struct WidgetHeader: View {
 }
 
 enum WidgetAccessibility {
-    /// What the hero says: the total and what is left or over, then — where the legend is
-    /// shown — each meal in order, so VoiceOver hears the same breakdown sighted users see.
     static func summary(for calories: WidgetCalorieSummary, withMeals: Bool = false) -> String {
         var parts = ["Today.", "\(calories.consumed) calories eaten."]
         if calories.isOver {
@@ -279,7 +270,6 @@ enum WidgetAccessibility {
     }
 }
 
-/// Title and a line of explanation, nothing else: no glyph stands in for the plate.
 private struct WidgetMessageView: View {
     let title: String
     let message: String
@@ -301,8 +291,6 @@ private struct WidgetMessageView: View {
         .accessibilityElement(children: .combine)
     }
 }
-
-// MARK: - Previews
 
 #Preview("Small · in progress", as: .systemSmall) {
     DailyProgressWidget()

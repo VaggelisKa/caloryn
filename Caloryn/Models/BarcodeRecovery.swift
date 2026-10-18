@@ -28,8 +28,6 @@ enum BarcodeRecoveryAnalyticsResult: String, Sendable {
     case failed
 }
 
-/// Deliberately allowlisted aggregate dimensions. This type cannot carry a
-/// barcode, food/provider payload, persistent ID, nutrition value, or context.
 struct BarcodeRecoveryAnalyticsEvent: Equatable, Sendable {
     let path: BarcodeRecoveryAnalyticsPath
     let result: BarcodeRecoveryAnalyticsResult

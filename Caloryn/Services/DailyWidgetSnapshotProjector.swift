@@ -46,8 +46,6 @@ enum DailyWidgetSnapshotProjector {
         )
     }
 
-    /// Today's kcal per meal, for the widget's plate. Snack slots share one key, as the
-    /// app's donut has it. Pass only the day's entries.
     static func mealCalories(for dayEntries: [FoodLogEntry]) -> [WidgetMeal: Double] {
         dayEntries.reduce(into: [:]) { totals, entry in
             totals[entry.mealType.widgetMeal, default: 0] += entry.calories

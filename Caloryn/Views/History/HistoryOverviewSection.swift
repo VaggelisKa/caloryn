@@ -1,12 +1,5 @@
 import SwiftUI
 
-/// The top of History: the daily average as the page's one big number, the line under it,
-/// and the range drawn as a row of day plates with its three-key legend.
-///
-/// It replaced the goal summary card, and keeps that card's identifiers: the section is
-/// `history.goalSummary.card`, and its three readings — the average, the days logged and how
-/// much of the range they cover — are each an element of their own under
-/// `history.goalSummary.metric.*`.
 struct HistoryOverviewSection: View {
     let range: HistoryRange
     let summary: HistoryPeriodSummary
@@ -16,8 +9,6 @@ struct HistoryOverviewSection: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ScaledMetric(relativeTo: .largeTitle) private var heroSize: CGFloat = 40
 
-    /// The number and its unit side by side, or the unit under the number at accessibility
-    /// sizes, where the two no longer fit on one line.
     private var averageLayout: AnyLayout {
         dynamicTypeSize.isAccessibilitySize
             ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2))
@@ -63,7 +54,6 @@ struct HistoryOverviewSection: View {
                     .foregroundStyle(CalorynTheme.textPrimary)
             }
 
-            // Ends "6 of 7 days logged", so it is the days-logged reading.
             Text(overview.supportText)
                 .font(CalorynTheme.cardSubtitle.monospacedDigit())
                 .foregroundStyle(CalorynTheme.textSecondary)
@@ -73,17 +63,10 @@ struct HistoryOverviewSection: View {
     }
 }
 
-/// The range as plates: one per day (one per week at 90 days), filled with what was eaten
-/// against that day's own goal, ringed in ink when over (a week: when its average was), dashed
-/// while still in progress. A week plate says how many of its days were on track under it.
 struct HistoryDayPlateGrid: View {
     let strip: HistoryDayPlateStrip
-    /// How much of the range is logged ("High confidence"), read after the days. The plates
-    /// are the coverage — an empty one is a day not logged — so this is the coverage reading.
     var coverageText: String? = nil
 
-    /// The grid's width as laid out. The columns have no minimum, so the grid is never wider
-    /// than it is offered and this is the width the plates must fit in.
     @State private var gridWidth: CGFloat?
 
     private var columns: [GridItem] {
@@ -91,8 +74,6 @@ struct HistoryDayPlateGrid: View {
             repeating: GridItem(
                 .flexible(minimum: 0, maximum: .infinity),
                 spacing: HistoryDayPlateStrip.columnSpacing,
-                // A week whose caption wraps, or that also reads "avg over goal", is taller
-                // than its neighbours; top-aligned, the plates in a row still line up.
                 alignment: .top
             ),
             count: strip.columnCount
@@ -113,10 +94,6 @@ struct HistoryDayPlateGrid: View {
                             uniformFill: CalorynTheme.dataSecondary
                         )
 
-                        // Capped at AX1: the plates do not grow, so past it a column cannot
-                        // hold "Tue" and the labels truncated to "T…", which tells Tuesday
-                        // from Thursday no more. The strip's accessibility label carries
-                        // every full date.
                         Text(plate.label)
                             .font(labelFont(for: plate.labelStyle))
                             .foregroundStyle(
@@ -140,8 +117,6 @@ struct HistoryDayPlateGrid: View {
             .accessibilityLabel(strip.accessibilityLabel)
             .accessibilityValue(coverageText ?? "")
             .accessibilityIdentifier("history.goalSummary.metric.coverage")
-            // The plates are small by design; widening only the accessibility shape keeps the
-            // strip easy to land on without moving anything on screen.
             .contentShape(.accessibility, Rectangle().inset(by: -8))
 
             HistoryPlateLegend(
@@ -151,9 +126,6 @@ struct HistoryDayPlateGrid: View {
         }
     }
 
-    /// "6/7 on track", and "avg over goal" in ink under a ringed week. Allowed two lines each:
-    /// a column is about a plate wide, and shrinking the words to fit one line would make them
-    /// unreadable sooner than wrapping does.
     private func weekCaption(for plate: HistoryDayPlateStrip.Plate) -> some View {
         VStack(spacing: 2) {
             if let consistencyText = plate.consistencyText {
@@ -192,7 +164,6 @@ struct HistoryDayPlateGrid: View {
     }
 }
 
-/// The three keys under the plates. The plates' only legend: eaten, ringed, in progress.
 private struct HistoryPlateLegend: View {
     let ringKeyText: String
     let currentKeyText: String
@@ -242,7 +213,6 @@ private struct HistoryPlateLegend: View {
     }
 }
 
-/// "On track": how many logged days landed within the goal band, against the period before.
 struct HistoryOnTrackSection: View {
     let overview: HistoryOverviewSummary
 

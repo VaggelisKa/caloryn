@@ -2,11 +2,6 @@ import Charts
 import SwiftUI
 import WidgetKit
 
-/// The day as a plate: the app's Today donut at widget size. Meals in their fill, the rest of
-/// the budget in `fillTrack`, the overshoot in `dataPrimary`. The hole is empty by design — the number
-/// sits beside the ring, never inside it — and the ring is hidden from VoiceOver because the
-/// widget that contains it owns the summary.
-///
 /// Accentable as a whole: in the tinted rendering mode the meals and the overshoot take the
 /// accent at full strength and the track keeps the hairline's own alpha, so the ring still
 /// reads as a plate filling up.
@@ -41,7 +36,6 @@ struct WidgetPlateView: View {
     }
 }
 
-/// The figures beside the plate: what is left (or over) in heavy ink, its unit under it.
 struct WidgetPlateFigures: View {
     let calories: WidgetCalorieSummary
     var numberFont: Font = .title.weight(.heavy)
@@ -67,7 +61,6 @@ struct WidgetPlateFigures: View {
     }
 }
 
-/// "380 of 2.000 eaten", the line the app prints under its caption.
 struct WidgetEatenLine: View {
     let calories: WidgetCalorieSummary
 
@@ -80,8 +73,6 @@ struct WidgetEatenLine: View {
     }
 }
 
-/// The legend beside the large plate: every meal, logged or not, then an "Over" row keyed
-/// by a 2pt ink ring when the day is past its budget — as the app's hero draws it.
 struct WidgetPlateLegend: View {
     let calories: WidgetCalorieSummary
 
@@ -136,9 +127,6 @@ struct WidgetPlateLegend: View {
     }
 }
 
-/// A row per meal, parted by hairlines rather than boxed in cards: the meal's name in its
-/// ink and the app's add button — a plus on a wash of the meal's fill — at the end. Each
-/// row is a deep link into Add Food for that meal.
 struct WidgetQuickLogRows: View {
     var body: some View {
         VStack(spacing: 0) {
@@ -182,7 +170,6 @@ private struct WidgetQuickLogRow: View {
     }
 }
 
-/// A section title in bold ink, as the app's non-meal section headers.
 struct WidgetSectionTitle: View {
     let title: String
 

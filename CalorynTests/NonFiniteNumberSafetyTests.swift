@@ -1,14 +1,8 @@
 import XCTest
 @testable import Caloryn
 
-/// `Int(someDouble)` is a trap, not a throwing conversion: NaN, an infinity or
-/// anything past `Int64` terminates the process. Every value below reaches such
-/// a conversion from user-entered, HealthKit or API data, so each test asserts
-/// the number that comes out — a crash here is the failure being pinned.
 @MainActor
 final class NonFiniteNumberSafetyTests: XCTestCase {
-    // MARK: - Today's calorie budget
-
     func testCalorieBudgetTreatsANonFiniteConsumedTotalAsNothingLogged() {
         for consumed in [Double.nan, .infinity, -.infinity] {
             let budget = makeBudget(consumed: consumed, staticTarget: 2_000)
@@ -23,8 +17,6 @@ final class NonFiniteNumberSafetyTests: XCTestCase {
     func testCalorieBudgetClampsAConsumedTotalPastTheIntegerRange() {
         let budget = makeBudget(consumed: 1e30, staticTarget: 2_000)
 
-        // Clamped to the calorie domain, not to `Int.max`: `Int.max` would only
-        // move the trap to the subtraction in `remaining`.
         XCTAssertEqual(budget.roundedConsumed, CalorieDomain.maximum)
         XCTAssertEqual(budget.remaining, 0)
         XCTAssertTrue(budget.isOver)
@@ -43,8 +35,6 @@ final class NonFiniteNumberSafetyTests: XCTestCase {
         XCTAssertGreaterThan(budget.adjustedTarget, 0)
         XCTAssertEqual(budget.roundedConsumed, 1_800)
     }
-
-    // MARK: - Widget snapshot
 
     func testWidgetCalorieSummaryFloorsANonFiniteConsumedTotal() {
         for consumed in [Double.nan, .infinity, -.infinity, -5] {
@@ -77,8 +67,6 @@ final class NonFiniteNumberSafetyTests: XCTestCase {
         XCTAssertEqual(summary.remaining, 0)
         XCTAssertEqual(summary.progress, 1, accuracy: 0.001)
     }
-
-    // MARK: - History
 
     func testHistoryAnalyticsRendersADayWhoseCaloriesAreNotFinite() {
         let date = makeTestDate(year: 2026, month: 1, day: 30)
@@ -127,8 +115,6 @@ final class NonFiniteNumberSafetyTests: XCTestCase {
         XCTAssertNil(trend.point(for: -.infinity))
     }
 
-    // MARK: - Portion picker
-
     func testPortionSelectionSurvivesAServingSizeOfZeroGrams() {
         var selection = PortionSelection(
             shape: PortionSelection.Shape(servingGramsPerUnit: 0),
@@ -170,8 +156,6 @@ final class NonFiniteNumberSafetyTests: XCTestCase {
         )
     }
 
-    // MARK: - Goal and profile readouts
-
     func testDeficitLabelsSurviveANonFiniteDeficit() {
         for deficit in [Double.infinity, -.infinity, 1e30] {
             var draft = GoalEditDraft(profile: makeProfile())
@@ -198,8 +182,6 @@ final class NonFiniteNumberSafetyTests: XCTestCase {
         XCTAssertEqual(summary.heightText, "0 cm")
     }
 
-    // MARK: - App intent
-
     func testTodayCaloriesIntentRejectsASnapshotWhenTheLiveTotalIsNotFinite() {
         let response = TodayCaloriesIntentResponse.make(
             snapshot: nil,
@@ -217,8 +199,6 @@ final class NonFiniteNumberSafetyTests: XCTestCase {
         XCTAssertFalse(IntentNumberFormatting.calories(.infinity).isEmpty)
         XCTAssertFalse(IntentNumberFormatting.calories(1e30).isEmpty)
     }
-
-    // MARK: - Factories
 
     private func makeBudget(
         consumed: Double = 1_800,

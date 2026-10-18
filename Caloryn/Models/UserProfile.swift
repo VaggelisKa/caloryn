@@ -104,10 +104,6 @@ final class UserProfile {
         manualOverride ? .lifestyleEstimate : energyCalculationMode
     }
 
-    /// The split the saved grams represent. Derived by `ProfileEditMacroRatios`
-    /// so this and the profile screen's Save agree; it used to divide by
-    /// `max(target, 1)` instead, which turned a zero target into ratios in the
-    /// hundreds rather than the default split.
     var macroRatios: ProfileEditMacroRatios {
         ProfileEditMacroRatios(
             dailyCalorieTarget: dailyCalorieTarget,

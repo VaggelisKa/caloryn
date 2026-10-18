@@ -2,13 +2,8 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// History's consistency strip as day plates: how each plate is outlined and labelled, what
-/// it is filled with, and how the strip is laid out and spoken for each range.
 @Suite("History day plate strip")
 struct HistoryDayPlateStripTests {
-
-    // MARK: - One plate
-
     @Test("given a day over its goal, when drawing its plate, then it is ringed in ink with an ink label")
     func anOverDayIsRinged() {
         let plate = makeStrip([period(calories: 2_800, status: .over)]).plates[0]
@@ -51,8 +46,6 @@ struct HistoryDayPlateStripTests {
         #expect(plate.donut.eatenKcal == 0)
         #expect(plate.outline == .standard)
     }
-
-    // MARK: - The strip
 
     @Test("given a mix of days, when spoken, then it is a count per status rather than plate by plate")
     func theStripIsSpokenAsCounts() {
@@ -103,8 +96,6 @@ struct HistoryDayPlateStripTests {
         #expect(plate.overGoalText == nil)
     }
 
-    // MARK: - One week
-
     @Test(
         "given a week's days on track, when captioning its plate, then it counts them out of the week's days",
         arguments: [(6, 7, 7, "6/7 on track"), (2, 5, 7, "2/7 on track"), (0, 0, 7, "0/7 on track"), (3, 3, 3, "3/3 on track")]
@@ -120,8 +111,6 @@ struct HistoryDayPlateStripTests {
 
     @Test("given a week mostly on track whose one big day lifts the average over goal, when drawing its plate, then it is ringed for its average")
     func aMostlyOnTrackWeekOverOnAverageIsRinged() {
-        // Six 2,000 kcal days and one 2,800 kcal Friday: the average, 2,114, is past the
-        // 2,100 band. The ring says the average; the caption still says six days went well.
         let plate = makeStrip(
             [week(onTrackDays: 6, loggedDays: 7, averageCalories: 2_114)],
             granularity: .week
@@ -204,8 +193,6 @@ struct HistoryDayPlateStripTests {
         #expect(makeStrip([], columnCount: 0).columnCount == 1)
     }
 
-    // MARK: - Fitting the width
-
     @Test(
         "given a row wide enough, when fitting the plates, then they keep the strip's own size",
         arguments: [(HistoryRange.week, CGFloat(362)), (.month, 362), (.quarter, 362), (.month, 334)]
@@ -237,8 +224,6 @@ struct HistoryDayPlateStripTests {
 
         #expect(strip.plateSize(fittingWidth: nil) == 28)
     }
-
-    // MARK: - Per range
 
     @Test(
         "given a day range, when laying out, then a week sits on a row and thirty days take smaller plates",
@@ -280,15 +265,12 @@ struct HistoryDayPlateStripTests {
 
     @Test("given ninety days ending on a Saturday, when captioning the weeks, then this week counts only its days so far")
     func ninetyDaysCountEachWeekInItsOwnDays() {
-        // 20 July to Saturday 17 October: twelve whole weeks, then Monday to Saturday.
         let captions = makeRangeStrip(.quarter).plates.map(\.consistencyText)
 
         #expect(captions.count == 13)
         #expect(captions.first == "0/7 on track")
         #expect(captions.last == "0/6 on track")
     }
-
-    // MARK: - Helpers
 
     private static let calendar: Calendar = {
         var calendar = Calendar(identifier: .gregorian)
@@ -298,7 +280,6 @@ struct HistoryDayPlateStripTests {
         return calendar
     }()
 
-    /// Saturday 17 October 2026, midday.
     private static let today: Date = {
         calendar.date(from: DateComponents(year: 2026, month: 10, day: 17, hour: 12)) ?? .now
     }()

@@ -1,19 +1,8 @@
 import Foundation
 
-/// The editable state of the goal screen, and every rule that acts on it.
-///
-/// `GoalEditSeed` produces the starting values; this carries them while the
-/// user edits, answers what the screen needs to render, decides whether the
-/// edit may be saved, and writes the result back to the profile. Keeping all of
-/// that here rather than in `GoalEditView` means the rules are reachable
-/// without driving a form.
 struct GoalEditDraft: Equatable {
-    /// Below this the manual target is rejected, since a target this low is
-    /// far more likely to be a typo than an intent.
     static let minimumManualTarget = 1_000
 
-    /// Ratios are stepped in 0.05 increments, so exact equality with 1.0 is
-    /// not reachable through floating-point accumulation.
     static let macroTotalTolerance = 0.01
 
     var targetText: String
@@ -38,27 +27,16 @@ struct GoalEditDraft: Equatable {
         self.init(seed: GoalEditSeed(profile: profile))
     }
 
-    // MARK: - Calorie target
-
-    /// Clamped into `CalorieDomain`: this is a free-text field, and the typed
-    /// number is saved onto the profile, then subtracted from and summed across
-    /// a period by History.
     var manualTarget: Int? { Int(targetText).map(CalorieDomain.clamped) }
 
     func calculatedTarget(tdee: Double) -> Int {
         NutritionCalculator.defaultTarget(tdee: tdee, deficit: calorieDeficit)
     }
 
-    /// The target the macro previews are computed from: the typed value while
-    /// the manual toggle is on, otherwise the calculation. A manual target that
-    /// does not parse falls back to the calculation so the previews stay
-    /// populated while the field is being typed into.
     func effectiveCalorieTarget(tdee: Double) -> Int {
         let calculated = calculatedTarget(tdee: tdee)
         return manualOverride ? (manualTarget ?? calculated) : calculated
     }
-
-    // MARK: - Macro previews
 
     var macroTotal: Double { proteinRatio + carbRatio + fatRatio }
 
@@ -82,8 +60,6 @@ struct GoalEditDraft: Equatable {
         )
     }
 
-    // MARK: - Validation
-
     var isMacroValid: Bool {
         abs(macroTotal - 1.0) <= Self.macroTotalTolerance
     }
@@ -100,15 +76,11 @@ struct GoalEditDraft: Equatable {
         isMacroValid && isManualTargetValid && areNutrientGoalsValid
     }
 
-    /// A blank field is valid — it means "no goal for this nutrient" — so only
-    /// text that is present but unparseable is flagged.
     func isInvalidTarget(for nutrient: TrackedNutrient) -> Bool {
         let text = trimmedText(for: nutrient)
         return !text.isEmpty && storedTarget(for: nutrient) == nil
     }
 
-    /// The typed value converted to the unit the profile stores, or nil when
-    /// the field is blank, unparseable, or not a positive number.
     func storedTarget(for nutrient: TrackedNutrient) -> Double? {
         // decimalInputValue accepts a decimal comma so the field behaves the
         // same for users whose keyboard produces one, and rejects the spellings
@@ -134,10 +106,6 @@ struct GoalEditDraft: Equatable {
         targetText(for: nutrient).trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    // MARK: - Labels
-
-    /// Signed by the whole calories it prints, so a stored fraction under one
-    /// calorie reads as maintenance rather than "-0 kcal/day".
     var deficitLabel: String {
         let wholeDeficit = calorieDeficit.truncatedSafely
         if wholeDeficit > 0 {
@@ -148,9 +116,6 @@ struct GoalEditDraft: Equatable {
         return "Maintenance (no change)"
     }
 
-    // MARK: - Profile round trip
-
-    /// Reads the profile's saved nutrient goals into the editable fields.
     mutating func loadNutrientGoals(from profile: UserProfile) {
         for nutrient in TrackedNutrient.editableGoalNutrients {
             if let target = profile.target(for: nutrient) {
@@ -162,18 +127,12 @@ struct GoalEditDraft: Equatable {
         }
     }
 
-    /// Turning the manual toggle on pre-fills the field with the current
-    /// calculation, so the user adjusts a real number instead of whatever was
-    /// last typed.
     mutating func manualOverrideChanged(to isManual: Bool, tdee: Double) {
         manualOverride = isManual
         guard isManual else { return }
         targetText = "\(calculatedTarget(tdee: tdee))"
     }
 
-    /// Writes the edit back. Saving a manual target also drops the profile out
-    /// of any dynamic energy mode, because a hand-picked number should not then
-    /// be moved by Apple Health.
     func apply(to profile: UserProfile) {
         profile.manualOverride = manualOverride
         profile.calorieDeficit = calorieDeficit
@@ -192,17 +151,11 @@ struct GoalEditDraft: Equatable {
         }
     }
 
-    /// The field still shows the saved goal as `loadNutrientGoals` wrote it. The
-    /// field rounds to a tenth, so writing it back would move a 27.25 g goal to
-    /// 27.3 g on a save that never touched it.
     private func isUnchangedGoal(for nutrient: TrackedNutrient, in profile: UserProfile) -> Bool {
         guard let saved = profile.target(for: nutrient) else { return false }
         return trimmedText(for: nutrient) == nutrient.unit.inputFormatted(saved)
     }
 
-    /// Whether saving this draft should also switch Apple Health adjustment
-    /// off. Separated from `apply(to:)` so the write to the profile stays free
-    /// of the global settings side effect.
     var disablesAppleHealthAdjustment: Bool {
         manualOverride && manualTarget != nil
     }

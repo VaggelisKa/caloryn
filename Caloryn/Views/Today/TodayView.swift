@@ -11,10 +11,7 @@ struct TodayView: View {
     @Query(sort: \UserProfile.updatedAt, order: .reverse) private var profiles: [UserProfile]
     @Query private var allEntries: [FoodLogEntry]
 
-    /// Apple's minimum touch target; a bare chevron glyph is smaller than this and the
-    /// accessibility audit reports "Hit area is too small".
     private static let minimumHitTarget: CGFloat = 44
-    /// The glass circle drawn inside each day button's hit target.
     private static let dayButtonSize: CGFloat = 36
 
     private struct FoodSearchPresentation: Identifiable {
@@ -95,8 +92,6 @@ struct TodayView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 List {
-                    // The first row rather than a view above the list, so the date scrolls
-                    // away with the day instead of staying pinned over it.
                     dateNavigator
                         .todayPlateRowLayout(top: 4, bottom: 0)
                         .calorynClearRowBackground()
@@ -150,14 +145,10 @@ struct TodayView: View {
                     )
                 }
                 .calorynPlainListStyle()
-                // Rows size to the board's 41pt rather than the system's 44pt minimum; each
-                // is still a full-width tap target.
                 .environment(\.defaultMinListRowHeight, 0)
                 .contentMargins(.top, 0, for: .scrollContent)
                 .id(selectedDate)
                 .animation(.smooth(duration: 0.35), value: hasNutriscoreData)
-                // Entries saved from the add-food sheet arrive through the query with no
-                // transaction of their own; without this a new row snaps into its meal.
                 .animation(reduceMotion ? nil : .smooth(duration: 0.3), value: projection.today.map(\.id))
             }
             .calorynPageCanvas()
@@ -241,11 +232,6 @@ struct TodayView: View {
         }
     }
 
-    /// "Friday 17 October" on the left, previous and next day as glass circles on the right.
-    ///
-    /// One line, as the board draws it, until accessibility sizes: there the chevrons leave
-    /// the title about 246pt, and "Wednesday 30 September" would need to shrink below the
-    /// 0.7 floor and truncate. The title wraps instead.
     private var dateNavigator: some View {
         HStack(spacing: 12) {
             Text(DayTitle.text(for: selectedDate))
@@ -279,16 +265,12 @@ struct TodayView: View {
                     selectedDate = selectedDate.tomorrow
                 }
             }
-            // The 44pt hit targets overhang the 36pt circles by 4pt each side; pull the pair
-            // back so the right-hand circle sits on the page margin as the board draws it.
             .padding(.trailing, -(Self.minimumHitTarget - Self.dayButtonSize) / 2)
         }
         .padding(.top, 4)
         .padding(.bottom, 4)
     }
 
-    /// A 36pt glass circle inside a 44pt hit target — Apple's minimum; the accessibility audit
-    /// reports a bare 36pt control as "Hit area is too small".
     private func dayButton(
         systemImage: String,
         label: String,
@@ -296,17 +278,12 @@ struct TodayView: View {
         isEnabled: Bool,
         action: @escaping () -> Void
     ) -> some View {
-        // No animation: the list is rebuilt per day (`.id(selectedDate)`), and animating that
-        // crossfaded the two days over each other, figures ghosted on figures. The new day
-        // swaps in at once and its hero makes the entrance: the donut grows, the numbers roll.
         Button(action: action) {
             Image(systemName: systemImage)
                 .font(CalorynTheme.inlineIcon)
                 .imageScale(.small)
                 .foregroundStyle(isEnabled ? CalorynTheme.accent : CalorynTheme.textTertiary)
                 .frame(width: Self.dayButtonSize, height: Self.dayButtonSize)
-                // Tinted with the card colour, as PlateDark draws filled discs: clear glass
-                // on the dark page showed nothing but its rim.
                 .adaptiveCircleInteractiveGlass(tint: CalorynTheme.backgroundSecondary)
                 .frame(width: Self.minimumHitTarget, height: Self.minimumHitTarget)
                 .contentShape([.interaction, .accessibility], .rect)
@@ -360,10 +337,6 @@ struct TodayView: View {
         }
     }
 
-    /// The day's Nutri-Score chips under a label in the style of the meal headers below it
-    /// (17pt bold, ink, as a non-meal section is titled), so the badges are not left to
-    /// explain themselves. One stop for VoiceOver: the chips already read "Nutri-Score today:
-    /// 3 A, 1 C", so the label is not read again before them.
     private func nutriscoreSection(distribution: [(grade: String, count: Int)]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Nutri-Score")
@@ -378,9 +351,6 @@ struct TodayView: View {
         .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .leading)))
     }
 
-    /// Copies all of yesterday's log onto an empty day. Shown under the hero, in the slot the
-    /// Nutri-Score chips take once anything is logged, because it is only ever offered while
-    /// the day is empty — and every empty meal row points at it ("or copy yesterday's").
     private func copyYesterdayButton(yesterdayEntries: [FoodLogEntry]) -> some View {
         Button {
             copyYesterday(yesterdayEntries)
@@ -447,12 +417,6 @@ struct TodayView: View {
         }
     }
 
-    /// Persists today's effective calorie target so History can later compare
-    /// the day against the goal that actually applied. Only the current
-    /// calendar day is ever recorded (the store enforces this), and the last
-    /// write before midnight finalizes the day.
-    /// Keeps the screen on the current day when the calendar rolls over while
-    /// the app is open, so the new day still gets its goal snapshot.
     private func followCalendarRollover() {
         selectedDate = SelectedDayRollover.selectedDay(
             selected: selectedDate,
@@ -481,9 +445,7 @@ struct TodayView: View {
             try? modelContext.save()
         }
     }
-
 }
-
 
 #Preview {
     TodayView()

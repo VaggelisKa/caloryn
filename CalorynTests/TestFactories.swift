@@ -85,8 +85,6 @@ func makeTestEntry(
     )
 }
 
-/// Simulates a pre-snapshot (legacy) log entry as it appears after lightweight
-/// migration: the quality snapshot fields are nil.
 @MainActor
 func makeLegacyTestEntry(
     date: Date = makeTestDate(year: 2026, month: 1, day: 1),

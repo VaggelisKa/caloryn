@@ -2,17 +2,9 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// `FoodSearchService` against stubbed providers: status and transport error
-/// mapping, which failure wins when both providers fail, the requests each
-/// provider is sent, and the debounced search state the sheet renders.
-///
-/// Nothing here reaches the network: every session routes through a private
-/// `URLProtocol` whose handler is set per test. The suite is serialized
-/// because that handler is shared by every session the suite creates.
 @MainActor
 @Suite(.serialized)
 struct FoodSearchServiceNetworkCoverageTests {
-
     nonisolated enum Reply: Sendable, CustomTestStringConvertible {
         case http(Int, String)
         case nonHTTP(String)
@@ -99,7 +91,6 @@ struct FoodSearchServiceNetworkCoverageTests {
         }
     }
 
-    /// Polls on the main actor, which lets the service's own main-actor tasks run in between.
     private func eventually(_ condition: () -> Bool) async -> Bool {
         for _ in 0..<250 {
             if condition() { return true }
@@ -116,8 +107,6 @@ struct FoodSearchServiceNetworkCoverageTests {
             uniquingKeysWith: { first, _ in first }
         )
     }
-
-    // MARK: - Status and transport mapping
 
     @Test(
         "Each HTTP status maps to one lookup failure, with no second attempt",
@@ -202,8 +191,6 @@ struct FoodSearchServiceNetworkCoverageTests {
         #expect(telemetry.events.map(\.outcome) == [.unavailable, .success])
     }
 
-    // MARK: - Which failure wins when both providers fail
-
     @Test(
         "When both providers fail, the most actionable failure is reported",
         arguments: [
@@ -241,8 +228,6 @@ struct FoodSearchServiceNetworkCoverageTests {
         #expect(telemetry.events.map(\.isFallback) == [false, true])
         #expect(telemetry.events.map(\.fallbackSucceeded) == [nil, false])
     }
-
-    // MARK: - Barcode requests
 
     @Test("A padded barcode is trimmed before it is sent to the primary provider")
     func barcodeRequestShape() async throws {
@@ -305,7 +290,6 @@ struct FoodSearchServiceNetworkCoverageTests {
 
         let result = try await service.lookupBarcode(Self.barcode)
 
-        // 260 kJ / 4.184 ≈ 62.1 kcal
         let kcal = try #require(result.product.nutriments?.energyKcal100g)
         #expect(abs(kcal - 62.141) < 0.001)
     }
@@ -319,8 +303,6 @@ struct FoodSearchServiceNetworkCoverageTests {
 
         #expect(await lookupError(service) as? FoodLookupError == .invalidData)
     }
-
-    // MARK: - Search requests
 
     @Test("Community search asks for the app's fields, page size and languages")
     func communitySearchRequestShape() async throws {
@@ -450,8 +432,6 @@ struct FoodSearchServiceNetworkCoverageTests {
         #expect(telemetry.events.map(\.fallbackSucceeded) == [nil, true])
     }
 
-    // MARK: - Cancellation
-
     @Test("A lookup started in an already-cancelled task stops before any request")
     func preCancelledLookup() async {
         let log = FoodSearchNetworkRequestLog()
@@ -493,8 +473,6 @@ struct FoodSearchServiceNetworkCoverageTests {
         #expect(log.requests.compactMap(\.url?.host) == [Self.calorynHost])
         #expect(telemetry.events.map(\.outcome) == [.cancelled])
     }
-
-    // MARK: - Debounced search state
 
     @Test("A typed search publishes its results once the debounce settles")
     func debouncedSearchPublishesResults() async {
@@ -576,8 +554,6 @@ struct FoodSearchServiceNetworkCoverageTests {
         #expect(service.searchResults.isEmpty)
     }
 }
-
-// MARK: - Stub infrastructure
 
 nonisolated private final class FoodSearchNetworkCoverageStub: URLProtocol {
     typealias Handler = @Sendable (URLRequest) -> FoodSearchServiceNetworkCoverageTests.Reply

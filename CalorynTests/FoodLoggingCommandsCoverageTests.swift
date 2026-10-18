@@ -26,8 +26,6 @@ private func makeLoggingContainer() throws -> ModelContainer {
     )
 }
 
-/// The user-facing message an error carries, so a test checks both which
-/// error was thrown and what the user is told.
 @MainActor
 private func message<T>(of operation: () throws -> T) -> String? {
     do {
@@ -37,8 +35,6 @@ private func message<T>(of operation: () throws -> T) -> String? {
         return (error as? LocalizedError)?.errorDescription ?? "\(error)"
     }
 }
-
-// MARK: - Favorites
 
 @MainActor
 @Suite("Favorite food logging coverage")
@@ -153,7 +149,6 @@ struct FavoriteFoodLoggingCoverageTests {
         #expect(entry.portionGrams == 170)
         #expect(entry.mealType == .snack)
         #expect(entry.snackIndex == 2)
-        // 63 kcal × 1.7 and 11 g × 1.7.
         #expect(abs(entry.calories - 107.1) < 1e-9)
         #expect(abs(entry.proteinG - 18.7) < 1e-9)
         #expect(food.lastUsed == fixedDate(2026, 7, 22, 15))
@@ -230,7 +225,6 @@ struct FavoriteFoodLoggingCoverageTests {
 
     @Test("A recipe is available only with ingredients and a safe total weight")
     func recipeAvailability() {
-        // An ingredient belongs to one recipe, so each recipe gets its own.
         func ingredient() -> RecipeIngredient {
             RecipeIngredient(
                 name: "Rice", portionGrams: 200, caloriesPer100g: 130,
@@ -257,8 +251,6 @@ struct FavoriteFoodLoggingCoverageTests {
         let context = ModelContext(try makeLoggingContainer())
         let food = makeTestFoodItem(name: "Porridge", isCustom: true)
         context.insert(food)
-        // Dates are set after construction, because the initialiser snaps them
-        // to the machine's own start of day.
         let sameDay = makeTestEntry(foodItem: food, portionGrams: 200)
         sameDay.date = fixedDate(2026, 7, 22, 0)
         sameDay.createdAt = fixedDate(2026, 7, 22, 8)
@@ -326,8 +318,6 @@ struct FavoriteFoodLoggingCoverageTests {
         #expect(FavoriteFoodLogging.mostRecentlyLoggedSafePortion(for: makeTestFoodItem()) == nil)
     }
 }
-
-// MARK: - Daily log commands
 
 @MainActor
 @Suite("Daily food log commands coverage")
@@ -411,7 +401,6 @@ struct DailyFoodLogCommandsCoverageTests {
         #expect(orphan.portionGrams == 125)
         #expect(orphan.mealType == .snack)
         #expect(orphan.snackIndex == 1)
-        // 80 kcal/100 g × 125 g, and 4 g × 1.25.
         #expect(abs(orphan.calories - 100) < 1e-9)
         #expect(abs(orphan.proteinG - 5) < 1e-9)
     }
@@ -476,8 +465,6 @@ struct DailyFoodLogCommandsCoverageTests {
         #expect(foods.map(\.isFavorite) == [true])
     }
 }
-
-// MARK: - Multi-add
 
 @MainActor
 @Suite("Multi-add commands coverage")
@@ -578,7 +565,6 @@ struct MultiAddCommandsCoverageTests {
         #expect(!alreadyCommitted)
         #expect(entryIDs.count == 2)
         let logged = try ModelContext(container).fetch(FetchDescriptor<FoodLogEntry>())
-        // Rice 150 g: 180 kcal, 3.75 P, 39 C, 0.6 F. Salmon 125 g: 260 kcal, 25 P, 0 C, 16.25 F.
         #expect(abs(logged.reduce(0) { $0 + $1.calories } - 440) < 1e-9)
         #expect(abs(logged.reduce(0) { $0 + $1.proteinG } - 28.75) < 1e-9)
         #expect(abs(logged.reduce(0) { $0 + $1.carbsG } - 39) < 1e-9)
@@ -600,8 +586,6 @@ struct MultiAddCommandsCoverageTests {
         #expect(plan.id == plan.replicationPlan.id)
     }
 }
-
-// MARK: - Contextual suggestions
 
 @MainActor
 @Suite("Contextual suggestion ranking coverage")
@@ -715,7 +699,6 @@ struct ContextualSuggestionRankingCoverageTests {
         #expect(result.map(\.foodID) == [alwaysLunch, sometimesLunch])
         let first = try #require(result.first)
         let second = try #require(result.last)
-        // Meal share 3/3 of 40 against 2/3 of 40; everything else equal.
         #expect(abs(first.score.meal - 40) < 1e-9)
         #expect(abs(second.score.meal - 80.0 / 3) < 1e-9)
         #expect(first.score.total > second.score.total)
@@ -726,7 +709,6 @@ struct ContextualSuggestionRankingCoverageTests {
         let earlier = UUID()
         let later = UUID()
         let now = fixedDate(2026, 7, 22, 12)
-        // Both in the midday bucket on the same three days; only the clock time differs.
         let observations = (0..<3).flatMap { offset in
             [
                 observation(earlier, logDate: fixedDate(2026, 7, 20 + offset, 11)),

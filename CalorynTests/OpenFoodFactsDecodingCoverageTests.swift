@@ -2,15 +2,8 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// Decoding the product JSON both providers return, and the nutrition and
-/// serving maths derived from it.
-///
-/// Open Food Facts is community data: fields go missing, arrive as `null`,
-/// arrive as strings, or arrive only in kilojoules. Each case here pins what
-/// the app currently makes of that shape, by hand-computed value.
 @MainActor
 struct OpenFoodFactsDecodingCoverageTests {
-
     private static func decode(_ json: String) throws -> OpenFoodFactsProduct {
         try JSONDecoder().decode(OpenFoodFactsProduct.self, from: Data(json.utf8))
     }
@@ -26,8 +19,6 @@ struct OpenFoodFactsDecodingCoverageTests {
             )
         )
     }
-
-    // MARK: - Missing and null nutrients
 
     @Test("A null macro decodes as missing, not as zero")
     func nullMacrosAreMissing() throws {
@@ -106,8 +97,6 @@ struct OpenFoodFactsDecodingCoverageTests {
         #expect(product.nutritionCompleteness == .unknown)
     }
 
-    // MARK: - Energy units
-
     @Test("A product with energy only in kilojoules is converted to kilocalories")
     func kilojouleOnlyEnergy() throws {
         let product = try Self.decode(
@@ -126,7 +115,6 @@ struct OpenFoodFactsDecodingCoverageTests {
             """
         )
 
-        // 1966 kJ / 4.184 ≈ 469.9 kcal
         let kcal = try #require(product.nutriments?.energyKcal100g)
         #expect(abs(kcal - 469.885) < 0.001)
         #expect(product.hasMinimumUsableNutrition)
@@ -155,8 +143,6 @@ struct OpenFoodFactsDecodingCoverageTests {
         #expect(product.nutriments?.energyKcal100g == 239)
         #expect(FoodSearchService().createFoodItem(from: Self.result(product)).caloriesPer100g == 239)
     }
-
-    // MARK: - String-typed values
 
     @Test("A string-typed nutrient value is read as the number it spells")
     func stringTypedNutrient() throws {
@@ -242,8 +228,6 @@ struct OpenFoodFactsDecodingCoverageTests {
         #expect(product.brands == expected)
     }
 
-    // MARK: - Salt and sodium
-
     @Test("Salt without sodium is kept as salt and sodium stays missing")
     func saltWithoutSodium() throws {
         let product = try Self.decode(
@@ -264,7 +248,6 @@ struct OpenFoodFactsDecodingCoverageTests {
 
         let food = FoodSearchService().createFoodItem(from: Self.result(product))
 
-        // Salt is not converted into sodium (1.25 g salt would be 0.5 g sodium).
         #expect(food.saltPer100g == 1.25)
         #expect(food.sodiumPer100g == nil)
         #expect(food.salt(forGrams: 40) == 0.5)
@@ -295,8 +278,6 @@ struct OpenFoodFactsDecodingCoverageTests {
         #expect(food.sodiumPer100g == 20)
         #expect(food.sodium(forGrams: 4) == 0.8)
     }
-
-    // MARK: - Mapping every nutrient
 
     @Test("Every nutriment key lands on its own FoodItem field")
     func everyNutrimentKeyMaps() throws {
@@ -446,8 +427,6 @@ struct OpenFoodFactsDecodingCoverageTests {
         #expect(food.fieldOrigin(for: .nutriscore) == (expected == nil ? .missing : .provider))
     }
 
-    // MARK: - Serving size and per-serving calories
-
     @Test("A fractional serving quantity keeps its grams but shows them truncated")
     func fractionalServingQuantity() throws {
         let product = try Self.decode(
@@ -457,7 +436,6 @@ struct OpenFoodFactsDecodingCoverageTests {
         #expect(product.formattedServingDescription == "50g")
         #expect(product.effectiveServingInfo.defaultServingG == 50.5)
         #expect(product.effectiveServingInfo.servingDescription == "50g")
-        // 200 kcal/100 g × 50.5 g = 101 kcal
         #expect(product.caloriesPerServing == 101)
     }
 
@@ -468,7 +446,6 @@ struct OpenFoodFactsDecodingCoverageTests {
         )
 
         #expect(product.formattedServingDescription == "30g")
-        // 380 kcal/100 g × 30 g = 114 kcal
         #expect(product.caloriesPerServing == 114)
     }
 
@@ -481,7 +458,6 @@ struct OpenFoodFactsDecodingCoverageTests {
         #expect(product.formattedServingDescription == nil)
         #expect(product.effectiveServingInfo.defaultServingG == 350)
         #expect(product.effectiveServingInfo.servingDescription == "1 pack (350g)")
-        // 60 kcal/100 g × 350 g = 210 kcal
         #expect(product.caloriesPerServing == 210)
     }
 
@@ -493,7 +469,6 @@ struct OpenFoodFactsDecodingCoverageTests {
 
         #expect(product.effectiveServingInfo.defaultServingG == 125)
         #expect(product.effectiveServingInfo.servingDescription == "1 pack (125g)")
-        // 80 kcal/100 g × 125 g = 100 kcal
         #expect(product.caloriesPerServing == 100)
     }
 
@@ -519,7 +494,6 @@ struct OpenFoodFactsDecodingCoverageTests {
 
         #expect(product.effectiveServingInfo.defaultServingG == grams)
         #expect(product.effectiveServingInfo.servingDescription == description)
-        // 400 kcal/100 g, so a serving is 4 kcal per gram
         #expect(product.caloriesPerServing == grams.map { $0 * 4 })
     }
 
@@ -558,12 +532,9 @@ struct OpenFoodFactsDecodingCoverageTests {
 
         #expect(food.defaultServingG == 25)
         #expect(food.servingDescription == "2 biscuits (25 g)")
-        // 480 kcal/100 g × 25 g = 120 kcal
         #expect(product.caloriesPerServing == 120)
         #expect(food.calories(forGrams: food.defaultServingG ?? 0) == 120)
     }
-
-    // MARK: - Identity and richness
 
     @Test(
         "Richness counts each nutrient, a brand, a serving and a grade",
@@ -655,8 +626,6 @@ struct OpenFoodFactsDecodingCoverageTests {
         #expect(product.id == "4000000000025")
         #expect(Self.result(product).id == "4000000000025")
     }
-
-    // MARK: - Response envelopes
 
     @Test("A barcode response without a product decodes with status zero")
     func barcodeNotFoundEnvelope() throws {

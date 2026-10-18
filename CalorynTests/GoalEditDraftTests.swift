@@ -1,14 +1,9 @@
 import Testing
 @testable import Caloryn
 
-/// Covers the rules the goal editor applies, which until now were only
-/// reachable by driving the form.
 @MainActor
 @Suite("Goal edit draft")
 struct GoalEditDraftTests {
-
-    // MARK: - Which target the previews use
-
     @Test("Without a manual override the target comes from the calculation, not the typed text")
     func calculatedTargetIgnoresTypedText() {
         var draft = makeDraft()
@@ -46,8 +41,6 @@ struct GoalEditDraftTests {
         #expect(lean.calculatedTarget(tdee: tdee) < maintenance.calculatedTarget(tdee: tdee))
     }
 
-    // MARK: - Macro previews
-
     @Test("Macro previews reconcile back to the effective target")
     func macroPreviewsReconcileToTarget() {
         var draft = makeDraft()
@@ -76,8 +69,6 @@ struct GoalEditDraftTests {
         #expect(large.proteinTargetGrams(tdee: tdee) > small.proteinTargetGrams(tdee: tdee))
     }
 
-    // MARK: - Save gating
-
     @Test("Ratios that do not total 100% block saving")
     func lopsidedRatiosBlockSaving() {
         var draft = makeDraft()
@@ -89,10 +80,6 @@ struct GoalEditDraftTests {
         #expect(!draft.canSave)
     }
 
-    /// The sliders step in 0.05, so every total the user can actually reach is
-    /// a sum of three such steps. Accumulated floating-point error across three
-    /// additions stays far inside the tolerance, which is what makes the check
-    /// workable at all.
     @Test(
         "Every combination the sliders can produce that sums to 100% validates",
         arguments: [
@@ -148,8 +135,6 @@ struct GoalEditDraftTests {
         #expect(draft.isManualTargetValid)
         #expect(draft.canSave)
     }
-
-    // MARK: - Nutrient goals
 
     @Test("A blank nutrient field means no goal rather than an error")
     func blankNutrientFieldIsValid() {
@@ -216,8 +201,6 @@ struct GoalEditDraftTests {
             #expect(draft.goalKind(for: nutrient) == nutrient.defaultGoalKind)
         }
     }
-
-    // MARK: - Profile round trip
 
     @Test("Loading then saving leaves a profile's nutrient goals unchanged")
     func nutrientGoalsSurviveARoundTrip() {
@@ -298,8 +281,6 @@ struct GoalEditDraftTests {
         #expect(draft.targetText == "1800")
     }
 
-    // MARK: - Labels
-
     @Test(
         "The adjustment label names the direction the deficit moves weight",
         arguments: [
@@ -314,8 +295,6 @@ struct GoalEditDraftTests {
 
         #expect(draft.deficitLabel == expected)
     }
-
-    // MARK: - Helpers
 
     private var tdee: Double { 2_500 }
 

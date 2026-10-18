@@ -6,11 +6,8 @@ import Testing
 private let usLocale = Locale(identifier: "en_US")
 private let danishLocale = Locale(identifier: "da_DK")
 
-// MARK: - Goal kinds
-
 @Suite("Nutrient goal kind copy")
 struct NutrientGoalKindCopyTests {
-
     @Test(
         "Each goal kind has a name, a short label and a spoken phrase",
         arguments: [
@@ -33,11 +30,8 @@ struct NutrientGoalKindCopyTests {
     }
 }
 
-// MARK: - Units
-
 @Suite("Tracked nutrient unit conversions")
 struct TrackedNutrientUnitCoverageTests {
-
     @Test("The input field is labelled with the unit the user types in")
     func inputUnitLabels() {
         #expect(TrackedNutrientUnit.grams.inputUnitLabel == "g")
@@ -47,11 +41,11 @@ struct TrackedNutrientUnitCoverageTests {
     @Test(
         "Grams round half away from zero to the tenth, and a value that rounds to nothing is a plain zero",
         arguments: [
-            (12.25, "12.3 g"),    // 122.5 tenths → 123
-            (12.75, "12.8 g"),    // 127.5 tenths → 128
-            (0.25, "0.3 g"),      // 2.5 tenths → 3
+            (12.25, "12.3 g"),
+            (12.75, "12.8 g"),
+            (0.25, "0.3 g"),
             (12.0, "12 g"),
-            (-0.04, "0 g"),       // −0.4 tenths → −0, never "-0 g"
+            (-0.04, "0 g"),
             (1_234.56, "1,234.6 g"),
         ]
     )
@@ -67,8 +61,8 @@ struct TrackedNutrientUnitCoverageTests {
     @Test(
         "Stored grams of sodium and cholesterol show as whole milligrams, grouped for the reader",
         arguments: [
-            (2.3, "2,300 mg"),        // 2.3 g × 1000
-            (0.0125, "13 mg"),        // 12.5 mg rounds half up
+            (2.3, "2,300 mg"),
+            (0.0125, "13 mg"),
             (0.0124, "12 mg"),
             (0.0004, "0 mg"),
             (0.0, "0 mg"),
@@ -81,13 +75,13 @@ struct TrackedNutrientUnitCoverageTests {
     @Test(
         "Spoken amounts round to the tenth and take the singular only for exactly one",
         arguments: [
-            (TrackedNutrientUnit.grams, 0.96, "1 gram"),           // 9.6 tenths → 10 → 1.0
-            (.grams, 2.25, "2.3 grams"),                           // 22.5 tenths → 23
+            (TrackedNutrientUnit.grams, 0.96, "1 gram"),
+            (.grams, 2.25, "2.3 grams"),
             (.grams, 0.0, "0 grams"),
-            (.grams, 1.04, "1 gram"),                              // 10.4 tenths → 10
-            (.milligramsFromGrams, 2.3, "2300 milligrams"),        // no grouping when spoken
-            (.milligramsFromGrams, 0.0004, "0 milligrams"),        // 0.4 mg → 0
-            (.milligramsFromGrams, 0.0009, "1 milligram"),         // 0.9 mg → 1
+            (.grams, 1.04, "1 gram"),
+            (.milligramsFromGrams, 2.3, "2300 milligrams"),
+            (.milligramsFromGrams, 0.0004, "0 milligrams"),
+            (.milligramsFromGrams, 0.0009, "1 milligram"),
         ]
     )
     func spokenFormatting(unit: TrackedNutrientUnit, value: Double, expected: String) {
@@ -98,9 +92,9 @@ struct TrackedNutrientUnitCoverageTests {
         "The goal input shows a whole number without a point and anything else to one decimal",
         arguments: [
             (TrackedNutrientUnit.grams, 12.0, "12"),
-            (.grams, 12.25, "12.3"),        // 122.5 tenths → 123
-            (.grams, 12.04, "12"),          // 120.4 tenths → 120, a whole number again
-            (.grams, -2.25, "-2.3"),        // half rounds away from zero on the negative side too
+            (.grams, 12.25, "12.3"),
+            (.grams, 12.04, "12"),
+            (.grams, -2.25, "-2.3"),
             (.grams, 0.0, "0"),
             (.milligramsFromGrams, 2.3, "2300"),
             (.milligramsFromGrams, 0.0123, "12.3"),
@@ -115,17 +109,13 @@ struct TrackedNutrientUnitCoverageTests {
         #expect(TrackedNutrientUnit.grams.storedValue(fromInput: 66.7) == 66.7)
         #expect(TrackedNutrientUnit.milligramsFromGrams.storedValue(fromInput: 2_300) == 2.3)
         #expect(TrackedNutrientUnit.milligramsFromGrams.storedValue(fromInput: 0) == 0)
-        // Typed, stored and shown again, a milligram goal reads back as typed.
         let stored = TrackedNutrientUnit.milligramsFromGrams.storedValue(fromInput: 300)
         #expect(TrackedNutrientUnit.milligramsFromGrams.inputFormatted(stored) == "300")
     }
 }
 
-// MARK: - The nutrient table
-
 @Suite("Tracked nutrient table")
 struct TrackedNutrientTableTests {
-
     @Test(
         "Each nutrient's names, symbol, unit and default goal",
         arguments: [
@@ -173,16 +163,13 @@ struct TrackedNutrientTableTests {
         ])
     }
 
-
-    // MARK: Selection
-
     @Test(
         "A stored selection drops what it cannot read and is padded to three from the defaults",
         arguments: [
             ("sodium,bogus,alcohol", [TrackedNutrient.sodium, .alcohol, .protein]),
             ("fiber,sodium,alcohol,sugars", [.fiber, .sodium, .alcohol, .sugars]),
             ("carbs", [.carbs, .protein, .fat]),
-            ("Protein", [.protein, .carbs, .fat]),          // raw values are case-sensitive
+            ("Protein", [.protein, .carbs, .fat]),
             (",,,", [.protein, .carbs, .fat]),
             ("fat,protein,fat,carbs,protein", [.fat, .protein, .carbs]),
         ]
@@ -204,8 +191,6 @@ struct TrackedNutrientTableTests {
         #expect(TrackedNutrient.normalizedSelection(from: []) == TrackedNutrient.defaultSelection)
     }
 
-    // MARK: Day totals
-
     @MainActor
     @Test("Each optional nutrient totals across entries, a missing value counting as zero")
     func optionalNutrientsTotal() {
@@ -221,7 +206,6 @@ struct TrackedNutrientTableTests {
         let unreported = makeTestEntry(foodItem: makeTestFoodItem(), portionGrams: 300)
         let entries = [half, unreported]
 
-        // 50 g of each per-100 g value, plus nothing.
         #expect(abs(TrackedNutrient.addedSugars.value(in: entries) - 4) < 1e-9)
         #expect(abs(TrackedNutrient.saturatedFat.value(in: entries) - 3) < 1e-9)
         #expect(abs(TrackedNutrient.cholesterol.value(in: entries) - 0.01) < 1e-12)
@@ -230,11 +214,8 @@ struct TrackedNutrientTableTests {
     }
 }
 
-// MARK: - A nutrient's line on Today
-
 @Suite("Tracked nutrient metric")
 struct TrackedNutrientMetricCoverageTests {
-
     private func metric(
         _ nutrient: TrackedNutrient = .protein,
         value: Double,
@@ -298,9 +279,9 @@ struct TrackedNutrientMetricCoverageTests {
         "Progress is the share of the target eaten, capped at a full ring",
         arguments: [
             (0.0, 0.0),
-            (75.0, 0.5),        // 75 / 150
+            (75.0, 0.5),
             (150.0, 1.0),
-            (300.0, 1.0),       // 2.0 capped
+            (300.0, 1.0),
         ]
     )
     func progressShare(value: Double, expected: Double) {

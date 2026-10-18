@@ -2,17 +2,12 @@ import SwiftUI
 import SwiftData
 import UIKit
 
-/// The row builders live in `FoodSearchRows.swift`; the members they touch
-/// are internal rather than private so that same-type extension can reach
-/// them from its own file. Nothing else should.
 struct FoodSearchView: View {
     struct MultiAddPresentation: Identifiable {
         let id = UUID()
         let groups: [MultiAddSelectionGroup]
     }
 
-    /// A saved food on its way to the portion picker, carrying the portion a
-    /// contextual suggestion came with when that is where the tap started.
     struct PortionDestination: Identifiable, Hashable {
         let food: FoodItem
         var suggestedPortionGrams: Double?
@@ -40,8 +35,6 @@ struct FoodSearchView: View {
     @State private var showingScanner = false
     @State private var hasPresentedInitialScanner = false
     @State private var showingCustomFoodForm = false
-    /// Every rule about what a scan, a failure and a recovery do to this
-    /// screen's state lives in `BarcodeLookupFlow`.
     @State private var barcodeFlow = BarcodeLookupFlow(
         error: FoodSearchService.debugInitialBarcodeFailure,
         lastScannedBarcode: FoodSearchService.debugInitialBarcode
@@ -54,13 +47,10 @@ struct FoodSearchView: View {
     @State var multiAddPresentation: MultiAddPresentation?
     @ScaledMetric(relativeTo: .body)
     var selectionIndicatorWidth: CGFloat = 22
-    /// The search well and the scanner button beside it share one height, the board's 46pt.
     @ScaledMetric(relativeTo: .body)
     private var searchControlHeight: CGFloat = 46
     @FocusState private var isSearchFocused: Bool
 
-    /// Every rule about what this screen lists lives in `FoodSearchListing`.
-    /// The view reads it; it does not decide anything itself.
     private var listing: FoodSearchListing {
         FoodSearchListing(
             mode: FoodSearchListing.Mode(mode),
@@ -95,8 +85,6 @@ struct FoodSearchView: View {
         )
     }
 
-    /// Which of the screen's seven states is showing. `FoodSearchScreenContent`
-    /// owns the precedence; the view only renders the answer.
     private var screenContent: FoodSearchScreenContent {
         FoodSearchScreenContent.resolve(
             isLookingUpBarcode: barcodeFlow.isLookingUp,
@@ -302,8 +290,6 @@ struct FoodSearchView: View {
         }
     }
 
-    /// "Add to Lunch" while logging, the meal word in its own ink; the mode's own title
-    /// for every other way the sheet is opened.
     private var sheetTitle: String {
         guard case .logging = mode else { return mode.title }
         return "Add to \(mealType.displayName)"
@@ -359,8 +345,6 @@ struct FoodSearchView: View {
                         searchText = ""
                         searchService.clearResults()
                     } label: {
-                        // Ink at the symbol's own secondary opacity, a soft grey disc on
-                        // the well. A flat `textSecondary` filled the disc with solid sage.
                         Image(systemName: "xmark.circle.fill")
                             .symbolRenderingMode(.hierarchical)
                             .foregroundStyle(CalorynTheme.accent)
@@ -368,12 +352,8 @@ struct FoodSearchView: View {
                     .accessibilityLabel("Clear search")
                 }
             }
-            // The well: a `backgroundInset` capsule beside the round scanner, as the board draws it.
             .foodSearchWell(isFocused: isSearchFocused, height: searchControlHeight)
 
-            // Glass, like the close and Select circles above it: chrome stays glass. Tinted
-            // with the well's colour and edged with its hairline, as the board draws the
-            // circle beside the well: clear glass on the white sheet showed no edge at all.
             Button {
                 isSearchFocused = false
                 barcodeFlow.scannerOpened()
@@ -403,8 +383,6 @@ struct FoodSearchView: View {
     }
 
     private var recentFoodsList: some View {
-        // The sections and their order are the app's own, unchanged by the restyle:
-        // suggestions, the saved meals, the user's own foods when picking one, then Recent.
         List {
             if !contextualSuggestions.isEmpty {
                 foodSection(title: FoodLogSheetCopy.suggestionsTitle(for: mealType)) {
@@ -513,8 +491,6 @@ struct FoodSearchView: View {
             }
 
             if searchService.isSearching {
-                // The previous row's hairline is this cell's top separator, so only the
-                // bottom one goes; the skeleton draws its own between its rows.
                 FoodSearchSkeletonRows()
                     .listRowInsets(FoodSearchSkeletonRows.listRowInsets)
                     .listRowSeparator(.hidden, edges: .bottom)
@@ -526,14 +502,6 @@ struct FoodSearchView: View {
         .scrollDismissesKeyboard(.immediately)
     }
 
-    /// The one shape every section of both lists shares: a title that either
-    /// scrolls away with its rows or pins to the top, per the mode, above
-    /// rows on a clear background.
-    ///
-    /// A pinned header (`usesNonStickySectionTitles == false`, ingredient selection) is the
-    /// same 17pt bold ink title as a scrolling one, with the same hairline under it. The
-    /// resting list's own-entries section used to take `Section(_:)`'s system header
-    /// instead, which drew in the system's grey.
     @ViewBuilder
     private func foodSection<Rows: View>(
         title: String,
@@ -552,11 +520,6 @@ struct FoodSearchView: View {
                 rows()
                     .calorynHairlineSeparators()
             } header: {
-                // Before iOS 26 a plain list paints a pinned header's band in a system grey
-                // (My Foods' `LibrarySectionHeader` covers it the same way). The header
-                // covers that band with the sheet's own colour, edge to edge, and keeps
-                // its title on the rows' 16pt system margin with padding instead of row
-                // insets, as `LibraryRowStyle.headerPadding` does.
                 if showsTitle {
                     Text(title)
                         .font(CalorynTheme.sectionHeaderTitle)
@@ -570,9 +533,6 @@ struct FoodSearchView: View {
                         .accessibilityAddTraits(.isHeader)
                 }
             }
-            // The section's own top separator is the hairline under a pinned title, the one
-            // a scrolling title draws as its row separator (My Foods' sections keep it the
-            // same way), so both lists open a section alike.
             .listSectionSeparator(showsTitle ? .visible : .automatic, edges: .top)
             .listSectionSeparatorTint(CalorynTheme.separator)
         }
@@ -719,8 +679,6 @@ struct FoodSearchView: View {
         }
     }
 
-    /// A 17pt bold ink title that scrolls with its rows. Only its top separator is hidden,
-    /// so the hairline under it opens the section the way the board draws it.
     private func nonStickySectionTitle(_ title: String) -> some View {
         Text(title)
             .font(CalorynTheme.sectionHeaderTitle)
@@ -770,8 +728,6 @@ struct FoodSearchView: View {
             }
             .ignoresSafeArea()
 
-            // Over live video, not over the theme: the glyph stays white in both
-            // appearances, on a glass circle the camera shows through.
             Button {
                 showingScanner = false
             } label: {
@@ -893,16 +849,11 @@ struct FoodSearchView: View {
     }
 
     #if DEBUG
-    /// Seeds the demo foods and puts the sheet in the state `-uitest-present` asks for, once
-    /// per launch. See `FoodLogDebugPresentation`.
     private func applyDebugPresentationIfRequested() {
         guard case .logging = mode,
               let request = FoodLogDebugPresentation.takeRequest() else { return }
         let foods = FoodLogDebugPresentation.seedDemoFoods(into: modelContext)
 
-        // After the first frame: by then the query has caught up with the seeded foods, so
-        // the suggestions are captured again, and a push or a sheet requested during the
-        // sheet's own appearance would be dropped.
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(600))
             hasCapturedSuggestions = false
@@ -912,8 +863,6 @@ struct FoodSearchView: View {
             case .addFood:
                 break
             case .portion:
-                // A remembered 160 g is not a whole pot, so the sheet opens on the
-                // grams stepper rather than the pot wheel.
                 selectedFoodItem = PortionDestination(food: foods.skyr, suggestedPortionGrams: 160)
             case .portionServing:
                 selectedFoodItem = PortionDestination(food: foods.rugbrod)
@@ -950,8 +899,6 @@ private struct FoodLookupFailureView: View {
     }
 }
 
-/// A lookup failure's title in ink over its symbol in the secondary text colour, rather
-/// than the system's own greys.
 private struct FoodLookupFailureLabel: View {
     let presentation: FoodLookupFailurePresentation
 

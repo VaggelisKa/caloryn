@@ -1,15 +1,9 @@
 import SwiftUI
 
-/// The fonts of a food row. Shared so every row the Add Food sheet draws — a search
-/// result, a suggestion, a saved meal — lines up with the next.
 enum FoodRowTypography {
-    /// The food's name, 16pt medium.
     static let name: Font = CalorynTypeface.text(.callout, weight: .medium)
-    /// Brand and serving under the name, 13pt.
     static let detail: Font = CalorynTypeface.text(.footnote)
-    /// The kcal figure, 16pt semibold, tabular.
     static let figure: Font = CalorynTypeface.text(.callout, weight: .semibold).monospacedDigit()
-    /// What the figure counts, "kcal", 11pt.
     static let figureCaption: Font = CalorynTypeface.text(.caption2)
 }
 
@@ -19,24 +13,18 @@ struct FoodRowView: View {
     let caloriesPer100g: Double
     var nutriscoreGrade: String? = nil
     var servingDescription: String? = nil
-    /// What the declared serving weighs, so the row can price it.
     var servingGrams: Double? = nil
-    /// What the serving adds, when known better than its weight says; a recipe's whole.
     var caloriesPerServing: Double? = nil
     var isCustom: Bool = false
     var isRecipe: Bool = false
     var showsTypeBadge: Bool = true
-    /// Replaces the brand-and-serving line, for a row that is not one food (a saved meal).
     var detail: String? = nil
-    /// A specific portion the row is about, which it shows and prices instead of the serving.
     var portionGrams: Double? = nil
-    /// The calories of that portion, or of the row `detail` describes. Reads "kcal".
     var portionCalories: Double? = nil
 
     @AppStorage("showNutriscore") private var showNutriscore = true
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-    /// What the row says, decided in `FoodRowSummary`.
     private var summary: FoodRowSummary {
         FoodRowSummary(
             brand: brand,
@@ -130,7 +118,6 @@ struct FoodRowView: View {
     }
 }
 
-/// The two-line figure on the right of a row: "152" over "kcal".
 struct FoodRowFigure: View {
     let figure: String
     let caption: String
@@ -154,8 +141,6 @@ struct FoodRowFigure: View {
     }
 }
 
-/// "Recipe" or "Yours": sentence case, bold, and one tint whatever meal the row sits under
-/// (`fillBadge` / `textSecondary`). Squared off like the Nutri-Score badge beside it.
 struct FoodTypeBadge: View {
     let isRecipe: Bool
 

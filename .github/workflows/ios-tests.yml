@@ -14,9 +14,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Theme enforcement. Deliberately its own job rather than a build phase: it is fast,
-  # it has nothing to do with the simulator, and a lint failure should be readable
-  # without scrolling through an xcodebuild log. See docs/theme.md.
   lint:
     name: SwiftLint
     runs-on: macos-26
@@ -29,7 +26,6 @@ jobs:
       - name: Lint
         run: |
           set -euo pipefail
-          # Preinstalled on the macOS runner image; install only if that changes.
           if ! command -v swiftlint >/dev/null 2>&1; then
             brew install swiftlint
           fi
@@ -50,9 +46,6 @@ jobs:
       - name: Show Xcode version
         run: xcodebuild -version
 
-      # Package resolution is a network call on every run. Caching it keeps the
-      # build off the network in the common case, and the key is the resolved
-      # manifest so a dependency change busts it automatically.
       - name: Cache Swift packages
         uses: actions/cache@v4
         with:
@@ -65,9 +58,6 @@ jobs:
         id: simulator
         uses: ./.github/actions/select-simulator
 
-      # Package.resolved is tracked, so the versions are already decided.
-      # These two flags stop xcodebuild re-resolving over the network on
-      # every run, which was costing about 40s per job even on a cache hit.
       - name: Run unit tests
         run: |
           set -euo pipefail
@@ -99,8 +89,6 @@ jobs:
           echo "percent=$(cat TestResults/coverage-percent.txt)" >> "$GITHUB_OUTPUT"
           cat TestResults/coverage-summary.md >> "$GITHUB_STEP_SUMMARY"
 
-      # Per-line data for the combined-coverage job, which unions it with the
-      # UI journeys'. The xccov report above cannot be unioned.
       - name: Export line coverage
         run: |
           set -euo pipefail
@@ -115,21 +103,6 @@ jobs:
           path: LineCoverage/unit-lines.json
           if-no-files-found: error
 
-      # The baseline is the coverage percentage last measured on main. Main
-      # builds write it and pull requests read it, so a PR fails only when it
-      # lowers coverage rather than for missing an arbitrary fixed target.
-      #
-      # The key includes the simulator model. Coverage of code that merely runs
-      # at start-up differs between models, so if a run falls back to a
-      # different device it simply finds no baseline and reports without
-      # gating, rather than comparing two unlike measurements.
-      #
-      # The commit sha makes each main build write a *new* key. Cache entries are
-      # immutable — saving to an existing key is a silent no-op — so a fixed key
-      # froze the baseline at whatever the first main build measured. The exact
-      # `key` here can never hit (no baseline is stored under a PR's own sha), so
-      # it always falls through to `restore-keys`, which prefix-matches the most
-      # recently created baseline for this device.
       - name: Restore coverage baseline
         if: github.event_name == 'pull_request'
         uses: actions/cache/restore@v4
@@ -154,7 +127,6 @@ jobs:
           baseline="$(cat coverage-baseline.txt)"
           echo "Baseline (main): ${baseline}%  Current: ${current}%"
 
-          # Small tolerance so trivial line-count churn does not fail a PR.
           if awk "BEGIN { exit !(${current} < ${baseline} - 0.5) }"; then
             echo "::error::Coverage dropped from ${baseline}% to ${current}%."
             exit 1
@@ -192,9 +164,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Package resolution is a network call on every run. Caching it keeps the
-      # build off the network in the common case, and the key is the resolved
-      # manifest so a dependency change busts it automatically.
       - name: Cache Swift packages
         uses: actions/cache@v4
         with:
@@ -207,7 +176,6 @@ jobs:
         id: simulator
         uses: ./.github/actions/select-simulator
 
-      # As above: resolution is pinned, so do not go to the network for it.
       - name: Run UI tests
         run: |
           set -euo pipefail
@@ -248,13 +216,6 @@ jobs:
           path: TestResults
           if-no-files-found: ignore
 
-  # The figure the 70% floor applies to: every executable line counted once,
-  # covered when the unit plan or the UI journeys ran it. Views are most of the
-  # app's lines and only the journeys reach them, so the unit plan alone cannot
-  # say how much of the app is tested. See docs/testing/coverage.md.
-  #
-  # The unit-plan ratchet above stays: without it, deleting unit tests whose
-  # lines a journey also happens to run would not move this number.
   combined-coverage:
     name: Combined coverage
     needs: [unit-tests, ui-tests]
@@ -267,7 +228,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # The gate is only as right as its counting.
       - name: Test the coverage script
         run: python3 -m unittest discover -v .github/scripts
 
@@ -304,9 +264,6 @@ jobs:
 
           echo "Combined coverage ${current}% is at or above the ${COVERAGE_FLOOR}% floor."
 
-      # Same baseline scheme as the unit-plan ratchet (see the comments there),
-      # under its own key. Both jobs' devices are in it: either falling back to
-      # another model changes what start-up code runs.
       - name: Restore combined coverage baseline
         if: github.event_name == 'pull_request'
         uses: actions/cache/restore@v4

@@ -1,9 +1,5 @@
 import Foundation
 
-/// The privacy-minimized input used by contextual suggestion ranking.
-///
-/// Names, barcodes, nutrition, health data, and search traffic never enter the
-/// ranker. The adapter below creates this snapshot entirely from local models.
 struct ContextualSuggestionCandidate: Equatable {
     let foodID: UUID
     let isAvailable: Bool

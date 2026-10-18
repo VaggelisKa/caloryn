@@ -1,8 +1,5 @@
 import SwiftUI
 
-/// The recurring-pattern insight: History's one grouped surface, a white bordered callout
-/// that opens the evidence behind it. The basis ("Based on 30 logged days…") lives on the
-/// details screen it opens, which leads with it.
 struct HistoryRecurringCaloriePatternCard: View {
     let pattern: HistoryRecurringCaloriePattern
     let action: () -> Void

@@ -2,8 +2,6 @@ import XCTest
 @testable import Caloryn
 
 final class NutritionDetailsSummaryTests: XCTestCase {
-    // MARK: - Totals
-
     func testTotalsAddUpAcrossEntries() {
         let summary = NutritionDetailsSummary(entries: [
             makeEntry(calories: 310, proteinG: 12, portionGrams: 80),
@@ -25,8 +23,6 @@ final class NutritionDetailsSummaryTests: XCTestCase {
         XCTAssertEqual(summary.totalNutrition, .zero)
     }
 
-    /// Sub-nutrients are optional, and an entry that records one must not be
-    /// erased by an entry that records nothing.
     func testOptionalSubNutrientsSurviveBeingSummedWithEntriesThatLackThem() {
         let summary = NutritionDetailsSummary(entries: [
             makeEntry(nutrition: NutritionValues(calories: 100, starchG: 12)),
@@ -48,8 +44,6 @@ final class NutritionDetailsSummaryTests: XCTestCase {
         )
     }
 
-    // MARK: - Calories
-
     func testStayingInsideTheBudgetReadsAsRemaining() {
         XCTAssertEqual(NutritionDetailsSummary.calorieAccent(isOver: false), .withinBudget)
         XCTAssertEqual(NutritionDetailsSummary.calorieSummaryLabel(isOver: false), "Remaining")
@@ -60,9 +54,6 @@ final class NutritionDetailsSummaryTests: XCTestCase {
         XCTAssertEqual(NutritionDetailsSummary.calorieSummaryLabel(isOver: true), "Over")
     }
 
-    /// The accent, the label and the number all come from the budget's single
-    /// over/under decision, so a sub-half-calorie overshoot cannot colour the
-    /// screen "over" while reporting being over by nothing.
     func testTheAccentFollowsTheBudgetsOwnRoundedDecision() {
         let budget = makeBudget(consumed: 2_000.4, staticTarget: 2_000)
 
@@ -70,8 +61,6 @@ final class NutritionDetailsSummaryTests: XCTestCase {
         XCTAssertEqual(NutritionDetailsSummary.calorieAccent(isOver: budget.isOver), .withinBudget)
         XCTAssertEqual(budget.overAmount, 0)
     }
-
-    // MARK: - Progress
 
     func testProgressRunsProportionallyBetweenNothingAndTheTarget() {
         XCTAssertEqual(NutritionDetailsSummary.progressFraction(current: 500, target: 2_000), 0.25)
@@ -87,8 +76,6 @@ final class NutritionDetailsSummaryTests: XCTestCase {
         XCTAssertEqual(NutritionDetailsSummary.progressFraction(current: 500, target: 0), 0)
         XCTAssertEqual(NutritionDetailsSummary.progressFraction(current: 500, target: -2_000), 0)
     }
-
-    // MARK: - Auto-adjust visibility
 
     func testTheAutoAdjustCardIsHiddenOnAPlainDayWithNoActivity() {
         XCTAssertFalse(
@@ -112,9 +99,6 @@ final class NutritionDetailsSummaryTests: XCTestCase {
         )
     }
 
-    /// A day that already recorded activity, moved its target, or has something
-    /// to say about why activity is missing still explains itself after the mode
-    /// is switched off.
     func testTheAutoAdjustCardStillExplainsADayAfterTheModeIsSwitchedOff() {
         XCTAssertTrue(
             NutritionDetailsSummary.showsDynamicTDEE(
@@ -142,8 +126,6 @@ final class NutritionDetailsSummaryTests: XCTestCase {
         )
     }
 
-    // MARK: - Auto-adjust text
-
     func testTheBaselineIsADashUntilThereIsOne() {
         XCTAssertEqual(NutritionDetailsSummary.baselineText(activityBaselineKcal: nil), "-")
     }
@@ -153,9 +135,6 @@ final class NutritionDetailsSummaryTests: XCTestCase {
         XCTAssertEqual(NutritionDetailsSummary.activeEnergyText(activeEnergyKcal: 430.2), "430 kcal")
     }
 
-    /// Apple Health is not obliged to hand back a sane number, and rounding one
-    /// with `Int(_:)` terminates the process rather than throwing. Both figures
-    /// have to come out as text.
     func testAnImpossibleHealthReadingIsRenderedRatherThanCrashing() {
         XCTAssertEqual(NutritionDetailsSummary.baselineText(activityBaselineKcal: .nan), "0 kcal")
         XCTAssertEqual(NutritionDetailsSummary.activeEnergyText(activeEnergyKcal: .nan), "0 kcal")
@@ -181,8 +160,6 @@ final class NutritionDetailsSummaryTests: XCTestCase {
         XCTAssertFalse(NutritionDetailsSummary.isDynamicAdjustmentMuted(1))
     }
 
-    // MARK: - Status notice
-
     func testAnUnavailableAutoAdjustReadsAsAWarning() {
         XCTAssertEqual(
             NutritionDetailsSummary.statusNoticeStyle(for: .unavailable("No Health access")),
@@ -201,8 +178,6 @@ final class NutritionDetailsSummaryTests: XCTestCase {
         XCTAssertEqual(NutritionDetailsSummary.statusNoticeStyle(for: .ready), .neutral)
         XCTAssertEqual(NutritionDetailsSummary.statusNoticeStyle(for: .staticEstimate), .neutral)
     }
-
-    // MARK: - Helpers
 
     private func makeEntry(
         calories: Double = 0,

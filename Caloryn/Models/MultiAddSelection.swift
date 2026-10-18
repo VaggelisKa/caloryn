@@ -129,13 +129,6 @@ struct MultiAddSelectionState: Equatable {
         }
     }
 
-    /// Toggles the group identified by `id`, building it only when selecting.
-    ///
-    /// Deselection needs nothing but the id, while building a group can be
-    /// costly or fail — a remote product mints a fresh `FoodItem` and a stable
-    /// identity, an authored meal reads its snapshots from the store and can
-    /// throw. `makeGroup` therefore runs only on the selecting branch, so
-    /// deselecting never pays that cost and never fails.
     mutating func toggle(
         _ id: MultiAddSelectionGroup.ID,
         makeGroup: () throws -> MultiAddSelectionGroup

@@ -1,23 +1,12 @@
 import Foundation
 
-/// The editable state of the manual-food form, and every rule that acts on it.
-///
-/// The form's real work is arithmetic and bookkeeping: parse thirteen text
-/// fields written in per-serving terms, convert them to the per-100g values the
-/// store keeps, decide what may be saved, and track which fields the user
-/// actually touched so barcode recovery knows what came from a person rather
-/// than a provider. All of that lives here so it is reachable without a form.
 struct CustomFoodDraft: Equatable {
-    /// Every text field on the form. Ordered as they appear so focus advances
-    /// naturally.
     enum Field: Hashable, CaseIterable {
         case name, brand, calories, protein, carbs, fat, fiber
         case sugars, addedSugars, saturatedFat, sodium, cholesterol, alcohol
         case servingSize
     }
 
-    /// The serving used when the field is blank or unusable, matching how a
-    /// nutrition label with no stated serving is conventionally read.
     static let fallbackServingGrams: Double = 100
 
     var name = ""
@@ -36,14 +25,10 @@ struct CustomFoodDraft: Equatable {
     var servingSizeGrams = "100"
     var produceKind: ProduceKind = .unclassified
 
-    /// The values the form opened with, so an edit can be told apart from a
-    /// field that merely has content. Empty for a new food.
     private(set) var initialTextByField: [Field: String] = [:]
     private(set) var initialProduceKind: ProduceKind?
 
     init() {}
-
-    // MARK: - Field access
 
     func text(for field: Field) -> String {
         switch field {
@@ -64,8 +49,6 @@ struct CustomFoodDraft: Equatable {
         }
     }
 
-    /// The recovery field a form field corresponds to, used when reporting
-    /// which values a person supplied.
     static func recoveryField(for field: Field) -> FoodField {
         switch field {
         case .name: .name
@@ -85,17 +68,11 @@ struct CustomFoodDraft: Equatable {
         }
     }
 
-    // MARK: - Parsing
-
-    /// Blank is allowed — it means the nutrient was not stated — but anything
-    /// present must parse to a non-negative number.
     static func isOptionalNonnegativeDecimal(_ string: String) -> Bool {
         let trimmed = string.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return true }
         return (trimmed.decimalInputValue ?? -1) >= 0
     }
-
-    // MARK: - Derived values
 
     var trimmedName: String { name.trimmingCharacters(in: .whitespaces) }
 
@@ -107,28 +84,20 @@ struct CustomFoodDraft: Equatable {
         servingSizeGrams.decimalInputValue ?? Self.fallbackServingGrams
     }
 
-    /// The serving the saved food is stored against. A zero or negative serving
-    /// would make the per-100g conversion meaningless, so it falls back.
     var effectiveServingGrams: Double {
         servingGrams > 0 ? servingGrams : Self.fallbackServingGrams
     }
 
     var previewCalories: Double { caloriesPerServing.decimalInputValue ?? 0 }
 
-    /// A blank macro reads as `nil`, not zero: it means "not stated" when saving,
-    /// which the store records differently from a zero.
     var suppliedProtein: Double? { proteinPerServing.decimalInputValue }
     var suppliedCarbohydrates: Double? { carbsPerServing.decimalInputValue }
     var suppliedFat: Double? { fatPerServing.decimalInputValue }
     var suppliedFiber: Double? { fiberPerServing.decimalInputValue }
 
-    /// The serving size to store, or nil when the field does not name a usable
-    /// one — distinct from `effectiveServingGrams`, which always has a value.
     var storedServingGrams: Double? {
         servingSizeGrams.decimalInputValue.flatMap { $0 > 0 ? $0 : nil }
     }
-
-    // MARK: - Validation
 
     var optionalTrackedInputsAreValid: Bool {
         [
@@ -142,16 +111,12 @@ struct CustomFoodDraft: Equatable {
         ].allSatisfy(Self.isOptionalNonnegativeDecimal(_:))
     }
 
-    /// A food needs a name and a stated, non-negative calorie figure. Every
-    /// other nutrient is optional.
     var canSave: Bool {
         !trimmedName.isEmpty
         && !caloriesPerServing.isEmpty
         && (caloriesPerServing.decimalInputValue ?? -1) >= 0
         && optionalTrackedInputsAreValid
     }
-
-    // MARK: - Nutrition
 
     var nutritionPerServing: NutritionValues {
         NutritionValues(
@@ -176,8 +141,6 @@ struct CustomFoodDraft: Equatable {
         )
     }
 
-    /// Scales a per-serving macro to per-100g while preserving nil, so a macro
-    /// the user never stated does not become a zero.
     private func per100g(_ perServing: Double?) -> Double? {
         perServing.map { $0 * 100 / effectiveServingGrams }
     }
@@ -196,13 +159,6 @@ struct CustomFoodDraft: Equatable {
         return unit.storedValue(fromInput: inputValue)
     }
 
-    // MARK: - Provenance
-
-    /// Which fields carry a person's own values.
-    ///
-    /// For a new food that is every field with content. For an edit it is only
-    /// what changed, so reopening a form and saving it untouched does not claim
-    /// the provider's numbers as the user's.
     func userEditedRecoveryFields(isEditingExistingFood: Bool) -> Set<FoodField> {
         guard isEditingExistingFood else {
             var supplied = Set(
@@ -229,10 +185,6 @@ struct CustomFoodDraft: Equatable {
         return edited
     }
 
-    // MARK: - Loading an existing food
-
-    /// Fills the form from a saved food and records the starting values so the
-    /// edit check above has something to compare against.
     mutating func populate(from food: FoodItem) {
         let serving = food.defaultServingG ?? Self.fallbackServingGrams
 
@@ -276,8 +228,6 @@ struct CustomFoodDraft: Equatable {
         initialProduceKind = produceKind
     }
 
-    /// A macro the provider never supplied is shown blank rather than as zero,
-    /// so the user can tell "not stated" from "none".
     static func editableCoreText(_ value: Double, origin: FoodFieldOrigin) -> String {
         origin == .missing ? "" : value.manualInputFormatted
     }
@@ -298,9 +248,6 @@ struct CustomFoodDraft: Equatable {
         }
     }
 
-    // MARK: - Building a personal edit
-
-    /// The payload barcode recovery needs to materialise a personal food.
     func personalEdit(isEditingExistingFood: Bool) -> FoodPersonalEdit {
         let per100g = nutritionPer100g
 
@@ -326,8 +273,6 @@ struct CustomFoodDraft: Equatable {
 }
 
 extension Double {
-    /// Renders a value the way the manual form expects it typed back: one
-    /// decimal place at most, and no trailing ".0".
     var manualInputFormatted: String {
         let rounded = (self * 10).rounded() / 10
         if rounded == rounded.rounded() {

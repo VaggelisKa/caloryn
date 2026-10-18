@@ -1,13 +1,5 @@
 import XCTest
 
-/// Page objects for the app's main screens.
-///
-/// Each exposes what a *user* can see and do. Nothing here reaches into view
-/// structure, so these keep working when view logic later moves into view
-/// models.
-
-// MARK: - Tab bar
-
 struct TabBar: Screen {
     let app: XCUIApplication
 
@@ -30,28 +22,16 @@ struct TabBar: Screen {
     }
 }
 
-// MARK: - Onboarding
-
 struct OnboardingScreen: Screen {
     let app: XCUIApplication
 
     var getStarted: XCUIElement { element("onboarding.getStarted") }
     var startTracking: XCUIElement { element("onboarding.startTracking") }
 
-    /// One activity level choice. Which one is chosen shows up as the element's
-    /// selected trait, the same thing VoiceOver announces.
     func activityLevel(_ level: String) -> XCUIElement {
         element("onboarding.activityLevel.option.\(level)")
     }
 
-    /// Every step of the flow, in the order `OnboardingStep` pushes them, paired
-    /// with the control that both proves the step is on screen and moves past it.
-    ///
-    /// Each identifier belongs to exactly one step, so "the next one exists" is a
-    /// sound arrival check even while a push animation is still running. The
-    /// screenshot harness walks this list to photograph each screen and
-    /// `completeWithDefaults` walks it to get past onboarding, so the order is
-    /// written down once rather than in each caller.
     static let steps: [Step] = [
         Step(name: "welcome", advanceIdentifier: "onboarding.getStarted"),
         Step(name: "personal-info", advanceIdentifier: "onboarding.personalInfo.continue"),
@@ -63,8 +43,6 @@ struct OnboardingScreen: Screen {
     ]
 
     struct Step {
-        /// Used in screenshot filenames, so it is kebab-case rather than the
-        /// enum's camelCase.
         let name: String
         let advanceIdentifier: String
     }
@@ -73,21 +51,14 @@ struct OnboardingScreen: Screen {
         element(step.advanceIdentifier)
     }
 
-    /// Walks the whole onboarding flow using each step's continue button.
-    /// Steps are advanced by identifier rather than by position, so inserting
-    /// a step does not silently skip part of the flow.
     func completeWithDefaults() {
         tap(getStarted)
 
         for step in Self.steps.dropFirst() {
-            // Not every build presents every step; skip any that is absent
-            // rather than failing, but require that at least the flow ends.
             tapIfPresent(advance(step), timeout: 5)
         }
     }
 }
-
-// MARK: - Today
 
 struct TodayScreen: Screen {
     let app: XCUIApplication
@@ -109,8 +80,6 @@ struct TodayScreen: Screen {
         calorieRing.waitForExistence(timeout: UITestCase.defaultTimeout)
     }
 
-    /// Today is a lazy `List`, so rows below the fold do not enter the
-    /// accessibility tree until the user scrolls toward them.
     @discardableResult
     func revealTowardBottom(
         _ element: XCUIElement,
@@ -121,7 +90,6 @@ struct TodayScreen: Screen {
         reveal(element, maximumScrolls: maximumScrolls, swipe: app.swipeUp, file: file, line: line)
     }
 
-    /// Returns from the bottom actions row to meal entries near the top.
     @discardableResult
     func revealTowardTop(
         _ element: XCUIElement,
@@ -151,8 +119,6 @@ struct TodayScreen: Screen {
     }
 }
 
-// MARK: - My Foods
-
 struct MyFoodsScreen: Screen {
     let app: XCUIApplication
 
@@ -164,8 +130,6 @@ struct MyFoodsScreen: Screen {
     }
 }
 
-// MARK: - Custom food form
-
 struct CustomFoodFormScreen: Screen {
     let app: XCUIApplication
 
@@ -174,8 +138,6 @@ struct CustomFoodFormScreen: Screen {
     var servingSize: XCUIElement { element("customFood.servingSize") }
     var save: XCUIElement { element("customFood.save") }
 }
-
-// MARK: - Food search and portion
 
 struct FoodSearchScreen: Screen {
     let app: XCUIApplication
@@ -195,30 +157,18 @@ struct PortionPickerScreen: Screen {
     var delete: XCUIElement { element("portionPicker.delete") }
     var back: XCUIElement { element("portionPicker.back") }
 
-    /// The tappable box around the grams field. The field itself is at zero
-    /// opacity until focused, so this is what a journey taps to start typing.
     var amountBox: XCUIElement { element("portionPicker.amountBox") }
 
     func quickGrams(_ grams: Int) -> XCUIElement {
         element("portionPicker.quickGrams.\(grams)")
     }
 
-    /// Replaces whatever the grams field holds with `grams`.
-    ///
-    /// The deletes are a fixed count rather than one per existing character:
-    /// reading the old value back would be a second round trip, and a portion
-    /// never exceeds five digits, so over-deleting an already empty field is
-    /// both harmless and cheaper.
     func typeGrams(_ grams: Int) {
         tap(amountBox)
         app.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 6))
         app.typeText("\(grams)")
     }
 
-    /// Waits for the calorie readout to settle on `calorieCount`.
-    ///
-    /// The readout animates, so the first sample after typing can still be the
-    /// old number — this waits for the value rather than asserting on it once.
     @discardableResult
     func awaitCalories(
         _ calorieCount: Int,
@@ -239,16 +189,12 @@ struct PortionPickerScreen: Screen {
     }
 }
 
-// MARK: - Nutrition details
-
 struct NutritionDetailsScreen: Screen {
     let app: XCUIApplication
 
     var title: XCUIElement { element("nutritionDetails.title") }
     var consumedCalories: XCUIElement { element("nutritionDetails.consumedCalories") }
 }
-
-// MARK: - History
 
 struct HistoryScreen: Screen {
     let app: XCUIApplication
@@ -263,7 +209,6 @@ struct HistoryScreen: Screen {
         element("history.recurringPattern.supportingDay.details")
     }
 
-    /// Range controls are segmented-control buttons labelled "7 Days" and so on.
     func selectRange(_ label: String) {
         tap(rangeButton(label))
     }
@@ -273,9 +218,6 @@ struct HistoryScreen: Screen {
         return scoped.exists ? scoped : app.buttons[label]
     }
 
-    /// Waits for the named range to become the selected segment, so a test can
-    /// assert the selection actually changed rather than that the control
-    /// merely still exists.
     @discardableResult
     func awaitRangeSelected(
         _ label: String,
@@ -293,8 +235,6 @@ struct HistoryScreen: Screen {
     }
 }
 
-// MARK: - Settings
-
 struct SettingsScreen: Screen {
     let app: XCUIApplication
 
@@ -306,8 +246,6 @@ struct SettingsScreen: Screen {
     var saveGoal: XCUIElement { element("goalEdit.save") }
 }
 
-// MARK: - Multi-add
-
 struct MultiAddScreen: Screen {
     let app: XCUIApplication
 
@@ -317,8 +255,6 @@ struct MultiAddScreen: Screen {
     var editorSave: XCUIElement { element("multiAdd.editor.save") }
     var editorCalories: XCUIElement { element("multiAdd.editor.calories") }
 
-    /// A review row. Rows are identified by a draft UUID, so the food is picked
-    /// out by what the row says rather than by position.
     func item(named name: String) -> XCUIElement {
         app.descendants(matching: .any)
             .matching(NSPredicate(
@@ -329,9 +265,6 @@ struct MultiAddScreen: Screen {
             .firstMatch
     }
 
-    /// A shortcut chip in the portion editor. The editor sets `multiAdd.editor.portion` on
-    /// the whole amount group, and a container's identifier replaces its children's, so the
-    /// chip is that identifier plus what the chip says.
     func editorQuickGrams(_ grams: Int) -> XCUIElement {
         app.descendants(matching: .any)
             .matching(NSPredicate(
@@ -342,8 +275,6 @@ struct MultiAddScreen: Screen {
             .firstMatch
     }
 }
-
-// MARK: - Recipe and meal forms
 
 struct CreationFormScreen: Screen {
     let app: XCUIApplication
@@ -367,11 +298,8 @@ struct CreationFormScreen: Screen {
         element("myFoods.meal.\(name)")
     }
 
-    /// A saved meal in Add Food. Its identifier carries the template's UUID.
     var firstMealResult: XCUIElement { element(withIdentifierPrefix: "meal.select.") }
 }
-
-// MARK: - Missing-food editor
 
 struct MissingFoodEntryScreen: Screen {
     let app: XCUIApplication
@@ -379,8 +307,6 @@ struct MissingFoodEntryScreen: Screen {
     var portion: XCUIElement { element("missingEntry.portion") }
     var save: XCUIElement { element("missingEntry.save") }
 }
-
-// MARK: - Profile and reminder settings
 
 struct ProfileEditScreen: Screen {
     let app: XCUIApplication
@@ -402,13 +328,10 @@ struct DailyReminderScreen: Screen {
     var toggle: XCUIElement { element("settings.dailyReminder.toggle") }
     var time: XCUIElement { element("settings.dailyReminder.time") }
     var timePicker: XCUIElement { element("settings.dailyReminder.timePicker") }
-    /// The recovery link shown when notifications are denied in iOS Settings.
     var openSettings: XCUIElement { element("settings.dailyReminder.openSettings") }
 
     var isOn: Bool { (toggle.value as? String) == "1" }
 
-    /// Flips the switch. A SwiftUI toggle row only responds on the switch
-    /// itself, which sits at the trailing edge of the row.
     func flip() {
         awaitTappable(toggle)
             .coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.5))

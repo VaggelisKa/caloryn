@@ -2,19 +2,9 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// Which state the barcode flow is in after which event.
-///
-/// These transitions used to be five `@State` variables assigned by hand in
-/// five different places inside `FoodSearchView`, reachable only through an
-/// end-to-end journey with a camera in it. The combinations that matter are the
-/// ones where two of the five disagree: a failure that keeps the barcode it
-/// failed on, a success that throws it away, and a second scan arriving while
-/// the first is still in flight.
 struct BarcodeLookupFlowTests {
     private let barcode = "5711953150388"
     private let otherBarcode = "3017620422003"
-
-    // MARK: - Scanning
 
     @Test("A scanned barcode starts a lookup and is kept for recovery")
     func scanStartsLookup() {
@@ -56,8 +46,6 @@ struct BarcodeLookupFlowTests {
 
         flow.scanned("12x")
 
-        // The failure is the screen's state now, so nothing may still be
-        // running that would replace it when it resolves.
         #expect(flow.pendingBarcode == nil)
         #expect(flow.error == .invalidRequest)
         #expect(!flow.isLookingUp)
@@ -76,8 +64,6 @@ struct BarcodeLookupFlowTests {
         #expect(flow.lastScannedBarcode == otherBarcode)
     }
 
-    // MARK: - A scan while a lookup is already running
-
     @Test("Re-scanning the code already in flight leaves that lookup running")
     func rescanningTheSameCodeDoesNotRestartTheLookup() {
         var flow = BarcodeLookupFlow()
@@ -86,8 +72,6 @@ struct BarcodeLookupFlowTests {
 
         flow.scanned(barcode)
 
-        // The pending barcode is the lookup's identity: unchanged means the
-        // same request, so the view must not tear it down and start again.
         #expect(flow == inFlight)
         #expect(flow.pendingBarcode == barcode)
     }
@@ -118,8 +102,6 @@ struct BarcodeLookupFlowTests {
         #expect(flow.isLookingUp)
         #expect(!flow.hasError)
     }
-
-    // MARK: - Failure
 
     @Test("A failure keeps the barcode it failed on")
     func failureKeepsTheBarcode() {
@@ -152,8 +134,6 @@ struct BarcodeLookupFlowTests {
             #expect(!other.offersManualCreation)
         }
     }
-
-    // MARK: - Retry
 
     @Test("Retrying a failure runs the same barcode again")
     func retryRepeatsTheSameLookup() {
@@ -194,8 +174,6 @@ struct BarcodeLookupFlowTests {
         #expect(secondAction == .repeatLookup)
         #expect(flow.pendingBarcode == barcode)
     }
-
-    // MARK: - Manual recovery
 
     @Test("Manual recovery prefills the barcode that failed and clears the failure")
     func manualRecoveryTakesTheFailedBarcode() {
@@ -248,8 +226,6 @@ struct BarcodeLookupFlowTests {
         #expect(!flow.hasError)
     }
 
-    // MARK: - Success
-
     @Test("A resolved product clears the failure state and the barcode with it")
     func successClearsEverything() {
         var flow = BarcodeLookupFlow()
@@ -275,8 +251,6 @@ struct BarcodeLookupFlowTests {
         let action = flow.retryRequested()
         #expect(action == .rescan)
     }
-
-    // MARK: - Dismissal
 
     @Test("Reopening the camera discards the previous scan's outcome")
     func reopeningTheScannerClearsRecovery() {
@@ -316,8 +290,6 @@ struct BarcodeLookupFlowTests {
         flow.lookupFailed(.offline)
         #expect(flow.errorDismissesOnNameSearch)
     }
-
-    // MARK: - Seeded state
 
     @Test("A flow seeded with a failure behaves as if that scan had just failed")
     func seededFailureSupportsRecovery() {

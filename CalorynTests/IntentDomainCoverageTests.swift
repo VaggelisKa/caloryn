@@ -4,11 +4,6 @@ import SwiftData
 import Testing
 @testable import Caloryn
 
-// MARK: - Shared fixtures (file-private)
-
-/// `FoodLogEntry` stores `date.startOfDay` in the device calendar whatever calendar the
-/// intent is handed, so the injected calendar has to share the device's time zone for
-/// entries to land on the day the intent filters by. Everything else is fixed here.
 nonisolated private let deviceDayCalendar: Calendar = {
     var calendar = Calendar(identifier: .gregorian)
     calendar.timeZone = TimeZone.current
@@ -109,8 +104,6 @@ private func readySnapshot(
 private func mealSummary(_ snapshot: DailyWidgetSnapshot?) -> [String] {
     snapshot?.calories.meals.map { "\($0.meal.rawValue)=\($0.kcal)" } ?? []
 }
-
-// MARK: - Catalog
 
 @MainActor
 struct FavoriteIntentCatalogCoverageTests {
@@ -287,8 +280,6 @@ struct FavoriteIntentCatalogCoverageTests {
         (200.0, "200"),
     ])
     func portionFormatting(portion: Double, template: String) {
-        // `IntentNumberFormatting.grams` takes no locale, so only the decimal mark is the
-        // device's; the digits, precision and lack of grouping are what is asserted.
         let separator = Locale.current.decimalSeparator ?? "."
         let grams = template.replacingOccurrences(of: "{sep}", with: separator)
         let result = FavoriteIntentLogResult(foodName: "Oats", portionGrams: portion, meal: .breakfast, calories: 50)
@@ -335,8 +326,6 @@ struct FavoriteIntentCatalogCoverageTests {
         #expect(FavoriteIntentCatalog.matches(candidate, search: search) == expected)
     }
 }
-
-// MARK: - Logging
 
 @MainActor
 struct FavoriteIntentLoggingCoverageTests {
@@ -469,8 +458,6 @@ struct FavoriteIntentLoggingCoverageTests {
     }
 }
 
-// MARK: - Calorie response
-
 @MainActor
 struct TodayCaloriesResponseCoverageTests {
     @Test("Responses clamp, compare and group against the target", arguments: [
@@ -507,7 +494,6 @@ struct TodayCaloriesResponseCoverageTests {
     }
 
     @Test("A matching same-day snapshot is reported; a mismatched one is not", arguments: [
-        // consumed, base, target, dynamic, expectedAvailable
         (1_200.4, 1_700, 1_700, false, true),
         (1_200.6, 1_700, 1_700, false, false),
         (1_200.0, 1_800, 1_700, false, false),
@@ -579,8 +565,6 @@ struct TodayCaloriesResponseCoverageTests {
         )
     }
 }
-
-// MARK: - Data store
 
 @MainActor
 struct CalorynIntentDataStoreCoverageTests {

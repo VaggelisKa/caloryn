@@ -1,18 +1,4 @@
 #!/usr/bin/env python3
-"""Line coverage that can be combined across test plans.
-
-`xccov view --report` counts a line once for every function that contains it.
-A SwiftUI body nests a closure per container, so view files are counted two to
-three times over, and two such reports cannot be unioned: there is no way to
-tell which of the counted lines each plan reached.
-
-This counts each source line once, as covered when any test in any plan
-executed it. The unit plan and the UI journeys then combine into one figure.
-See docs/testing/coverage.md.
-
-    export   one .xcresult -> a compact, repo-relative JSON of line numbers
-    combine  several exports -> a Markdown summary and the overall percentage
-"""
 
 from __future__ import annotations
 
@@ -23,8 +9,6 @@ import subprocess
 from collections import defaultdict
 from pathlib import Path
 
-# Test sources are not what coverage is measuring. The test plans already
-# leave them out; this keeps that true if a plan's coverage targets change.
 TEST_DIRECTORIES = ("CalorynTests/", "CalorynUITests/")
 
 
@@ -56,7 +40,6 @@ def export(xcresult: Path, root: Path, output: Path) -> None:
 
 
 def area(path: str) -> str:
-    """`Caloryn/Views/Today/X.swift` -> `Caloryn/Views`; `CalorynShared/X.swift` -> `CalorynShared`."""
     parts = path.split("/")
     if parts[0] == "Caloryn" and len(parts) > 2:
         return "/".join(parts[:2])
@@ -70,9 +53,6 @@ def percent(covered: int, executable: int) -> float:
 def combine(inputs: list[tuple[str, Path]]) -> tuple[str, float]:
     plans = {name: json.loads(path.read_text(encoding="utf-8"))["files"] for name, path in inputs}
 
-    # A line is executable if any plan saw it as executable. The plans build the
-    # same app, so in practice the sets agree; the union keeps a file that one
-    # plan never loaded from silently dropping out of the denominator.
     executable: dict[str, set[int]] = defaultdict(set)
     covered_by: dict[str, dict[str, set[int]]] = {name: defaultdict(set) for name in plans}
     for name, files in plans.items():
@@ -114,7 +94,6 @@ def combine(inputs: list[tuple[str, Path]]) -> tuple[str, float]:
     for name, (covered, lines) in sorted(by_area.items(), key=lambda item: -item[1][1]):
         out.append(f"| {name} | {percent(covered, lines):.1f}% | {lines} |")
 
-    # Least-covered first: that is where the next test is most valuable.
     rows = sorted(
         ((path, percent(covered_in(path, names), len(lines)), len(lines)) for path, lines in executable.items()),
         key=lambda row: (row[1], -row[2]),

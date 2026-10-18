@@ -1,14 +1,6 @@
 import XCTest
 
-/// End-to-end journeys through the app's critical paths.
-///
-/// These are the safety net for the planned refactor that moves logic out of
-/// views, so every assertion here is about what a user can observe: visible
-/// text, values, and whether something exists. None of them depend on which
-/// type performs the work, so they must pass unchanged after that refactor.
 final class JourneyTests: UITestCase {
-    // MARK: Onboarding
-
     func testGivenAFirstLaunchWhenOnboardingIsCompletedThenTheMainTabsAppear() {
         let app = launch(fixture: .empty)
         let onboarding = OnboardingScreen(app: app)
@@ -39,8 +31,6 @@ final class JourneyTests: UITestCase {
                 onboarding.awaitTappable(veryActive).isSelected,
                 "Very Active should not be the starting choice"
             )
-            // What a level means is the description, not the name, so it has
-            // to reach VoiceOver too.
             XCTAssertTrue(
                 veryActive.label.contains("Hard exercise"),
                 "The row should speak its description, not just its name: \(veryActive.label)"
@@ -48,11 +38,6 @@ final class JourneyTests: UITestCase {
         }
 
         then("the whole row is a tap target, not just its text") {
-            // The card was once only as tappable as its glyphs were wide, which
-            // left it under Apple's 44pt minimum and missed every tap aimed at
-            // the row's empty right-hand side. This bites on iOS 26, which is
-            // what ships; iOS 27 hit-tests the whole row either way, so run
-            // this on the pinned simulator for it to mean anything.
             XCTAssertGreaterThanOrEqual(
                 veryActive.frame.height,
                 44,
@@ -78,8 +63,6 @@ final class JourneyTests: UITestCase {
             )
         }
     }
-
-    // MARK: Today
 
     func testGivenADayWithALoggedEntryWhenTodayOpensThenTheEntryAndRingAreShown() {
         let app = launch(fixture: .loggedDay)
@@ -107,7 +90,6 @@ final class JourneyTests: UITestCase {
         when("the user opens the entry and confirms deletion") {
             today.tap(entry)
             today.tap(portion.delete)
-            // Deletion is guarded by a confirmation dialog.
             today.tap(app.buttons["Delete"].firstMatch)
         }
 
@@ -174,11 +156,6 @@ final class JourneyTests: UITestCase {
         }
     }
 
-    // MARK: Typing a portion
-
-    /// House Salad is 45 kcal per 100g and opens at its 180g serving, so every
-    /// figure below is arithmetic the user can check on screen: 180g is 81
-    /// calories, 300g is 135.
     func testGivenAPortionInGramsWhenAnAmountIsTypedThenThatAmountIsWhatGetsLogged() {
         let app = launch(fixture: .customFoods)
         let today = TodayScreen(app: app)
@@ -202,9 +179,6 @@ final class JourneyTests: UITestCase {
         }
 
         then("saving logs the typed amount, not the one the screen opened with") {
-            // Saved straight from the keypad, without the field ever losing
-            // focus — the path a user actually takes, and the one where a
-            // half-handled edit would log the opening 180g instead.
             portion.tap(portion.save)
 
             XCTAssertTrue(
@@ -218,9 +192,6 @@ final class JourneyTests: UITestCase {
         }
     }
 
-    /// A number pad carries no return key, so if a tap off the field does not
-    /// dismiss it the keypad covers the lower half of the screen with no way
-    /// out but saving. That is what shipped, and this is the regression test.
     func testGivenTheKeypadIsOpenWhenTappingOffTheFieldThenItCloses() {
         let app = launch(fixture: .customFoods)
         let today = TodayScreen(app: app)
@@ -255,15 +226,10 @@ final class JourneyTests: UITestCase {
 
         then("the field still works afterwards") {
             portion.typeGrams(250)
-            // 250g of 45 kcal per 100g is 112.5, and the readout rounds, as the
-            // logged row on Today does.
             portion.awaitCalories(113)
         }
     }
 
-    /// The shortcuts exist so a common amount costs one tap. This is also the
-    /// only journey that proves the field and the chips agree: the chip has to
-    /// move the number the field shows, not just the portion behind it.
     func testGivenAPortionInGramsWhenAShortcutIsTappedThenItSetsTheAmount() {
         let app = launch(fixture: .customFoods)
         let today = TodayScreen(app: app)
@@ -279,12 +245,10 @@ final class JourneyTests: UITestCase {
         }
 
         when("the user taps a shortcut amount") {
-            // 50g is the first shortcut for a food with no countable serving.
             portion.tap(portion.quickGrams(50))
         }
 
         then("the preview moves to that amount") {
-            // 50g of 45 kcal per 100g is 22.5, rounded.
             portion.awaitCalories(23)
         }
 
@@ -293,8 +257,6 @@ final class JourneyTests: UITestCase {
             portion.awaitCalories(180)
         }
     }
-
-    // MARK: My Foods
 
     func testGivenSavedCustomFoodsWhenMyFoodsOpensThenTheyAreListed() {
         let app = launch(fixture: .customFoods)
@@ -338,8 +300,6 @@ final class JourneyTests: UITestCase {
             myFoods.tap(myFoods.createManualEntry)
             form.tap(form.name)
             form.name.typeText("Desk Almonds")
-            // Calories sits far enough down the form that the keyboard can put
-            // it below the fold, so scroll to it rather than waiting on it.
             form.tap(form.revealed(form.calories))
             form.calories.typeText("180")
             form.tap(form.save)
@@ -367,8 +327,6 @@ final class JourneyTests: UITestCase {
         }
     }
 
-    // MARK: History
-
     func testGivenThirtyLoggedDaysWhenHistoryRangesAreSwitchedThenEachRangeRenders() {
         let app = launch(fixture: .history)
         let tabs = TabBar(app: app)
@@ -385,13 +343,8 @@ final class JourneyTests: UITestCase {
             for label in ["7 Days", "14 Days", "30 Days", "90 Days"] {
                 history.selectRange(label)
 
-                // Assert the selection actually moved. Checking that the
-                // range control still exists would pass even if tapping did
-                // nothing, since the control is always on screen.
                 history.awaitRangeSelected(label)
 
-                // And that the screen still renders its trend content for the
-                // newly selected range rather than going blank.
                 XCTAssertTrue(
                     app.staticTexts.count > 0,
                     "History should render content for the \(label) range"
@@ -457,8 +410,6 @@ final class JourneyTests: UITestCase {
         }
     }
 
-    // MARK: Settings
-
     func testGivenAProfileWhenTheCalorieTargetIsViewedThenSettingsShowsIt() {
         let app = launch(fixture: .profileOnly)
         let tabs = TabBar(app: app)
@@ -481,8 +432,6 @@ final class JourneyTests: UITestCase {
         let app = launch(fixture: .profileOnly)
         let tabs = TabBar(app: app)
         let settings = SettingsScreen(app: app)
-        // The headline groups the figure for the locale ("2.400", "2,400"), like every
-        // kcal figure; the app and this runner share the simulator's locale.
         let typedTarget = 2400.formatted(.number)
 
         given("Settings showing a calculated calorie target") {
@@ -507,8 +456,6 @@ final class JourneyTests: UITestCase {
         }
     }
 
-    // MARK: Accessibility
-
     func testGivenTheMainScreensWhenAuditedThenNoAccessibilityIssuesAreReported() throws {
         let app = launch(fixture: .history)
         let tabs = TabBar(app: app)
@@ -525,8 +472,6 @@ final class JourneyTests: UITestCase {
             ]
 
             try XCTContext.runActivity(named: "Audit \(destination.rawValue)") { _ in
-                // Contrast and dynamic-type audits are excluded because they report on
-                // the design system rather than on defects this suite is positioned to fix.
                 try app.performAccessibilityAudit(for: auditTypes)
             }
         }

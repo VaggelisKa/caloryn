@@ -74,7 +74,6 @@ enum DailyFoodLogCommands {
         return copiedEntries
     }
 
-    /// Updates an existing log entry in memory. Callers remain responsible for saving the model context.
     @discardableResult
     static func updateLoggedEntry(
         _ entry: FoodLogEntry,
@@ -138,8 +137,6 @@ enum DailyFoodLogCommands {
         return entry
     }
 
-    /// Persists a missing-source edit in an isolated context so a failed save
-    /// cannot roll back or commit unrelated changes in the SwiftUI context.
     @discardableResult
     static func saveSnapshotEntry(
         _ entry: FoodLogEntry,

@@ -2,12 +2,9 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// Whether History's recompute key sees every live-food fact that a legacy (pre-snapshot)
-/// entry still reads through its saved food.
 @MainActor
 @Suite("History refresh ID legacy coverage")
 struct HistoryRefreshIDLegacyCoverageTests {
-
     @Test("given a legacy entry, when its saved food changes produce kind, then its signature changes so the produce count reruns")
     func aLegacyProduceKindChangeChangesTheSignature() {
         let food = makeTestFoodItem(name: "Apple", produceKind: .fruit)
@@ -30,7 +27,6 @@ struct HistoryRefreshIDLegacyCoverageTests {
 
         food.name = "Banana"
 
-        // The legacy produce path reads the live food's name, so the day now holds one kind.
         #expect(ProduceVarietySummary(entries: [banana, legacy]).items.map(\.name) == ["Banana"])
         #expect(HistoryEntrySignature(entry: legacy) != before)
     }

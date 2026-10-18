@@ -1,21 +1,9 @@
 import Charts
 import SwiftUI
 
-/// The Today hero's donut: one sector per meal in its fill, then the rest of the budget in
-/// `fillTrack`, or the overshoot in ink. Renders `CalorieDonutSummary` and decides nothing.
-///
-/// Every sector is inset from its neighbours, so the page shows between them. The ink
-/// overshoot is inset further: next to the dark dinner purple, the gap every other pair of
-/// sectors gets was too thin to tell where dinner ended and the overshoot began.
-///
-/// The hole is empty by design — the number sits beside the ring, never inside it. The chart
-/// is hidden from VoiceOver: the hero that contains it owns the label, value and hint
-/// (`CalorieRingSummary`), so the ring is not announced twice.
 struct CalorieDonutView: View {
     let summary: CalorieDonutSummary
     var size: CGFloat = 168
-    /// False draws the final state on the first frame and never animates — for a snapshot,
-    /// or anywhere the ring must not move.
     var animated: Bool = true
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -40,53 +28,31 @@ struct CalorieDonutView: View {
         .frame(width: size, height: size)
         .animation(animates ? .calorynReveal : nil, value: displayed)
         .accessibilityHidden(true)
-        // A frame on the empty track first, so the meals visibly grow into place — on the
-        // same clock as the hero's figures beside it.
         .revealOnAppear($isRevealed)
     }
 }
 
-/// A day as a small plate, for History's day strip, the Settings goal row and onboarding:
-/// the same chart at 36–44pt with a thinner inset and no legend.
-///
-/// The mocks draw these as a filled plate (`innerRadiusRatio` 0) on a disk, with the unfilled
-/// budget showing the plate. Pass a ratio above 0 for a ring instead.
-///
-/// Two plates appear in the boards. History's is a `backgroundSecondary` disk with the food inset
-/// inside its rim (the defaults). Settings' goal row sits on a white group, so its plate is
-/// `backgroundPrimary` and the food runs to the rim: pass `plateColor: CalorynTheme.backgroundPrimary`
-/// and `fillsPlate: true`.
 struct CalorieMiniDonutView: View {
     enum Outline: Equatable {
-        /// A hairline round the plate.
         case standard
-        /// A 2pt ink ring: the day went over its goal.
         case over
-        /// A dashed ring and a lighter fill: the day is still in progress.
         case today
     }
 
     let summary: CalorieDonutSummary
     var size: CGFloat = 40
     var outline: Outline = .standard
-    /// One fill for everything eaten instead of each meal's own — History passes
-    /// `CalorynTheme.dataSecondary`. Over-ness is then told by `outline`, not by an ink slice.
     var uniformFill: Color? = nil
     var innerRadiusRatio: CGFloat = 0
-    /// The disk under the food. White on the page; paper on a white surface.
     var plateColor: Color = CalorynTheme.backgroundSecondary
-    /// True runs the food out to the plate's rim instead of leaving a margin of plate round it.
     var fillsPlate: Bool = false
 
-    /// With one fill for everything eaten, the meals and the overshoot are one slice:
-    /// drawn apart, the inset between them would cut a line through a single colour.
     private var slices: [CalorieDonutChart.Slice] {
         let slices = CalorieDonutChart.slices(for: summary, revealed: true)
         guard uniformFill != nil else { return slices }
 
         let eaten = slices.filter { $0.kind != .remaining }.reduce(0) { $0 + $1.kcal }
         let remaining = slices.first { $0.kind == .remaining }?.kcal ?? 0
-        // The meal kind only picks a colour, and under a uniform fill every meal draws it.
         return [
             CalorieDonutChart.Slice(kind: .meal(.breakfast), kcal: eaten),
             CalorieDonutChart.Slice(kind: .remaining, kcal: remaining),
@@ -139,11 +105,7 @@ struct CalorieMiniDonutView: View {
     }
 }
 
-/// The Swift Charts donut both views draw. Internal so the two cannot drift apart.
 struct CalorieDonutChart: View {
-    /// A sector as drawn. Every kind the ring can show is always present — at zero when it
-    /// has nothing — so a change of day or a reveal animates each sector's angle rather than
-    /// inserting and removing marks.
     struct Slice: Equatable, Identifiable {
         let kind: CalorieDonutSummary.SectorKind
         let kcal: Double
@@ -151,17 +113,13 @@ struct CalorieDonutChart: View {
     }
 
     enum Colors {
-        /// Meals in their fill, the rest of the budget in `fillTrack`, over in ink.
         case hero
-        /// On a plate: the rest of the budget is left clear so the plate shows through.
         case plate(uniformFill: Color?)
     }
 
     let slices: [Slice]
     let innerRadius: CGFloat
     let angularInset: CGFloat
-    /// The overshoot's own inset, wider than the rest so a page-coloured gap parts the ink
-    /// from the meal beside it; `nil` insets it like every other sector.
     let overAngularInset: CGFloat?
     let colors: Colors
 
@@ -206,9 +164,6 @@ struct CalorieDonutChart: View {
         }
     }
 
-    /// The summary's sectors with every kind present, in drawing order. Unrevealed, the meals
-    /// and the overshoot sit at zero and the whole ring is track, so revealing grows them.
-    /// With nothing at all to draw, the ring is a bare track rather than a blank space.
     static func slices(for summary: CalorieDonutSummary, revealed: Bool) -> [Slice] {
         let meals = MealType.allCases.sorted { $0.sortOrder < $1.sortOrder }
         let kinds = meals.map(CalorieDonutSummary.SectorKind.meal) + [.over, .remaining]

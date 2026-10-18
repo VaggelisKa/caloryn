@@ -2,14 +2,7 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// Characterizes `WidgetCalorieSummary` and `DailyWidgetSnapshot` from
-/// `CalorynShared/WidgetSnapshot.swift`: the value types that cross the
-/// app <-> widget-extension boundary as JSON. These are pure value types
-/// with no shared global state, so tests run safely in parallel.
 struct WidgetSnapshotModelTests {
-
-    // MARK: - WidgetCalorieSummary boundary clamping
-
     @Test("Given negative consumed calories, when building a summary, then consumed clamps to zero")
     func negativeConsumedClampsToZero() {
         let summary = WidgetCalorieSummary(consumed: -50, baseTarget: 2_000, target: 2_000)
@@ -76,8 +69,6 @@ struct WidgetSnapshotModelTests {
 
         #expect(summary.progress == 0.25)
     }
-
-    // MARK: - Encode/decode round trip (mirrors WidgetSnapshotStore's coding strategy)
 
     private static let encoder: JSONEncoder = {
         let encoder = JSONEncoder()
@@ -183,8 +174,6 @@ struct WidgetSnapshotModelTests {
         }
     }
 
-    // MARK: - displaySnapshot staleness
-
     @Test("Given a needsOnboarding snapshot from a prior day, when requesting a display snapshot for today, then it is returned unchanged and not marked stale")
     func nonReadyStateIsNeverMarkedStale() {
         let calendar = Calendar(identifier: .gregorian)
@@ -215,8 +204,6 @@ struct WidgetSnapshotModelTests {
         #expect(result.isStale == false)
         #expect(result.snapshot == snapshot)
     }
-
-    // MARK: - Fixed-state factories
 
     @Test("Given the needsOnboarding factory, when built, then it uses the fixed 2000 kcal fallback target with zero consumed")
     func needsOnboardingUsesFixedFallbackTarget() {

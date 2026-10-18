@@ -12,8 +12,6 @@ final class FormattingAndDateHelperTests: XCTestCase {
         XCTAssertEqual(98.7.wholeFormatted, "98")
     }
 
-    /// Grams read like the kcal beside them: grouped and pointed for the reader's locale,
-    /// so "1.450 g" on a Danish phone is never read as one and a half grams.
     func testSpacedGramsAreGroupedAndPointedForTheLocale() {
         let us = Locale(identifier: "en_US")
         let danish = Locale(identifier: "da_DK")

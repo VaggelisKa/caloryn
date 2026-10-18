@@ -26,8 +26,6 @@ private func makeMealContainer() throws -> ModelContainer {
     )
 }
 
-// MARK: - Meal types
-
 @MainActor
 @Suite("Meal type naming coverage")
 struct MealTypeNamingCoverageTests {
@@ -63,8 +61,6 @@ struct MealTypeNamingCoverageTests {
         #expect(MealType.lunch.displayName(snackIndex: 2) == "Lunch")
     }
 }
-
-// MARK: - Snack index normalisation
 
 @MainActor
 @Suite("Snack index normalisation coverage")
@@ -177,8 +173,6 @@ struct SnackIndexNormalisationCoverageTests {
     }
 }
 
-// MARK: - Meal form components
-
 @MainActor
 @Suite("Meal component amount coverage")
 struct MealComponentAmountCoverageTests {
@@ -214,7 +208,6 @@ struct MealComponentAmountCoverageTests {
         #expect(amount.addedSugarsPer100g == nil)
         #expect(amount.alcoholPer100g == nil)
         #expect(amount.produceKind == .fruit)
-        // Back at 40 g the amount sheet's own figure matches the component's: 450 × 0.4.
         #expect(abs(amount.calories - 180) < 1e-9)
         #expect(abs(component.snapshot.nutrition.calories - 180) < 1e-9)
     }
@@ -264,15 +257,12 @@ struct MealComponentAmountCoverageTests {
             caloriesPer100g: 64, proteinPer100g: 3.4, carbsPer100g: 4.8, fatPer100g: 3.6
         )).updatingPortion(to: 200))
 
-        // Oats 80 g: 311.2 kcal, 13.6 P, 52.8 C, 5.6 F. Milk 200 g: 128 kcal, 6.8 P, 9.6 C, 7.2 F.
         #expect(abs(draft.totalNutrition.calories - 439.2) < 1e-9)
         #expect(abs(draft.totalNutrition.proteinG - 20.4) < 1e-9)
         #expect(abs(draft.totalNutrition.carbsG - 62.4) < 1e-9)
         #expect(abs(draft.totalNutrition.fatG - 12.8) < 1e-9)
     }
 }
-
-// MARK: - Template commands
 
 @MainActor
 @Suite("Meal template commands coverage")
@@ -473,7 +463,6 @@ struct MealTemplateCommandsCoverageTests {
         #expect(logged.map(\.foodName) == ["Oats", "Milk"])
         #expect(logged.map(\.portionGrams) == [80, 200])
         #expect(logged.allSatisfy { $0.mealType == .snack && $0.snackIndex == 2 })
-        // 311.2 + 128 kcal; 13.6 + 6.8 P; 52.8 + 9.6 C; 5.6 + 7.2 F.
         #expect(abs(logged.reduce(0) { $0 + $1.calories } - 439.2) < 1e-9)
         #expect(abs(logged.reduce(0) { $0 + $1.proteinG } - 20.4) < 1e-9)
         #expect(abs(logged.reduce(0) { $0 + $1.carbsG } - 62.4) < 1e-9)

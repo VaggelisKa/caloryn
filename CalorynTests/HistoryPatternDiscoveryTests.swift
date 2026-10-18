@@ -2,16 +2,9 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// Characterization tests for Pattern Discovery: the Calorie Trend, Weekly
-/// Consistency, and Macro Patterns projections History builds on top of a
-/// period summary. Every date is fixed and explicit so day, week, and
-/// on-track-band boundaries are asserted rather than inferred.
 @MainActor
 @Suite("History Pattern Discovery")
 struct HistoryPatternDiscoveryTests {
-
-    // MARK: - Calorie Trend: shape of the projected points
-
     @Test("given a range with no days, when projecting the calorie trend, then there is no logged data and no drill-down")
     func emptyRangeHasNoPoints() {
         let projection = HistoryCalorieTrendProjection(
@@ -63,7 +56,6 @@ struct HistoryPatternDiscoveryTests {
         let projection = HistoryPatternDiscovery(analytics: analytics).calorieTrend
 
         #expect(projection.totalDayCount == 90)
-        // 90 days ending Fri 30 Jan 2026 spans 14 Monday-anchored calendar weeks.
         #expect(projection.points.count == 14)
         #expect(projection.points.first?.xAxisLabel == "W1")
         #expect(projection.points.last?.xAxisLabel == "W14")
@@ -264,8 +256,6 @@ struct HistoryPatternDiscoveryTests {
         #expect(projection.point(for: 3) == nil)
     }
 
-    // MARK: - Calorie Trend: axis and totals
-
     @Test("given logged days above target, when projecting the calorie trend, then the y-axis upper bound clears the largest value")
     func yAxisUpperBoundClearsLargestValue() {
         let dates = days(fromJanuary: 26, count: 3)
@@ -430,8 +420,6 @@ struct HistoryPatternDiscoveryTests {
         #expect(projection.averageDeltaText(value: 2_000, unit: "kcal") == expected)
     }
 
-    // MARK: - Calorie Trend: estimated targets
-
     @Test("given every logged day has a saved daily goal, when projecting the calorie trend, then no estimated-target note is shown")
     func savedDailyGoalsSuppressEstimatedTargetNote() {
         let dates = days(fromJanuary: 26, count: 3)
@@ -518,8 +506,6 @@ struct HistoryPatternDiscoveryTests {
         #expect(projection.averageTargetPerLoggedDay == 1_900)
         #expect(projection.averageDifferenceText == "+100 over target")
     }
-
-    // MARK: - Calorie Trend: biggest inconsistency
 
     @Test(
         "given nothing logged in the range, when discovering the biggest swing, then no inconsistency is reported",
@@ -644,8 +630,6 @@ struct HistoryPatternDiscoveryTests {
         )
     }
 
-    // MARK: - Calorie Trend: top foods behind a selection
-
     @Test("given a selected logged day, when discovering its food drivers, then foods are merged by name and ranked by calories")
     func dayDrillDownRanksTopFoods() throws {
         let dates = days(fromJanuary: 26, count: 3)
@@ -721,8 +705,6 @@ struct HistoryPatternDiscoveryTests {
         let selection = try #require(projection.points.first?.selection)
         #expect(projection.topFoods(for: selection).isEmpty)
     }
-
-    // MARK: - Weekly Consistency
 
     @Test("given a range spanning two calendar weeks, when projecting weekly consistency, then logged and total day counts cover the whole range")
     func weeklyConsistencyCountsLoggedAndTotalDays() {
@@ -817,8 +799,6 @@ struct HistoryPatternDiscoveryTests {
         #expect(projection.headlineText == "Best week had 2 of 3 logged days on track.")
     }
 
-    // MARK: - Macro Patterns
-
     @Test("given no macro patterns, when discovering the least consistent macro, then nothing is reported")
     func noMacroPatternsReportNothing() {
         #expect(HistoryMacroPatternsProjection(patterns: []).summaryText == nil)
@@ -875,8 +855,6 @@ struct HistoryPatternDiscoveryTests {
         #expect(projection.summaryText == "Fat was the least consistent macro at 1 of 2 logged days.")
     }
 
-    // MARK: - Pattern Discovery as a whole
-
     @Test("given no profile targets, when discovering patterns, then macro patterns are absent while the calorie trend still projects")
     func missingProfileTargetsLeaveOnlyCalorieAndWeeklyPatterns() {
         let analytics = HistoryAnalytics(
@@ -891,7 +869,6 @@ struct HistoryPatternDiscoveryTests {
         #expect(discovery.macroPatterns.patterns.isEmpty)
         #expect(discovery.macroPatterns.summaryText == nil)
         #expect(discovery.calorieTrend.points.count == 7)
-        // No saved profile falls back to the documented 2,000 kcal target.
         #expect(discovery.calorieTrend.dailyCalorieTarget == 2_000)
         #expect(discovery.weeklyConsistency.totalDayCount == 7)
         #expect(discovery.weeklyConsistency.bestWeek == nil)
@@ -921,8 +898,6 @@ struct HistoryPatternDiscoveryTests {
         #expect(discovery.calorieTrend.onTrackLoggedDayCount == 2)
         #expect(discovery.weeklyConsistency.headlineText == "Best week had 2 of 3 logged days on track.")
     }
-
-    // MARK: - Fixtures
 
     private func janDate(_ day: Int) -> Date {
         makeTestDate(year: 2026, month: 1, day: day)

@@ -90,8 +90,6 @@ struct OnboardingContainerView: View {
         }
     }
 
-    /// Pushes whatever `OnboardingFlow` says comes next, so the order lives in
-    /// one place rather than in each step's continue handler.
     private func advance(from step: OnboardingStep, calorieTarget: Int = 0) {
         guard let next = OnboardingFlow.step(after: step, calorieTarget: calorieTarget) else { return }
         path.append(next)
@@ -230,8 +228,6 @@ struct EnergyCalculationModeStepView: View {
                 }
 
                 if let message {
-                    // The one callout on this step, so it is the grouped surface rather
-                    // than another row.
                     Text(message)
                         .font(OnboardingTypography.detail)
                         .foregroundStyle(CalorynTheme.textPrimary)
@@ -250,8 +246,6 @@ struct EnergyCalculationModeStepView: View {
                 Button(action: onContinue) {
                     HStack(spacing: 8) {
                         if isRequestingAuthorization {
-                            // Only ever shown while the button is disabled, so it matches
-                            // the disabled label rather than the paper one.
                             ProgressView()
                                 .tint(CalorynTheme.textSecondary)
                         }
