@@ -59,12 +59,6 @@ enum CalorynTheme {
     /// appearances (6.6:1 light, 8:1 dark), where `historyEaten` fell to 3:1 in dark.
     static let swipeActionTint = Color(.swipeActionTint)
 
-    // Retired from new code: the meal palette owns colour now. Kept for the few unchanged
-    // screens that still read them.
-    static let stone = Color(.stone)
-    static let terracotta = Color(.terracotta)
-    static let cardSeparator = stone.opacity(0.3)
-
     // MARK: - Meal palette
 
     // Asset names omit a `Color` suffix: Xcode strips it when generating symbols, so an

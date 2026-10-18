@@ -1,24 +1,6 @@
 import SwiftUI
 
 extension View {
-    func solidCardSurface(cornerRadius: CGFloat) -> some View {
-        solidCardSurface(in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-    }
-
-    func solidCardSurface<S: Shape>(in shape: S) -> some View {
-        self
-            .background {
-                shape
-                    .fill(CalorynTheme.cardBackground)
-                    .shadow(color: .black.opacity(0.05), radius: 14, x: 0, y: 6)
-            }
-            .overlay {
-                shape
-                    .stroke(CalorynTheme.cardSeparator.opacity(0.75), lineWidth: 0.8)
-                    .allowsHitTesting(false)
-            }
-    }
-
     @ViewBuilder
     func adaptiveCircleInteractiveGlass() -> some View {
         if #available(iOS 26.0, *) {

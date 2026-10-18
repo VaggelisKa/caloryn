@@ -1,16 +1,5 @@
 import SwiftUI
 
-struct SolidCardModifier: ViewModifier {
-    var cornerRadius: CGFloat = CalorynTheme.cornerRadius
-
-    func body(content: Content) -> some View {
-        content
-            .padding(CalorynTheme.cardPadding)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .solidCardSurface(cornerRadius: cornerRadius)
-    }
-}
-
 struct CalorynInputFieldModifier: ViewModifier {
     var isFocused: Bool
 
@@ -37,10 +26,6 @@ struct CalorynInputFieldModifier: ViewModifier {
 }
 
 extension View {
-    func solidCard(cornerRadius: CGFloat = CalorynTheme.cornerRadius) -> some View {
-        modifier(SolidCardModifier(cornerRadius: cornerRadius))
-    }
-
     func calorynInputField(isFocused: Bool = false) -> some View {
         modifier(CalorynInputFieldModifier(isFocused: isFocused))
     }
