@@ -1,6 +1,5 @@
 import CoreText
 import SwiftUI
-import UIKit
 
 /// Bricolage Grotesque, the app's typeface, bundled as fixed cuts of the variable font
 /// (SIL Open Font License, `Fonts/BricolageGrotesque-OFL.txt`).
@@ -12,7 +11,9 @@ import UIKit
 /// titles and the big numbers. Every text-style font is `relativeTo:` its style, so
 /// Dynamic Type scales it; fixed sizes come from callers' `@ScaledMetric`.
 ///
-/// SF Symbols keep the system font: a symbol's weight and alignment come from it.
+/// SF Symbols keep the system font, since a symbol's weight and alignment come from it, and so
+/// do inline navigation titles: UIKit sizes those once, so a bundled font there would not
+/// follow a Dynamic Type change made while the app is open.
 enum CalorynTypeface {
     /// Registers the bundled cuts for this process. Call once, before the first view draws.
     /// Registration rather than `UIAppFonts`, so the fonts live entirely in this folder.
@@ -21,9 +22,6 @@ enum CalorynTypeface {
         for url in urls where url.lastPathComponent.hasPrefix("BricolageGrotesque") {
             CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
         }
-        let title = UIFontMetrics(forTextStyle: .headline)
-            .scaledFont(for: uiFont(size: 17, weight: .bold))
-        UINavigationBar.appearance().titleTextAttributes = [.font: title]
     }
 
     /// The face for a text style, scaled with Dynamic Type. With no weight, the style's own:
@@ -37,11 +35,6 @@ enum CalorynTypeface {
     /// The face at a fixed point size, for callers that scale the size themselves.
     static func fixed(size: CGFloat, weight: Font.Weight = .regular) -> Font {
         .custom(postScriptName(size: size, weight: weight), fixedSize: size)
-    }
-
-    static func uiFont(size: CGFloat, weight: Font.Weight) -> UIFont {
-        UIFont(name: postScriptName(size: size, weight: weight), size: size)
-            ?? .systemFont(ofSize: size, weight: .bold)
     }
 
     /// The display cut from 22pt up in bold and heavier, where its tighter spacing is
