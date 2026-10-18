@@ -561,20 +561,18 @@ struct FoodSearchServiceNetworkCoverageTests {
         #expect(service.searchResults.map(\.product.productName) == ["Bread"])
     }
 
-    @Test("A request cancelled underneath a live search leaves it searching")
-    func transportCancellationLeavesSearchPending() async {
+    @Test("A request cancelled underneath a live search ends it as cancelled")
+    func transportCancellationEndsTheSearch() async {
         let telemetry = FoodSearchNetworkTelemetryLog()
         FoodSearchNetworkCoverageStub.install { _ in .transport(.cancelled) }
         let service = makeService(policy: .only(.calorynAPI), telemetry: telemetry)
 
         service.search(query: "porridge")
 
-        #expect(await eventually { !telemetry.events.isEmpty })
-        try? await Task.sleep(for: .milliseconds(100))
+        #expect(await eventually { !service.isSearching })
         #expect(telemetry.events.map(\.outcome) == [.cancelled])
-        // Current behaviour, suspected bug: nothing cancelled the search task, yet the spinner never stops.
-        #expect(service.isSearching)
-        #expect(service.failure == nil)
+        #expect(service.failure == .cancelled)
+        #expect(service.errorMessage == "The lookup was cancelled.")
         #expect(service.searchResults.isEmpty)
     }
 }
