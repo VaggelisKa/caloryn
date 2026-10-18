@@ -36,10 +36,10 @@ struct HistoryInkBar: View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
                 Rectangle()
-                    .fill(CalorynTheme.hairline)
+                    .fill(CalorynTheme.fillTrack)
 
                 Rectangle()
-                    .fill(CalorynTheme.textPrimary)
+                    .fill(CalorynTheme.dataPrimary)
                     .frame(width: isRevealed ? geometry.size.width * min(1, max(0, ratio)) : 0)
             }
         }
@@ -54,7 +54,7 @@ struct HistoryInkBar: View {
 struct HistoryHairline: View {
     var body: some View {
         Rectangle()
-            .fill(CalorynTheme.hairline)
+            .fill(CalorynTheme.separator)
             .frame(height: CalorynTheme.hairlineWidth)
             .accessibilityHidden(true)
     }
@@ -71,7 +71,7 @@ struct HistoryStatusBadge: View {
             .foregroundStyle(CalorynTheme.textPrimary)
             .padding(.horizontal, 9)
             .padding(.vertical, 4)
-            .background(CalorynTheme.hairline, in: Capsule())
+            .background(CalorynTheme.fillTrack, in: Capsule())
             .accessibilityLabel(status.sentenceLabel)
     }
 }

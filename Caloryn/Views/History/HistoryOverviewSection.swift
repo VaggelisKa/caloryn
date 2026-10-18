@@ -110,7 +110,7 @@ struct HistoryDayPlateGrid: View {
                             summary: plate.donut,
                             size: plateSize,
                             outline: outline(for: plate.outline),
-                            uniformFill: CalorynTheme.historyEaten
+                            uniformFill: CalorynTheme.dataSecondary
                         )
 
                         // Capped at AX1: the plates do not grow, so past it a column cannot
@@ -211,21 +211,21 @@ private struct HistoryPlateLegend: View {
     private var keys: some View {
         key(text: "eaten") {
             Circle()
-                .fill(CalorynTheme.historyEaten)
+                .fill(CalorynTheme.dataSecondary)
                 .padding(1)
         }
 
         key(text: ringKeyText) {
             Circle()
                 .inset(by: 1.75)
-                .stroke(CalorynTheme.textPrimary, lineWidth: 1.5)
+                .stroke(CalorynTheme.dataPrimary, lineWidth: 1.5)
         }
 
         key(text: currentKeyText) {
             Circle()
                 .inset(by: 1)
                 .stroke(
-                    CalorynTheme.textPrimary.opacity(0.5),
+                    CalorynTheme.dataPrimary.opacity(0.5),
                     style: StrokeStyle(lineWidth: 1, dash: [1.5, 2])
                 )
         }

@@ -129,7 +129,7 @@ struct PortionPickerView: View {
                     } label: {
                         Image(systemName: "xmark")
                             .font(CalorynTheme.toolbarIcon)
-                            .foregroundStyle(CalorynTheme.textPrimary)
+                            .foregroundStyle(CalorynTheme.accent)
                     }
                     .accessibilityLabel("Close")
                 }
@@ -142,7 +142,7 @@ struct PortionPickerView: View {
                     } label: {
                         Label("Delete", systemImage: "trash")
                             .font(CalorynTheme.toolbarIcon)
-                            .foregroundStyle(CalorynTheme.textPrimary)
+                            .foregroundStyle(CalorynTheme.accent)
                     }
                     .accessibilityLabel("Delete Log Entry")
                     .accessibilityIdentifier("portionPicker.delete")
@@ -154,7 +154,7 @@ struct PortionPickerView: View {
                     } label: {
                         Image(systemName: "chevron.left")
                             .font(CalorynTheme.toolbarIcon)
-                            .foregroundStyle(CalorynTheme.textPrimary)
+                            .foregroundStyle(CalorynTheme.accent)
                     }
                     .accessibilityLabel("Back")
                     .accessibilityIdentifier("portionPicker.back")
@@ -171,7 +171,7 @@ struct PortionPickerView: View {
                     } label: {
                         Image(systemName: "pencil")
                             .font(CalorynTheme.toolbarIcon)
-                            .foregroundStyle(CalorynTheme.textPrimary)
+                            .foregroundStyle(CalorynTheme.accent)
                     }
                     .accessibilityLabel("Edit Food Details")
                     .accessibilityHint("Creates or updates your private version of this barcode")
@@ -269,7 +269,7 @@ struct PortionPickerView: View {
                 } label: {
                     Text("Edit food details")
                         .fontWeight(.semibold)
-                        .foregroundStyle(CalorynTheme.textPrimary)
+                        .foregroundStyle(CalorynTheme.accent)
                         .underline()
                 }
                 .buttonStyle(.plain)

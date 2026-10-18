@@ -9,7 +9,7 @@ import SwiftUI
 private struct CalorynHairlineSeparatorsModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
-            .listRowSeparatorTint(CalorynTheme.hairline)
+            .listRowSeparatorTint(CalorynTheme.separator)
             .listRowBackground(Color.clear)
     }
 }
@@ -21,10 +21,10 @@ private struct CalorynGroupSurfaceModifier: ViewModifier {
         let shape = RoundedRectangle(cornerRadius: CalorynTheme.groupCornerRadius, style: .continuous)
 
         content
-            .background(CalorynTheme.cardBackground, in: shape)
+            .background(CalorynTheme.backgroundSecondary, in: shape)
             .overlay {
                 shape
-                    .strokeBorder(CalorynTheme.hairline, lineWidth: CalorynTheme.hairlineWidth)
+                    .strokeBorder(CalorynTheme.separator, lineWidth: CalorynTheme.hairlineWidth)
                     .allowsHitTesting(false)
             }
     }
@@ -54,12 +54,12 @@ private struct CalorynPrimaryButton: View {
     @Environment(\.isEnabled) private var isEnabled
 
     private var fill: Color {
-        meal.map(CalorynTheme.mealFill) ?? CalorynTheme.textPrimary
+        meal.map(CalorynTheme.mealFill) ?? CalorynTheme.accent
     }
 
     private var label: Color {
         guard isEnabled else { return CalorynTheme.textSecondary }
-        return meal.map(CalorynTheme.mealOnFill) ?? CalorynTheme.pageBackground
+        return meal.map(CalorynTheme.mealOnFill) ?? CalorynTheme.textOnAccent
     }
 
     var body: some View {
@@ -94,7 +94,7 @@ private struct CalorynChipModifier: ViewModifier {
     private var foreground: Color {
         switch (isSelected, meal) {
         case (true, let meal?): CalorynTheme.mealOnFill(meal)
-        case (true, nil): CalorynTheme.pageBackground
+        case (true, nil): CalorynTheme.textOnAccent
         case (false, let meal?): CalorynTheme.mealInk(meal)
         case (false, nil): CalorynTheme.textPrimary
         }
@@ -102,7 +102,7 @@ private struct CalorynChipModifier: ViewModifier {
 
     private var selectedFill: Color {
         if let meal { return CalorynTheme.mealFill(meal) }
-        return CalorynTheme.textPrimary
+        return CalorynTheme.accent
     }
 
     func body(content: Content) -> some View {
@@ -121,7 +121,7 @@ private struct CalorynChipModifier: ViewModifier {
             .overlay {
                 if !isSelected {
                     Capsule()
-                        .strokeBorder(CalorynTheme.hairline, lineWidth: CalorynTheme.hairlineWidth)
+                        .strokeBorder(CalorynTheme.separator, lineWidth: CalorynTheme.hairlineWidth)
                         .allowsHitTesting(false)
                 }
             }
@@ -131,7 +131,7 @@ private struct CalorynChipModifier: ViewModifier {
 }
 
 extension View {
-    /// Row chrome for a plain list on the page: separators tinted `hairline`, and no row
+    /// Row chrome for a plain list on the page: separators tinted `separator`, and no row
     /// background so the canvas shows through.
     ///
     /// Apply it where `.listRowBackground` would go — on each `Section`, `ForEach` or row —
@@ -146,13 +146,13 @@ extension View {
         listRowBackground(Color.clear)
     }
 
-    /// One of the few grouped surfaces built as a stack (the History insight): `cardBackground`,
-    /// a 22pt continuous corner, a 1pt `hairline` border, no shadow. Surface only — add the
+    /// One of the few grouped surfaces built as a stack (the History insight): `backgroundSecondary`,
+    /// a 22pt continuous corner, a 1pt `separator` border, no shadow. Surface only — add the
     /// padding the content needs inside it.
     ///
     /// Not for `List`/`Form` sections. Those keep the system inset-grouped shape (its own
     /// corner radius, no border) via `calorynGroupedListStyle()` / `calorynFormStyle()` plus
-    /// `.listRowBackground(CalorynTheme.cardBackground)` on each `Section`: a row cannot draw
+    /// `.listRowBackground(CalorynTheme.backgroundSecondary)` on each `Section`: a row cannot draw
     /// a border round its whole section. See `docs/design/plate-market.md`, "Grouped surfaces".
     func calorynGroupSurface() -> some View {
         modifier(CalorynGroupSurfaceModifier())
@@ -170,7 +170,7 @@ extension View {
     }
 
     /// A 34pt capsule chip. Selected is filled in ink with a paper label; unselected is a
-    /// 1pt `hairline` border with an ink label. Pass `meal` for the Portion sheet's meal
+    /// 1pt `separator` border with an ink label. Pass `meal` for the Portion sheet's meal
     /// chips: selected fills with the meal's fill and labels in `mealOnFill`, unselected
     /// writes the label in the meal's ink.
     ///
@@ -182,7 +182,7 @@ extension View {
     }
 }
 
-/// The system switch, tinted `controlTint` rather than the app's ink.
+/// The system switch, tinted `accentControl` rather than the app's ink.
 ///
 /// A `Toggle` takes the app-wide `.tint(textPrimary)`, and in dark mode that put the
 /// switch's white knob on a near-white track (about 1.1:1): on and off could only be told
@@ -193,6 +193,6 @@ struct CalorynToggleStyle: ToggleStyle {
     func makeBody(configuration: Configuration) -> some View {
         Toggle(configuration)
             .toggleStyle(.switch)
-            .tint(CalorynTheme.controlTint)
+            .tint(CalorynTheme.accentControl)
     }
 }

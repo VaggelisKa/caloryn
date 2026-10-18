@@ -115,5 +115,5 @@ struct CalorynMealSectionHeader: View {
         }
     }
     .padding()
-    .background(CalorynTheme.pageBackground)
+    .background(CalorynTheme.backgroundPrimary)
 }

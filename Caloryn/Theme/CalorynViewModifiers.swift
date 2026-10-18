@@ -12,13 +12,13 @@ private struct CalorynPageCanvasModifier: ViewModifier {
             // keeps the bar transparent at rest and paints the page colour, not the
             // system material, once content scrolls under it.
             pageCanvas(content)
-                .toolbarBackground(CalorynTheme.pageBackground, for: .navigationBar)
+                .toolbarBackground(CalorynTheme.backgroundPrimary, for: .navigationBar)
         }
     }
 
     private func pageCanvas(_ content: Content) -> some View {
         content.background {
-            CalorynTheme.pageBackground
+            CalorynTheme.backgroundPrimary
                 .ignoresSafeArea()
         }
     }
@@ -31,7 +31,7 @@ private struct CalorynGroupedListStyleModifier: ViewModifier {
             .listSectionSpacing(.custom(CalorynTheme.cardSpacing))
             .scrollContentBackground(.hidden)
             .background {
-                CalorynTheme.pageBackground
+                CalorynTheme.backgroundPrimary
                     .ignoresSafeArea()
             }
     }
@@ -46,13 +46,13 @@ private struct CalorynSheetCanvasModifier: ViewModifier {
             // Colour only, as the page canvas does: forcing the bar visible drew a
             // hairline under every sheet title at rest, which the glass bar never has.
             sheetCanvas(content)
-                .toolbarBackground(CalorynTheme.cardBackground, for: .navigationBar)
+                .toolbarBackground(CalorynTheme.backgroundSecondary, for: .navigationBar)
         }
     }
 
     private func sheetCanvas(_ content: Content) -> some View {
         content.background {
-            CalorynTheme.cardBackground
+            CalorynTheme.backgroundSecondary
                 .ignoresSafeArea()
         }
     }
@@ -64,7 +64,7 @@ private struct CalorynFormStyleModifier: ViewModifier {
             .scrollContentBackground(.hidden)
         // A `Form` paints `systemGroupedBackground` over its canvas exactly as a `List`
         // does — cool grey-blue, not the warm palette. Sections still need
-        // `.listRowBackground(CalorynTheme.cardBackground)`; this only clears the scroll
+        // `.listRowBackground(CalorynTheme.backgroundSecondary)`; this only clears the scroll
         // background so the canvas shows through.
     }
 }
@@ -74,7 +74,7 @@ private struct CalorynDrillDownNavigationModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .tint(CalorynTheme.textPrimary)
+            .tint(CalorynTheme.accent)
             .navigationBarBackButtonHidden()
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -83,7 +83,7 @@ private struct CalorynDrillDownNavigationModifier: ViewModifier {
                     } label: {
                         Image(systemName: "chevron.left")
                             .font(CalorynTheme.toolbarIcon)
-                            .foregroundStyle(CalorynTheme.textPrimary)
+                            .foregroundStyle(CalorynTheme.accent)
                     }
                     .accessibilityLabel("Back")
                 }
@@ -110,7 +110,7 @@ extension View {
     }
 
     /// Canvas for a modal sheet: the lighter card surface, so a sheet reads as floating
-    /// above the page rather than continuing it. Pages stay `pageBackground`.
+    /// above the page rather than continuing it. Pages stay `backgroundPrimary`.
     func calorynSheetCanvas() -> some View {
         modifier(CalorynSheetCanvasModifier())
     }
@@ -121,7 +121,7 @@ extension View {
     }
 
     /// `Form` on whichever canvas surrounds it. Sections still need
-    /// `.listRowBackground(CalorynTheme.cardBackground)`.
+    /// `.listRowBackground(CalorynTheme.backgroundSecondary)`.
     func calorynFormStyle() -> some View {
         modifier(CalorynFormStyleModifier())
     }
@@ -129,7 +129,7 @@ extension View {
     /// Navigation chrome for a pushed detail screen: a themed back button.
     ///
     /// The system back button is replaced rather than tinted, because under Liquid Glass it
-    /// honours neither the `AccentColor` asset, nor `.tint()`, nor a UIKit
+    /// honours neither the global accent, nor `.tint()`, nor a UIKit
     /// `navigationBar.tintColor` bridge. History carried all three at once and its chevron
     /// still measured near-black in a screenshot. Only `.foregroundStyle` on a label the app
     /// owns works.

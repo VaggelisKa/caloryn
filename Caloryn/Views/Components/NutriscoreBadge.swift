@@ -7,7 +7,7 @@ struct NutriscoreBadge: View {
         if let color = CalorynTheme.nutriscoreColor(for: grade) {
             Text(grade.uppercased())
                 .font(CalorynTheme.badgeText)
-                .foregroundStyle(.white)
+                .foregroundStyle(CalorynTheme.nutriscoreOnFill)
                 .frame(minWidth: 18, minHeight: 18)
                 .background(color, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
                 .accessibilityLabel("Nutri-Score \(grade.uppercased())")

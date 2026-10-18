@@ -37,8 +37,8 @@ struct MissingFoodEntryView: View {
                         .foregroundStyle(CalorynTheme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                .listRowBackground(CalorynTheme.cardBackground)
-                .listRowSeparatorTint(CalorynTheme.hairline)
+                .listRowBackground(CalorynTheme.backgroundSecondary)
+                .listRowSeparatorTint(CalorynTheme.separator)
 
                 Section {
                     LabeledContent("Food") {
@@ -96,8 +96,8 @@ struct MissingFoodEntryView: View {
                     sectionHeader("Entry")
                 }
                 .foregroundStyle(CalorynTheme.textPrimary)
-                .listRowBackground(CalorynTheme.cardBackground)
-                .listRowSeparatorTint(CalorynTheme.hairline)
+                .listRowBackground(CalorynTheme.backgroundSecondary)
+                .listRowSeparatorTint(CalorynTheme.separator)
 
                 Section {
                     // Ink, not red: red is lunch now. The confirmation dialog that follows
@@ -106,11 +106,11 @@ struct MissingFoodEntryView: View {
                         showingDeleteConfirmation = true
                     } label: {
                         Text("Delete log entry")
-                            .foregroundStyle(CalorynTheme.textPrimary)
+                            .foregroundStyle(CalorynTheme.accent)
                             .frame(maxWidth: .infinity)
                     }
                 }
-                .listRowBackground(CalorynTheme.cardBackground)
+                .listRowBackground(CalorynTheme.backgroundSecondary)
             }
             .calorynFormStyle()
             .calorynSheetCanvas()
@@ -122,7 +122,7 @@ struct MissingFoodEntryView: View {
                     } label: {
                         Image(systemName: "xmark")
                             .font(CalorynTheme.toolbarIcon)
-                            .foregroundStyle(CalorynTheme.textPrimary)
+                            .foregroundStyle(CalorynTheme.accent)
                     }
                     .accessibilityLabel("Close")
                 }
@@ -135,7 +135,7 @@ struct MissingFoodEntryView: View {
                             .font(CalorynTheme.toolbarAction)
                             .foregroundStyle(
                                 FavoriteFoodLogging.isSafePortion(portionGrams)
-                                    ? CalorynTheme.textPrimary
+                                    ? CalorynTheme.accent
                                     : CalorynTheme.textTertiary
                             )
                     }
@@ -163,7 +163,7 @@ struct MissingFoodEntryView: View {
 
     /// The date as a value, like the rows above it; tapping it opens a calendar under the
     /// row. A compact `DatePicker` drew its date in a system-grey pill beside the
-    /// `surface` portion well, and no token reaches that fill.
+    /// `backgroundTertiary` portion well, and no token reaches that fill.
     @ViewBuilder
     private var dateRow: some View {
         Button {
@@ -200,7 +200,7 @@ struct MissingFoodEntryView: View {
             .labelsHidden()
             // Not ink: the selected day is drawn white on the tint, and ink is near-white
             // in dark mode.
-            .tint(CalorynTheme.controlTint)
+            .tint(CalorynTheme.accentControl)
         }
     }
 

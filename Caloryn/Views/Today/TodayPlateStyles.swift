@@ -35,7 +35,7 @@ enum TodayPlateFont {
 
 /// The "Recipe" / "Yours" badge on a logged entry's row: the same badge `FoodRowView` draws
 /// on search and My Foods rows, sentence case, bold, one tint whatever meal the row sits
-/// under (`typeBadgeFill` / `typeBadgeText`).
+/// under (`fillBadge` / `textSecondary`).
 struct TodayTypeBadge: View {
     let isRecipe: Bool
 
@@ -43,10 +43,10 @@ struct TodayTypeBadge: View {
         Text(isRecipe ? "Recipe" : "Yours")
             .font(CalorynTheme.badgeText)
             .fontWeight(.bold)
-            .foregroundStyle(CalorynTheme.typeBadgeText)
+            .foregroundStyle(CalorynTheme.textSecondary)
             .padding(.horizontal, 5)
             .padding(.vertical, 2)
-            .background(CalorynTheme.typeBadgeFill, in: .capsule)
+            .background(CalorynTheme.fillBadge, in: .capsule)
     }
 }
 
@@ -141,7 +141,7 @@ private struct TodayTitlelessBarModifier: ViewModifier {
                 .overlay(alignment: .top) {
                     Color.clear
                         .frame(height: 0)
-                        .background(CalorynTheme.pageBackground.ignoresSafeArea(edges: .top))
+                        .background(CalorynTheme.backgroundPrimary.ignoresSafeArea(edges: .top))
                         .allowsHitTesting(false)
                 }
         }

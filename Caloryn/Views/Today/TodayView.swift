@@ -303,11 +303,11 @@ struct TodayView: View {
             Image(systemName: systemImage)
                 .font(CalorynTheme.inlineIcon)
                 .imageScale(.small)
-                .foregroundStyle(isEnabled ? CalorynTheme.textPrimary : CalorynTheme.textTertiary)
+                .foregroundStyle(isEnabled ? CalorynTheme.accent : CalorynTheme.textTertiary)
                 .frame(width: Self.dayButtonSize, height: Self.dayButtonSize)
                 // Tinted with the card colour, as PlateDark draws filled discs: clear glass
                 // on the dark page showed nothing but its rim.
-                .adaptiveCircleInteractiveGlass(tint: CalorynTheme.cardBackground)
+                .adaptiveCircleInteractiveGlass(tint: CalorynTheme.backgroundSecondary)
                 .frame(width: Self.minimumHitTarget, height: Self.minimumHitTarget)
                 .contentShape([.interaction, .accessibility], .rect)
         }
@@ -356,7 +356,7 @@ struct TodayView: View {
                 .presentationBackground(.regularMaterial)
         } else {
             content
-                .presentationBackground(CalorynTheme.cardBackground)
+                .presentationBackground(CalorynTheme.backgroundSecondary)
         }
     }
 

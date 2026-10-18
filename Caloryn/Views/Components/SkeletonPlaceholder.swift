@@ -20,7 +20,7 @@ struct SkeletonBar: View {
             // Inside the shimmer's mask the bar must be opaque: a mask multiplies by
             // alpha, and the faint on-screen fill would reduce the highlight to under
             // one percent, which is invisible. The colour of a mask is never painted.
-            .fill(drawsOpaqueMask ? Color.black : CalorynTheme.skeletonBase)
+            .fill(drawsOpaqueMask ? Color.black : CalorynTheme.fillLoading)
             .frame(maxWidth: width)
             .frame(height: height)
             .frame(height: max(lineHeight ?? height, height))
@@ -57,7 +57,7 @@ struct ShimmeringPlaceholder<Content: View>: View {
                         let width = proxy.size.width
                         let band = max(width * 0.42, 1)
                         LinearGradient(
-                            colors: [.clear, CalorynTheme.skeletonShine, .clear],
+                            colors: [.clear, CalorynTheme.fillLoadingHighlight, .clear],
                             startPoint: .leading,
                             endPoint: .trailing
                         )

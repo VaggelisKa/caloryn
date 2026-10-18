@@ -49,7 +49,7 @@ struct GramAmountField: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            // The stepper pill: a `surface` capsule with round minus and plus buttons at
+            // The stepper pill: a `backgroundTertiary` capsule with round minus and plus buttons at
             // its ends and the typed amount between them. The buttons are siblings of
             // the amount box, not children of it — an identifier on a container is
             // inherited by everything inside, so the box's would have named the buttons
@@ -61,12 +61,12 @@ struct GramAmountField: View {
             }
             .padding(.horizontal, 10)
             .frame(minHeight: pillHeight)
-            .background(CalorynTheme.surface, in: Capsule())
+            .background(CalorynTheme.backgroundTertiary, in: Capsule())
             .overlay {
                 // A well, not a card: a hairline edge, and ink while it is being typed in.
                 Capsule()
                     .strokeBorder(
-                        isFocused ? CalorynTheme.textPrimary : CalorynTheme.hairline,
+                        isFocused ? CalorynTheme.accent : CalorynTheme.separator,
                         lineWidth: isFocused ? 1.2 : CalorynTheme.hairlineWidth
                     )
                     .allowsHitTesting(false)
@@ -151,19 +151,19 @@ struct GramAmountField: View {
             onStep(step)
         } label: {
             // The board's round white button on the pill, not glass: the stepper is content,
-            // and glass on the `surface` pill read as a dark hole in dark mode. The hairline
+            // and glass on the `backgroundTertiary` pill read as a dark hole in dark mode. The hairline
             // ring is what still separates it from the pill there, where the card and the
             // surface are the same colour.
             Image(systemName: step == .more ? "plus" : "minus")
                 .font(CalorynTheme.inlineIcon)
-                .foregroundStyle(CalorynTheme.textPrimary)
+                .foregroundStyle(CalorynTheme.accent)
                 .frame(width: buttonDiameter, height: buttonDiameter)
-                .background(CalorynTheme.cardBackground, in: Circle())
+                .background(CalorynTheme.backgroundSecondary, in: Circle())
                 .overlay {
                     Circle()
-                        .strokeBorder(CalorynTheme.hairline, lineWidth: CalorynTheme.hairlineWidth)
+                        .strokeBorder(CalorynTheme.separator, lineWidth: CalorynTheme.hairlineWidth)
                 }
-                .shadow(color: CalorynTheme.hairline, radius: 4, y: 2)
+                .shadow(color: CalorynTheme.shadow, radius: 4, y: 2)
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)

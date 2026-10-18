@@ -48,7 +48,7 @@ struct IngredientAmountPickerView: View {
                     } label: {
                         Image(systemName: "xmark")
                             .font(CalorynTheme.toolbarIcon)
-                            .foregroundStyle(CalorynTheme.textPrimary)
+                            .foregroundStyle(CalorynTheme.accent)
                     }
                     .accessibilityLabel("Close")
                 }
@@ -64,7 +64,7 @@ struct IngredientAmountPickerView: View {
                         // would silently throw away.
                         Text("Save")
                             .font(CalorynTheme.toolbarAction)
-                            .foregroundStyle(amount.canSave ? CalorynTheme.textPrimary : CalorynTheme.textSecondary)
+                            .foregroundStyle(amount.canSave ? CalorynTheme.accent : CalorynTheme.textSecondary)
                     }
                     .disabled(!amount.canSave)
                 }
@@ -93,7 +93,7 @@ struct IngredientAmountPickerView: View {
         )
     }
 
-    /// The weight that goes into the recipe, typed into a `surface` well.
+    /// The weight that goes into the recipe, typed into a `backgroundTertiary` well.
     /// The label and the well share a line, until accessibility sizes: there the label
     /// goes above, and the well, sized with the text (a fixed 104pt left about 80pt for a
     /// number that needs 99pt at AX5), takes the line under it. One layout swapped with

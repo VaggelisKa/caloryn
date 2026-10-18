@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The Plate stepper for a count: a `surface` capsule with round minus and plus buttons at
+/// The Plate stepper for a count: a `backgroundTertiary` capsule with round minus and plus buttons at
 /// its ends and the value between them — the Portion sheet's grams pill (`GramAmountField`)
 /// without the typed field.
 ///
@@ -61,10 +61,10 @@ struct CalorynStepperPill: View {
         }
         .padding(.horizontal, size == .regular ? 10 : 4)
         .frame(minHeight: pillHeight)
-        .background(CalorynTheme.surface, in: Capsule())
+        .background(CalorynTheme.backgroundTertiary, in: Capsule())
         .overlay {
             Capsule()
-                .strokeBorder(CalorynTheme.hairline, lineWidth: CalorynTheme.hairlineWidth)
+                .strokeBorder(CalorynTheme.separator, lineWidth: CalorynTheme.hairlineWidth)
                 .allowsHitTesting(false)
         }
         .accessibilityElement(children: .ignore)
@@ -120,14 +120,14 @@ struct CalorynStepperPill: View {
         } label: {
             Image(systemName: systemImage)
                 .font(size == .regular ? CalorynTheme.inlineIcon : CalorynTheme.compactIcon)
-                .foregroundStyle(isEnabled ? CalorynTheme.textPrimary : CalorynTheme.textTertiary)
+                .foregroundStyle(isEnabled ? CalorynTheme.accent : CalorynTheme.textTertiary)
                 .frame(width: buttonDiameter, height: buttonDiameter)
-                .background(CalorynTheme.cardBackground, in: Circle())
+                .background(CalorynTheme.backgroundSecondary, in: Circle())
                 .overlay {
                     Circle()
-                        .strokeBorder(CalorynTheme.hairline, lineWidth: CalorynTheme.hairlineWidth)
+                        .strokeBorder(CalorynTheme.separator, lineWidth: CalorynTheme.hairlineWidth)
                 }
-                .shadow(color: CalorynTheme.hairline, radius: size == .regular ? 4 : 2, y: size == .regular ? 2 : 1)
+                .shadow(color: CalorynTheme.shadow, radius: size == .regular ? 4 : 2, y: size == .regular ? 2 : 1)
                 .frame(
                     width: buttonDiameter + hitTargetOverhang * 2,
                     height: buttonDiameter + hitTargetOverhang * 2
@@ -170,5 +170,5 @@ struct CalorynStepperPill: View {
         }
     }
     .padding()
-    .background(CalorynTheme.cardBackground)
+    .background(CalorynTheme.backgroundSecondary)
 }

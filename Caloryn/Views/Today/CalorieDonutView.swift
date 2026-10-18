@@ -2,7 +2,7 @@ import Charts
 import SwiftUI
 
 /// The Today hero's donut: one sector per meal in its fill, then the rest of the budget in
-/// `hairline`, or the overshoot in ink. Renders `CalorieDonutSummary` and decides nothing.
+/// `fillTrack`, or the overshoot in ink. Renders `CalorieDonutSummary` and decides nothing.
 ///
 /// Every sector is inset from its neighbours, so the page shows between them. The ink
 /// overshoot is inset further: next to the dark dinner purple, the gap every other pair of
@@ -52,9 +52,9 @@ struct CalorieDonutView: View {
 /// The mocks draw these as a filled plate (`innerRadiusRatio` 0) on a disk, with the unfilled
 /// budget showing the plate. Pass a ratio above 0 for a ring instead.
 ///
-/// Two plates appear in the boards. History's is a `cardBackground` disk with the food inset
+/// Two plates appear in the boards. History's is a `backgroundSecondary` disk with the food inset
 /// inside its rim (the defaults). Settings' goal row sits on a white group, so its plate is
-/// `pageBackground` and the food runs to the rim: pass `plateColor: CalorynTheme.pageBackground`
+/// `backgroundPrimary` and the food runs to the rim: pass `plateColor: CalorynTheme.backgroundPrimary`
 /// and `fillsPlate: true`.
 struct CalorieMiniDonutView: View {
     enum Outline: Equatable {
@@ -70,11 +70,11 @@ struct CalorieMiniDonutView: View {
     var size: CGFloat = 40
     var outline: Outline = .standard
     /// One fill for everything eaten instead of each meal's own — History passes
-    /// `CalorynTheme.historyEaten`. Over-ness is then told by `outline`, not by an ink slice.
+    /// `CalorynTheme.dataSecondary`. Over-ness is then told by `outline`, not by an ink slice.
     var uniformFill: Color? = nil
     var innerRadiusRatio: CGFloat = 0
     /// The disk under the food. White on the page; paper on a white surface.
-    var plateColor: Color = CalorynTheme.cardBackground
+    var plateColor: Color = CalorynTheme.backgroundSecondary
     /// True runs the food out to the plate's rim instead of leaving a margin of plate round it.
     var fillsPlate: Bool = false
 
@@ -122,16 +122,16 @@ struct CalorieMiniDonutView: View {
         switch outline {
         case .standard:
             Circle()
-                .stroke(CalorynTheme.hairline, lineWidth: CalorynTheme.hairlineWidth)
+                .stroke(CalorynTheme.separator, lineWidth: CalorynTheme.hairlineWidth)
                 .frame(width: plateDiameter, height: plateDiameter)
         case .over:
             Circle()
                 .inset(by: 1)
-                .stroke(CalorynTheme.textPrimary, lineWidth: 2)
+                .stroke(CalorynTheme.dataPrimary, lineWidth: 2)
         case .today:
             Circle()
                 .stroke(
-                    CalorynTheme.textPrimary.opacity(0.35),
+                    CalorynTheme.dataPrimary.opacity(0.35),
                     style: StrokeStyle(lineWidth: CalorynTheme.hairlineWidth, dash: [2, 3])
                 )
                 .frame(width: plateDiameter, height: plateDiameter)
@@ -151,7 +151,7 @@ struct CalorieDonutChart: View {
     }
 
     enum Colors {
-        /// Meals in their fill, the rest of the budget in `hairline`, over in ink.
+        /// Meals in their fill, the rest of the budget in `fillTrack`, over in ink.
         case hero
         /// On a plate: the rest of the budget is left clear so the plate shows through.
         case plate(uniformFill: Color?)
@@ -198,9 +198,9 @@ struct CalorieDonutChart: View {
         case (.meal, .plate(uniformFill: let fill?)), (.over, .plate(uniformFill: let fill?)):
             fill
         case (.over, _):
-            CalorynTheme.textPrimary
+            CalorynTheme.dataPrimary
         case (.remaining, .hero):
-            CalorynTheme.hairline
+            CalorynTheme.fillTrack
         case (.remaining, .plate):
             Color.clear
         }
@@ -251,16 +251,16 @@ struct CalorieDonutChart: View {
             CalorieMiniDonutView(
                 summary: CalorieDonutSummary(mealTotals: [.breakfast: 2_300], budget: 2_000, isOver: true),
                 outline: .over,
-                uniformFill: CalorynTheme.historyEaten
+                uniformFill: CalorynTheme.dataSecondary
             )
             CalorieMiniDonutView(
                 summary: CalorieDonutSummary(mealTotals: [.breakfast: 1_690], budget: 2_000, isOver: false),
-                uniformFill: CalorynTheme.historyEaten
+                uniformFill: CalorynTheme.dataSecondary
             )
             CalorieMiniDonutView(
                 summary: CalorieDonutSummary(mealTotals: [.breakfast: 963], budget: 2_000, isOver: false),
                 outline: .today,
-                uniformFill: CalorynTheme.historyEaten
+                uniformFill: CalorynTheme.dataSecondary
             )
             CalorieMiniDonutView(
                 summary: CalorieDonutSummary(
@@ -273,5 +273,5 @@ struct CalorieDonutChart: View {
         }
     }
     .padding()
-    .background(CalorynTheme.pageBackground)
+    .background(CalorynTheme.backgroundPrimary)
 }

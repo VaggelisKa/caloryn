@@ -43,7 +43,7 @@ struct ProfileEditView: View {
             } header: {
                 SettingsSectionTitle("Personal info")
             }
-            .listRowBackground(CalorynTheme.cardBackground)
+            .listRowBackground(CalorynTheme.backgroundSecondary)
 
             Section {
                 // A menu, not chips: five long names do not fit a row of chips.
@@ -61,7 +61,7 @@ struct ProfileEditView: View {
                     SettingsSectionFooter(ProfileEditActivityLevelPolicy.lockedExplanation)
                 }
             }
-            .listRowBackground(CalorynTheme.cardBackground)
+            .listRowBackground(CalorynTheme.backgroundSecondary)
         }
         .calorynFormStyle()
         .calorynPageCanvas()
@@ -75,14 +75,14 @@ struct ProfileEditView: View {
                 } label: {
                     Text("Save")
                         .font(CalorynTheme.toolbarAction)
-                        .foregroundStyle(CalorynTheme.textPrimary)
+                        .foregroundStyle(CalorynTheme.accent)
                 }
             }
         }
     }
 }
 
-/// Age on the Plate stepper: a `surface` pill with round minus and plus buttons. A stock
+/// Age on the Plate stepper: a `backgroundTertiary` pill with round minus and plus buttons. A stock
 /// `Stepper` draws its minus/plus pill in a system fill (#EEEEEF on the white group) that
 /// no token reaches.
 private struct ProfileAgeRow: View {
@@ -177,7 +177,7 @@ private struct ProfileSliderRow: View {
             // Stepped without `Slider(step:)`, which draws a tick per step on iOS 26 — the
             // same slider onboarding sets height and weight with.
             OnboardingSlider(value: $value, range: range, step: step, label: title)
-                .tint(CalorynTheme.textPrimary)
+                .tint(CalorynTheme.accent)
                 .accessibilityLabel(title)
                 .accessibilityValue(valueText)
         }

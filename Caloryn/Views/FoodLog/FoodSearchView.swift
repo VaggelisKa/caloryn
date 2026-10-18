@@ -157,7 +157,7 @@ struct FoodSearchView: View {
                     } label: {
                         Image(systemName: "xmark")
                             .font(CalorynTheme.toolbarIcon)
-                            .foregroundStyle(CalorynTheme.textPrimary)
+                            .foregroundStyle(CalorynTheme.accent)
                     }
                     .accessibilityLabel("Close")
                 }
@@ -174,7 +174,7 @@ struct FoodSearchView: View {
                                 .font(CalorynTheme.toolbarAction)
                                 .contentTransition(.opacity)
                                 .foregroundStyle(
-                                    isEnabled ? CalorynTheme.textPrimary : CalorynTheme.textSecondary
+                                    isEnabled ? CalorynTheme.accent : CalorynTheme.textSecondary
                                 )
                                 .animation(
                                     selectionModeAnimation,
@@ -196,7 +196,7 @@ struct FoodSearchView: View {
                         } label: {
                             Image(systemName: "plus")
                                 .font(CalorynTheme.toolbarIcon)
-                                .foregroundStyle(CalorynTheme.textPrimary)
+                                .foregroundStyle(CalorynTheme.accent)
                         }
                         .accessibilityLabel("Create Manual Entry")
                     }
@@ -362,12 +362,12 @@ struct FoodSearchView: View {
                         // the well. A flat `textSecondary` filled the disc with solid sage.
                         Image(systemName: "xmark.circle.fill")
                             .symbolRenderingMode(.hierarchical)
-                            .foregroundStyle(CalorynTheme.textPrimary)
+                            .foregroundStyle(CalorynTheme.accent)
                     }
                     .accessibilityLabel("Clear search")
                 }
             }
-            // The well: a `searchWell` capsule beside the round scanner, as the board draws it.
+            // The well: a `backgroundInset` capsule beside the round scanner, as the board draws it.
             .foodSearchWell(isFocused: isSearchFocused, height: searchControlHeight)
 
             // Glass, like the close and Select circles above it: chrome stays glass. Tinted
@@ -380,10 +380,10 @@ struct FoodSearchView: View {
             } label: {
                 Image(systemName: "barcode.viewfinder")
                     .font(CalorynTheme.inlineIcon)
-                    .foregroundStyle(CalorynTheme.textPrimary)
+                    .foregroundStyle(CalorynTheme.accent)
                     .frame(width: searchControlHeight, height: searchControlHeight)
             }
-            .adaptiveCircleInteractiveGlass(tint: CalorynTheme.searchWell, edge: CalorynTheme.hairline)
+            .adaptiveCircleInteractiveGlass(tint: CalorynTheme.backgroundInset, edge: CalorynTheme.separator)
             .accessibilityLabel("Scan a barcode")
         }
         .padding(.horizontal, CalorynTheme.pagePadding)
@@ -517,7 +517,7 @@ struct FoodSearchView: View {
                 FoodSearchSkeletonRows()
                     .listRowInsets(FoodSearchSkeletonRows.listRowInsets)
                     .listRowSeparator(.hidden, edges: .bottom)
-                    .listRowSeparatorTint(CalorynTheme.hairline)
+                    .listRowSeparatorTint(CalorynTheme.separator)
                     .calorynClearRowBackground()
             }
         }
@@ -564,7 +564,7 @@ struct FoodSearchView: View {
                         .padding(.horizontal, 16)
                         .padding(.vertical, 6)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(CalorynTheme.cardBackground)
+                        .background(CalorynTheme.backgroundSecondary)
                         .listRowInsets(EdgeInsets())
                         .accessibilityAddTraits(.isHeader)
                 }
@@ -573,7 +573,7 @@ struct FoodSearchView: View {
             // a scrolling title draws as its row separator (My Foods' sections keep it the
             // same way), so both lists open a section alike.
             .listSectionSeparator(showsTitle ? .visible : .automatic, edges: .top)
-            .listSectionSeparatorTint(CalorynTheme.hairline)
+            .listSectionSeparatorTint(CalorynTheme.separator)
         }
     }
 
@@ -776,6 +776,7 @@ struct FoodSearchView: View {
             } label: {
                 Image(systemName: "xmark")
                     .font(CalorynTheme.toolbarIcon)
+                    // swiftlint:disable:next raw_white_color
                     .foregroundStyle(.white)
                     .frame(width: 40, height: 40)
                     .adaptiveCircleInteractiveGlass()
@@ -801,7 +802,7 @@ struct FoodSearchView: View {
                     Spacer()
                     ProgressView()
                         .controlSize(.large)
-                        .tint(CalorynTheme.textPrimary)
+                        .tint(CalorynTheme.accent)
                     Text("Looking up the product…")
                         .font(CalorynTheme.bodyText)
                         .foregroundStyle(CalorynTheme.textSecondary)
@@ -997,7 +998,7 @@ private struct BarcodeLookupFailureView: View {
                 if let retryTitle = presentation.retryTitle {
                     Button(retryTitle, action: onRetry)
                         .buttonStyle(.bordered)
-                        .tint(CalorynTheme.textPrimary)
+                        .tint(CalorynTheme.accent)
                         .controlSize(.large)
                 }
             }

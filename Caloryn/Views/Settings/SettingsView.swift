@@ -51,19 +51,19 @@ struct SettingsView: View {
             List {
                 if let profile {
                     goalSection(profile)
-                        .listRowBackground(CalorynTheme.cardBackground)
+                        .listRowBackground(CalorynTheme.backgroundSecondary)
                     profileSection(profile)
-                        .listRowBackground(CalorynTheme.cardBackground)
+                        .listRowBackground(CalorynTheme.backgroundSecondary)
                 }
 
                 appearanceSection
-                    .listRowBackground(CalorynTheme.cardBackground)
+                    .listRowBackground(CalorynTheme.backgroundSecondary)
                 DailyReminderSettingsSection()
-                    .listRowBackground(CalorynTheme.cardBackground)
+                    .listRowBackground(CalorynTheme.backgroundSecondary)
                 dataSection
-                    .listRowBackground(CalorynTheme.cardBackground)
+                    .listRowBackground(CalorynTheme.backgroundSecondary)
                 aboutSection
-                    .listRowBackground(CalorynTheme.cardBackground)
+                    .listRowBackground(CalorynTheme.backgroundSecondary)
             }
             .calorynGroupedListStyle()
             .calorynPageCanvas()
@@ -177,7 +177,7 @@ struct SettingsView: View {
 
                         Text("Open App Settings")
                     }
-                    .foregroundStyle(CalorynTheme.textPrimary)
+                    .foregroundStyle(CalorynTheme.accent)
                 }
                 .font(CalorynTheme.caption)
                 .buttonStyle(.borderless)
@@ -481,7 +481,7 @@ struct SettingsView: View {
                         .font(CalorynTheme.toolbarIcon)
                         .accessibilityHidden(true)
                 }
-                .foregroundStyle(isExportEnabled ? CalorynTheme.textPrimary : CalorynTheme.textTertiary)
+                .foregroundStyle(isExportEnabled ? CalorynTheme.accent : CalorynTheme.textTertiary)
                 .contentShape(Rectangle())
             }
             .disabled(!isExportEnabled)
@@ -517,7 +517,7 @@ struct SettingsView: View {
                 Spacer()
                 Link("Open Food Facts", destination: URL(string: "https://openfoodfacts.org")!)
                     .font(CalorynTheme.bodyText.weight(.semibold))
-                    .foregroundStyle(CalorynTheme.textPrimary)
+                    .foregroundStyle(CalorynTheme.accent)
             }
         } header: {
             SettingsSectionTitle("About")
@@ -620,7 +620,7 @@ private struct SettingsGoalHeadline: View {
             CalorieMiniDonutView(
                 summary: plate,
                 size: plateSize,
-                plateColor: CalorynTheme.pageBackground,
+                plateColor: CalorynTheme.backgroundPrimary,
                 fillsPlate: true
             )
 
@@ -700,7 +700,7 @@ private struct SettingsThemeRow: View {
             .accessibilityHidden(true)
     }
 
-    /// The pill is `pageBackground`, not `surface`: in dark mode `surface` is the group's
+    /// The pill is `backgroundPrimary`, not `backgroundTertiary`: in dark mode `backgroundTertiary` is the group's
     /// own colour, and the pill would vanish into it.
     private var segments: some View {
         HStack(spacing: 4) {
@@ -712,12 +712,12 @@ private struct SettingsThemeRow: View {
                 } label: {
                     Text(preference.displayName)
                         .font(CalorynTheme.chipLabel.weight(isSelected ? .bold : .medium))
-                        .foregroundStyle(isSelected ? CalorynTheme.pageBackground : CalorynTheme.textPrimary)
+                        .foregroundStyle(isSelected ? CalorynTheme.textOnAccent : CalorynTheme.textPrimary)
                         .padding(.horizontal, 12)
                         .frame(minHeight: 28)
                         .background {
                             if isSelected {
-                                Capsule().fill(CalorynTheme.textPrimary)
+                                Capsule().fill(CalorynTheme.accent)
                             }
                         }
                         .contentShape(Capsule())
@@ -728,7 +728,7 @@ private struct SettingsThemeRow: View {
             }
         }
         .padding(3)
-        .background(CalorynTheme.pageBackground, in: Capsule())
+        .background(CalorynTheme.backgroundPrimary, in: Capsule())
         .fixedSize()
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Theme")

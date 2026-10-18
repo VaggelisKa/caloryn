@@ -46,6 +46,8 @@ struct NutriscoreDaySummary: View {
         .padding(.trailing, 10)
         .frame(minHeight: chipHeight)
         // Ink at 6%: a quiet chip that reads on paper, on a white sheet and in dark mode alike.
+        // No fill token has this value yet (docs/theme.md, open decisions).
+        // swiftlint:disable:next text_token_as_shape
         .background(CalorynTheme.textPrimary.opacity(0.06), in: Capsule())
         .transition(.opacity.combined(with: .scale(scale: 0.95, anchor: .leading)))
     }
@@ -66,5 +68,5 @@ struct NutriscoreDaySummary: View {
         NutriscoreDaySummary(distribution: [("e", 1)])
     }
     .padding()
-    .background(CalorynTheme.pageBackground)
+    .background(CalorynTheme.backgroundPrimary)
 }

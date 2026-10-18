@@ -155,7 +155,7 @@ struct FoodRowFigure: View {
 }
 
 /// "Recipe" or "Yours": sentence case, bold, and one tint whatever meal the row sits under
-/// (`typeBadgeFill` / `typeBadgeText`). Squared off like the Nutri-Score badge beside it.
+/// (`fillBadge` / `textSecondary`). Squared off like the Nutri-Score badge beside it.
 struct FoodTypeBadge: View {
     let isRecipe: Bool
 
@@ -163,11 +163,11 @@ struct FoodTypeBadge: View {
         Text(isRecipe ? "Recipe" : "Yours")
             .font(CalorynTheme.badgeText)
             .fontWeight(.bold)
-            .foregroundStyle(CalorynTheme.typeBadgeText)
+            .foregroundStyle(CalorynTheme.textSecondary)
             .padding(.horizontal, 5)
             .padding(.vertical, 2)
             .background(
-                CalorynTheme.typeBadgeFill,
+                CalorynTheme.fillBadge,
                 in: RoundedRectangle(cornerRadius: 4, style: .continuous)
             )
             // Never squeezed: "Recipe" cut to "Rec…" says nothing. The name gives way.
