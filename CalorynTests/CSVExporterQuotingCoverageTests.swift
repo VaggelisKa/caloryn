@@ -60,8 +60,8 @@ struct CSVExporterQuotingCoverageTests {
         let records = parsedRecords(CSVExporter.generateCSV(from: entries))
 
         #expect(records.count == 3)
-        #expect(records.dropFirst().map { $0[1] } == [MealType.snack.displayName(snackIndex: 1), MealType.snack.displayName(snackIndex: 3)])
-        #expect(records[1][1] != records[2][1])
+        #expect(records.dropFirst().map { $0[1] } == ["Snack 1", "Snack 3"])
+        #expect(records.dropFirst().map { $0[2] } == ["Apple", "Nuts"])
     }
 
     @Test("Every meal type's label is a bare field: none needs quoting", arguments: [MealType.breakfast, .lunch, .dinner])
