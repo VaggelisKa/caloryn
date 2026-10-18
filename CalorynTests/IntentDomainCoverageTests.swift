@@ -269,6 +269,45 @@ struct FavoriteIntentCatalogCoverageTests {
         ] + cherries)
     }
 
+    @Test("Favourites with no pin date sort after every dated one")
+    func undatedFavoritesSortLast() throws {
+        let context = ModelContext(try makeIntentContainer())
+        let undated = try insertFavoriteFood(name: "Apple", portion: 100, favoritedAt: localDate(2026, 7, 1), in: context)
+        undated.pinnedAt = nil
+        let dated = try insertFavoriteFood(name: "Zucchini", portion: 100, favoritedAt: localDate(2000, 1, 1), in: context)
+
+        let candidates = FavoriteIntentCatalog.candidates(from: [undated, dated])
+
+        #expect(candidates.map(\.name) == ["Zucchini", "Apple"])
+        #expect(candidates.map(\.favoritedAt) == [localDate(2000, 1, 1), nil])
+    }
+
+    @Test("Portions keep up to two decimals and are never grouped", arguments: [
+        (12.5, "12{sep}5"),
+        (87.25, "87{sep}25"),
+        (1_234.5, "1234{sep}5"),
+        (200.0, "200"),
+    ])
+    func portionFormatting(portion: Double, template: String) {
+        // `IntentNumberFormatting.grams` takes no locale, so only the decimal mark is the
+        // device's; the digits, precision and lack of grouping are what is asserted.
+        let separator = Locale.current.decimalSeparator ?? "."
+        let grams = template.replacingOccurrences(of: "{sep}", with: separator)
+        let candidate = FavoriteIntentCandidate(
+            id: "A",
+            name: "Oats",
+            brand: nil,
+            kind: .manualFood,
+            portionGrams: portion,
+            favoritedAt: nil,
+            displayTitle: "Oats"
+        )
+        let result = FavoriteIntentLogResult(foodName: "Oats", portionGrams: portion, meal: .breakfast, calories: 50)
+
+        #expect(candidate.displaySubtitle == "Manual food, last logged \(grams) g")
+        #expect(result.response == "Logged \(grams) g of Oats to breakfast — 50 calories.")
+    }
+
     @Test("A blank or whitespace search matches every candidate", arguments: ["", "   ", "\n\t"])
     func blankSearchMatchesAll(search: String) {
         let candidate = FavoriteIntentCandidate(
@@ -690,6 +729,29 @@ struct CalorynIntentDataStoreCoverageTests {
         #expect(snapshot.calories.target == 1_900)
         #expect(snapshot.usesDynamicTarget == false)
         #expect(mealSummary(snapshot) == ["snack=120"])
+    }
+
+    @Test("A fresh projection after logging uses the most recently updated profile")
+    func logFavoriteProjectsFromNewestProfile() throws {
+        let container = try makeIntentContainer()
+        let context = container.mainContext
+        let older = makeManualProfile(target: 1_500)
+        older.updatedAt = localDate(2026, 7, 1)
+        let newer = makeManualProfile(target: 2_300)
+        newer.updatedAt = localDate(2026, 7, 20)
+        context.insert(older)
+        context.insert(newer)
+        let favorite = try insertFavoriteFood(name: "Yogurt", portion: 150, favoritedAt: localDate(2026, 7, 1), in: context)
+        let (snapshotStore, directory) = makeTemporarySnapshotStore()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = CalorynIntentDataStore(modelContainer: container, widgetSnapshotStore: snapshotStore)
+
+        _ = try store.logFavorite(id: favorite.id.uuidString, meal: .lunch, now: localDate(2026, 7, 25, 15), calendar: deviceDayCalendar)
+
+        let snapshot = try #require(try snapshotStore.load())
+        #expect(snapshot.calories.baseTarget == 2_300)
+        #expect(snapshot.calories.target == 2_300)
+        #expect(snapshot.calories.consumed == 150)
     }
 
     @Test("A refused log neither writes an entry nor touches the widget snapshot")
