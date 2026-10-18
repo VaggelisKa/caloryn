@@ -155,6 +155,7 @@ struct MultiAddReviewView: View {
                             Label("Remove", systemImage: "trash")
                         }
                         .accessibilityLabel("Remove \(item.snapshot.foodName)")
+                        .tint(CalorynTheme.swipeActionTint)
                     }
                 }
                 .accessibilityIdentifier("multiAdd.item.\(item.id.uuidString)")

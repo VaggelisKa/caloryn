@@ -149,6 +149,19 @@ The list modifiers therefore paint no background of their own — the canvas sup
 colour, so the same list is correct on a page and in a sheet. Rows still need
 `.listRowBackground(...)`.
 
+### The navigation bar before iOS 26
+
+Below iOS 26 there is no Liquid Glass: the navigation bar is UIKit's, transparent at rest
+and a system material once content scrolls under it. Both canvases hand it their colour with
+`.toolbarBackground(_:for:)` so the scrolled state is page (or card) coloured rather than
+grey, and nothing more. They used to force `.toolbarBackground(.visible)` as well, and a bar
+that is visible at rest paints its hairline at rest: every page and sheet carried a system
+line across the top on iOS 18 that the glass bar never draws. Today, which has no title, had
+a 44pt empty bar with that line; iOS 26 collapses a titleless bar to nothing, so Today hides
+it below 26 (`todayTitlelessBar()`) and backs the status bar with the page colour instead.
+Audit this on an iOS 18 simulator — `CALORYN_UDID=<udid> ./scripts/theme-screenshots.sh` —
+because no iOS 26 capture can show it.
+
 ## Toolbar buttons need an explicit foreground style
 
 iOS 26 renders navigation-bar and toolbar buttons inside a glass container that honours
