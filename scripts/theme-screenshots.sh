@@ -24,7 +24,9 @@ RESULT="$(mktemp -d)/theme.xcresult"
 # already-booted one wins, so running this does not boot a second simulator alongside
 # whichever one you are testing on by hand — an earlier version picked the first *available*
 # device and did exactly that. The UI test target deploys to 18.6, so to audit the iOS 18
-# fallbacks (materials for glass, a UIKit navigation bar) pass that simulator explicitly:
+# fallbacks (materials for glass, a UIKit navigation bar) pass that simulator explicitly,
+# and do the same with several booted (one per agent): a test plan must never share a
+# simulator with another run.
 #
 #   CALORYN_UDID=<udid> ./scripts/theme-screenshots.sh
 UDID="${CALORYN_UDID:-$(xcrun simctl list devices available -j \

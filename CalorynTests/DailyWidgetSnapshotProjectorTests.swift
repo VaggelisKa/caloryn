@@ -37,6 +37,32 @@ final class DailyWidgetSnapshotProjectorTests: XCTestCase {
         XCTAssertEqual(snapshot.calories.remaining, 1_500)
     }
 
+    func testProjectionSplitsTodayByMealWithSnackSlotsSharingOneKey() {
+        let now = makeTestDate(year: 2026, month: 7, day: 15)
+        let profile = makeProfile(target: 2_000)
+        let food = makeTestFoodItem(caloriesPer100g: 100)
+        let entries = [
+            makeTestEntry(date: now, mealType: .breakfast, foodItem: food, portionGrams: 300),
+            makeTestEntry(date: now, mealType: .snack, foodItem: food, portionGrams: 50, snackIndex: 1),
+            makeTestEntry(date: now, mealType: .snack, foodItem: food, portionGrams: 70, snackIndex: 2),
+        ]
+
+        let snapshot = DailyWidgetSnapshotProjector.makeSnapshot(
+            profile: profile,
+            entries: entries,
+            now: now
+        )
+
+        XCTAssertEqual(snapshot.calories.consumed, 420)
+        XCTAssertEqual(
+            snapshot.calories.meals,
+            [
+                WidgetMealCalories(meal: .breakfast, kcal: 300),
+                WidgetMealCalories(meal: .snack, kcal: 120),
+            ]
+        )
+    }
+
     func testProjectionCarriesDynamicActivityAdjustment() {
         let now = Date.now
         let profile = makeProfile(target: 2_000, mode: .dynamicHealth)

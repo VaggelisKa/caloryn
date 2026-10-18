@@ -124,9 +124,8 @@ struct CalorynIntentDataStore: Sendable {
             return
         }
 
-        let consumed = entries
-            .filter { calendar.isDate($0.date, inSameDayAs: now) }
-            .reduce(0) { $0 + $1.calories }
+        let dayEntries = entries.filter { calendar.isDate($0.date, inSameDayAs: now) }
+        let consumed = dayEntries.reduce(0) { $0 + $1.calories }
         let previous = try? widgetSnapshotStore.load()
 
         let snapshot: DailyWidgetSnapshot
@@ -141,7 +140,8 @@ struct CalorynIntentDataStore: Sendable {
                     consumed: consumed,
                     baseTarget: previous.calories.baseTarget,
                     target: previous.calories.target,
-                    dynamicAdjustment: previous.calories.dynamicAdjustment
+                    dynamicAdjustment: previous.calories.dynamicAdjustment,
+                    mealCalories: DailyWidgetSnapshotProjector.mealCalories(for: dayEntries)
                 ),
                 usesDynamicTarget: previous.usesDynamicTarget,
                 activityRefreshedAt: previous.activityRefreshedAt

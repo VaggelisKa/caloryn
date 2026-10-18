@@ -56,6 +56,20 @@ final class NonFiniteNumberSafetyTests: XCTestCase {
         }
     }
 
+    func testWidgetCalorieSummaryFloorsANonFiniteMealTotal() {
+        let summary = WidgetCalorieSummary(
+            consumed: 500,
+            baseTarget: 2_000,
+            target: 2_000,
+            mealCalories: [.breakfast: .nan, .lunch: -.infinity, .dinner: 500, .snack: 1e30]
+        )
+
+        XCTAssertEqual(summary.kcal(for: .breakfast), 0)
+        XCTAssertEqual(summary.kcal(for: .lunch), 0)
+        XCTAssertEqual(summary.kcal(for: .dinner), 500)
+        XCTAssertEqual(summary.kcal(for: .snack), .max)
+    }
+
     func testWidgetCalorieSummaryClampsAConsumedTotalPastTheIntegerRange() {
         let summary = WidgetCalorieSummary(consumed: 1e30, baseTarget: 2_000, target: 2_000)
 
