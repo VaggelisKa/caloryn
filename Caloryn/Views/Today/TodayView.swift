@@ -6,6 +6,7 @@ struct TodayView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(AppRouter.self) private var router
     @Query(sort: \UserProfile.updatedAt, order: .reverse) private var profiles: [UserProfile]
     @Query private var allEntries: [FoodLogEntry]
@@ -155,6 +156,9 @@ struct TodayView: View {
                 .contentMargins(.top, 0, for: .scrollContent)
                 .id(selectedDate)
                 .animation(.smooth(duration: 0.35), value: hasNutriscoreData)
+                // Entries saved from the add-food sheet arrive through the query with no
+                // transaction of their own; without this a new row snaps into its meal.
+                .animation(reduceMotion ? nil : .smooth(duration: 0.3), value: projection.today.map(\.id))
             }
             .calorynPageCanvas()
             .todayTitlelessBar()
@@ -292,11 +296,10 @@ struct TodayView: View {
         isEnabled: Bool,
         action: @escaping () -> Void
     ) -> some View {
-        Button {
-            withAnimation {
-                action()
-            }
-        } label: {
+        // No animation: the list is rebuilt per day (`.id(selectedDate)`), and animating that
+        // crossfaded the two days over each other, figures ghosted on figures. The new day
+        // swaps in at once and its hero makes the entrance: the donut grows, the numbers roll.
+        Button(action: action) {
             Image(systemName: systemImage)
                 .font(CalorynTheme.inlineIcon)
                 .imageScale(.small)
@@ -409,12 +412,14 @@ struct TodayView: View {
             mealType: \.mealType,
             createdAt: \.createdAt
         )
-        DailyFoodLogCommands.copyLoggedEntries(
-            orderedEntries,
-            to: selectedDate,
-            modelContext: modelContext
-        )
-        try? modelContext.save()
+        withAnimation(reduceMotion ? nil : .smooth(duration: 0.35)) {
+            DailyFoodLogCommands.copyLoggedEntries(
+                orderedEntries,
+                to: selectedDate,
+                modelContext: modelContext
+            )
+            try? modelContext.save()
+        }
     }
 
     private func handlePendingRoute() {

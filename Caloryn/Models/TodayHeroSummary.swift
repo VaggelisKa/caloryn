@@ -36,6 +36,33 @@ struct TodayHeroSummary: Equatable {
         ring.isOver
     }
 
+    /// The hero before its entrance: the same budget and cue with nothing eaten, and every
+    /// logged meal at 0. The donut opens on a bare track and grows its meals in, so the
+    /// figures beside it start from the full budget and roll to the day's alongside it,
+    /// rather than sitting at their final values while the ring is still empty.
+    var unrevealed: TodayHeroSummary {
+        let target = ring.adjustedTarget
+        let emptyRing = CalorieRingSummary(
+            isOver: false,
+            remaining: target,
+            overAmount: 0,
+            roundedConsumed: 0,
+            adjustedTarget: target,
+            dynamicIncrease: ring.dynamicIncrease,
+            dynamicAdjustment: ring.dynamicAdjustment,
+            hasDynamicIncrease: ring.hasDynamicIncrease,
+            hasDynamicReduction: ring.hasDynamicReduction,
+            isActivityLoading: ring.isActivityLoading
+        )
+        let loggedMeals = donut.legend.compactMap { $0.isLogged ? $0.meal : nil }
+        let emptyDonut = CalorieDonutSummary(
+            mealTotals: Dictionary(uniqueKeysWithValues: loggedMeals.map { ($0, 0) }),
+            budget: Double(target),
+            isOver: false
+        )
+        return TodayHeroSummary(ring: emptyRing, donut: emptyDonut, locale: locale)
+    }
+
     /// The big number: kcal left, or kcal over once past the budget.
     var headline: Int {
         ring.centerValue

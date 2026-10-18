@@ -4,6 +4,7 @@ import SwiftData
 
 struct HistoryView: View {
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     // Keep newest-first ordering in sync with relevantEntries(startingAt:);
     // that helper early-exits when it reaches entries older than its window.
@@ -14,6 +15,9 @@ struct HistoryView: View {
     @State private var historyState: HistoryViewState
     @State private var navigationPath: [HistoryDrillDownRoute] = []
     @State private var analyticsDayStart = Calendar.current.startOfDay(for: .now)
+    /// False until the first refresh lands. `historyState` opens on empty analytics, so
+    /// drawing before then flashed the empty state for a frame before the real one.
+    @State private var hasLoadedAnalytics = false
 
     #if DEBUG
     @State private var debugLaunch = HistoryDebugLaunch.current
@@ -92,44 +96,46 @@ struct HistoryView: View {
                 )
 
                 VStack(alignment: .leading, spacing: 26) {
-                    VStack(alignment: .leading, spacing: 22) {
-                        rangePicker
+                    if hasLoadedAnalytics {
+                        VStack(alignment: .leading, spacing: 22) {
+                            rangePicker
 
-                        HistoryOverviewSection(
-                            range: state.range,
-                            summary: history.current,
-                            overview: overview,
-                            today: analyticsDayStart
+                            HistoryOverviewSection(
+                                range: state.range,
+                                summary: history.current,
+                                overview: overview,
+                                today: analyticsDayStart
+                            )
+                        }
+
+                        if let recurringPattern = state.recurringPattern {
+                            HistoryRecurringCaloriePatternCard(
+                                pattern: recurringPattern,
+                                action: { openPatternDetails(recurringPattern) }
+                            )
+                        }
+
+                        if overview.hasLoggedDays {
+                            HistoryOnTrackSection(overview: overview)
+                        }
+
+                        if state.range.days >= HistoryRange.month.days {
+                            HistoryWeeklyRollupSection(projection: patternDiscovery.weeklyConsistency)
+                        }
+
+                        HistoryCalorieTrendSection(
+                            projection: patternDiscovery.calorieTrend,
+                            drillDownAction: patternDiscovery.calorieTrend.canDrillDown
+                                ? { openCalorieTrendDetail(range: state.range, summary: history.current) }
+                                : nil
                         )
-                    }
 
-                    if let recurringPattern = state.recurringPattern {
-                        HistoryRecurringCaloriePatternCard(
-                            pattern: recurringPattern,
-                            action: { openPatternDetails(recurringPattern) }
-                        )
-                    }
-
-                    if overview.hasLoggedDays {
-                        HistoryOnTrackSection(overview: overview)
-                    }
-
-                    if state.range.days >= HistoryRange.month.days {
-                        HistoryWeeklyRollupSection(projection: patternDiscovery.weeklyConsistency)
-                    }
-
-                    HistoryCalorieTrendSection(
-                        projection: patternDiscovery.calorieTrend,
-                        drillDownAction: patternDiscovery.calorieTrend.canDrillDown
-                            ? { openCalorieTrendDetail(range: state.range, summary: history.current) }
-                            : nil
-                    )
-
-                    if history.macroPatterns.contains(where: { $0.current.loggedDays > 0 }) {
-                        HistoryMacroPatternsSection(
-                            range: state.range,
-                            projection: patternDiscovery.macroPatterns
-                        )
+                        if history.macroPatterns.contains(where: { $0.current.loggedDays > 0 }) {
+                            HistoryMacroPatternsSection(
+                                range: state.range,
+                                projection: patternDiscovery.macroPatterns
+                            )
+                        }
                     }
                 }
                 .padding(.horizontal, CalorynTheme.pagePadding)
@@ -147,7 +153,15 @@ struct HistoryView: View {
         .task(id: analyticsRefreshID) {
             // Range changes refresh synchronously through selectRange; data/profile
             // changes should recalculate for the range current when this task runs.
-            refreshAnalytics(for: historyState.range)
+            // The first load fades in on its own; later data changes animate in place.
+            withAnimation(hasLoadedAnalytics ? changeAnimation : nil) {
+                refreshAnalytics(for: historyState.range)
+            }
+            if !hasLoadedAnalytics {
+                withAnimation(.smooth(duration: 0.25)) {
+                    hasLoadedAnalytics = true
+                }
+            }
             #if DEBUG
             openDebugDrillDownIfRequested()
             #endif
@@ -190,9 +204,17 @@ struct HistoryView: View {
         )
     }
 
+    /// A range switch or a data change: figures roll, bars and plates morph, and sections
+    /// that come or go fade. Under Reduce Motion the new range simply replaces the old.
+    private var changeAnimation: Animation? {
+        reduceMotion ? nil : .smooth(duration: 0.4)
+    }
+
     private func selectRange(_ range: HistoryRange) {
         guard range != historyState.range else { return }
-        refreshAnalytics(for: range)
+        withAnimation(changeAnimation) {
+            refreshAnalytics(for: range)
+        }
     }
 
     private func openCalorieTrendDetail(range: HistoryRange, summary: HistoryPeriodSummary) {

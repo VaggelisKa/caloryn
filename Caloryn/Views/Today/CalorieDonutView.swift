@@ -38,16 +38,11 @@ struct CalorieDonutView: View {
             colors: .hero
         )
         .frame(width: size, height: size)
-        .animation(animates ? .smooth(duration: 0.55) : nil, value: displayed)
+        .animation(animates ? .calorynReveal : nil, value: displayed)
         .accessibilityHidden(true)
-        .onAppear {
-            guard animates, !isRevealed else { return }
-            // One runloop on the empty track first, so the meals visibly grow into place.
-            Task { @MainActor in
-                await Task.yield()
-                isRevealed = true
-            }
-        }
+        // A frame on the empty track first, so the meals visibly grow into place — on the
+        // same clock as the hero's figures beside it.
+        .revealOnAppear($isRevealed)
     }
 }
 

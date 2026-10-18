@@ -58,6 +58,38 @@ struct TodayPlateSummaryTests {
         #expect(hero.caption == "kcal left of 2.000")
     }
 
+    @Test("Before its entrance the hero shows the full budget left, with logged meals at 0")
+    func heroBeforeItsEntrance() {
+        let hero = makeHero(
+            mealTotals: [.breakfast: 382, .lunch: 463, .dinner: 1_377, .snack: 118],
+            isOver: true,
+            remaining: 0,
+            overAmount: 340,
+            consumed: 2_340
+        ).unrevealed
+
+        #expect(hero.isOver == false)
+        #expect(hero.headlineText == "2,000")
+        #expect(hero.caption == "kcal left of 2,000")
+        #expect(hero.eatenLine == "0 of 2,000 eaten")
+        // Logged meals roll from 0; the overshoot row arrives with the reveal.
+        #expect(hero.donut.legend.map { hero.legendValue(for: $0) } == ["0", "0", "0", "0"])
+    }
+
+    @Test("Before its entrance a meal with nothing logged still reads 'not yet'")
+    func heroBeforeItsEntranceKeepsUnloggedMeals() {
+        let hero = makeHero(
+            mealTotals: [.lunch: 463],
+            isOver: false,
+            remaining: 1_537,
+            overAmount: 0,
+            consumed: 463
+        ).unrevealed
+
+        let values = hero.donut.legend.map { hero.legendValue(for: $0) }
+        #expect(values == ["not yet", "0", "not yet", "not yet"])
+    }
+
     @Test("A legend row names its meal and its kcal, or 'not yet' when nothing is logged there")
     func heroLegendWording() {
         let hero = makeHero(
