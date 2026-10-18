@@ -189,13 +189,14 @@ struct FoodLogBottomFade: View {
 }
 
 extension View {
-    /// The Add Food search well: `calorynInputField`'s tokens — a `surface` fill, a hairline
-    /// edge, ink while focused — drawn as the board's capsule, so it matches the round
-    /// scanner button beside it. The form fields keep `calorynInputField`'s rectangle.
+    /// The Add Food search well: a hairline edge and ink while focused, as `calorynInputField`
+    /// draws, as the board's capsule so it matches the round scanner button beside it. Filled
+    /// with `searchWell`, not the form fields' `surface`, which read as grey on the white
+    /// sheet. The form fields keep `calorynInputField`'s rectangle.
     func foodSearchWell(isFocused: Bool, height: CGFloat) -> some View {
         padding(.horizontal, 16)
             .frame(minHeight: height)
-            .background(CalorynTheme.surface, in: Capsule())
+            .background(CalorynTheme.searchWell, in: Capsule())
             .overlay {
                 Capsule()
                     .strokeBorder(
