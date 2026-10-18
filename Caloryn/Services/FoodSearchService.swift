@@ -207,7 +207,10 @@ final class FoodSearchService {
             isSearching = false
             failure = nil
         } catch let lookupError as FoodLookupError {
-            guard !Task.isCancelled, lookupError != .cancelled else { return }
+            // Only this task's own cancellation means a newer search took over. A request
+            // cancelled underneath a live search (URLError.cancelled) still has to end it,
+            // or the spinner never stops.
+            guard !Task.isCancelled else { return }
 
             searchResults = []
             isSearching = false

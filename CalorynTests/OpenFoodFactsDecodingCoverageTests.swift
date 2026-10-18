@@ -108,7 +108,7 @@ struct OpenFoodFactsDecodingCoverageTests {
 
     // MARK: - Energy units
 
-    @Test("A product with energy only in kilojoules has no usable nutrition")
+    @Test("A product with energy only in kilojoules is converted to kilocalories")
     func kilojouleOnlyEnergy() throws {
         let product = try Self.decode(
             """
@@ -126,10 +126,11 @@ struct OpenFoodFactsDecodingCoverageTests {
             """
         )
 
-        // Current behaviour, suspected bug: kJ is never converted (1966 kJ / 4.184 ≈ 470 kcal), so the product is dropped as unusable.
-        #expect(product.nutriments?.energyKcal100g == nil)
-        #expect(product.hasMinimumUsableNutrition == false)
-        #expect(product.nutritionCompleteness == .unknown)
+        // 1966 kJ / 4.184 ≈ 469.9 kcal
+        let kcal = try #require(product.nutriments?.energyKcal100g)
+        #expect(abs(kcal - 469.885) < 0.001)
+        #expect(product.hasMinimumUsableNutrition)
+        #expect(product.nutritionCompleteness == .complete)
     }
 
     @Test("The kcal field is used verbatim when kilojoules are also present")
@@ -157,14 +158,27 @@ struct OpenFoodFactsDecodingCoverageTests {
 
     // MARK: - String-typed values
 
-    @Test("A string-typed nutrient value fails the whole product decode")
-    func stringTypedNutrient() {
-        // Current behaviour, suspected bug: unlike serving_quantity, nutriments are not tolerant of OFF's string numbers.
-        #expect(throws: DecodingError.self) {
-            try Self.decode(
-                #"{"code": "4000000000007", "product_name": "Stringly", "nutriments": {"energy-kcal_100g": "52"}}"#
-            )
-        }
+    @Test("A string-typed nutrient value is read as the number it spells")
+    func stringTypedNutrient() throws {
+        let product = try Self.decode(
+            #"{"code": "4000000000007", "product_name": "Stringly", "nutriments": {"energy-kcal_100g": "52", "proteins_100g": " 1.5 ", "fat_100g": "trace"}}"#
+        )
+
+        #expect(product.nutriments?.energyKcal100g == 52)
+        #expect(product.nutriments?.proteins100g == 1.5)
+        #expect(product.nutriments?.fat100g == nil)
+        #expect(product.hasMinimumUsableNutrition)
+    }
+
+    @Test("A string-typed nutrient that spells a non-finite number is missing", arguments: ["NaN", "nan", "inf", "-Infinity"])
+    func nonFiniteStringNutrient(spelling: String) throws {
+        let product = try Self.decode(
+            #"{"code": "4000000000008", "product_name": "Stringly", "nutriments": {"energy-kcal_100g": "\#(spelling)", "energy-kj_100g": "\#(spelling)", "fiber_100g": "\#(spelling)"}}"#
+        )
+
+        #expect(product.nutriments?.energyKcal100g == nil)
+        #expect(product.nutriments?.fiber100g == nil)
+        #expect(product.hasMinimumUsableNutrition == false)
     }
 
     @Test(
@@ -467,8 +481,8 @@ struct OpenFoodFactsDecodingCoverageTests {
         #expect(product.formattedServingDescription == nil)
         #expect(product.effectiveServingInfo.defaultServingG == 350)
         #expect(product.effectiveServingInfo.servingDescription == "1 pack (350g)")
-        // Current behaviour, suspected bug: the zero serving wins over the 350 g pack here (expected 60 × 3.5 = 210 kcal).
-        #expect(product.caloriesPerServing == nil)
+        // 60 kcal/100 g × 350 g = 210 kcal
+        #expect(product.caloriesPerServing == 210)
     }
 
     @Test("A numeric pack size becomes a one-pack default serving")

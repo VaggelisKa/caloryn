@@ -37,6 +37,7 @@ struct FoodSearchServiceNetworkCoverageTests {
     nonisolated private static let completeNutriments =
         #""energy-kcal_100g": 62, "proteins_100g": 11, "carbohydrates_100g": 4, "fat_100g": 0.2"#
     nonisolated private static let kilojouleOnlyNutriments = #""energy-kj_100g": 260, "proteins_100g": 11"#
+    nonisolated private static let energylessNutriments = #""proteins_100g": 11"#
 
     nonisolated private static func barcodeBody(
         name: String = "Stub Skyr",
@@ -208,10 +209,10 @@ struct FoodSearchServiceNetworkCoverageTests {
         arguments: [
             (Reply.http(200, barcodeNotFoundBody), Reply.http(200, barcodeNotFoundBody), FoodLookupError.notFound),
             (.http(404, "{}"), .http(200, barcodeWithoutProductBody), .notFound),
-            (.http(404, "{}"), .http(200, barcodeBody(nutriments: kilojouleOnlyNutriments)), .invalidData),
+            (.http(404, "{}"), .http(200, barcodeBody(nutriments: energylessNutriments)), .invalidData),
             (.http(200, "not json"), .http(404, "{}"), .invalidData),
             (.http(200, "not json"), .http(200, #"{"status": "1"}"#), .invalidData),
-            (.http(200, barcodeBody(nutriments: kilojouleOnlyNutriments)), .http(503, "{}"), .unavailable),
+            (.http(200, barcodeBody(nutriments: energylessNutriments)), .http(503, "{}"), .unavailable),
             (.http(503, "{}"), .http(404, "{}"), .unavailable),
             (.http(404, "{}"), .nonHTTP("{}"), .unavailable),
             (.http(503, "{}"), .http(401, "{}"), .unauthorized),
@@ -295,14 +296,27 @@ struct FoodSearchServiceNetworkCoverageTests {
         #expect(telemetry.events.map(\.fallbackSucceeded) == [nil])
     }
 
-    @Test("A product with energy only in kilojoules is rejected as unusable")
-    func kilojouleOnlyBarcode() async {
+    @Test("A product with energy only in kilojoules scans, converted to kilocalories")
+    func kilojouleOnlyBarcode() async throws {
         FoodSearchNetworkCoverageStub.install { _ in
             .http(200, Self.barcodeBody(nutriments: Self.kilojouleOnlyNutriments))
         }
         let service = makeService(policy: .only(.calorynAPI))
 
-        // Current behaviour, suspected bug: kJ-only energy is not converted to kcal, so the scan fails.
+        let result = try await service.lookupBarcode(Self.barcode)
+
+        // 260 kJ / 4.184 ≈ 62.1 kcal
+        let kcal = try #require(result.product.nutriments?.energyKcal100g)
+        #expect(abs(kcal - 62.141) < 0.001)
+    }
+
+    @Test("A product with no energy at all is rejected as unusable")
+    func energylessBarcode() async {
+        FoodSearchNetworkCoverageStub.install { _ in
+            .http(200, Self.barcodeBody(nutriments: Self.energylessNutriments))
+        }
+        let service = makeService(policy: .only(.calorynAPI))
+
         #expect(await lookupError(service) as? FoodLookupError == .invalidData)
     }
 
@@ -363,15 +377,15 @@ struct FoodSearchServiceNetworkCoverageTests {
         #expect(await searchError(service, query: "oats") as? FoodLookupError == .invalidData)
     }
 
-    @Test("Search keeps only hits with a name and kcal energy, and fails when none remain")
+    @Test("Search keeps only hits with a name and energy, and fails when none remain")
     func unusableHitsAreDropped() async throws {
         let mixed = Self.searchBody(
-            Self.hit(code: "201", name: "Kilojoule Oats", nutriments: Self.kilojouleOnlyNutriments),
+            Self.hit(code: "201", name: "Energyless Oats", nutriments: Self.energylessNutriments),
             Self.hit(code: "202", name: "Usable Oats", nutriments: #""energy-kcal_100g": 370, "fat_100g": 7"#),
             Self.hit(code: "203", name: " ", nutriments: Self.completeNutriments)
         )
         let unusable = Self.searchBody(
-            Self.hit(code: "301", name: "Kilojoule Oats", nutriments: Self.kilojouleOnlyNutriments)
+            Self.hit(code: "301", name: "Energyless Oats", nutriments: Self.energylessNutriments)
         )
         FoodSearchNetworkCoverageStub.install { request in
             .http(200, Self.queryItems(request)["q"] == "mixed" ? mixed : unusable)
@@ -402,8 +416,8 @@ struct FoodSearchServiceNetworkCoverageTests {
         #expect(results.map(\.product.productName) == ["First Tie", "Rich Oats"])
     }
 
-    @Test("One string-typed nutrient discards every hit in the response")
-    func stringTypedHitPoisonsResponse() async {
+    @Test("A string-typed nutrient keeps its hit and every other hit in the response")
+    func stringTypedHitIsKept() async throws {
         let body = Self.searchBody(
             Self.hit(code: "401", name: "Fine Oats"),
             Self.hit(code: "402", name: "Stringly Oats", nutriments: #""energy-kcal_100g": "370""#)
@@ -411,8 +425,10 @@ struct FoodSearchServiceNetworkCoverageTests {
         FoodSearchNetworkCoverageStub.install { _ in .http(200, body) }
         let service = makeService(policy: .only(.calorynAPI))
 
-        // Current behaviour, suspected bug: the valid "Fine Oats" hit is lost along with the malformed one.
-        #expect(await searchError(service, query: "oats") as? FoodLookupError == .invalidData)
+        let results = try await service.searchImmediately(query: "oats")
+
+        #expect(Set(results.compactMap(\.product.productName)) == ["Fine Oats", "Stringly Oats"])
+        #expect(results.first { $0.product.code == "402" }?.product.nutriments?.energyKcal100g == 370)
     }
 
     @Test("Search fallback is reported as a second, successful search attempt")
@@ -545,20 +561,18 @@ struct FoodSearchServiceNetworkCoverageTests {
         #expect(service.searchResults.map(\.product.productName) == ["Bread"])
     }
 
-    @Test("A request cancelled underneath a live search leaves it searching")
-    func transportCancellationLeavesSearchPending() async {
+    @Test("A request cancelled underneath a live search ends it as cancelled")
+    func transportCancellationEndsTheSearch() async {
         let telemetry = FoodSearchNetworkTelemetryLog()
         FoodSearchNetworkCoverageStub.install { _ in .transport(.cancelled) }
         let service = makeService(policy: .only(.calorynAPI), telemetry: telemetry)
 
         service.search(query: "porridge")
 
-        #expect(await eventually { !telemetry.events.isEmpty })
-        try? await Task.sleep(for: .milliseconds(100))
+        #expect(await eventually { !service.isSearching })
         #expect(telemetry.events.map(\.outcome) == [.cancelled])
-        // Current behaviour, suspected bug: nothing cancelled the search task, yet the spinner never stops.
-        #expect(service.isSearching)
-        #expect(service.failure == nil)
+        #expect(service.failure == .cancelled)
+        #expect(service.errorMessage == "The lookup was cancelled.")
         #expect(service.searchResults.isEmpty)
     }
 }

@@ -20,8 +20,8 @@ struct HistoryRefreshIDLegacyCoverageTests {
         #expect(ProduceVarietySummary(entries: [legacy]).totalCount == 0)
     }
 
-    @Test("given a legacy entry, when its saved food is renamed, then the produce summary follows the new name while the signature stays the same")
-    func aLegacyRenameIsReadByProduceButNotBySignature() {
+    @Test("given a legacy entry, when its saved food is renamed, then the produce summary and the signature both follow the new name")
+    func aLegacyRenameIsReadByProduceAndBySignature() {
         let banana = makeTestEntry(foodItem: makeTestFoodItem(name: "Banana", produceKind: .fruit), portionGrams: 100)
         let food = makeTestFoodItem(name: "Apple", produceKind: .fruit)
         let legacy = makeLegacyTestEntry(foodItem: food, portionGrams: 120)
@@ -32,7 +32,31 @@ struct HistoryRefreshIDLegacyCoverageTests {
 
         // The legacy produce path reads the live food's name, so the day now holds one kind.
         #expect(ProduceVarietySummary(entries: [banana, legacy]).items.map(\.name) == ["Banana"])
-        // Current behaviour, suspected bug: the signature captures the stored name (historicalFoodName), not the live one the produce summary reads, so History keeps the stale count of two.
-        #expect(HistoryEntrySignature(entry: legacy) == before)
+        #expect(HistoryEntrySignature(entry: legacy) != before)
+    }
+
+    @Test(
+        "given a legacy recipe entry, when an ingredient is renamed, reclassified or zeroed, then its signature changes",
+        arguments: ["rename", "reclassify", "zero"]
+    )
+    func aLegacyRecipeIngredientEditChangesTheSignature(edit: String) throws {
+        let recipe = makeTestFoodItem(name: "Stew", produceKind: .unclassified, isRecipe: true)
+        recipe.recipeIngredients = [
+            RecipeIngredient(
+                name: "Carrots", portionGrams: 80, caloriesPer100g: 40, proteinPer100g: 1,
+                carbsPer100g: 8, fatPer100g: 0.2, sortOrder: 0, produceKind: .vegetable
+            )
+        ]
+        let legacy = makeLegacyTestEntry(foodItem: recipe, portionGrams: 80)
+        let before = HistoryEntrySignature(entry: legacy)
+        let carrots = try #require(recipe.recipeIngredients?.first)
+
+        switch edit {
+        case "rename": carrots.name = "Parsnips"
+        case "reclassify": carrots.produceKind = .unclassified
+        default: carrots.portionGrams = 0
+        }
+
+        #expect(HistoryEntrySignature(entry: legacy) != before)
     }
 }

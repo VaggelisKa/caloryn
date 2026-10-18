@@ -97,16 +97,18 @@ struct ProduceVarietyCoverageTests {
         #expect(item.name == singular)
     }
 
-    @Test("given a plural formed with -oes, when counting kinds, then it is not matched to its singular")
-    func pluralsInOesAreNotSingularised() {
+    @Test("given a plural formed with -oes, when counting kinds, then it is matched to its singular")
+    func pluralsInOesAreSingularised() {
         let summary = ProduceVarietySummary(entries: [
             produce("Tomato", .vegetable),
-            produce("Tomatoes", .vegetable)
+            produce("Tomatoes", .vegetable),
+            produce("Potatoes", .vegetable),
+            produce("Mango", .fruit),
+            produce("Mangoes", .fruit)
         ])
 
-        // Current behaviour, suspected bug: "tomatoes" singularises to "tomatoe", so one vegetable counts as two kinds.
-        #expect(summary.totalCount == 2)
-        #expect(summary.items.map(\.id) == ["vegetable:tomato", "vegetable:tomatoe"])
+        #expect(summary.totalCount == 3)
+        #expect(summary.items.map(\.id) == ["fruit:mango", "vegetable:potato", "vegetable:tomato"])
     }
 
     @Test("given the same name logged as a fruit and as a vegetable, when counting kinds, then each type keeps its own")

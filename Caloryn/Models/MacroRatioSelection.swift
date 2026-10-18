@@ -109,9 +109,15 @@ struct MacroRatioSelection: Equatable {
 
     /// Says how far off the split is rather than only that it is wrong, so the
     /// remaining percentage does not have to be worked out from three sliders.
+    /// The total is the three readouts added up, not the raw ratios truncated:
+    /// 0.1 + 0.5 + 0.3 is 0.8999…, which would read 89% beside 10/50/30.
     var validationMessage: String? {
         guard !isValid else { return nil }
-        return "Ratios should total 100% (currently \(Self.percent(total))%)"
+        // Added as Doubles: a readout can be `Int.max`, and three of those would overflow.
+        let shownTotal = Macro.allCases
+            .reduce(0.0) { $0 + Double(Self.percent(ratio(for: $1))) }
+            .truncatedSafely
+        return "Ratios should total 100% (currently \(shownTotal)%)"
     }
 
     private static func percent(_ ratio: Double) -> Int {

@@ -210,11 +210,11 @@ struct AuditCalorieSurfaceConsistencyTests {
         #expect(hero.eatenLine == "0 of 2,000 eaten")
     }
 
-    /// Today and Settings total a day in the order its entries were logged; the donut
-    /// re-totals it meal by meal. At an exact .5 the two floating-point sums can land
-    /// either side of it, and the donut's figures then disagree with the hero's.
-    @Test("A total summed in a different order can round differently on the donut than on the hero")
-    func summationOrderCanSplitTheRounding() {
+    /// Today and Settings total a day in the order its entries were logged; the donut's
+    /// meals re-total it meal by meal. At an exact .5 the two floating-point sums can land
+    /// either side of it, so the donut's figures are rounded from the budget's total.
+    @Test("A total summed in a different order still rounds the same on the donut as on the hero")
+    func summationOrderCannotSplitTheRounding() {
         let entries: [SettingsGoalPlate.Entry] = [
             .init(meal: .breakfast, calories: 0.1),
             .init(meal: .lunch, calories: 0.05),
@@ -244,11 +244,10 @@ struct AuditCalorieSurfaceConsistencyTests {
         #expect(hero.isOver)
         #expect(hero.headline == 1)
         #expect(hero.caption == "kcal over")
-        // Current behaviour, suspected bug: the donut re-sums the meals (1,999.4999…), so it
-        // reports 1,999 eaten and an Over row of 0 beside a hero that says 1 kcal over.
-        #expect(hero.donut.eatenKcal == 1_999)
-        #expect(hero.donut.overKcal == 0)
-        #expect(hero.donut.legend.last == .over(kcal: 0))
+        // The meals re-sum to 1,999.4999…, but the donut rounds the budget's own total.
+        #expect(hero.donut.eatenKcal == 2_000)
+        #expect(hero.donut.overKcal == 1)
+        #expect(hero.donut.legend.last == .over(kcal: 1))
     }
 }
 

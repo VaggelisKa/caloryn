@@ -108,8 +108,8 @@ struct AuditGoalManualTargetTests {
         #expect(onboarding.appliesManualTarget == editor.isManualTargetValid)
     }
 
-    @Test("Onboarding carries a typed target past the calorie domain that the goal editor clamps")
-    func onboardingDoesNotClampAHugeTarget() {
+    @Test("Onboarding clamps a typed target past the calorie domain the way the goal editor does")
+    func onboardingClampsAHugeTarget() {
         let text = "99999999999"
         var editor = GoalEditDraft(profile: auditProfile())
         editor.manualOverride = true
@@ -122,9 +122,7 @@ struct AuditGoalManualTargetTests {
         )
 
         #expect(editor.effectiveCalorieTarget(tdee: basis.tdee) == CalorieDomain.maximum)
-        // Current behaviour, suspected bug: the onboarding field parses with a bare Int(_:)
-        // and never clamps, so the same text saves 99,999,999,999 there but 1,000,000,000 here.
-        #expect(onboarding.displayTarget(basis: basis) == 99_999_999_999)
+        #expect(onboarding.displayTarget(basis: basis) == CalorieDomain.maximum)
     }
 
     @Test(
@@ -244,17 +242,15 @@ struct AuditMacroRatioTotalTests {
         #expect(MacroRatioSelection.Macro.allCases.map(\.displayName) == ["Protein", "Carbs", "Fat"])
     }
 
-    @Test("A short split's message names a total the three readouts do not add up to")
-    func validationMessageTruncatesTheFloatingPointTotal() {
+    @Test("A short split's message names the total the three readouts add up to")
+    func validationMessageAddsTheReadouts() {
         let selection = MacroRatioSelection(calorieTarget: 2_000, protein: 0.10, carbs: 0.50, fat: 0.30)
 
         #expect(selection.percentText(for: .protein) == "10%")
         #expect(selection.percentText(for: .carbs) == "50%")
         #expect(selection.percentText(for: .fat) == "30%")
         #expect(selection.isValid == false)
-        // Current behaviour, suspected bug: 0.1 + 0.5 + 0.3 is 0.8999…, and truncating it
-        // reports 89% beside readouts that total 90%.
-        #expect(selection.validationMessage == "Ratios should total 100% (currently 89%)")
+        #expect(selection.validationMessage == "Ratios should total 100% (currently 90%)")
     }
 
     @Test("At every reachable valid split and target, the grams spend the whole target")
@@ -382,8 +378,8 @@ struct AuditGoalProfileRoundTripTests {
         }
     }
 
-    @Test("A stale split the profile scales back opens in the goal editor unscaled and unsaveable")
-    func staleSplitDivergesBetweenProfileAndSeed() {
+    @Test("A stale split opens in the goal editor scaled back the way the profile reads it")
+    func staleSplitMatchesBetweenProfileAndSeed() {
         let profile = auditProfile(dailyCalorieTarget: 1_000)
         profile.proteinTargetG = 150
         profile.carbTargetG = 200
@@ -394,14 +390,10 @@ struct AuditGoalProfileRoundTripTests {
         let profileTotal = profile.macroRatios.protein + profile.macroRatios.carbs + profile.macroRatios.fat
 
         #expect(abs(profileTotal - 1) < 1e-12)
-        // Current behaviour, suspected bug: the seed divides the grams itself instead of
-        // going through ProfileEditMacroRatios, so it keeps the impossible 60/80/60 split
-        // the profile has already scaled to 100% — and the editor opens with Save disabled.
-        #expect(abs(seed.proteinRatio - 0.6) < 1e-12)
-        #expect(abs(seed.carbRatio - 0.8) < 1e-12)
-        #expect(abs(seed.fatRatio - 0.603) < 1e-12)
-        #expect(draft.isMacroValid == false)
-        #expect(draft.canSave == false)
+        #expect(seed.proteinRatio == profile.macroRatios.protein)
+        #expect(seed.carbRatio == profile.macroRatios.carbs)
+        #expect(seed.fatRatio == profile.macroRatios.fat)
+        #expect(draft.isMacroValid)
     }
 
     @Test("A stale split is spent exactly once the profile screen saves new facts")
@@ -539,8 +531,8 @@ struct AuditNutrientGoalInputTests {
         }
     }
 
-    @Test("A goal typed to the hundredth is rounded to a tenth the next time the editor saves")
-    func hundredthPrecisionGoalIsRoundedOnTheNextSave() {
+    @Test("A goal typed to the hundredth survives a save that does not touch it")
+    func hundredthPrecisionGoalSurvivesAnUntouchedSave() {
         let profile = auditProfile()
         var first = GoalEditDraft(profile: profile)
         first.nutrientTargetTexts[.fiber] = "27.25"
@@ -552,9 +544,14 @@ struct AuditNutrientGoalInputTests {
         #expect(second.targetText(for: .fiber) == "27.3")
         second.apply(to: profile)
 
-        // Current behaviour, suspected bug: the field reloads the goal to one decimal, so
-        // saving without touching it moves a 27.25 g goal to 27.3 g.
-        #expect(profile.target(for: .fiber) == 27.3)
+        #expect(profile.target(for: .fiber) == 27.25)
+
+        var third = GoalEditDraft(profile: profile)
+        third.loadNutrientGoals(from: profile)
+        third.nutrientTargetTexts[.fiber] = "30"
+        third.apply(to: profile)
+
+        #expect(profile.target(for: .fiber) == 30)
     }
 }
 
@@ -589,8 +586,8 @@ struct AuditGoalDeficitWordingTests {
     }
 
     @Test(
-        "A sub-calorie deficit reads as no adjustment in Settings but as a direction in the editor",
-        arguments: [(0.5, "-0 kcal/day (lose weight)"), (-0.5, "+0 kcal/day (gain weight)")]
+        "A sub-calorie deficit reads as no adjustment in Settings, onboarding and the editor",
+        arguments: [(0.5, "Maintenance (no change)"), (-0.5, "Maintenance (no change)")]
     )
     func subCalorieDeficitWording(deficit: Double, editorLabel: String) {
         var draft = GoalEditDraft(profile: auditProfile())
@@ -598,8 +595,6 @@ struct AuditGoalDeficitWordingTests {
 
         #expect(SettingsGoalSummary.goalSubtitle(calorieDeficit: deficit, isManualOverride: false) == "About what you burn")
         #expect(OnboardingGoalPlate(bmr: 1_700, tdee: 2_500, target: 2_500, calorieDeficit: deficit).paceCaption == "What you burn")
-        // Current behaviour, suspected bug: the editor tests the raw deficit's sign but prints
-        // its truncation, so a stored fraction under one calorie reads "-0 kcal/day".
         #expect(draft.deficitLabel == editorLabel)
     }
 }

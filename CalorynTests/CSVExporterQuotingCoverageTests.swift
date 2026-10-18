@@ -32,16 +32,15 @@ struct CSVExporterQuotingCoverageTests {
         #expect(csv.contains("\"" + name.replacingOccurrences(of: "\"", with: "\"\"") + "\""))
     }
 
-    /// "\r\n" is a single `Character` in Swift, so the exporter's per-character check for
-    /// "\r" or "\n" never matches it and the name is written unquoted.
-    @Test("A CRLF inside a name is currently written unquoted and splits the row")
-    func crlfInNameIsNotQuoted() {
+    /// "\r\n" is a single `Character` in Swift, so a per-character check for "\r" or "\n"
+    /// alone never matches it.
+    @Test("A CRLF inside a name is quoted and keeps the row whole")
+    func crlfInNameIsQuoted() {
         let name = "Line\r\nBreak"
         let csv = CSVExporter.generateCSV(from: [makeTestEntry(foodItem: makeTestFoodItem(name: name))])
 
-        // Current behaviour, suspected bug: a CRLF should be quoted like a bare "\r" or "\n", keeping one record.
-        #expect(csv.contains(",Line\r\nBreak,"))
-        #expect(parsedRecords(csv).count == 3)
+        #expect(csv.contains(",\"Line\r\nBreak\","))
+        #expect(parsedRecords(csv).count == 2)
     }
 
     @Test("A plain name is written through byte for byte, without quotes")

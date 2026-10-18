@@ -193,15 +193,14 @@ struct HistoryAnalyticsCoverageTests {
         #expect(week.onTrackRatio == 0)
     }
 
-    @Test("given an unlogged week whose days have no saved goal, when rolling it up, then it is still flagged as using estimated targets")
-    func anUnloggedWeekIsFlaggedAsEstimated() throws {
+    @Test("given an unlogged week whose days have no saved goal, when rolling it up, then it is not flagged as using estimated targets")
+    func anUnloggedWeekIsNotFlaggedAsEstimated() throws {
         let monday = Self.date(2026, 1, 5)
         let summary = makeSummary(dates: Self.days(from: monday, count: 7))
 
         let week = try #require(summary.weeklyRollups.first)
 
-        // Current behaviour, suspected bug: the property is documented as "any logged day uses the fallback target", and the period-level flag ignores unlogged days, but an unlogged week falls back to all of its days.
-        #expect(week.hasEstimatedTargets == true)
+        #expect(week.hasEstimatedTargets == false)
         #expect(summary.hasEstimatedTargets == false)
     }
 

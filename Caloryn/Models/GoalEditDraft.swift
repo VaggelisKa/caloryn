@@ -136,11 +136,14 @@ struct GoalEditDraft: Equatable {
 
     // MARK: - Labels
 
+    /// Signed by the whole calories it prints, so a stored fraction under one
+    /// calorie reads as maintenance rather than "-0 kcal/day".
     var deficitLabel: String {
-        if calorieDeficit > 0 {
-            return "-\(calorieDeficit.truncatedSafely) kcal/day (lose weight)"
-        } else if calorieDeficit < 0 {
-            return "+\(abs(calorieDeficit).truncatedSafely) kcal/day (gain weight)"
+        let wholeDeficit = calorieDeficit.truncatedSafely
+        if wholeDeficit > 0 {
+            return "-\(wholeDeficit) kcal/day (lose weight)"
+        } else if wholeDeficit < 0 {
+            return "+\(abs(wholeDeficit)) kcal/day (gain weight)"
         }
         return "Maintenance (no change)"
     }
@@ -184,8 +187,17 @@ struct GoalEditDraft: Equatable {
 
         for nutrient in TrackedNutrient.editableGoalNutrients {
             profile.setGoalKind(goalKind(for: nutrient), for: nutrient)
+            guard !isUnchangedGoal(for: nutrient, in: profile) else { continue }
             profile.setTarget(storedTarget(for: nutrient), for: nutrient)
         }
+    }
+
+    /// The field still shows the saved goal as `loadNutrientGoals` wrote it. The
+    /// field rounds to a tenth, so writing it back would move a 27.25 g goal to
+    /// 27.3 g on a save that never touched it.
+    private func isUnchangedGoal(for nutrient: TrackedNutrient, in profile: UserProfile) -> Bool {
+        guard let saved = profile.target(for: nutrient) else { return false }
+        return trimmedText(for: nutrient) == nutrient.unit.inputFormatted(saved)
     }
 
     /// Whether saving this draft should also switch Apple Health adjustment

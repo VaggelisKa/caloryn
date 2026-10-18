@@ -40,8 +40,9 @@ struct OnboardingGoalSummaryDraft: Equatable {
     /// The typed target, or nil when the field is not a plain whole number.
     /// A numeric keypad is the only way to fill it, and the value is used as an
     /// `Int` throughout, so `Int(_:)` is the parse — there is no decimal here to
-    /// route through `decimalInputValue`.
-    var manualTarget: Int? { Int(manualTargetText) }
+    /// route through `decimalInputValue`. Clamped to `CalorieDomain` the same way
+    /// `GoalEditDraft.manualTarget` is, so both screens save the same number.
+    var manualTarget: Int? { Int(manualTargetText).map(CalorieDomain.clamped) }
 
     /// Whether the typed target is the one that counts.
     var appliesManualTarget: Bool {

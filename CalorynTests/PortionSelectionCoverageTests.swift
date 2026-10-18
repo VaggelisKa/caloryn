@@ -242,18 +242,37 @@ struct PortionSelectionCoverageTests {
         #expect(portion.portionGrams == 90)
     }
 
-    /// "12 crackers (60 g)" is 5 g a cracker, and the wheel stops at ten. The opening state
-    /// keeps the 60 g but shows ten on the wheel — unlike `modeChanged`, which moves the grams
-    /// to whatever count the wheel lands on.
-    @Test("A default serving with more units than the wheel holds opens on the cap")
+    /// "12 crackers (60 g)" is 5 g a cracker, and the wheel stops at ten, so it cannot show
+    /// the default. The picker opens in grams on the 60 g that will be logged.
+    @Test("A default serving with more units than the wheel holds opens in grams")
     func defaultServingPastTheWheelCap() {
         let crackers = PortionSelection.Shape(servingGramsPerUnit: 5, defaultServingGrams: 60)
         let portion = PortionSelection.opening(shape: crackers, defaultServingGrams: 60)
 
-        #expect(portion.mode == .serving)
-        // Current behaviour, suspected bug: the wheel reads 10 crackers (50 g) while 60 g (12 crackers) is what gets logged.
-        #expect(portion.servingCount == 10)
+        #expect(portion.mode == .grams)
         #expect(portion.portionGrams == 60)
+        #expect(portion.gramsInput == "60")
+    }
+
+    @Test("A default serving the 500 g ceiling keeps off the wheel opens in grams")
+    func defaultServingPastTheGramCeiling() {
+        // 500 g / 100 g caps the wheel at five pots; the default is six.
+        let pots = PortionSelection.Shape(servingGramsPerUnit: 100, defaultServingGrams: 600)
+        let portion = PortionSelection.opening(shape: pots, defaultServingGrams: 600)
+
+        #expect(portion.maxServingCount == 5)
+        #expect(portion.mode == .grams)
+        #expect(portion.portionGrams == 600)
+    }
+
+    @Test("A default serving at the wheel's cap still opens on the wheel")
+    func defaultServingAtTheWheelCap() {
+        let crackers = PortionSelection.Shape(servingGramsPerUnit: 5, defaultServingGrams: 50)
+        let portion = PortionSelection.opening(shape: crackers, defaultServingGrams: 50)
+
+        #expect(portion.mode == .serving)
+        #expect(portion.servingCount == 10)
+        #expect(portion.portionGrams == 50)
     }
 
     // MARK: - Shortcut amounts
@@ -327,11 +346,11 @@ struct PortionSelectionCoverageTests {
         #expect(PortionSelection.parsedGrams(text) == nil)
     }
 
-    @Test("A number too long for an integer is not clamped like a merely large one")
+    @Test("A number too long for an integer clamps like a merely large one")
     func parsedGramsOverflow() {
         #expect(PortionSelection.parsedGrams("99999") == 10_000)
-        // Current behaviour, suspected bug: twenty nines overflow `Int(_:)`, so the field reverts instead of clamping to 10 kg.
-        #expect(PortionSelection.parsedGrams("99999999999999999999") == nil)
+        #expect(PortionSelection.parsedGrams("99999999999999999999") == 10_000)
+        #expect(PortionSelection.parsedGrams(" 00000000000000000000000250 ") == 250)
     }
 
     @Test("Clamping holds every integer inside the loggable range")

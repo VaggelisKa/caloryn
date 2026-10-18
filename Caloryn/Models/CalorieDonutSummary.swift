@@ -101,7 +101,10 @@ struct CalorieDonutSummary: Equatable {
     ///   - budget: today's budget — `ActivityCalorieBudget.adjustedTarget`. A non-finite,
     ///     negative or zero budget counts as 0, so everything eaten is past it.
     ///   - isOver: the budget's own over/under decision (`ActivityCalorieBudget.isOver`).
-    init(mealTotals: [MealType: Double], budget: Double, isOver: Bool) {
+    ///   - consumed: the day's total as the budget summed it, when there is one. The eaten
+    ///     and over figures are rounded from this rather than from the meals re-summed:
+    ///     adding the same entries in a different order can land either side of a .5.
+    init(mealTotals: [MealType: Double], budget: Double, isOver: Bool, consumed: Double? = nil) {
         let meals = MealType.allCases.sorted { $0.sortOrder < $1.sortOrder }
         let totals = meals.map { meal in
             (meal: meal, kcal: Self.sanitized(mealTotals[meal] ?? 0), isLogged: mealTotals[meal] != nil)
@@ -126,7 +129,7 @@ struct CalorieDonutSummary: Equatable {
 
         // Rounded the way `ActivityCalorieBudget` rounds — each figure first, then the
         // difference — so these agree with the number the hero prints from the budget.
-        let roundedEaten = eaten.roundedCalories
+        let roundedEaten = consumed.map(Self.sanitized).map(\.roundedCalories) ?? eaten.roundedCalories
         let roundedBudget = safeBudget.roundedCalories
 
         let overKcal = isOver ? max(0, roundedEaten - roundedBudget) : 0
@@ -152,7 +155,8 @@ struct CalorieDonutSummary: Equatable {
         self.init(
             mealTotals: mealTotals,
             budget: Double(budget.adjustedTarget),
-            isOver: budget.isOver
+            isOver: budget.isOver,
+            consumed: budget.consumed
         )
     }
 
