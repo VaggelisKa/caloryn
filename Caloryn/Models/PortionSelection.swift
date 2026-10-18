@@ -96,6 +96,8 @@ struct PortionSelection: Equatable {
     /// entry being re-opened, or a suggestion's own remembered portion — only do
     /// so when they still line up with a whole serving; otherwise the picker
     /// opens in grams, so that "137 g" is not silently rounded to "1 slice".
+    /// A countable default the wheel cannot reach — "12 crackers" past its cap of
+    /// ten — opens in grams too, so the count shown is never one that is not logged.
     init(shape: Shape, initialGrams: Double, preservesExactGrams: Bool) {
         self.shape = shape
         portionGrams = initialGrams
@@ -119,7 +121,9 @@ struct PortionSelection: Equatable {
                 Double(servingCount) * gramsPerUnit,
                 initialGrams
             )
-            mode = (!preservesExactGrams || matchesServing) ? .serving : .grams
+            let wheelHoldsDefault = !preservesExactGrams
+                && (initialGrams / gramsPerUnit).rounded() <= Double(Self.maxServingCount(for: shape))
+            mode = (wheelHoldsDefault || matchesServing) ? .serving : .grams
         }
     }
 
