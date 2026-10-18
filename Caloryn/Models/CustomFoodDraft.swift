@@ -114,12 +114,9 @@ struct CustomFoodDraft: Equatable {
     }
 
     var previewCalories: Double { caloriesPerServing.decimalInputValue ?? 0 }
-    var previewProtein: Double { proteinPerServing.decimalInputValue ?? 0 }
-    var previewCarbs: Double { carbsPerServing.decimalInputValue ?? 0 }
-    var previewFat: Double { fatPerServing.decimalInputValue ?? 0 }
 
-    /// Distinguished from `previewProtein` because a blank macro means "not
-    /// stated" when saving, which the store records differently from a zero.
+    /// A blank macro reads as `nil`, not zero: it means "not stated" when saving,
+    /// which the store records differently from a zero.
     var suppliedProtein: Double? { proteinPerServing.decimalInputValue }
     var suppliedCarbohydrates: Double? { carbsPerServing.decimalInputValue }
     var suppliedFat: Double? { fatPerServing.decimalInputValue }

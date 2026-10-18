@@ -124,15 +124,32 @@ extension Date {
         }
     }
 
-    private func formatted(pattern: String, in calendar: Calendar) -> String {
+    /// Formats with a fixed `DateFormatter` pattern in `calendar`'s locale, calendar and time
+    /// zone. Formatters are cached per pattern and calendar: these run from view bodies, and
+    /// building a `DateFormatter` is the expensive part.
+    func formatted(pattern: String, in calendar: Calendar) -> String {
+        let locale = calendar.locale ?? .current
+        let key = FormatterKey(pattern: pattern, calendar: calendar, locale: locale)
+        if let formatter = Self.formatterCache[key] {
+            return formatter.string(from: self)
+        }
         let formatter = DateFormatter()
         // Order matters: assigning `locale` resets `calendar` to that locale's
         // calendar, so the calendar has to be set afterwards or a non-Gregorian
         // one is silently discarded.
-        formatter.locale = calendar.locale ?? .current
+        formatter.locale = locale
         formatter.calendar = calendar
         formatter.timeZone = calendar.timeZone
         formatter.dateFormat = pattern
+        Self.formatterCache[key] = formatter
         return formatter.string(from: self)
     }
+
+    private struct FormatterKey: Hashable {
+        let pattern: String
+        let calendar: Calendar
+        let locale: Locale
+    }
+
+    private static var formatterCache: [FormatterKey: DateFormatter] = [:]
 }

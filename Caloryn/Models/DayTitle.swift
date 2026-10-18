@@ -12,13 +12,7 @@ import Foundation
 /// formats are (`Date.shortFormatted`).
 enum DayTitle {
     static func text(for date: Date, in calendar: Calendar = .current) -> String {
-        let formatter = DateFormatter()
-        // `locale` first: assigning it resets `calendar` to the locale's own.
-        formatter.locale = calendar.locale ?? .current
-        formatter.calendar = calendar
-        formatter.timeZone = calendar.timeZone
-        formatter.dateFormat = "EEEE d MMMM"
-        return formatter.string(from: date)
+        date.formatted(pattern: "EEEE d MMMM", in: calendar)
     }
 
     static func accessibilityLabel(

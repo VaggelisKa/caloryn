@@ -112,15 +112,6 @@ struct HistoryRecurringCaloriePattern: Identifiable {
         "Based on \(eligibleDayCount) logged days in the last 30 days"
     }
 
-    var outcomeComparisonText: String {
-        switch kind {
-        case .weekdayMeal:
-            "\(outcomeComparisonCount) of \(outcomeComparisonDayCount) other eligible logged days were \(outcome.targetText)."
-        case .mealOnly:
-            "\(mealComparisonDayCount) other eligible logged days form the comparison."
-        }
-    }
-
     var weekdayName: String {
         Self.weekdayName(for: weekday)
     }
