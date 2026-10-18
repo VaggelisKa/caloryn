@@ -373,11 +373,16 @@ struct PortionSelection: Equatable {
     }
 
     /// Whole grams only, within range. `nil` for anything the field cannot
-    /// mean, which the caller reads as "leave the portion alone".
+    /// mean, which the caller reads as "leave the portion alone". A run of
+    /// digits too long for an `Int` is still a weight, just a huge one, so it
+    /// clamps to the ceiling like any other.
     static func parsedGrams(_ text: String) -> Int? {
         let trimmed = text.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty, trimmed.allSatisfy(\.isWholeNumber), let value = Int(trimmed) else {
+        guard !trimmed.isEmpty, trimmed.allSatisfy(\.isWholeNumber) else {
             return nil
+        }
+        guard let value = Int(trimmed) else {
+            return trimmed.allSatisfy(\.isASCII) ? maximumGrams : nil
         }
         return clampedGrams(value)
     }

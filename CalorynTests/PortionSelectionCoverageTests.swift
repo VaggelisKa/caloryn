@@ -346,11 +346,11 @@ struct PortionSelectionCoverageTests {
         #expect(PortionSelection.parsedGrams(text) == nil)
     }
 
-    @Test("A number too long for an integer is not clamped like a merely large one")
+    @Test("A number too long for an integer clamps like a merely large one")
     func parsedGramsOverflow() {
         #expect(PortionSelection.parsedGrams("99999") == 10_000)
-        // Current behaviour, suspected bug: twenty nines overflow `Int(_:)`, so the field reverts instead of clamping to 10 kg.
-        #expect(PortionSelection.parsedGrams("99999999999999999999") == nil)
+        #expect(PortionSelection.parsedGrams("99999999999999999999") == 10_000)
+        #expect(PortionSelection.parsedGrams(" 00000000000000000000000250 ") == 250)
     }
 
     @Test("Clamping holds every integer inside the loggable range")
