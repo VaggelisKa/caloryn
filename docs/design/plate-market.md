@@ -34,7 +34,7 @@ declared together (CLAUDE.md rule 6). Never a literal.
 
 | Asset | Light | Dark | Role |
 |---|---|---|---|
-| `PageBackground` | `#FCFBF8` | `#141614` | every page canvas |
+| `PageBackground` | `#FEFDFA` | `#141614` | every page canvas |
 | `CardBackground` | `#FFFFFF` | `#262A26` | sheet canvas, the few grouped surfaces |
 | `Surface` | `#F6F5F1` | `#262A26` | input wells inside a sheet (stepper pill, search well) |
 | `TextPrimary` | `#1E231F` | `#ECEBE8` | ink: text, controls, primary buttons |
