@@ -57,6 +57,39 @@ final class WidgetPlateSummaryTests: XCTestCase {
         XCTAssertEqual(plate.sectors.map(\.kcal), [600, 400, 1_000])
     }
 
+    func testARoundingGapBetweenMealsAndTheTotalDrawsNoExtraSector() {
+        // 600.4 + 600.4 rounds to 1_201 as a total but 600 + 600 as meals.
+        let calories = WidgetCalorieSummary(
+            consumed: 1_200.8,
+            baseTarget: 2_000,
+            target: 2_000,
+            mealCalories: [.breakfast: 600.4, .lunch: 600.4]
+        )
+
+        let plate = WidgetPlateSummary(calories: calories)
+
+        XCTAssertEqual(calories.consumed, 1_201)
+        XCTAssertEqual(plate.sectors.map(\.kind), [.meal(.breakfast), .meal(.lunch), .remaining])
+        XCTAssertEqual(plate.sectors.reduce(0) { $0 + $1.kcal }, 2_000, accuracy: 0.001)
+        XCTAssertEqual(plate.sectors.last?.kcal ?? 0, 799, accuracy: 0.001)
+    }
+
+    func testMealsRoundedPastTheTotalDoNotExceedIt() {
+        // 300.5 + 300.5 rounds to 301 + 301 as meals, a kcal past the 601 total.
+        let calories = WidgetCalorieSummary(
+            consumed: 601,
+            baseTarget: 2_000,
+            target: 2_000,
+            mealCalories: [.breakfast: 300.5, .lunch: 300.5]
+        )
+
+        let plate = WidgetPlateSummary(calories: calories)
+
+        let eaten = plate.sectors.filter { $0.kind != .remaining }.reduce(0) { $0 + $1.kcal }
+        XCTAssertEqual(eaten, 601, accuracy: 0.001)
+        XCTAssertEqual(plate.sectors.map(\.kind), [.meal(.breakfast), .meal(.lunch), .remaining])
+    }
+
     func testNothingEatenIsABareTrack() {
         let calories = WidgetCalorieSummary(consumed: 0, baseTarget: 2_000, target: 2_000)
 
