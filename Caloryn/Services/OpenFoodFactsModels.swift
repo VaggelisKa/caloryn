@@ -347,3 +347,59 @@ struct OFFNutriments: Decodable, Hashable {
     }
     #endif
 }
+
+/// Declared in an extension so the memberwise initializer the fixture uses survives.
+extension OFFNutriments {
+    /// Open Food Facts sometimes sends a nutrient as a string ("370"). One such
+    /// value used to fail the whole decode and, with it, every hit in the
+    /// response; it is read as the number it spells instead, and anything that
+    /// is not a finite number is treated as missing.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        energyKcal100g = container.lenientDouble(forKey: .energyKcal100g)
+        proteins100g = container.lenientDouble(forKey: .proteins100g)
+        carbohydrates100g = container.lenientDouble(forKey: .carbohydrates100g)
+        fat100g = container.lenientDouble(forKey: .fat100g)
+        fiber100g = container.lenientDouble(forKey: .fiber100g)
+        sugars100g = container.lenientDouble(forKey: .sugars100g)
+        addedSugars100g = container.lenientDouble(forKey: .addedSugars100g)
+        sucrose100g = container.lenientDouble(forKey: .sucrose100g)
+        glucose100g = container.lenientDouble(forKey: .glucose100g)
+        fructose100g = container.lenientDouble(forKey: .fructose100g)
+        lactose100g = container.lenientDouble(forKey: .lactose100g)
+        maltose100g = container.lenientDouble(forKey: .maltose100g)
+        maltodextrins100g = container.lenientDouble(forKey: .maltodextrins100g)
+        starch100g = container.lenientDouble(forKey: .starch100g)
+        polyols100g = container.lenientDouble(forKey: .polyols100g)
+        saturatedFat100g = container.lenientDouble(forKey: .saturatedFat100g)
+        transFat100g = container.lenientDouble(forKey: .transFat100g)
+        monounsaturatedFat100g = container.lenientDouble(forKey: .monounsaturatedFat100g)
+        polyunsaturatedFat100g = container.lenientDouble(forKey: .polyunsaturatedFat100g)
+        omega3Fat100g = container.lenientDouble(forKey: .omega3Fat100g)
+        omega6Fat100g = container.lenientDouble(forKey: .omega6Fat100g)
+        omega9Fat100g = container.lenientDouble(forKey: .omega9Fat100g)
+        salt100g = container.lenientDouble(forKey: .salt100g)
+        sodium100g = container.lenientDouble(forKey: .sodium100g)
+        cholesterol100g = container.lenientDouble(forKey: .cholesterol100g)
+        solubleFiber100g = container.lenientDouble(forKey: .solubleFiber100g)
+        insolubleFiber100g = container.lenientDouble(forKey: .insolubleFiber100g)
+        casein100g = container.lenientDouble(forKey: .casein100g)
+        serumProteins100g = container.lenientDouble(forKey: .serumProteins100g)
+        alcohol100g = container.lenientDouble(forKey: .alcohol100g)
+    }
+}
+
+private extension KeyedDecodingContainer {
+    func lenientDouble(forKey key: Key) -> Double? {
+        if let number = try? decodeIfPresent(Double.self, forKey: key) {
+            return number
+        }
+        // `Double(_:)` also spells "nan" and "inf"; those are as missing as "trace".
+        if let string = try? decodeIfPresent(String.self, forKey: key),
+           let value = Double(string.trimmingCharacters(in: .whitespaces)),
+           value.isFinite {
+            return value
+        }
+        return nil
+    }
+}

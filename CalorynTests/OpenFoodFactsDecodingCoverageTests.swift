@@ -157,14 +157,27 @@ struct OpenFoodFactsDecodingCoverageTests {
 
     // MARK: - String-typed values
 
-    @Test("A string-typed nutrient value fails the whole product decode")
-    func stringTypedNutrient() {
-        // Current behaviour, suspected bug: unlike serving_quantity, nutriments are not tolerant of OFF's string numbers.
-        #expect(throws: DecodingError.self) {
-            try Self.decode(
-                #"{"code": "4000000000007", "product_name": "Stringly", "nutriments": {"energy-kcal_100g": "52"}}"#
-            )
-        }
+    @Test("A string-typed nutrient value is read as the number it spells")
+    func stringTypedNutrient() throws {
+        let product = try Self.decode(
+            #"{"code": "4000000000007", "product_name": "Stringly", "nutriments": {"energy-kcal_100g": "52", "proteins_100g": " 1.5 ", "fat_100g": "trace"}}"#
+        )
+
+        #expect(product.nutriments?.energyKcal100g == 52)
+        #expect(product.nutriments?.proteins100g == 1.5)
+        #expect(product.nutriments?.fat100g == nil)
+        #expect(product.hasMinimumUsableNutrition)
+    }
+
+    @Test("A string-typed nutrient that spells a non-finite number is missing", arguments: ["NaN", "nan", "inf", "-Infinity"])
+    func nonFiniteStringNutrient(spelling: String) throws {
+        let product = try Self.decode(
+            #"{"code": "4000000000008", "product_name": "Stringly", "nutriments": {"energy-kcal_100g": "\#(spelling)", "energy-kj_100g": "\#(spelling)", "fiber_100g": "\#(spelling)"}}"#
+        )
+
+        #expect(product.nutriments?.energyKcal100g == nil)
+        #expect(product.nutriments?.fiber100g == nil)
+        #expect(product.hasMinimumUsableNutrition == false)
     }
 
     @Test(

@@ -402,8 +402,8 @@ struct FoodSearchServiceNetworkCoverageTests {
         #expect(results.map(\.product.productName) == ["First Tie", "Rich Oats"])
     }
 
-    @Test("One string-typed nutrient discards every hit in the response")
-    func stringTypedHitPoisonsResponse() async {
+    @Test("A string-typed nutrient keeps its hit and every other hit in the response")
+    func stringTypedHitIsKept() async throws {
         let body = Self.searchBody(
             Self.hit(code: "401", name: "Fine Oats"),
             Self.hit(code: "402", name: "Stringly Oats", nutriments: #""energy-kcal_100g": "370""#)
@@ -411,8 +411,10 @@ struct FoodSearchServiceNetworkCoverageTests {
         FoodSearchNetworkCoverageStub.install { _ in .http(200, body) }
         let service = makeService(policy: .only(.calorynAPI))
 
-        // Current behaviour, suspected bug: the valid "Fine Oats" hit is lost along with the malformed one.
-        #expect(await searchError(service, query: "oats") as? FoodLookupError == .invalidData)
+        let results = try await service.searchImmediately(query: "oats")
+
+        #expect(Set(results.compactMap(\.product.productName)) == ["Fine Oats", "Stringly Oats"])
+        #expect(results.first { $0.product.code == "402" }?.product.nutriments?.energyKcal100g == 370)
     }
 
     @Test("Search fallback is reported as a second, successful search attempt")
