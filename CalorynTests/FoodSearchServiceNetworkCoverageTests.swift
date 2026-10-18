@@ -218,6 +218,8 @@ struct FoodSearchServiceNetworkCoverageTests {
             (.http(404, "{}"), .http(429, "{}"), .rateLimited),
             (.http(503, "{}"), .transport(.notConnectedToInternet), .offline),
             (.http(404, "{}"), .http(422, "{}"), .invalidRequest),
+            (.http(503, "{}"), .http(422, "{}"), .invalidRequest),
+            (.http(200, "not json"), .http(422, "{}"), .invalidRequest),
             (.http(503, "{}"), .transport(.cancelled), .cancelled),
         ] as [(Reply, Reply, FoodLookupError)]
     )
@@ -381,6 +383,23 @@ struct FoodSearchServiceNetworkCoverageTests {
         #expect(results.map(\.product.productName) == ["Usable Oats"])
         #expect(results.map(\.provenance.completeness) == [.partial])
         #expect(await searchError(service, query: "unusable") as? FoodLookupError == .invalidData)
+    }
+
+    @Test("Duplicate hits collapse to the richest one, and a tie keeps the first")
+    func duplicateHitsCollapse() async throws {
+        let body = Self.searchBody(
+            Self.hit(code: "901", name: "First Tie", nutriments: #""energy-kcal_100g": 370"#),
+            Self.hit(code: "901", name: "Second Tie", nutriments: #""energy-kcal_100g": 380"#),
+            Self.hit(code: "902", name: "Sparse Oats", nutriments: #""energy-kcal_100g": 370"#),
+            Self.hit(code: "902", name: "Rich Oats", nutriments: Self.completeNutriments),
+            Self.hit(code: "902", name: "Late Sparse Oats", nutriments: #""energy-kcal_100g": 370"#)
+        )
+        FoodSearchNetworkCoverageStub.install { _ in .http(200, body) }
+        let service = makeService(policy: .only(.calorynAPI))
+
+        let results = try await service.searchImmediately(query: "oats")
+
+        #expect(results.map(\.product.productName) == ["First Tie", "Rich Oats"])
     }
 
     @Test("One string-typed nutrient discards every hit in the response")

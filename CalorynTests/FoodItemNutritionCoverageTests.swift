@@ -222,6 +222,7 @@ struct FoodItemNutritionCoverageTests {
             ServingCase(description: "1,5 cups (360g)", grams: 360, unit: "cup", plural: "cups", gramsPerUnit: 240),
             ServingCase(description: "2 large eggs (100g)", grams: 100, unit: "large egg", plural: "large eggs", gramsPerUnit: 50),
             ServingCase(description: "  3 Wafers  (45 g) ", grams: 45, unit: "wafer", plural: "wafers", gramsPerUnit: 15),
+            ServingCase(description: "10 drops (10g)", grams: 10, unit: "drop", plural: "drops", gramsPerUnit: 1),
         ]
     )
     func servingUnits(_ serving: ServingCase) throws {

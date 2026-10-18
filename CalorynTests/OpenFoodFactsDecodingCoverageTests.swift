@@ -589,6 +589,19 @@ struct OpenFoodFactsDecodingCoverageTests {
         #expect(reconciled.map(\.product.productName) == ["Rich", "Other"])
     }
 
+    @Test("Reconciling equally rich duplicates keeps the first one")
+    func reconcileTieKeepsFirst() throws {
+        let first = try Self.decode(
+            #"{"code": "4000000000030", "product_name": "First", "nutriments": {"energy-kcal_100g": 50}}"#
+        )
+        let second = try Self.decode(
+            #"{"code": "4000000000030", "product_name": "Second", "nutriments": {"energy-kcal_100g": 90}}"#
+        )
+
+        #expect(first.richnessScore == second.richnessScore)
+        #expect(FoodSearchService.reconcile([first, second].map(Self.result)).map(\.product.productName) == ["First"])
+    }
+
     @Test("Without a usable code, products match on folded name and brand")
     func nameAndBrandIdentity() throws {
         let accented = try Self.decode(
