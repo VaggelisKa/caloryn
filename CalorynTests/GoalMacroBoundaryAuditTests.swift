@@ -531,8 +531,8 @@ struct AuditNutrientGoalInputTests {
         }
     }
 
-    @Test("A goal typed to the hundredth is rounded to a tenth the next time the editor saves")
-    func hundredthPrecisionGoalIsRoundedOnTheNextSave() {
+    @Test("A goal typed to the hundredth survives a save that does not touch it")
+    func hundredthPrecisionGoalSurvivesAnUntouchedSave() {
         let profile = auditProfile()
         var first = GoalEditDraft(profile: profile)
         first.nutrientTargetTexts[.fiber] = "27.25"
@@ -544,9 +544,14 @@ struct AuditNutrientGoalInputTests {
         #expect(second.targetText(for: .fiber) == "27.3")
         second.apply(to: profile)
 
-        // Current behaviour, suspected bug: the field reloads the goal to one decimal, so
-        // saving without touching it moves a 27.25 g goal to 27.3 g.
-        #expect(profile.target(for: .fiber) == 27.3)
+        #expect(profile.target(for: .fiber) == 27.25)
+
+        var third = GoalEditDraft(profile: profile)
+        third.loadNutrientGoals(from: profile)
+        third.nutrientTargetTexts[.fiber] = "30"
+        third.apply(to: profile)
+
+        #expect(profile.target(for: .fiber) == 30)
     }
 }
 

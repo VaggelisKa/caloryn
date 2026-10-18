@@ -187,8 +187,17 @@ struct GoalEditDraft: Equatable {
 
         for nutrient in TrackedNutrient.editableGoalNutrients {
             profile.setGoalKind(goalKind(for: nutrient), for: nutrient)
+            guard !isUnchangedGoal(for: nutrient, in: profile) else { continue }
             profile.setTarget(storedTarget(for: nutrient), for: nutrient)
         }
+    }
+
+    /// The field still shows the saved goal as `loadNutrientGoals` wrote it. The
+    /// field rounds to a tenth, so writing it back would move a 27.25 g goal to
+    /// 27.3 g on a save that never touched it.
+    private func isUnchangedGoal(for nutrient: TrackedNutrient, in profile: UserProfile) -> Bool {
+        guard let saved = profile.target(for: nutrient) else { return false }
+        return trimmedText(for: nutrient) == nutrient.unit.inputFormatted(saved)
     }
 
     /// Whether saving this draft should also switch Apple Health adjustment
