@@ -149,7 +149,9 @@ struct HistoryTrendCalendarCoverageTests {
 
         #expect(week.plates.map(\.label) == ["Wed", "Thu", "Fri", "Sat", "Sun", "Mon", "Tue"])
         #expect(week.plates.map(\.outline) == [.standard, .standard, .standard, .standard, .over, .standard, .current])
-        #expect(month.plates.map(\.label) == (22...31).map(String.init) + (1...20).map(String.init))
+        let marchDays: [String] = (22...31).map { String($0) }
+        let aprilDays: [String] = (1...20).map { String($0) }
+        #expect(month.plates.map(\.label) == marchDays + aprilDays)
         #expect(month.plates.last?.outline == .current)
     }
 
@@ -195,7 +197,9 @@ struct HistoryTrendCalendarCoverageTests {
         )
 
         // 19 February to 20 March: the short day (8 March) is still one plate.
-        #expect(strip.plates.map(\.label) == (19...28).map(String.init) + (1...20).map(String.init))
+        let februaryDays: [String] = (19...28).map { String($0) }
+        let marchDays: [String] = (1...20).map { String($0) }
+        #expect(strip.plates.map(\.label) == februaryDays + marchDays)
         #expect(strip.plates.count == 30)
         #expect(strip.columnCount == 10)
         #expect(strip.plates.last?.outline == .current)
