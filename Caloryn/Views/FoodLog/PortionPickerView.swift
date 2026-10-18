@@ -276,7 +276,7 @@ struct PortionPickerView: View {
                 .accessibilityHint("Creates or updates your private version without changing the provider record")
             }
         }
-        .font(.system(.footnote))
+        .font(CalorynTypeface.text(.footnote))
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .calorynGroupSurface()

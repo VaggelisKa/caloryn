@@ -163,52 +163,52 @@ enum CalorynTheme {
 
     // MARK: - Typography
 
-    // The system font in its `.default` design throughout: weight carries the feel. Heavy for
-    // display numbers and screen titles, bold for section titles, tabular digits on every
+    // Bricolage Grotesque throughout (see `CalorynTypeface`): weight carries the feel. Heavy
+    // for display numbers and screen titles, bold for section titles, tabular digits on every
     // number. Text-style-relative wherever there is a text style, so Dynamic Type scales it;
     // the fixed-size display fonts take a size the caller scales with `@ScaledMetric`.
 
-    static let screenTitle: Font = .system(.largeTitle, weight: .heavy)
-    static let brandTitle: Font = .system(.largeTitle, weight: .heavy)
-    static let displayNumber: Font = .system(.largeTitle, weight: .heavy).monospacedDigit()
-    static let compactNumber: Font = .system(.title2, weight: .bold).monospacedDigit()
+    static let screenTitle: Font = CalorynTypeface.text(.largeTitle, weight: .heavy)
+    static let brandTitle: Font = CalorynTypeface.text(.largeTitle, weight: .heavy)
+    static let displayNumber: Font = CalorynTypeface.text(.largeTitle, weight: .heavy).monospacedDigit()
+    static let compactNumber: Font = CalorynTypeface.text(.title2, weight: .bold).monospacedDigit()
     static let largeNumber: Font = displayNumber
     static func ringNumber(size: CGFloat) -> Font {
-        .system(size: size, weight: .heavy).monospacedDigit()
+        CalorynTypeface.fixed(size: size, weight: .heavy).monospacedDigit()
     }
     /// The hero figure beside the donut, the Portion sheet's kcal preview, History's daily
     /// average. Pass a size from `@ScaledMetric` so it still follows Dynamic Type, and pair it
     /// with a tight negative `tracking` as the mocks do.
     static func heroNumber(size: CGFloat) -> Font {
-        .system(size: size, weight: .heavy).monospacedDigit()
+        CalorynTypeface.fixed(size: size, weight: .heavy).monospacedDigit()
     }
-    static let sectionTitle: Font = .system(.title2, weight: .bold)
+    static let sectionTitle: Font = CalorynTypeface.text(.title2, weight: .bold)
     /// A 17pt bold section header: the meal name over its rows, or a non-meal section.
-    static let sectionHeaderTitle: Font = .system(.headline, weight: .bold)
+    static let sectionHeaderTitle: Font = CalorynTypeface.text(.headline, weight: .bold)
     /// The trailing total on a section header ("382 kcal"), tabular.
-    static let sectionHeaderDetail: Font = .system(.subheadline, weight: .medium).monospacedDigit()
-    static let sectionEyebrow: Font = .system(.caption, weight: .medium)
-    static let cardSubtitle: Font = .system(.subheadline)
-    static let itemTitle: Font = .system(.headline)
-    static let bodyText: Font = .system(.body)
-    static let caption: Font = .system(.caption, weight: .medium)
+    static let sectionHeaderDetail: Font = CalorynTypeface.text(.subheadline, weight: .medium).monospacedDigit()
+    static let sectionEyebrow: Font = CalorynTypeface.text(.caption, weight: .medium)
+    static let cardSubtitle: Font = CalorynTypeface.text(.subheadline)
+    static let itemTitle: Font = CalorynTypeface.text(.headline)
+    static let bodyText: Font = CalorynTypeface.text(.body)
+    static let caption: Font = CalorynTypeface.text(.caption, weight: .medium)
     /// The donut legend: meal name and its kcal, 13pt medium, tabular.
-    static let legendText: Font = .system(.footnote, weight: .medium).monospacedDigit()
+    static let legendText: Font = CalorynTypeface.text(.footnote, weight: .medium).monospacedDigit()
     /// A chip's label, 13pt. `calorynChip(isSelected:)` adds the bold of a selected chip.
-    static let chipLabel: Font = .system(.footnote, weight: .medium).monospacedDigit()
-    static let buttonLabel: Font = .system(.headline)
+    static let chipLabel: Font = CalorynTypeface.text(.footnote, weight: .medium).monospacedDigit()
+    static let buttonLabel: Font = CalorynTypeface.text(.headline)
     /// A primary button's label, 17pt bold. Applied by `calorynPrimaryButton()`.
-    static let primaryButtonLabel: Font = .system(.headline, weight: .bold)
-    static let toolbarAction: Font = .system(.body, weight: .semibold)
-    static let numericBody: Font = .system(.body, weight: .medium).monospacedDigit()
-    static let numericCaption: Font = .system(.caption, weight: .semibold).monospacedDigit()
-    static let microCaption: Font = .system(.caption2, weight: .medium)
-    static let microCaptionEmphasized: Font = .system(.caption2, weight: .semibold)
-    static let numericMicroCaption: Font = .system(.caption2, weight: .medium).monospacedDigit()
-    static let numericMicroCaptionEmphasized: Font = .system(.caption2, weight: .semibold).monospacedDigit()
-    static let chartAxisLabel: Font = .system(.caption2, weight: .medium)
-    static let chartXAxisLabel: Font = .system(size: 10, weight: .medium)
-    static let denseChartXAxisLabel: Font = .system(size: 8, weight: .medium)
+    static let primaryButtonLabel: Font = CalorynTypeface.text(.headline, weight: .bold)
+    static let toolbarAction: Font = CalorynTypeface.text(.body, weight: .semibold)
+    static let numericBody: Font = CalorynTypeface.text(.body, weight: .medium).monospacedDigit()
+    static let numericCaption: Font = CalorynTypeface.text(.caption, weight: .semibold).monospacedDigit()
+    static let microCaption: Font = CalorynTypeface.text(.caption2, weight: .medium)
+    static let microCaptionEmphasized: Font = CalorynTypeface.text(.caption2, weight: .semibold)
+    static let numericMicroCaption: Font = CalorynTypeface.text(.caption2, weight: .medium).monospacedDigit()
+    static let numericMicroCaptionEmphasized: Font = CalorynTypeface.text(.caption2, weight: .semibold).monospacedDigit()
+    static let chartAxisLabel: Font = CalorynTypeface.text(.caption2, weight: .medium)
+    static let chartXAxisLabel: Font = CalorynTypeface.fixed(size: 10, weight: .medium)
+    static let denseChartXAxisLabel: Font = CalorynTypeface.fixed(size: 8, weight: .medium)
     static func weeklyChartXAxisLabel(isDense: Bool) -> Font {
         isDense ? denseChartXAxisLabel : chartXAxisLabel
     }
@@ -220,7 +220,7 @@ enum CalorynTheme {
     static func trendChartXAxisLabel(pointCount: Int) -> Font {
         weeklyChartXAxisLabel(isDense: pointCount > 7)
     }
-    static let badgeText: Font = .system(.caption2, weight: .semibold)
+    static let badgeText: Font = CalorynTypeface.text(.caption2, weight: .semibold)
     static let toolbarIcon: Font = .system(.body, weight: .medium)
     static let inlineIcon: Font = .system(.headline, weight: .semibold)
     static let emptyStateIcon: Font = .system(.largeTitle, weight: .medium)

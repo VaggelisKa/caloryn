@@ -18,60 +18,13 @@ A skin change. Nothing else moves:
   back button. Glass is the chrome; the content underneath is what changes.
 - Deployment target iOS 18.6 built against the iOS 26 SDK. Every `#available(iOS 26.0, *)`
   branch keeps its `else`. Swift Charts `SectorMark` is iOS 17+, so it is fine on both.
-- Typeface stays the system font. The mocks use Schibsted Grotesk as a stand-in for a
-  bundled grotesk; that is a separate decision (licence file, Dynamic Type plumbing) and
-  is not part of this change. Get the feel from weight and tracking instead: heavy for
-  display numbers and screen titles, bold for section titles, medium for item titles,
-  `.default` design everywhere (no `.rounded`), tabular digits on every number.
-
-## Tokens
-
-All colours are Color Sets in `CalorynShared/SharedColors.xcassets`, light and dark
-declared together (CLAUDE.md rule 6). Never a literal.
-
-| Asset | Light | Dark | Role |
-|---|---|---|---|
-| `PageBackground` | `#F6F5F1` | `#141614` | every page canvas |
-| `CardBackground` | `#FFFFFF` | `#262A26` | sheet canvas, the few grouped surfaces |
-| `Surface` | `#F6F5F1` | `#262A26` | input wells inside a sheet (stepper pill, search well) |
-| `TextPrimary` | `#1E231F` | `#ECEBE8` | ink: text, controls, primary buttons |
-| `TextSecondary` | `#566057` | `#A6ACA6` | captions, units, inactive tab labels |
-| `TextTertiary` *(new)* | `#8E948C` | `#6F756F` | "not yet", a disabled chevron; 2.8:1 in light, so placeholders only |
-| `Hairline` *(new)* | `#1E231F` α 0.10 | `#ECEBE8` α 0.12 | row separators, surface borders |
-| `MealBreakfast` *(new)* | `#F2B705` | `#F7C94A` | breakfast fill |
-| `MealBreakfastInk` *(new)* | `#7A5A00` | `#F7C94A` | breakfast text |
-| `MealLunch` *(new)* | `#D44026` | `#F0705A` | lunch fill |
-| `MealLunchInk` *(new)* | `#8F2A17` | `#F0705A` | lunch text |
-| `MealDinner` *(new)* | `#5B3758` | `#B98BB5` | dinner fill |
-| `MealDinnerInk` *(new)* | `#6A3D66` | `#B98BB5` | dinner text |
-| `MealSnack` *(new)* | `#7E8B2E` | `#B5C457` | snack fill |
-| `MealSnackInk` *(new)* | `#4F5918` | `#B5C457` | snack text |
-| `MealBreakfastOnFill` *(new)* | `#1E231F` | `#262A26` | label or glyph on the breakfast fill |
-| `MealLunchOnFill` *(new)* | `#FFFFFF` | `#262A26` | label or glyph on the lunch fill |
-| `MealDinnerOnFill` *(new)* | `#FFFFFF` | `#262A26` | label or glyph on the dinner fill |
-| `MealSnackOnFill` *(new)* | `#1E231F` | `#262A26` | label or glyph on the snack fill |
-| `HistoryEaten` *(new)* | `#5C615D` | `#8E968F` | neutral "eaten" fill in History day plates and bars |
-| `HistoryEatenLight` *(new)* | `#959A96` | `#555B56` | an under-goal day in History, a step lighter than `HistoryEaten` |
-| `TypeBadgeFill` *(new)* | `#566057` α 0.18 | `#A6ACA6` α 0.18 | the "Recipe" / "Yours" badge background |
-| `TypeBadgeText` *(new)* | `#566057` | `#A6ACA6` | the "Recipe" / "Yours" badge text |
-| `ControlTint` *(new)* | `#1E231F` | `#8E968F` | a switch's on track and a graphical date picker's selected day: what the system draws white on |
-| `SwipeActionTint` *(new)* | `#566057` | `#4A504B` | a swipe action's background under its white label |
-| `AccentColor` (app catalog) | `#1E231F` | `#ECEBE8` | stock controls: pickers, links |
-
-Fill is for shapes (sectors, chips, the header add button's wash); ink is for text in that
-meal's colour, dark enough for 4.5:1 on the page. In dark mode fill and ink are the same
-value. On-fill is what is drawn *on* a fill (a selected meal chip's label, "Log to
-<meal>"). The boards draw white there, but white on the yellow breakfast fill is 1.8:1 and
-on the snack olive 3.7:1, so those two take ink. The light lunch fill was darkened from
-the board's `#D9452B` (white on it 4.3:1) to `#D44026` (4.6:1), so white 13pt chip text on
-it clears 4.5:1. Dinner's light ink was lifted from the board's `#4A2C47`, which sat 1.3:1
-from `TextPrimary` and read as black, to `#6A3D66` in the same hue: 7.8:1 on the page and
-8.5:1 on white, so still well past 4.5:1, and the only ink lighter than its own fill.
-
-Existing `Sage`, `Stone`, `Terracotta`, `Carb`, `Fiber`, `HistoryUnder` assets stay in
-the catalog (widgets and a few unchanged screens read them) but the app stops using them
-for meaning:
-
+- Typeface is Bricolage Grotesque (SIL OFL), bundled as fixed cuts of the variable font in
+  `Caloryn/Theme/Fonts` and registered at launch by `CalorynTypeface`: a text cut at the
+  14pt optical size in five weights, and a display cut at 36pt in bold and extra bold that
+  takes over from 22pt up. Every token is `relativeTo:` its text style, so Dynamic Type
+  still scales it. Weight carries the feel: heavy for display numbers and screen titles,
+  bold for section titles. Tracking is close to zero, because the display cut is already
+  tight. SF Symbols, the tab bar and system chrome keep the system font.
 - `proteinColor`, `carbColor`, `fatColor`, `fiberColor` resolve to `TextPrimary`. Macros
   are told apart by their label, never by colour, because the meal palette now owns
   colour and the two systems would collide (sage was both "protein" and "lunch").

@@ -143,7 +143,7 @@ struct CreationFormTotal: View {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(kcal.formatted())
                     .font(CalorynTheme.heroNumber(size: figureSize))
-                    .tracking(-figureSize * 0.035)
+                    .tracking(-figureSize * 0.01)
                     .foregroundStyle(CalorynTheme.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)

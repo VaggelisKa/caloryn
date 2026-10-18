@@ -69,7 +69,7 @@ private struct HistoryPatternContextHeader: View {
         VStack(alignment: .leading, spacing: 6) {
             Text(pattern.headline)
                 .font(CalorynTheme.sectionTitle.weight(.heavy))
-                .tracking(-0.4)
+                .tracking(-0.2)
                 .foregroundStyle(CalorynTheme.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)
 

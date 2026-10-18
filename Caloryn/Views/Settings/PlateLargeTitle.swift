@@ -22,8 +22,8 @@ private struct PlateLargeTitleModifier: ViewModifier {
                 .toolbar {
                     ToolbarItem(placement: .largeTitle) {
                         Text(title)
-                            .font(.system(size: size, weight: .heavy))
-                            .tracking(-0.025 * size)
+                            .font(CalorynTypeface.fixed(size: size, weight: .heavy))
+                            .tracking(-0.01 * size)
                             .foregroundStyle(CalorynTheme.textPrimary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .accessibilityAddTraits(.isHeader)

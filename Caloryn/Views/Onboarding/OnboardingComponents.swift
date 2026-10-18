@@ -30,7 +30,7 @@ struct OnboardingStepHeader: View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
                 .font(CalorynTheme.screenTitle)
-                .tracking(-0.6)
+                .tracking(-0.3)
                 .foregroundStyle(CalorynTheme.textPrimary)
                 .accessibilityAddTraits(.isHeader)
 

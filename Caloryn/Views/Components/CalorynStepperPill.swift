@@ -89,13 +89,13 @@ struct CalorynStepperPill: View {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(value)
                     .font(CalorynTheme.heroNumber(size: min(regularNumber, 52)))
-                    .tracking(-min(regularNumber, 52) * 0.03)
+                    .tracking(-min(regularNumber, 52) * 0.01)
                     .foregroundStyle(CalorynTheme.textPrimary)
                     .contentTransition(.numericText())
 
                 if let unit {
                     Text(unit)
-                        .font(.system(size: min(regularUnit, 28), weight: .semibold))
+                        .font(CalorynTypeface.fixed(size: min(regularUnit, 28), weight: .semibold))
                         .foregroundStyle(CalorynTheme.textSecondary)
                 }
             }
