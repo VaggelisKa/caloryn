@@ -358,8 +358,11 @@ struct FoodSearchView: View {
                         searchText = ""
                         searchService.clearResults()
                     } label: {
+                        // Ink at the symbol's own secondary opacity, a soft grey disc on
+                        // the well. A flat `textSecondary` filled the disc with solid sage.
                         Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(CalorynTheme.textSecondary)
+                            .symbolRenderingMode(.hierarchical)
+                            .foregroundStyle(CalorynTheme.textPrimary)
                     }
                     .accessibilityLabel("Clear search")
                 }
