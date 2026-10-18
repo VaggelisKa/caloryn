@@ -81,6 +81,19 @@ struct HistoryEntrySignature: Equatable {
     let nutriscoreGrade: String?
     let produceKindRaw: String?
     let produceItemsSnapshotRaw: String?
+    /// The live food's name for an entry without a quality snapshot. The
+    /// produce summary counts such an entry under that name, not the stored
+    /// `foodName`, so a rename has to change the signature too.
+    let legacyProduceName: String?
+    /// For such an entry that is a recipe, the live ingredients the produce
+    /// summary counts in its place — editing them changes nothing else here.
+    let legacyRecipeIngredients: [LegacyIngredient]?
+
+    struct LegacyIngredient: Equatable {
+        let name: String
+        let produceKindRaw: String?
+        let portionGrams: Double
+    }
 
     init(entry: FoodLogEntry) {
         id = entry.id
@@ -103,5 +116,13 @@ struct HistoryEntrySignature: Equatable {
         nutriscoreGrade = entry.historicalNutriscoreGrade
         produceKindRaw = entry.historicalProduceKind?.rawValue
         produceItemsSnapshotRaw = entry.produceItemsSnapshotRaw
+        let legacyFood = entry.hasQualitySnapshot ? nil : entry.foodItem
+        legacyProduceName = legacyFood?.name
+        legacyRecipeIngredients = legacyFood.flatMap { food in
+            guard food.isRecipe else { return nil }
+            return food.recipeIngredients?.map {
+                LegacyIngredient(name: $0.name, produceKindRaw: $0.produceKindRaw, portionGrams: $0.portionGrams)
+            }
+        }
     }
 }
