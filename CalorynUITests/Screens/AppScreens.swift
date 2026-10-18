@@ -402,6 +402,8 @@ struct DailyReminderScreen: Screen {
     var toggle: XCUIElement { element("settings.dailyReminder.toggle") }
     var time: XCUIElement { element("settings.dailyReminder.time") }
     var timePicker: XCUIElement { element("settings.dailyReminder.timePicker") }
+    /// The recovery link shown when notifications are denied in iOS Settings.
+    var openSettings: XCUIElement { element("settings.dailyReminder.openSettings") }
 
     var isOn: Bool { (toggle.value as? String) == "1" }
 

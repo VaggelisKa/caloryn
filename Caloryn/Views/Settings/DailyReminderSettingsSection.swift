@@ -79,6 +79,7 @@ struct DailyReminderSettingsSection: View {
                     .font(CalorynTheme.caption)
                     .buttonStyle(.borderless)
                     .accessibilityLabel("Open app settings")
+                    .accessibilityIdentifier("settings.dailyReminder.openSettings")
                 }
             }
         } header: {

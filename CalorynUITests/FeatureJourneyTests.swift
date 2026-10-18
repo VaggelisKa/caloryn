@@ -240,12 +240,35 @@ final class FeatureJourneyTests: UITestCase {
 
         when("the user turns it on") {
             reminder.flip()
-            allowNotificationsIfAsked(thenAwait: reminder.time)
+            allowNotificationsIfAsked(thenAwait: reminder.time, deniedSign: reminder.openSettings)
         }
 
-        then("the reminder time is offered, and tapping it opens the time picker") {
+        then("a different time chosen on the wheel is the one the row reports") {
+            let before = reminder.time.label
             reminder.tap(reminder.time)
-            XCTAssertTrue(reminder.timePicker.awaitExistence(), "The time row should open a picker")
+            // The wheel's columns are not elements of their own, so drag the hour column
+            // (the leading third) up by about two rows.
+            let picker = reminder.awaitTappable(reminder.timePicker)
+            picker.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.5))
+                .press(
+                    forDuration: 0.05,
+                    thenDragTo: picker.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.25))
+                )
+            let changed = XCTNSPredicateExpectation(
+                predicate: NSPredicate(format: "label != %@", before),
+                object: reminder.time
+            )
+            XCTAssertEqual(
+                XCTWaiter().wait(for: [changed], timeout: UITestCase.defaultTimeout),
+                .completed,
+                "Turning the wheel should change the reminder time, still \(before)"
+            )
+
+            // Closing the picker keeps the new time.
+            let chosen = reminder.time.label
+            reminder.tap(reminder.time)
+            XCTAssertTrue(awaitAbsence(of: reminder.timePicker), "Tapping the row again should close the wheel")
+            XCTAssertEqual(reminder.time.label, chosen)
         }
 
         then("turning it off again withdraws the time") {
@@ -316,17 +339,29 @@ final class FeatureJourneyTests: UITestCase {
     ///
     /// The prompt is SpringBoard's, so it carries no identifier this app could set — its
     /// button is found by its label, the one exception to finding elements by identifier.
-    private func allowNotificationsIfAsked(thenAwait element: XCUIElement) {
+    ///
+    /// A simulator that once answered "Don't Allow" never prompts again, and neither
+    /// `simctl privacy` nor `resetAuthorizationStatus(for:)` covers notifications, so the
+    /// test cannot put it back. The wait also ends on the app's own denied state so that
+    /// case fails saying what to do, rather than as a timeout that reads like a bug.
+    private func allowNotificationsIfAsked(thenAwait element: XCUIElement, deniedSign: XCUIElement) {
         let allow = XCUIApplication(bundleIdentifier: "com.apple.springboard").buttons["Allow"]
-        let either = XCTNSPredicateExpectation(
-            predicate: NSPredicate { _, _ in element.exists || allow.exists },
+        let settled = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in element.exists || allow.exists || deniedSign.exists },
             object: nil
         )
         XCTAssertEqual(
-            XCTWaiter().wait(for: [either], timeout: UITestCase.defaultTimeout),
+            XCTWaiter().wait(for: [settled], timeout: UITestCase.defaultTimeout),
             .completed,
             "Turning the reminder on neither prompted nor showed its time"
         )
+        if deniedSign.exists {
+            XCTFail(
+                "Notifications are denied for Caloryn on this simulator, so the reminder cannot "
+                    + "turn on. Run `xcrun simctl erase <device>` (or allow them in Settings) and rerun."
+            )
+            return
+        }
         if allow.exists {
             allow.tap()
             XCTAssertTrue(element.awaitExistence(), "Allowing notifications should turn the reminder on")
