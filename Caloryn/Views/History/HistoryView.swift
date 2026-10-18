@@ -4,6 +4,7 @@ import SwiftData
 
 struct HistoryView: View {
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     // Keep newest-first ordering in sync with relevantEntries(startingAt:);
     // that helper early-exits when it reaches entries older than its window.
@@ -153,7 +154,7 @@ struct HistoryView: View {
             // Range changes refresh synchronously through selectRange; data/profile
             // changes should recalculate for the range current when this task runs.
             // The first load fades in on its own; later data changes animate in place.
-            withAnimation(hasLoadedAnalytics ? Self.changeAnimation : nil) {
+            withAnimation(hasLoadedAnalytics ? changeAnimation : nil) {
                 refreshAnalytics(for: historyState.range)
             }
             if !hasLoadedAnalytics {
@@ -204,12 +205,14 @@ struct HistoryView: View {
     }
 
     /// A range switch or a data change: figures roll, bars and plates morph, and sections
-    /// that come or go fade.
-    private static let changeAnimation: Animation = .smooth(duration: 0.4)
+    /// that come or go fade. Under Reduce Motion the new range simply replaces the old.
+    private var changeAnimation: Animation? {
+        reduceMotion ? nil : .smooth(duration: 0.4)
+    }
 
     private func selectRange(_ range: HistoryRange) {
         guard range != historyState.range else { return }
-        withAnimation(Self.changeAnimation) {
+        withAnimation(changeAnimation) {
             refreshAnalytics(for: range)
         }
     }

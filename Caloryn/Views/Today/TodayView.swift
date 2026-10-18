@@ -6,6 +6,7 @@ struct TodayView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(AppRouter.self) private var router
     @Query(sort: \UserProfile.updatedAt, order: .reverse) private var profiles: [UserProfile]
     @Query private var allEntries: [FoodLogEntry]
@@ -157,7 +158,7 @@ struct TodayView: View {
                 .animation(.smooth(duration: 0.35), value: hasNutriscoreData)
                 // Entries saved from the add-food sheet arrive through the query with no
                 // transaction of their own; without this a new row snaps into its meal.
-                .animation(.smooth(duration: 0.3), value: projection.today.map(\.id))
+                .animation(reduceMotion ? nil : .smooth(duration: 0.3), value: projection.today.map(\.id))
             }
             .calorynPageCanvas()
             .todayTitlelessBar()
@@ -411,7 +412,7 @@ struct TodayView: View {
             mealType: \.mealType,
             createdAt: \.createdAt
         )
-        withAnimation(.smooth(duration: 0.35)) {
+        withAnimation(reduceMotion ? nil : .smooth(duration: 0.35)) {
             DailyFoodLogCommands.copyLoggedEntries(
                 orderedEntries,
                 to: selectedDate,
