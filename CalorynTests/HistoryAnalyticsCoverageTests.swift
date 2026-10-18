@@ -91,15 +91,15 @@ struct HistoryAnalyticsCoverageTests {
     @Test(
         "given a share of days logged, when grading coverage, then 80 percent is high and 50 percent medium",
         arguments: [
-            (10, 10, HistoryCoverageLevel.high),
-            (8, 10, .high),
-            (7, 10, .medium),
-            (5, 10, .medium),
-            (4, 10, .low),
-            (0, 10, .low)
-        ]
+            (10, 10, 1.0, HistoryCoverageLevel.high),
+            (8, 10, 0.8, .high),
+            (7, 10, 0.7, .medium),
+            (5, 10, 0.5, .medium),
+            (4, 10, 0.4, .low),
+            (0, 10, 0.0, .low)
+        ] as [(Int, Int, Double, HistoryCoverageLevel)]
     )
-    func coverageLevelThresholds(logged: Int, total: Int, expected: HistoryCoverageLevel) {
+    func coverageLevelThresholds(logged: Int, total: Int, ratio: Double, expected: HistoryCoverageLevel) {
         let dates = Self.days(from: Self.date(2026, 1, 5), count: total)
         let entries = dates.prefix(logged).map { entry(at: $0, calories: 2_000) }
 
@@ -107,7 +107,7 @@ struct HistoryAnalyticsCoverageTests {
 
         #expect(summary.totalDayCount == total)
         #expect(summary.loggedDayCount == logged)
-        #expect(summary.coverageRatio == Double(logged) / Double(total))
+        #expect(summary.coverageRatio == ratio)
         #expect(summary.coverageLevel == expected)
     }
 

@@ -61,10 +61,17 @@ struct NutritionDetailsCoverageTests {
         #expect(NutrientDetailGroup.fat.items(in: nutrition).map(\.value) == [1, 2, 3, 4, 5, 6])
     }
 
-    @Test("given a whole number of grams, when written for the reader's own locale, then it carries the unit after a space")
-    func theDefaultLocaleSpellingCarriesTheUnit() {
-        #expect(DetailNutrient(id: "starch", label: "Starch", value: 55).spacedFormattedValue == "55 g")
-        #expect(DetailNutrient(id: "salt", label: "Salt", value: 0.02, unit: .milligramsFromGrams).spacedFormattedValue == "20 mg")
+    @Test("given no locale, when spelling a line, then it is the reader's own locale's spelling with the unit after a space")
+    func theDefaultSpellingIsTheReadersLocale() {
+        // Figures with a decimal and a thousands group, which most locales spell differently,
+        // compared against the explicit spelling so the result does not depend on the host.
+        let starch = DetailNutrient(id: "starch", label: "Starch", value: 1_234.56)
+        let salt = DetailNutrient(id: "salt", label: "Salt", value: 2.5, unit: .milligramsFromGrams)
+
+        #expect(starch.spacedFormattedValue == starch.spacedFormattedValue(locale: .current))
+        #expect(salt.spacedFormattedValue == salt.spacedFormattedValue(locale: .current))
+        #expect(starch.spacedFormattedValue.hasSuffix(" g"))
+        #expect(salt.spacedFormattedValue.hasSuffix(" mg"))
     }
 
     // MARK: - Sections

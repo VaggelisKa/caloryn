@@ -101,6 +101,79 @@ struct HistoryTrendCalendarCoverageTests {
         // Logged days: 2,400 on 9 and 10 March, 2,000 on 2 February: 2,266.67 on average.
         #expect(projection.averageDeltaText(value: 2_400, unit: "kcal") == "133 kcal above 90-day average")
         #expect(projection.averageDeltaText(value: 2_267, unit: "kcal") == "Matches 90-day average")
+        // 266.67 below rounds to 267, where cutting the fraction off would say 266.
+        #expect(projection.averageDeltaText(value: 2_000, unit: "kcal") == "267 kcal below 90-day average")
+        // 0.83 above rounds to one, where cutting the fraction off would say it matches.
+        #expect(projection.averageDeltaText(value: 2_267.5, unit: "kcal") == "1 kcal above 90-day average")
+    }
+
+    // MARK: - A zone whose midnight is the day before nearly everywhere
+
+    // New York's midnight is the same calendar day in UTC and in Europe, so the labels above
+    // would still read right if they were spelled from the host calendar on those hosts.
+    // Auckland's midnight is the previous day from UTC-11 to UTC+11, so here they would not.
+
+    @Test("given a week in Auckland across its autumn change, when labelling daily points, then initials, spoken dates and the biggest swing name Auckland's days")
+    func dailyLabelsUseTheInjectedCalendarRatherThanTheHost() {
+        let projection = HistoryCalorieTrendProjection(range: .week, summary: aucklandAutumnWeek().current)
+
+        #expect(projection.points.map(\.xAxisLabel) == ["W", "T", "F", "S", "S", "M", "T"])
+        #expect(projection.points.map(\.accessibilityLabel) == [
+            "Wed, 1 Apr", "Thu, 2 Apr", "Fri, 3 Apr", "Sat, 4 Apr", "Sun, 5 Apr", "Mon, 6 Apr", "Tue, 7 Apr"
+        ])
+        // Midnight is 11:00 UTC the day before under daylight saving (UTC+13), 12:00 after it (UTC+12).
+        #expect(projection.points[4].id == "day-2026-04-04T11:00:00Z")
+        #expect(projection.points[5].id == "day-2026-04-05T12:00:00Z")
+        #expect(projection.points[4].value == 2_600)
+        #expect(projection.biggestInconsistencyText == "Biggest swing: Sun, 5 Apr, 600 kcal over")
+    }
+
+    @Test("given 7 and 30 days in Auckland, when laying out plates, then weekday and day-of-month labels are Auckland's")
+    func plateLabelsUseTheInjectedCalendarRatherThanTheHost() {
+        let week = HistoryDayPlateStrip(
+            range: .week,
+            summary: aucklandAutumnWeek().current,
+            today: Self.aucklandDate(2026, 4, 7, hour: 23)
+        )
+        let month = HistoryDayPlateStrip(
+            range: .month,
+            summary: HistoryAnalytics(
+                entries: [],
+                profile: nil,
+                range: .month,
+                endDate: Self.aucklandDate(2026, 4, 20),
+                calendar: Self.auckland
+            ).current,
+            today: Self.aucklandDate(2026, 4, 20, hour: 23)
+        )
+
+        #expect(week.plates.map(\.label) == ["Wed", "Thu", "Fri", "Sat", "Sun", "Mon", "Tue"])
+        #expect(week.plates.map(\.outline) == [.standard, .standard, .standard, .standard, .over, .standard, .current])
+        #expect(month.plates.map(\.label) == (22...31).map(String.init) + (1...20).map(String.init))
+        #expect(month.plates.last?.outline == .current)
+    }
+
+    @Test("given 90 days in Auckland, when labelling week points, then each week is named by Auckland's Monday")
+    func weekLabelsUseTheInjectedCalendarRatherThanTheHost() throws {
+        let analytics = HistoryAnalytics(
+            entries: [
+                entry(at: Self.aucklandDate(2026, 2, 2), calories: 2_000),
+                entry(at: Self.aucklandDate(2026, 3, 31), calories: 2_400),
+                entry(at: Self.aucklandDate(2026, 4, 1), calories: 2_400)
+            ],
+            profile: Self.makeProfile(),
+            range: .quarter,
+            endDate: Self.aucklandDate(2026, 4, 30),
+            calendar: Self.auckland
+        )
+        let projection = HistoryCalorieTrendProjection(range: .quarter, summary: analytics.current)
+
+        #expect(projection.points.count == 14)
+        #expect(projection.points.first?.accessibilityLabel == "W1, week of 26 Jan")
+        let overWeek = try #require(projection.points.first { $0.accessibilityLabel == "W10, week of 30 Mar" })
+        #expect(overWeek.id == "week-2026-03-29T11:00:00Z")
+        #expect(overWeek.value == 2_400)
+        #expect(projection.biggestInconsistencyText == "Biggest swing: week of 30 Mar, 400 kcal/day over")
     }
 
     // MARK: - Plate strip
@@ -169,6 +242,32 @@ struct HistoryTrendCalendarCoverageTests {
 
     private static func date(_ year: Int, _ month: Int, _ day: Int, hour: Int = 12, minute: Int = 0) -> Date {
         newYork.date(from: DateComponents(year: year, month: month, day: day, hour: hour, minute: minute))!
+    }
+
+    private static let auckland: Calendar = {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "Pacific/Auckland")!
+        calendar.locale = Locale(identifier: "en_US_POSIX")
+        return calendar
+    }()
+
+    private static func aucklandDate(_ year: Int, _ month: Int, _ day: Int, hour: Int = 12, minute: Int = 0) -> Date {
+        auckland.date(from: DateComponents(year: year, month: month, day: day, hour: hour, minute: minute))!
+    }
+
+    /// 1–7 April 2026 in Auckland, across the end of daylight saving on Sunday 5 April:
+    /// Sunday 600 over (logged late in the evening) and Tuesday on track.
+    private func aucklandAutumnWeek() -> HistoryAnalytics {
+        HistoryAnalytics(
+            entries: [
+                entry(at: Self.aucklandDate(2026, 4, 5, hour: 23, minute: 30), calories: 2_600),
+                entry(at: Self.aucklandDate(2026, 4, 7), calories: 1_950)
+            ],
+            profile: Self.makeProfile(),
+            range: .week,
+            endDate: Self.aucklandDate(2026, 4, 7),
+            calendar: Self.auckland
+        )
     }
 
     /// 4–10 March 2026, across the change on Sunday 8 March: Sunday over (logged late in the

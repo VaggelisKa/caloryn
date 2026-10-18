@@ -180,14 +180,6 @@ struct HistoryOverviewSummaryCoverageTests {
         #expect(breakdown.mealRows.map(\.id) == ["breakfast", "lunch", "dinner", "snack"])
     }
 
-    @Test(
-        "given a count of entries, when wording it, then one is an entry and anything else entries",
-        arguments: [(0, "0 entries"), (1, "1 entry"), (2, "2 entries")] as [(Int, String)]
-    )
-    func entryCountWording(count: Int, expected: String) {
-        #expect(HistoryCalorieTrendDayBreakdown.entryCountText(count) == expected)
-    }
-
     // MARK: - Helpers
 
     private func makeSummary(

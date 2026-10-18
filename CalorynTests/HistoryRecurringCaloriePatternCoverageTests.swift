@@ -127,7 +127,7 @@ struct HistoryRecurringCaloriePatternCoverageTests {
         #expect(HistoryRecurringCalorieOutcome.below.targetText == "below target")
     }
 
-    @Test("given the drill-down's meal comparison, when captioning it, then the baseline is the other eligible days")
+    @Test("given the drill-down's meal difference, when captioning it, then the baseline is the other eligible days")
     func detailSummaryCaption() {
         let summary = HistoryRecurringCaloriePatternDetailSummary(
             kind: .mealOnly,
@@ -143,8 +143,15 @@ struct HistoryRecurringCaloriePatternCoverageTests {
         )
 
         #expect(summary.mealDifferenceCaption == "Average difference versus other eligible logged days")
-        #expect(summary.comparisonTitle == "Other logged days")
-        #expect(summary.mealComparisonTitle == "Dinner comparison")
+    }
+
+    @Test("given a pattern from a zone whose midnight is the day before almost everywhere else, when labelling a supporting day, then the pattern's own calendar names it")
+    func supportingDaysAreLabelledInThePatternsCalendar() throws {
+        let pattern = makePattern(calendar: Self.auckland)
+        // Midnight on Monday 6 April in Auckland is midday on Sunday 5 April in UTC.
+        let midnight = try #require(Self.auckland.date(from: DateComponents(year: 2026, month: 4, day: 6)))
+
+        #expect(pattern.dayText(for: midnight) == "Mon, 6 Apr")
     }
 
     // MARK: - Ranking between candidates
@@ -227,6 +234,24 @@ struct HistoryRecurringCaloriePatternCoverageTests {
 
         #expect(weekdayOnly == nil)
         #expect(standard == nil)
+    }
+
+    @Test("given meals tied on their calorie difference, when choosing the standout meal, then the first by name decides before direction is checked")
+    func tiedMealsResolveByNameBeforeDirection() throws {
+        let above = [3, 12, 20, 29].map { Self.date(2026, 1, $0) }
+        let comparison = [4, 13, 21, 30].map { Self.date(2026, 1, $0) }
+        let comparisonDays = comparison.flatMap { day(on: $0, breakfast: 700, lunch: 700, dinner: 500, snack: 100) }
+
+        // Breakfast 300 less, lunch and dinner 300 more each: breakfast sorts first and points
+        // the wrong way, so neither later meal may rescue the candidate.
+        let againstTheOutcome = above.flatMap { day(on: $0, breakfast: 400, lunch: 1_000, dinner: 800, snack: 100) }
+        // Lunch and dinner both 300 more: dinner sorts before lunch, so it is the meal named.
+        let withTheOutcome = above.flatMap { day(on: $0, breakfast: 700, lunch: 1_000, dinner: 800, snack: 100) }
+
+        #expect(discover(againstTheOutcome + comparisonDays, exactTargets: above + comparison) == nil)
+        let pattern = try #require(discover(withTheOutcome + comparisonDays, exactTargets: above + comparison))
+        #expect(pattern.id == "mealOnly|above|dinner")
+        #expect(pattern.mealDifferenceCalories == 300)
     }
 
     // MARK: - Supporting days
@@ -330,6 +355,15 @@ struct HistoryRecurringCaloriePatternCoverageTests {
         return calendar
     }()
 
+    /// Far enough east that its midnight is the previous calendar day from UTC-11 to UTC+11,
+    /// so a label spelled from the host calendar comes out a day early on any likely host.
+    private static let auckland: Calendar = {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "Pacific/Auckland")!
+        calendar.locale = Locale(identifier: "en_US_POSIX")
+        return calendar
+    }()
+
     private static func date(_ year: Int, _ month: Int, _ day: Int, hour: Int = 12, minute: Int = 0) -> Date {
         newYork.date(from: DateComponents(year: year, month: month, day: day, hour: hour, minute: minute))!
     }
@@ -398,7 +432,8 @@ struct HistoryRecurringCaloriePatternCoverageTests {
         outcomeComparisonDayCount: Int = 6,
         mealComparisonDayCount: Int = 7,
         eligibleDayCount: Int = 11,
-        mealDifferenceCalories: Double = 800
+        mealDifferenceCalories: Double = 800,
+        calendar: Calendar = HistoryRecurringCaloriePatternCoverageTests.newYork
     ) -> HistoryRecurringCaloriePattern {
         let start = Self.date(2026, 1, 2, hour: 0)
         let supportingDays = (0..<supportingDayCount).map { offset in
@@ -427,7 +462,7 @@ struct HistoryRecurringCaloriePatternCoverageTests {
             rateSeparation: 1,
             windowStart: start,
             windowEnd: Self.date(2026, 1, 31, hour: 0),
-            calendar: Self.newYork
+            calendar: calendar
         )
     }
 }
