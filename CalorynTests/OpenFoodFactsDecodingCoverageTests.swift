@@ -108,7 +108,7 @@ struct OpenFoodFactsDecodingCoverageTests {
 
     // MARK: - Energy units
 
-    @Test("A product with energy only in kilojoules has no usable nutrition")
+    @Test("A product with energy only in kilojoules is converted to kilocalories")
     func kilojouleOnlyEnergy() throws {
         let product = try Self.decode(
             """
@@ -126,10 +126,11 @@ struct OpenFoodFactsDecodingCoverageTests {
             """
         )
 
-        // Current behaviour, suspected bug: kJ is never converted (1966 kJ / 4.184 ≈ 470 kcal), so the product is dropped as unusable.
-        #expect(product.nutriments?.energyKcal100g == nil)
-        #expect(product.hasMinimumUsableNutrition == false)
-        #expect(product.nutritionCompleteness == .unknown)
+        // 1966 kJ / 4.184 ≈ 469.9 kcal
+        let kcal = try #require(product.nutriments?.energyKcal100g)
+        #expect(abs(kcal - 469.885) < 0.001)
+        #expect(product.hasMinimumUsableNutrition)
+        #expect(product.nutritionCompleteness == .complete)
     }
 
     @Test("The kcal field is used verbatim when kilojoules are also present")

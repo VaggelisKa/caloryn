@@ -302,7 +302,11 @@ struct OFFNutriments: Decodable, Hashable {
         case casein100g = "casein_100g"
         case serumProteins100g = "serum-proteins_100g"
         case alcohol100g = "alcohol_100g"
+        case energyKj100g = "energy-kj_100g"
     }
+
+    /// The kilojoules in a kilocalorie, for products labelled only in kJ.
+    static let kilojoulesPerKilocalorie = 4.184
 
     #if DEBUG
     static func fixture(
@@ -356,7 +360,9 @@ extension OFFNutriments {
     /// is not a finite number is treated as missing.
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
+        // Many EU labels give energy only in kJ; converted rather than dropping the product.
         energyKcal100g = container.lenientDouble(forKey: .energyKcal100g)
+            ?? container.lenientDouble(forKey: .energyKj100g).map { $0 / Self.kilojoulesPerKilocalorie }
         proteins100g = container.lenientDouble(forKey: .proteins100g)
         carbohydrates100g = container.lenientDouble(forKey: .carbohydrates100g)
         fat100g = container.lenientDouble(forKey: .fat100g)
