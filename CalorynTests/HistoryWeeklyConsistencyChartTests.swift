@@ -5,7 +5,6 @@ import Testing
 
 @Suite("History weekly consistency chart")
 struct HistoryWeeklyConsistencyChartTests {
-
     @Test("given no weeks, when scaling the chart, then it still has a drawable domain")
     func noWeeksStillScales() {
         let chart = HistoryWeeklyConsistencyChart(weekCount: 0)

@@ -44,7 +44,7 @@ struct CalorieMiniDonutView: View {
     var outline: Outline = .standard
     var uniformFill: Color? = nil
     var innerRadiusRatio: CGFloat = 0
-    var plateColor: Color = CalorynTheme.cardBackground
+    var plateColor: Color = CalorynTheme.backgroundSecondary
     var fillsPlate: Bool = false
 
     private var slices: [CalorieDonutChart.Slice] {
@@ -88,16 +88,16 @@ struct CalorieMiniDonutView: View {
         switch outline {
         case .standard:
             Circle()
-                .stroke(CalorynTheme.hairline, lineWidth: CalorynTheme.hairlineWidth)
+                .stroke(CalorynTheme.separator, lineWidth: CalorynTheme.hairlineWidth)
                 .frame(width: plateDiameter, height: plateDiameter)
         case .over:
             Circle()
                 .inset(by: 1)
-                .stroke(CalorynTheme.textPrimary, lineWidth: 2)
+                .stroke(CalorynTheme.dataPrimary, lineWidth: 2)
         case .today:
             Circle()
                 .stroke(
-                    CalorynTheme.textPrimary.opacity(0.35),
+                    CalorynTheme.dataPrimary.opacity(0.35),
                     style: StrokeStyle(lineWidth: CalorynTheme.hairlineWidth, dash: [2, 3])
                 )
                 .frame(width: plateDiameter, height: plateDiameter)
@@ -156,9 +156,9 @@ struct CalorieDonutChart: View {
         case (.meal, .plate(uniformFill: let fill?)), (.over, .plate(uniformFill: let fill?)):
             fill
         case (.over, _):
-            CalorynTheme.textPrimary
+            CalorynTheme.dataPrimary
         case (.remaining, .hero):
-            CalorynTheme.hairline
+            CalorynTheme.fillTrack
         case (.remaining, .plate):
             Color.clear
         }
@@ -206,16 +206,16 @@ struct CalorieDonutChart: View {
             CalorieMiniDonutView(
                 summary: CalorieDonutSummary(mealTotals: [.breakfast: 2_300], budget: 2_000, isOver: true),
                 outline: .over,
-                uniformFill: CalorynTheme.historyEaten
+                uniformFill: CalorynTheme.dataSecondary
             )
             CalorieMiniDonutView(
                 summary: CalorieDonutSummary(mealTotals: [.breakfast: 1_690], budget: 2_000, isOver: false),
-                uniformFill: CalorynTheme.historyEaten
+                uniformFill: CalorynTheme.dataSecondary
             )
             CalorieMiniDonutView(
                 summary: CalorieDonutSummary(mealTotals: [.breakfast: 963], budget: 2_000, isOver: false),
                 outline: .today,
-                uniformFill: CalorynTheme.historyEaten
+                uniformFill: CalorynTheme.dataSecondary
             )
             CalorieMiniDonutView(
                 summary: CalorieDonutSummary(
@@ -228,5 +228,5 @@ struct CalorieDonutChart: View {
         }
     }
     .padding()
-    .background(CalorynTheme.pageBackground)
+    .background(CalorynTheme.backgroundPrimary)
 }

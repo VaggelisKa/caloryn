@@ -84,7 +84,7 @@ enum CreationFormTypography {
 struct CreationFormDivider: View {
     var body: some View {
         Rectangle()
-            .fill(CalorynTheme.hairline)
+            .fill(CalorynTheme.separator)
             .frame(height: CalorynTheme.hairlineWidth)
             .accessibilityHidden(true)
     }
@@ -290,7 +290,7 @@ struct CreationFormCloseButton: View {
         Button(action: action) {
             Image(systemName: "xmark")
                 .font(CalorynTheme.toolbarIcon)
-                .foregroundStyle(CalorynTheme.textPrimary)
+                .foregroundStyle(CalorynTheme.accent)
         }
         .accessibilityLabel("Close")
     }
@@ -303,11 +303,11 @@ struct CreationFormSaveGlyph: View {
     var body: some View {
         if isSaving {
             ProgressView()
-                .tint(CalorynTheme.textPrimary)
+                .tint(CalorynTheme.accent)
         } else {
             Image(systemName: "checkmark")
                 .font(CalorynTheme.toolbarIcon.weight(.semibold))
-                .foregroundStyle(isEnabled ? CalorynTheme.textPrimary : CalorynTheme.textTertiary)
+                .foregroundStyle(isEnabled ? CalorynTheme.accent : CalorynTheme.textTertiary)
         }
     }
 }
@@ -318,7 +318,7 @@ struct CreationFormFavoriteGlyph: View {
     var body: some View {
         Image(systemName: isFavorite ? "star.fill" : "star")
             .font(CalorynTheme.toolbarIcon)
-            .foregroundStyle(CalorynTheme.textPrimary)
+            .foregroundStyle(CalorynTheme.accent)
     }
 }
 
@@ -346,7 +346,7 @@ struct CreationFormDeleteButton: View {
         Button(role: .destructive, action: action) {
             Label(title, systemImage: "trash")
                 .font(CalorynTheme.buttonLabel)
-                .foregroundStyle(CalorynTheme.textPrimary)
+                .foregroundStyle(CalorynTheme.accent)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
         }
@@ -356,10 +356,10 @@ struct CreationFormDeleteButton: View {
 private struct CreationFormOutlinedCapsuleStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .background(Capsule().fill(CalorynTheme.pageBackground))
+            .background(Capsule().fill(CalorynTheme.backgroundPrimary))
             .overlay {
                 Capsule()
-                    .strokeBorder(CalorynTheme.hairline, lineWidth: CalorynTheme.hairlineWidth)
+                    .strokeBorder(CalorynTheme.separator, lineWidth: CalorynTheme.hairlineWidth)
                     .allowsHitTesting(false)
             }
             .contentShape(Capsule())

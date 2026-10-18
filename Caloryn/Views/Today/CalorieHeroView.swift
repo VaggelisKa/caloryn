@@ -133,7 +133,7 @@ struct CalorieHeroView: View {
             }
         } else {
             Circle()
-                .strokeBorder(CalorynTheme.textPrimary, lineWidth: 2)
+                .strokeBorder(CalorynTheme.dataPrimary, lineWidth: 2)
                 .frame(width: legendKeySize, height: legendKeySize)
         }
     }
@@ -223,7 +223,7 @@ private struct CalorieRingButtonStyle: ButtonStyle {
         )
     }
     .padding(20)
-    .background(CalorynTheme.pageBackground)
+    .background(CalorynTheme.backgroundPrimary)
 }
 
 #Preview("Hero - dynamic increase") {
@@ -235,7 +235,7 @@ private struct CalorieRingButtonStyle: ButtonStyle {
         onDetailsRequested: {}
     )
     .padding(20)
-    .background(CalorynTheme.pageBackground)
+    .background(CalorynTheme.backgroundPrimary)
 }
 
 private func previewBudget(

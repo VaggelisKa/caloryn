@@ -4,7 +4,6 @@ import Testing
 @MainActor
 @Suite("Onboarding nutrient selection")
 struct OnboardingNutrientSelectionTests {
-
     @Test("Reading a thin stored value tops it up to the minimum but need not restore every macro")
     func readingOnlyTopsUpToTheMinimum() {
         let selection = OnboardingNutrientSelection(rawValue: TrackedNutrient.rawSelection(from: [.fiber]))

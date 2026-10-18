@@ -24,7 +24,7 @@ struct ContentView: View {
             }
         }
         .preferredColorScheme(colorScheme)
-        .tint(CalorynTheme.textPrimary)
+        .tint(CalorynTheme.accent)
         .toggleStyle(CalorynToggleStyle())
         .animation(.smooth(duration: 0.4), value: hasCompletedOnboarding)
         .background {

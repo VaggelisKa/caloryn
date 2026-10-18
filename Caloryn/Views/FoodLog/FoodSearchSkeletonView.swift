@@ -58,7 +58,7 @@ private struct FoodSearchSkeletonStack: View {
 
                 if separatorAfterLast || row.id != rows.last?.id {
                     Rectangle()
-                        .fill(CalorynTheme.hairline)
+                        .fill(CalorynTheme.separator)
                         .frame(height: CalorynTheme.hairlineWidth)
                 }
             }
@@ -120,7 +120,7 @@ struct FoodSearchSkeletonList: View {
         FoodSearchSkeletonRows()
             .listRowInsets(FoodSearchSkeletonRows.listRowInsets)
             .listRowSeparator(.hidden, edges: .bottom)
-            .listRowSeparatorTint(CalorynTheme.hairline)
+            .listRowSeparatorTint(CalorynTheme.separator)
             .calorynClearRowBackground()
     }
     .calorynPlainListStyle()

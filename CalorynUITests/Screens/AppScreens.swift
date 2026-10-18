@@ -245,3 +245,96 @@ struct SettingsScreen: Screen {
     var manualOverride: XCUIElement { element("goalEdit.manualOverride") }
     var saveGoal: XCUIElement { element("goalEdit.save") }
 }
+
+struct MultiAddScreen: Screen {
+    let app: XCUIApplication
+
+    var selectMultiple: XCUIElement { element("foodSearch.selectMultiple") }
+    var review: XCUIElement { element("multiAdd.review") }
+    var commit: XCUIElement { element("multiAdd.commit") }
+    var editorSave: XCUIElement { element("multiAdd.editor.save") }
+    var editorCalories: XCUIElement { element("multiAdd.editor.calories") }
+
+    func item(named name: String) -> XCUIElement {
+        app.descendants(matching: .any)
+            .matching(NSPredicate(
+                format: "identifier BEGINSWITH %@ AND label CONTAINS %@",
+                "multiAdd.item.",
+                name
+            ))
+            .firstMatch
+    }
+
+    func editorQuickGrams(_ grams: Int) -> XCUIElement {
+        app.descendants(matching: .any)
+            .matching(NSPredicate(
+                format: "identifier == %@ AND label == %@",
+                "multiAdd.editor.portion",
+                "\(grams) grams"
+            ))
+            .firstMatch
+    }
+}
+
+struct CreationFormScreen: Screen {
+    let app: XCUIApplication
+
+    var createRecipe: XCUIElement { element("myFoods.createRecipe") }
+    var createMeal: XCUIElement { element("myFoods.createMeal") }
+
+    var recipeName: XCUIElement { element("recipe.name") }
+    var addIngredient: XCUIElement { element("recipe.addIngredient") }
+    var saveRecipe: XCUIElement { element("recipe.save") }
+
+    var mealName: XCUIElement { element("meal.name") }
+    var addMealItem: XCUIElement { element("meal.addItem") }
+    var saveMeal: XCUIElement { element("meal.save") }
+
+    var amountGrams: XCUIElement { element("ingredientAmount.grams") }
+    var amountCalories: XCUIElement { element("ingredientAmount.calories") }
+    var saveAmount: XCUIElement { element("ingredientAmount.save") }
+
+    func libraryMeal(named name: String) -> XCUIElement {
+        element("myFoods.meal.\(name)")
+    }
+
+    var firstMealResult: XCUIElement { element(withIdentifierPrefix: "meal.select.") }
+}
+
+struct MissingFoodEntryScreen: Screen {
+    let app: XCUIApplication
+
+    var portion: XCUIElement { element("missingEntry.portion") }
+    var save: XCUIElement { element("missingEntry.save") }
+}
+
+struct ProfileEditScreen: Screen {
+    let app: XCUIApplication
+
+    var age: XCUIElement { element("profileEdit.age") }
+    var save: XCUIElement { element("profileEdit.save") }
+
+    func sex(_ rawValue: String) -> XCUIElement {
+        element("profileEdit.sex.\(rawValue)")
+    }
+
+    var settingsAge: XCUIElement { element("settings.profile.age") }
+    var settingsSex: XCUIElement { element("settings.profile.sex") }
+}
+
+struct DailyReminderScreen: Screen {
+    let app: XCUIApplication
+
+    var toggle: XCUIElement { element("settings.dailyReminder.toggle") }
+    var time: XCUIElement { element("settings.dailyReminder.time") }
+    var timePicker: XCUIElement { element("settings.dailyReminder.timePicker") }
+    var openSettings: XCUIElement { element("settings.dailyReminder.openSettings") }
+
+    var isOn: Bool { (toggle.value as? String) == "1" }
+
+    func flip() {
+        awaitTappable(toggle)
+            .coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.5))
+            .tap()
+    }
+}

@@ -5,7 +5,6 @@ import Testing
 @MainActor
 @Suite(.serialized)
 struct FoodSearchServiceNetworkCoverageTests {
-
     nonisolated enum Reply: Sendable, CustomTestStringConvertible {
         case http(Int, String)
         case nonHTTP(String)

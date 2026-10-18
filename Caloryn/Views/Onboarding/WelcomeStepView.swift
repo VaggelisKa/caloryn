@@ -21,7 +21,7 @@ struct WelcomePlateMark: View {
                 .frame(width: size, height: size)
 
             Circle()
-                .fill(CalorynTheme.pageBackground)
+                .fill(CalorynTheme.backgroundPrimary)
                 .frame(width: size * 0.34, height: size * 0.34)
                 .scaleEffect(isBitten ? 1 : 0.001)
                 .position(x: size * 0.21, y: size * 0.19)

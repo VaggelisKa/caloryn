@@ -5,7 +5,6 @@ import Testing
 
 @Suite("History chart axis and calorie trend layout")
 struct HistoryCalorieTrendChartLayoutTests {
-
     @Test("given no slots, when scaling the axis, then a unit domain keeps the chart drawable")
     func emptyAxisFallsBackToAUnitDomain() {
         #expect(HistoryChartIndexAxis(slotCount: 0).domain == 0 ... 1)

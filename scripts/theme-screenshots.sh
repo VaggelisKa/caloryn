@@ -86,6 +86,6 @@ for f in sorted(os.listdir(out)):
 print("\nSYSTEM above ~2% means a List or Form is painting a system grey over the theme:")
 print("#F2F2F7 in light, #1C1C1E / #000000 / #2C2C2E in dark. A missing row background is")
 print("only visible in the dark column, because the light system row is the same white as")
-print("CardBackground. Page and card at 0.0% means the appearance never switched.")
+print("BackgroundSecondary. Page and card at 0.0% means the appearance never switched.")
 print("See docs/theme.md, 'Row backgrounds, and the limit of the abstraction'.")
 PY

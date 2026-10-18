@@ -5,7 +5,6 @@ import Testing
 @MainActor
 @Suite("Recipe nutrition coverage")
 struct RecipeNutritionCoverageTests {
-
     private static let optionalPer100g: [Double] = (1...25).map(Double.init)
 
     @Test("Every optional nutrient of a saved ingredient is its per-100g value scaled to the ingredient's grams")
@@ -340,7 +339,6 @@ struct RecipeNutritionCoverageTests {
             servingGrams: 150
         ))
     }
-
 
     @Test("A stored food with no serving is priced per 100 g")
     func libraryFoodRowFromStoredFoodWithoutServing() {

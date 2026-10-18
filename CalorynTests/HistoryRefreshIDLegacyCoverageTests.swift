@@ -5,7 +5,6 @@ import Testing
 @MainActor
 @Suite("History refresh ID legacy coverage")
 struct HistoryRefreshIDLegacyCoverageTests {
-
     @Test("given a legacy entry, when its saved food changes produce kind, then its signature changes so the produce count reruns")
     func aLegacyProduceKindChangeChangesTheSignature() {
         let food = makeTestFoodItem(name: "Apple", produceKind: .fruit)

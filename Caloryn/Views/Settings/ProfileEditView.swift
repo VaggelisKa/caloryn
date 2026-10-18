@@ -41,7 +41,7 @@ struct ProfileEditView: View {
             } header: {
                 SettingsSectionTitle("Personal info")
             }
-            .listRowBackground(CalorynTheme.cardBackground)
+            .listRowBackground(CalorynTheme.backgroundSecondary)
 
             Section {
                 Picker("Activity", selection: $draft.activityLevel) {
@@ -58,7 +58,7 @@ struct ProfileEditView: View {
                     SettingsSectionFooter(ProfileEditActivityLevelPolicy.lockedExplanation)
                 }
             }
-            .listRowBackground(CalorynTheme.cardBackground)
+            .listRowBackground(CalorynTheme.backgroundSecondary)
         }
         .calorynFormStyle()
         .calorynPageCanvas()
@@ -72,8 +72,9 @@ struct ProfileEditView: View {
                 } label: {
                     Text("Save")
                         .font(CalorynTheme.toolbarAction)
-                        .foregroundStyle(CalorynTheme.textPrimary)
+                        .foregroundStyle(CalorynTheme.accent)
                 }
+                .accessibilityIdentifier("profileEdit.save")
             }
         }
     }
@@ -102,6 +103,7 @@ private struct ProfileAgeRow: View {
                 onDecrement: { age = max(Self.range.lowerBound, age - 1) },
                 onIncrement: { age = min(Self.range.upperBound, age + 1) }
             )
+            .accessibilityIdentifier("profileEdit.age")
         }
     }
 }
@@ -145,6 +147,7 @@ private struct ProfileSexRow: View {
                 }
                 .buttonStyle(.borderless)
                 .accessibilityAddTraits(selection == sex ? .isSelected : [])
+                .accessibilityIdentifier("profileEdit.sex.\(sex.rawValue)")
             }
         }
         .accessibilityElement(children: .contain)
@@ -165,7 +168,7 @@ private struct ProfileSliderRow: View {
                 .accessibilityHidden(true)
 
             OnboardingSlider(value: $value, range: range, step: step, label: title)
-                .tint(CalorynTheme.textPrimary)
+                .tint(CalorynTheme.accent)
                 .accessibilityLabel(title)
                 .accessibilityValue(valueText)
         }

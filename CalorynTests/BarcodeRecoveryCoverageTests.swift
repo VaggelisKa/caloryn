@@ -4,7 +4,6 @@ import Testing
 
 @MainActor
 struct BarcodeRecoveryCoverageTests {
-
     private static let barcode = "5711953150388"
 
     private static func product(_ json: String) throws -> OpenFoodFactsProduct {

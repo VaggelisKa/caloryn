@@ -4,7 +4,6 @@ import Testing
 @MainActor
 @Suite("Onboarding flow")
 struct OnboardingFlowTests {
-
     @Test("The steps run welcome, personal info, activity, calorie estimate, goal, macros, nutrients")
     func stepsRunInOrder() {
         var visited: [OnboardingStep] = [.welcome]

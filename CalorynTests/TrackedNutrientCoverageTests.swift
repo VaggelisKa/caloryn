@@ -8,7 +8,6 @@ private let danishLocale = Locale(identifier: "da_DK")
 
 @Suite("Nutrient goal kind copy")
 struct NutrientGoalKindCopyTests {
-
     @Test(
         "Each goal kind has a name, a short label and a spoken phrase",
         arguments: [
@@ -33,7 +32,6 @@ struct NutrientGoalKindCopyTests {
 
 @Suite("Tracked nutrient unit conversions")
 struct TrackedNutrientUnitCoverageTests {
-
     @Test("The input field is labelled with the unit the user types in")
     func inputUnitLabels() {
         #expect(TrackedNutrientUnit.grams.inputUnitLabel == "g")
@@ -118,7 +116,6 @@ struct TrackedNutrientUnitCoverageTests {
 
 @Suite("Tracked nutrient table")
 struct TrackedNutrientTableTests {
-
     @Test(
         "Each nutrient's names, symbol, unit and default goal",
         arguments: [
@@ -219,7 +216,6 @@ struct TrackedNutrientTableTests {
 
 @Suite("Tracked nutrient metric")
 struct TrackedNutrientMetricCoverageTests {
-
     private func metric(
         _ nutrient: TrackedNutrient = .protein,
         value: Double,

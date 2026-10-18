@@ -191,7 +191,7 @@ extension FoodSearchView {
         Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
             .font(CalorynTheme.inlineIcon)
             .foregroundStyle(
-                isSelected ? CalorynTheme.textPrimary : CalorynTheme.textSecondary
+                isSelected ? CalorynTheme.accent : CalorynTheme.textSecondary
             )
             .contentTransition(.symbolEffect(.replace))
             .scaleEffect(isSelected ? 1 : 0.94)

@@ -4,7 +4,6 @@ import Testing
 
 @MainActor
 struct FoodItemNutritionCoverageTests {
-
     private static func fullyDetailedFood() -> FoodItem {
         FoodItem(
             name: "Fully Detailed",

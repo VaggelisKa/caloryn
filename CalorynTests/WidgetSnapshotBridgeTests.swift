@@ -4,7 +4,6 @@ import Testing
 
 @MainActor
 struct WidgetSnapshotBridgeTests {
-
     private func makeTempDirectory() -> URL {
         FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
     }

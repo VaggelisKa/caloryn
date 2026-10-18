@@ -1,47 +1,6 @@
 import SwiftUI
 
-enum CalorynTheme {
-    static let surface = Color(.surface)
-    static let searchWell = Color(.searchWell)
-    static let pageBackground = Color(.pageBackground)
-    static let cardBackground = Color(.cardBackground)
-
-    static let skeletonBase = Color(.skeletonBase)
-    static let skeletonShine = Color(.skeletonShine)
-
-    static let textPrimary = Color(.textPrimary)
-    static let textSecondary = Color(.textSecondary)
-    static let textTertiary = Color(.textTertiary)
-
-    static let hairline = Color(.hairline)
-
-    static let historyEaten = Color(.historyEaten)
-    static let historyEatenLight = Color(.historyEatenLight)
-
-    static let typeBadgeFill = Color(.typeBadgeFill)
-    static let typeBadgeText = Color(.typeBadgeText)
-
-    static let controlTint = Color(.controlTint)
-
-    static let swipeActionTint = Color(.swipeActionTint)
-
-    static let stone = Color(.stone)
-    static let terracotta = Color(.terracotta)
-    static let cardSeparator = stone.opacity(0.3)
-
-    static let mealBreakfast = Color(.mealBreakfast)
-    static let mealBreakfastInk = Color(.mealBreakfastInk)
-    static let mealLunch = Color(.mealLunch)
-    static let mealLunchInk = Color(.mealLunchInk)
-    static let mealDinner = Color(.mealDinner)
-    static let mealDinnerInk = Color(.mealDinnerInk)
-    static let mealSnack = Color(.mealSnack)
-    static let mealSnackInk = Color(.mealSnackInk)
-    static let mealBreakfastOnFill = Color(.mealBreakfastOnFill)
-    static let mealLunchOnFill = Color(.mealLunchOnFill)
-    static let mealDinnerOnFill = Color(.mealDinnerOnFill)
-    static let mealSnackOnFill = Color(.mealSnackOnFill)
-
+extension CalorynTheme {
     static func mealFill(_ meal: MealType) -> Color {
         switch meal {
         case .breakfast: mealBreakfast
@@ -72,12 +31,6 @@ enum CalorynTheme {
     static func mealWash(_ meal: MealType) -> Color {
         mealFill(meal).opacity(0.16)
     }
-
-    static let nutriscoreA = Color(.nutriscoreA)
-    static let nutriscoreB = Color(.nutriscoreB)
-    static let nutriscoreC = Color(.nutriscoreC)
-    static let nutriscoreD = Color(.nutriscoreD)
-    static let nutriscoreE = Color(.nutriscoreE)
 
     static func nutriscoreColor(for grade: String) -> Color? {
         switch grade.lowercased() {

@@ -4,7 +4,6 @@ import Foundation
 
 @MainActor
 struct CSVExporterEdgeCaseTests {
-
     private static let header = "Date,Meal,Food,Portion (g),Calories,Protein (g),Carbs (g),Fat (g),Fiber (g)"
 
     private func physicalLines(of csv: String) -> [String] {

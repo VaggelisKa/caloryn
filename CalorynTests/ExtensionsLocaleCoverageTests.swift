@@ -5,7 +5,6 @@ import Testing
 @MainActor
 @Suite("Day title locale and zone")
 struct DayTitleLocaleTests {
-
     private static func calendar(_ locale: String, zone: String = "UTC") -> Calendar {
         var calendar = Calendar(identifier: .gregorian)
         calendar.locale = Locale(identifier: locale)
@@ -68,7 +67,6 @@ struct DayTitleLocaleTests {
 
 @Suite("Ambient future log limit")
 struct AmbientFutureLogLimitTests {
-
     @Test("Today and three days out are inside the limit", arguments: [0, 3])
     func insideTheLimit(days: Int) {
         let date = Calendar.current.date(byAdding: .day, value: days, to: Date())!
@@ -90,7 +88,6 @@ struct AmbientFutureLogLimitTests {
 
 @Suite("Decimal input and number formatting edges")
 struct DecimalInputLocaleEdgeTests {
-
     @Test(
         "Keypad shapes with a leading or trailing separator, or a sign, still parse",
         arguments: [
@@ -167,7 +164,6 @@ struct DecimalInputLocaleEdgeTests {
 
 @Suite("Selected day rollover in an injected zone")
 struct SelectedDayRolloverZoneTests {
-
     private static let auckland: Calendar = {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "Pacific/Auckland")!

@@ -123,7 +123,7 @@ struct HistoryCalorieTrendSection: View {
 
             RuleMark(y: .value("Target", projection.dailyCalorieTarget))
                 .lineStyle(StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [4, 3]))
-                .foregroundStyle(CalorynTheme.textSecondary)
+                .foregroundStyle(CalorynTheme.dataReference)
         }
         .chartXAxis {
             AxisMarks(values: projection.points.map(\.index)) { value in
@@ -162,7 +162,7 @@ struct HistoryCalorieTrendSection: View {
         .chartYAxis {
             AxisMarks(position: .leading) { _ in
                 AxisGridLine()
-                    .foregroundStyle(CalorynTheme.hairline)
+                    .foregroundStyle(CalorynTheme.separator)
                 AxisValueLabel()
                     .font(CalorynTheme.chartAxisLabel)
                     .foregroundStyle(CalorynTheme.textSecondary)

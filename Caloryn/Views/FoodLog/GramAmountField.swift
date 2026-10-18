@@ -30,11 +30,11 @@ struct GramAmountField: View {
             }
             .padding(.horizontal, 10)
             .frame(minHeight: pillHeight)
-            .background(CalorynTheme.surface, in: Capsule())
+            .background(CalorynTheme.backgroundTertiary, in: Capsule())
             .overlay {
                 Capsule()
                     .strokeBorder(
-                        isFocused ? CalorynTheme.textPrimary : CalorynTheme.hairline,
+                        isFocused ? CalorynTheme.accent : CalorynTheme.separator,
                         lineWidth: isFocused ? 1.2 : CalorynTheme.hairlineWidth
                     )
                     .allowsHitTesting(false)
@@ -103,14 +103,14 @@ struct GramAmountField: View {
         } label: {
             Image(systemName: step == .more ? "plus" : "minus")
                 .font(CalorynTheme.inlineIcon)
-                .foregroundStyle(CalorynTheme.textPrimary)
+                .foregroundStyle(CalorynTheme.accent)
                 .frame(width: buttonDiameter, height: buttonDiameter)
-                .background(CalorynTheme.cardBackground, in: Circle())
+                .background(CalorynTheme.backgroundSecondary, in: Circle())
                 .overlay {
                     Circle()
-                        .strokeBorder(CalorynTheme.hairline, lineWidth: CalorynTheme.hairlineWidth)
+                        .strokeBorder(CalorynTheme.separator, lineWidth: CalorynTheme.hairlineWidth)
                 }
-                .shadow(color: CalorynTheme.hairline, radius: 4, y: 2)
+                .shadow(color: CalorynTheme.shadow, radius: 4, y: 2)
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)

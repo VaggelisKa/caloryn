@@ -46,17 +46,20 @@ exit code and looks green.
    these tests may make.
 6. **Theme comes from the asset catalog, never literals.** Colours: `CalorynTheme.*`,
    backed by Color Sets in `CalorynShared/SharedColors.xcassets` that declare light and
-   dark together — never `Color.white`, `Color(.system*)` or `Color(red:)`. Lists:
+   dark together — never `Color.white`, `Color(.system*)` or `Color(red:)`. Tokens are
+   **roles**, never a screen's name (`docs/theme.md`): pick by what is painted, not by
+   which token has the right value — a control's fill or tint is `accent` even though it
+   is ink today, a bar is `data*`, only text is `text*`. Lists:
    `calorynGroupedListStyle()` / `calorynPlainListStyle()`, never a bare `.listStyle(...)`
    — a `List` paints a system background *over* yours unless `scrollContentBackground` is
    hidden, which is why this drift is invisible in review. **Grouped-list rows need
-   `.listRowBackground(CalorynTheme.cardBackground)` on each `Section` as well** — the
+   `.listRowBackground(CalorynTheme.backgroundSecondary)` on each `Section` as well** — the
    list modifier cannot do it, rows paint their own `secondarySystemGroupedBackground`,
    and nothing lints this. `Form` needs `calorynFormStyle()` *and* the same row
    backgrounds. Screens: `calorynPageCanvas()` (page) or `calorynSheetCanvas()` (sheet)
    inside the `NavigationStack`, above `.navigationTitle` — **every** screen, including
    ones nested in a file whose outer view already has one. Pushed details also need
-   `calorynDrillDownNavigation()`: a system back button ignores `AccentColor`, `.tint()`
+   `calorynDrillDownNavigation()`: a system back button ignores the global accent, `.tint()`
    *and* a UIKit `tintColor` bridge, so it is replaced, not tinted. Same for toolbar
    buttons — `Button("Save")` has no label to colour, so use the explicit `label:` form
    with `.foregroundStyle`, and keep the disabled state in a ternary.

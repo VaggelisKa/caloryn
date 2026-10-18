@@ -4,7 +4,6 @@ import Testing
 
 @MainActor
 struct DailyReminderBridgeTests {
-
     private func remainingToday(from entries: [FoodLogEntry], target: Int?, now: Date) -> Int? {
         let consumedToday = entries
             .filter { $0.date.isToday }

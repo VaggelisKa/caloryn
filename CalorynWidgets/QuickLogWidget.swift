@@ -33,7 +33,7 @@ struct QuickLogWidget: Widget {
         ) { _ in
             QuickLogWidgetView()
                 .containerBackground(for: .widget) {
-                    WidgetTheme.page
+                    CalorynTheme.backgroundPrimary
                 }
         }
         .configurationDisplayName("Log a Meal")

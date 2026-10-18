@@ -48,7 +48,7 @@ struct IngredientAmountPickerView: View {
                     } label: {
                         Image(systemName: "xmark")
                             .font(CalorynTheme.toolbarIcon)
-                            .foregroundStyle(CalorynTheme.textPrimary)
+                            .foregroundStyle(CalorynTheme.accent)
                     }
                     .accessibilityLabel("Close")
                 }
@@ -59,9 +59,10 @@ struct IngredientAmountPickerView: View {
                     } label: {
                         Text("Save")
                             .font(CalorynTheme.toolbarAction)
-                            .foregroundStyle(amount.canSave ? CalorynTheme.textPrimary : CalorynTheme.textSecondary)
+                            .foregroundStyle(amount.canSave ? CalorynTheme.accent : CalorynTheme.textSecondary)
                     }
                     .disabled(!amount.canSave)
+                    .accessibilityIdentifier("ingredientAmount.save")
                 }
             }
             .onAppear {
@@ -112,6 +113,7 @@ struct IngredientAmountPickerView: View {
                         .focused($isAmountFocused)
                         .calorynInputField(isFocused: isAmountFocused)
                         .frame(width: min(amountFieldWidth, 220))
+                        .accessibilityIdentifier("ingredientAmount.grams")
 
                     Text("g")
                         .font(CalorynTheme.bodyText)

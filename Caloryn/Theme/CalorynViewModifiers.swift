@@ -7,13 +7,13 @@ private struct CalorynPageCanvasModifier: ViewModifier {
             pageCanvas(content)
         } else {
             pageCanvas(content)
-                .toolbarBackground(CalorynTheme.pageBackground, for: .navigationBar)
+                .toolbarBackground(CalorynTheme.backgroundPrimary, for: .navigationBar)
         }
     }
 
     private func pageCanvas(_ content: Content) -> some View {
         content.background {
-            CalorynTheme.pageBackground
+            CalorynTheme.backgroundPrimary
                 .ignoresSafeArea()
         }
     }
@@ -26,7 +26,7 @@ private struct CalorynGroupedListStyleModifier: ViewModifier {
             .listSectionSpacing(.custom(CalorynTheme.cardSpacing))
             .scrollContentBackground(.hidden)
             .background {
-                CalorynTheme.pageBackground
+                CalorynTheme.backgroundPrimary
                     .ignoresSafeArea()
             }
     }
@@ -39,13 +39,13 @@ private struct CalorynSheetCanvasModifier: ViewModifier {
             sheetCanvas(content)
         } else {
             sheetCanvas(content)
-                .toolbarBackground(CalorynTheme.cardBackground, for: .navigationBar)
+                .toolbarBackground(CalorynTheme.backgroundSecondary, for: .navigationBar)
         }
     }
 
     private func sheetCanvas(_ content: Content) -> some View {
         content.background {
-            CalorynTheme.cardBackground
+            CalorynTheme.backgroundSecondary
                 .ignoresSafeArea()
         }
     }
@@ -63,7 +63,7 @@ private struct CalorynDrillDownNavigationModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .tint(CalorynTheme.textPrimary)
+            .tint(CalorynTheme.accent)
             .navigationBarBackButtonHidden()
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -72,7 +72,7 @@ private struct CalorynDrillDownNavigationModifier: ViewModifier {
                     } label: {
                         Image(systemName: "chevron.left")
                             .font(CalorynTheme.toolbarIcon)
-                            .foregroundStyle(CalorynTheme.textPrimary)
+                            .foregroundStyle(CalorynTheme.accent)
                     }
                     .accessibilityLabel("Back")
                 }

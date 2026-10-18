@@ -4,7 +4,6 @@ import Testing
 
 @Suite("Ingredient amount draft")
 struct IngredientAmountDraftTests {
-
     private var perHundredGrams: NutritionValues {
         NutritionValues(calories: 50, proteinG: 5, carbsG: 10, fatG: 2, fiberG: 1)
     }

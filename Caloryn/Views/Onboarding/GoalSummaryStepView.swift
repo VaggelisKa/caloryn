@@ -110,7 +110,7 @@ struct GoalSummaryStepView: View {
         ZStack {
             Circle()
                 .stroke(
-                    CalorynTheme.textPrimary.opacity(0.3),
+                    CalorynTheme.dataPrimary.opacity(0.3),
                     style: StrokeStyle(lineWidth: 1.5, dash: [4, 4])
                 )
                 .frame(
@@ -207,8 +207,8 @@ struct GoalSummaryStepView: View {
             } label: {
                 Text(draft.useManualOverride ? "Use the worked-out number instead" : "Set a number yourself instead")
                     .font(OnboardingTypography.link)
-                    .foregroundStyle(CalorynTheme.textPrimary)
-                    .underline(true, color: CalorynTheme.hairline)
+                    .foregroundStyle(CalorynTheme.accent)
+                    .underline(true, color: CalorynTheme.separator)
                     .padding(.vertical, 10)
                     .contentShape(Rectangle())
             }

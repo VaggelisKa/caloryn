@@ -155,7 +155,7 @@ private struct SingleMealTransitionRow: View {
                 } label: {
                     Label("Edit", systemImage: "pencil")
                 }
-                .tint(CalorynTheme.swipeActionTint)
+                .tint(CalorynTheme.fillAction)
             }
         }
         .swipeActions(edge: .trailing) {
@@ -165,7 +165,7 @@ private struct SingleMealTransitionRow: View {
                 } label: {
                     Label("Delete", systemImage: "trash")
                 }
-                .tint(CalorynTheme.swipeActionTint)
+                .tint(CalorynTheme.fillAction)
             }
         }
     }
@@ -201,7 +201,7 @@ private struct MealEntryActionRow: View {
                 } label: {
                     Label("Edit", systemImage: "pencil")
                 }
-                .tint(CalorynTheme.swipeActionTint)
+                .tint(CalorynTheme.fillAction)
             }
             .swipeActions(edge: .trailing) {
                 Button(role: .destructive) {
@@ -209,7 +209,7 @@ private struct MealEntryActionRow: View {
                 } label: {
                     Label("Delete", systemImage: "trash")
                 }
-                .tint(CalorynTheme.swipeActionTint)
+                .tint(CalorynTheme.fillAction)
             }
     }
 }

@@ -5,7 +5,6 @@ import Testing
 @MainActor
 @Suite("History recurring calorie pattern coverage")
 struct HistoryRecurringCaloriePatternCoverageTests {
-
     @Test("given a weekday pattern, when headlining it, then it names the weekday and the meal in the plural")
     func weekdayHeadline() {
         let pattern = makePattern(kind: .weekdayMeal, weekday: 6, mealType: .dinner)
@@ -77,7 +76,6 @@ struct HistoryRecurringCaloriePatternCoverageTests {
     func basisText() {
         #expect(makePattern(eligibleDayCount: 11).basisText == "Based on 11 logged days in the last 30 days")
     }
-
 
     @Test(
         "given a calendar weekday number, when naming it, then 1 is Sunday through 7 Saturday and anything else is blank",

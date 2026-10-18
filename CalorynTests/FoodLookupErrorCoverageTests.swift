@@ -4,7 +4,6 @@ import Testing
 
 @MainActor
 struct FoodLookupErrorCoverageTests {
-
     struct Expectation: Sendable, CustomTestStringConvertible {
         let error: FoodLookupError
         let title: String

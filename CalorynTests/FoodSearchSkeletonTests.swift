@@ -3,7 +3,6 @@ import Testing
 @testable import Caloryn
 
 struct FoodSearchSkeletonTests {
-
     @Test("Asking twice yields the same rows")
     func widthsAreStable() {
         #expect(FoodSearchSkeleton.rows(count: 5) == FoodSearchSkeleton.rows(count: 5))

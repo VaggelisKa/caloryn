@@ -3,7 +3,6 @@ import Testing
 
 @Suite("Slider step")
 struct SliderStepTests {
-
     @Test("A value moves to the nearest step counted from the lower bound")
     func snapsToTheNearestStep() {
         #expect(SliderStep.snap(522, in: -500...1_000, step: 50) == 500)

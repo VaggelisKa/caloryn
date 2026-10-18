@@ -5,7 +5,6 @@ import Testing
 @MainActor
 @Suite("Theme preference decisions")
 struct ThemePreferenceDecisionTests {
-
     @Test(
         "Each preference resolves to the colour scheme the app forces, System forcing none",
         arguments: [
@@ -60,7 +59,6 @@ struct ThemePreferenceDecisionTests {
 @MainActor
 @Suite("Meal theme role mapping")
 struct MealThemeMappingTests {
-
     @Test("Each meal's fill, ink and wash read the same meal's theme roles", arguments: MealType.allCases)
     func rolesMapToTheSameMeal(meal: MealType) {
         #expect(meal.fill == CalorynTheme.mealFill(meal))
@@ -72,7 +70,6 @@ struct MealThemeMappingTests {
 @MainActor
 @Suite("Theme font rules")
 struct CalorynThemeFontRuleTests {
-
     @Test(
         "The trend chart switches to the dense axis label only past a week of points",
         arguments: [(1, false), (6, false), (7, false), (8, true), (14, true), (90, true)]

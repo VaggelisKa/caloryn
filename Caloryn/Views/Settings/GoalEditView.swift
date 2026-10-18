@@ -61,7 +61,7 @@ struct GoalEditView: View {
             } header: {
                 SettingsSectionTitle("Daily calorie target")
             }
-            .listRowBackground(CalorynTheme.cardBackground)
+            .listRowBackground(CalorynTheme.backgroundSecondary)
 
             if !draft.manualOverride {
                 Section {
@@ -71,7 +71,7 @@ struct GoalEditView: View {
                             .foregroundStyle(CalorynTheme.textPrimary)
 
                         Slider(value: $draft.calorieDeficit, in: -500...1000, step: 50)
-                            .tint(CalorynTheme.textPrimary)
+                            .tint(CalorynTheme.accent)
                             .accessibilityLabel("Calorie adjustment")
                             .accessibilityValue(draft.deficitLabel)
 
@@ -90,7 +90,7 @@ struct GoalEditView: View {
                 } footer: {
                     SettingsSectionFooter("Positive values create a deficit for weight loss, negative values create a surplus for weight gain.")
                 }
-                .listRowBackground(CalorynTheme.cardBackground)
+                .listRowBackground(CalorynTheme.backgroundSecondary)
             }
 
             Section {
@@ -119,7 +119,7 @@ struct GoalEditView: View {
             } header: {
                 SettingsSectionTitle("Macro goals")
             }
-            .listRowBackground(CalorynTheme.cardBackground)
+            .listRowBackground(CalorynTheme.backgroundSecondary)
 
             Section {
                 ForEach(TrackedNutrient.editableGoalNutrients) { nutrient in
@@ -140,7 +140,7 @@ struct GoalEditView: View {
             } footer: {
                 SettingsSectionFooter("These goals appear anywhere the nutrient is shown. Sodium and cholesterol are entered in milligrams.")
             }
-            .listRowBackground(CalorynTheme.cardBackground)
+            .listRowBackground(CalorynTheme.backgroundSecondary)
         }
         .calorynFormStyle()
         .calorynPageCanvas()
@@ -158,7 +158,7 @@ struct GoalEditView: View {
                 } label: {
                     Text("Save")
                         .font(CalorynTheme.toolbarAction)
-                        .foregroundStyle(draft.canSave ? CalorynTheme.textPrimary : CalorynTheme.textSecondary)
+                        .foregroundStyle(draft.canSave ? CalorynTheme.accent : CalorynTheme.textSecondary)
                 }
                 .accessibilityIdentifier("goalEdit.save")
                 .disabled(!draft.canSave)
@@ -215,7 +215,7 @@ private struct MacroGoalSliderRow: View {
             .accessibilityHidden(true)
 
             Slider(value: $ratio, in: range, step: 0.05)
-                .tint(CalorynTheme.textPrimary)
+                .tint(CalorynTheme.accent)
                 .accessibilityLabel(name)
                 .accessibilityValue("\(percentText), \(gramsText)")
         }

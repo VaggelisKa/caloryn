@@ -202,7 +202,7 @@ final class ComponentSnapshotTests: XCTestCase {
             of: card
                 .padding(CalorynTheme.pagePadding)
                 .frame(width: 390, height: 160)
-                .background(CalorynTheme.pageBackground),
+                .background(CalorynTheme.backgroundPrimary),
             layout: .fixed(width: 390, height: 160)
         )
     }
@@ -221,7 +221,7 @@ final class ComponentSnapshotTests: XCTestCase {
         }
         .padding(CalorynTheme.pagePadding)
         .frame(width: 390, height: 230)
-        .background(CalorynTheme.pageBackground)
+        .background(CalorynTheme.backgroundPrimary)
 
         assertAppearances(of: headers, layout: .fixed(width: 390, height: 230))
     }
@@ -241,7 +241,7 @@ final class ComponentSnapshotTests: XCTestCase {
         }
         .padding(CalorynTheme.pagePadding)
         .frame(width: 440, height: 130)
-        .background(CalorynTheme.cardBackground)
+        .background(CalorynTheme.backgroundSecondary)
 
         assertAppearances(of: chips, layout: .fixed(width: 440, height: 130))
     }
@@ -266,7 +266,7 @@ final class ComponentSnapshotTests: XCTestCase {
             )
         }
         .frame(width: 390, height: 200)
-        .background(CalorynTheme.pageBackground)
+        .background(CalorynTheme.backgroundPrimary)
 
         assertAppearances(of: donuts, layout: .fixed(width: 390, height: 200))
     }
@@ -276,16 +276,16 @@ final class ComponentSnapshotTests: XCTestCase {
             CalorieMiniDonutView(
                 summary: CalorieDonutSummary(mealTotals: [.dinner: 2_300], budget: 2_000, isOver: true),
                 outline: .over,
-                uniformFill: CalorynTheme.historyEaten
+                uniformFill: CalorynTheme.dataSecondary
             )
             CalorieMiniDonutView(
                 summary: CalorieDonutSummary(mealTotals: [.dinner: 1_690], budget: 2_000, isOver: false),
-                uniformFill: CalorynTheme.historyEaten
+                uniformFill: CalorynTheme.dataSecondary
             )
             CalorieMiniDonutView(
                 summary: CalorieDonutSummary(mealTotals: [.dinner: 963], budget: 2_000, isOver: false),
                 outline: .today,
-                uniformFill: CalorynTheme.historyEaten
+                uniformFill: CalorynTheme.dataSecondary
             )
             CalorieMiniDonutView(
                 summary: CalorieDonutSummary(
@@ -296,7 +296,7 @@ final class ComponentSnapshotTests: XCTestCase {
             )
         }
         .frame(width: 390, height: 72)
-        .background(CalorynTheme.pageBackground)
+        .background(CalorynTheme.backgroundPrimary)
 
         assertAppearances(of: plates, layout: .fixed(width: 390, height: 72))
     }
@@ -309,7 +309,7 @@ final class ComponentSnapshotTests: XCTestCase {
         }
         .padding(16)
         .frame(width: 390, height: 72)
-        .background(CalorynTheme.pageBackground)
+        .background(CalorynTheme.backgroundPrimary)
 
         assertAppearances(of: badges, layout: .fixed(width: 390, height: 72))
     }
@@ -325,7 +325,7 @@ final class ComponentSnapshotTests: XCTestCase {
             )
             .padding(.horizontal, 16)
             .frame(width: 390, height: 300)
-            .background(CalorynTheme.pageBackground),
+            .background(CalorynTheme.backgroundPrimary),
             as: .image(
                 precision: precision,
                 perceptualPrecision: perceptualPrecision,
@@ -375,14 +375,14 @@ final class ComponentSnapshotTests: XCTestCase {
         view
             .padding(.horizontal, 16)
             .frame(width: 390, height: 76)
-            .background(CalorynTheme.pageBackground)
+            .background(CalorynTheme.backgroundPrimary)
     }
 
     private func summary(_ view: some View) -> some View {
         view
             .padding(16)
             .frame(width: 390, height: 140)
-            .background(CalorynTheme.pageBackground)
+            .background(CalorynTheme.backgroundPrimary)
     }
 }
 

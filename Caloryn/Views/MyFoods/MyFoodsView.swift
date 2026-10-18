@@ -129,7 +129,7 @@ struct MyFoodsView: View {
         .foregroundStyle(CalorynTheme.textPrimary, CalorynTheme.textSecondary)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background {
-            CalorynTheme.pageBackground
+            CalorynTheme.backgroundPrimary
                 .ignoresSafeArea()
         }
         .accessibilityIdentifier("myFoods.emptyLibrary")
@@ -145,13 +145,14 @@ struct MyFoodsView: View {
                         .libraryRowSeparatorInset()
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("myFoods.meal.\(meal.name)")
                 .swipeActions(edge: .trailing) {
                     Button(role: .destructive) {
                         delete(meal)
                     } label: {
                         Label("Delete", systemImage: "trash")
                     }
-                    .tint(CalorynTheme.swipeActionTint)
+                    .tint(CalorynTheme.fillAction)
                 }
             }
         } header: {
@@ -178,7 +179,7 @@ struct MyFoodsView: View {
                         Image(systemName: showsAllFavorites ? "chevron.up" : "chevron.down")
                     }
                     .font(CalorynTheme.cardSubtitle.weight(.semibold))
-                    .foregroundStyle(CalorynTheme.textPrimary)
+                    .foregroundStyle(CalorynTheme.accent)
                     .contentShape(Rectangle())
                     .libraryRowSeparatorInset()
                 }
@@ -208,16 +209,18 @@ struct MyFoodsView: View {
             } label: {
                 Label("Create Recipe", systemImage: "list.bullet.rectangle")
             }
+            .accessibilityIdentifier("myFoods.createRecipe")
 
             Button {
                 showingMealForm = true
             } label: {
                 Label("Create Meal", systemImage: "fork.knife")
             }
+            .accessibilityIdentifier("myFoods.createMeal")
         } label: {
             Image(systemName: "plus")
                 .font(CalorynTheme.toolbarIcon)
-                .foregroundStyle(CalorynTheme.textPrimary)
+                .foregroundStyle(CalorynTheme.accent)
         }
         .accessibilityLabel("Create Food")
         .accessibilityIdentifier("myFoods.createMenu")
@@ -334,7 +337,7 @@ struct MyFoodsView: View {
                 systemImage: food.isFavorite ? "star.slash" : "star"
             )
         }
-        .tint(CalorynTheme.swipeActionTint)
+        .tint(CalorynTheme.fillAction)
     }
 
     private func deleteButton(for food: FoodItem) -> some View {
@@ -343,7 +346,7 @@ struct MyFoodsView: View {
         } label: {
             Label("Delete", systemImage: "trash")
         }
-        .tint(CalorynTheme.swipeActionTint)
+        .tint(CalorynTheme.fillAction)
     }
 
     private func toggleFavorite(_ food: FoodItem) {
@@ -385,7 +388,6 @@ struct MyFoodsView: View {
             }
         )
     }
-
 }
 
 private struct EditedProductCatalogView: View {
@@ -462,7 +464,7 @@ private extension View {
             .foregroundStyle(CalorynTheme.textPrimary, CalorynTheme.textSecondary)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background {
-                CalorynTheme.pageBackground
+                CalorynTheme.backgroundPrimary
                     .ignoresSafeArea()
             }
     }
@@ -495,7 +497,7 @@ private struct LibrarySectionHeader: View {
         .textCase(nil)
         .padding(LibraryRowStyle.headerPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(CalorynTheme.pageBackground)
+        .background(CalorynTheme.backgroundPrimary)
         .listRowInsets(EdgeInsets())
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isHeader)

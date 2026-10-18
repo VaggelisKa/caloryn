@@ -127,7 +127,7 @@ struct FoodLogValueRows: View {
             ForEach(rows) { row in
                 VStack(spacing: 0) {
                     Rectangle()
-                        .fill(CalorynTheme.hairline)
+                        .fill(CalorynTheme.separator)
                         .frame(height: CalorynTheme.hairlineWidth)
                         .accessibilityHidden(true)
 
@@ -156,8 +156,8 @@ struct FoodLogBottomFade: View {
     var body: some View {
         LinearGradient(
             stops: [
-                .init(color: CalorynTheme.cardBackground.opacity(0), location: 0),
-                .init(color: CalorynTheme.cardBackground, location: 0.3),
+                .init(color: CalorynTheme.backgroundSecondary.opacity(0), location: 0),
+                .init(color: CalorynTheme.backgroundSecondary, location: 0.3),
             ],
             startPoint: .top,
             endPoint: .bottom
@@ -170,11 +170,11 @@ extension View {
     func foodSearchWell(isFocused: Bool, height: CGFloat) -> some View {
         padding(.horizontal, 16)
             .frame(minHeight: height)
-            .background(CalorynTheme.searchWell, in: Capsule())
+            .background(CalorynTheme.backgroundInset, in: Capsule())
             .overlay {
                 Capsule()
                     .strokeBorder(
-                        isFocused ? CalorynTheme.textPrimary : CalorynTheme.hairline,
+                        isFocused ? CalorynTheme.accent : CalorynTheme.separator,
                         lineWidth: isFocused ? 1.2 : CalorynTheme.hairlineWidth
                     )
                     .allowsHitTesting(false)

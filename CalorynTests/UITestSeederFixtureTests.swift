@@ -7,7 +7,6 @@ import Testing
 @MainActor
 @Suite("UI test seeder fixtures")
 struct UITestSeederFixtureTests {
-
     @Test("The empty fixture seeds nothing at all, so the app opens onboarding")
     func emptySeedsNothing() throws {
         let seeded = try seededStore(.empty)

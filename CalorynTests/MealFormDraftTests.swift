@@ -5,7 +5,6 @@ import Testing
 @MainActor
 @Suite("Meal form draft")
 struct MealFormDraftTests {
-
     @Test("A blank name blocks saving even with items")
     func blankNameBlocksSave() {
         var draft = MealFormDraft()

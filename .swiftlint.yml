@@ -1,3 +1,4 @@
+
 only_rules:
   - custom_rules
 
@@ -24,9 +25,27 @@ custom_rules:
 
   raw_white_color:
     name: "Raw white"
-    regex: 'Color\.white|Color\(\.white\)|UIColor\.white'
+    regex: 'Color\.white|Color\(\.white\)|UIColor\.white|\(\s*\.white\s*\)'
     excluded: ".*BarcodeScannerView\\.swift"
-    message: "Use a CalorynTheme colour: cardBackground for the white of a sheet or group, mealOnFill(_:) for a label on a meal fill. A literal white has no dark appearance, so it turns into a glaring block in dark mode."
+    message: "Use a CalorynTheme colour: backgroundSecondary for the white of a sheet or group, textOnAccent for a label on accent, mealOnFill(_:) for a label on a meal fill. A literal white has no dark appearance, so it turns into a glaring block in dark mode."
+    severity: error
+
+  text_token_as_shape:
+    name: "Text token on a shape"
+    regex: '\.(fill|background|stroke|strokeBorder)\(\s*CalorynTheme\.text\w+|\.tint\(\s*CalorynTheme\.textPrimary\b'
+    message: "A text token paints text. Use accent for a control's fill, tint or outline, dataPrimary for a data mark, separator for a line, or a fill* / background* token for a shape. See docs/theme.md."
+    severity: error
+
+  background_token_as_text:
+    name: "Background token on text"
+    regex: '\.foregroundStyle\(\s*CalorynTheme\.background\w+'
+    message: "A background token paints a surface. A label on accent is textOnAccent; other text takes a text* token."
+    severity: error
+
+  asset_colour_outside_theme:
+    name: "Asset colour outside the theme"
+    regex: '\bColor\(\.[a-z]\w*\)'
+    message: "Read colours through CalorynTheme's role tokens (CalorynShared/CalorynThemeColors.swift), so a re-skin changes the catalog and nothing else."
     severity: error
 
   trapping_int_conversion:

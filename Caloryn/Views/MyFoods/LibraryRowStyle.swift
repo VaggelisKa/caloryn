@@ -106,11 +106,11 @@ struct LibraryTypeBadge: View {
         Text(text)
             .font(CalorynTheme.badgeText)
             .fontWeight(.bold)
-            .foregroundStyle(CalorynTheme.typeBadgeText)
+            .foregroundStyle(CalorynTheme.textSecondary)
             .lineLimit(1)
             .padding(.horizontal, 5)
             .padding(.vertical, 2)
-            .background(CalorynTheme.typeBadgeFill, in: .capsule)
+            .background(CalorynTheme.fillBadge, in: .capsule)
             .fixedSize()
     }
 }
@@ -119,7 +119,7 @@ extension View {
     func libraryHairlineSection() -> some View {
         calorynHairlineSeparators()
             .listRowInsets(LibraryRowStyle.rowInsets)
-            .listSectionSeparatorTint(CalorynTheme.hairline)
+            .listSectionSeparatorTint(CalorynTheme.separator)
             .listSectionSeparator(.visible, edges: .top)
             .listSectionSeparator(.hidden, edges: .bottom)
     }

@@ -176,8 +176,8 @@ private struct HistoryCalorieTrendInteractiveChart: View {
                             )
                             .symbol {
                                 Circle()
-                                    .stroke(CalorynTheme.textPrimary, lineWidth: 2)
-                                    .background(Circle().fill(CalorynTheme.pageBackground))
+                                    .stroke(CalorynTheme.accent, lineWidth: 2)
+                                    .background(Circle().fill(CalorynTheme.backgroundPrimary))
                                     .frame(width: 12, height: 12)
                             }
                             .accessibilityHidden(true)
@@ -196,7 +196,7 @@ private struct HistoryCalorieTrendInteractiveChart: View {
 
                 RuleMark(y: .value("Target", projection.dailyCalorieTarget))
                     .lineStyle(StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [4, 3]))
-                    .foregroundStyle(CalorynTheme.textSecondary)
+                    .foregroundStyle(CalorynTheme.dataReference)
             }
             .chartXAxis {
                 AxisMarks(values: projection.points.map(\.index)) { value in
@@ -275,7 +275,7 @@ private struct HistoryCalorieTrendInteractiveChart: View {
             .chartYAxis {
                 AxisMarks(position: .leading) { _ in
                     AxisGridLine()
-                        .foregroundStyle(CalorynTheme.hairline)
+                        .foregroundStyle(CalorynTheme.separator)
                     AxisValueLabel()
                         .font(CalorynTheme.chartAxisLabel)
                         .foregroundStyle(CalorynTheme.textSecondary)

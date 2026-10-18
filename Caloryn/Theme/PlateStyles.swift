@@ -3,7 +3,7 @@ import SwiftUI
 private struct CalorynHairlineSeparatorsModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
-            .listRowSeparatorTint(CalorynTheme.hairline)
+            .listRowSeparatorTint(CalorynTheme.separator)
             .listRowBackground(Color.clear)
     }
 }
@@ -13,10 +13,10 @@ private struct CalorynGroupSurfaceModifier: ViewModifier {
         let shape = RoundedRectangle(cornerRadius: CalorynTheme.groupCornerRadius, style: .continuous)
 
         content
-            .background(CalorynTheme.cardBackground, in: shape)
+            .background(CalorynTheme.backgroundSecondary, in: shape)
             .overlay {
                 shape
-                    .strokeBorder(CalorynTheme.hairline, lineWidth: CalorynTheme.hairlineWidth)
+                    .strokeBorder(CalorynTheme.separator, lineWidth: CalorynTheme.hairlineWidth)
                     .allowsHitTesting(false)
             }
     }
@@ -37,12 +37,12 @@ private struct CalorynPrimaryButton: View {
     @Environment(\.isEnabled) private var isEnabled
 
     private var fill: Color {
-        meal.map(CalorynTheme.mealFill) ?? CalorynTheme.textPrimary
+        meal.map(CalorynTheme.mealFill) ?? CalorynTheme.accent
     }
 
     private var label: Color {
         guard isEnabled else { return CalorynTheme.textSecondary }
-        return meal.map(CalorynTheme.mealOnFill) ?? CalorynTheme.pageBackground
+        return meal.map(CalorynTheme.mealOnFill) ?? CalorynTheme.textOnAccent
     }
 
     var body: some View {
@@ -73,7 +73,7 @@ private struct CalorynChipModifier: ViewModifier {
     private var foreground: Color {
         switch (isSelected, meal) {
         case (true, let meal?): CalorynTheme.mealOnFill(meal)
-        case (true, nil): CalorynTheme.pageBackground
+        case (true, nil): CalorynTheme.textOnAccent
         case (false, let meal?): CalorynTheme.mealInk(meal)
         case (false, nil): CalorynTheme.textPrimary
         }
@@ -81,7 +81,7 @@ private struct CalorynChipModifier: ViewModifier {
 
     private var selectedFill: Color {
         if let meal { return CalorynTheme.mealFill(meal) }
-        return CalorynTheme.textPrimary
+        return CalorynTheme.accent
     }
 
     func body(content: Content) -> some View {
@@ -100,7 +100,7 @@ private struct CalorynChipModifier: ViewModifier {
             .overlay {
                 if !isSelected {
                     Capsule()
-                        .strokeBorder(CalorynTheme.hairline, lineWidth: CalorynTheme.hairlineWidth)
+                        .strokeBorder(CalorynTheme.separator, lineWidth: CalorynTheme.hairlineWidth)
                         .allowsHitTesting(false)
                 }
             }
@@ -135,6 +135,6 @@ struct CalorynToggleStyle: ToggleStyle {
     func makeBody(configuration: Configuration) -> some View {
         Toggle(configuration)
             .toggleStyle(.switch)
-            .tint(CalorynTheme.controlTint)
+            .tint(CalorynTheme.accentControl)
     }
 }

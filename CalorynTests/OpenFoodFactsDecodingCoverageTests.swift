@@ -4,7 +4,6 @@ import Testing
 
 @MainActor
 struct OpenFoodFactsDecodingCoverageTests {
-
     private static func decode(_ json: String) throws -> OpenFoodFactsProduct {
         try JSONDecoder().decode(OpenFoodFactsProduct.self, from: Data(json.utf8))
     }

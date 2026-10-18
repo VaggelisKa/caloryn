@@ -35,6 +35,7 @@ struct NutriscoreDaySummary: View {
         .padding(.leading, 6)
         .padding(.trailing, 10)
         .frame(minHeight: chipHeight)
+        // swiftlint:disable:next text_token_as_shape
         .background(CalorynTheme.textPrimary.opacity(0.06), in: Capsule())
         .transition(.opacity.combined(with: .scale(scale: 0.95, anchor: .leading)))
     }
@@ -55,5 +56,5 @@ struct NutriscoreDaySummary: View {
         NutriscoreDaySummary(distribution: [("e", 1)])
     }
     .padding()
-    .background(CalorynTheme.pageBackground)
+    .background(CalorynTheme.backgroundPrimary)
 }

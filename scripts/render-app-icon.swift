@@ -120,7 +120,7 @@ func grey(_ value: CGFloat) -> CGColor {
     CGColor(colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!, components: [value, value, value, 1])!
 }
 
-let page = try color("PageBackground", .light)
+let page = try color("BackgroundPrimary", .light)
 try render(
     "AppIcon.png",
     background: page,

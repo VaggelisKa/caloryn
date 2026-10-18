@@ -144,11 +144,11 @@ struct FoodTypeBadge: View {
         Text(isRecipe ? "Recipe" : "Yours")
             .font(CalorynTheme.badgeText)
             .fontWeight(.bold)
-            .foregroundStyle(CalorynTheme.typeBadgeText)
+            .foregroundStyle(CalorynTheme.textSecondary)
             .padding(.horizontal, 5)
             .padding(.vertical, 2)
             .background(
-                CalorynTheme.typeBadgeFill,
+                CalorynTheme.fillBadge,
                 in: RoundedRectangle(cornerRadius: 4, style: .continuous)
             )
             .fixedSize()

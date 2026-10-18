@@ -9,7 +9,7 @@ struct SkeletonBar: View {
 
     var body: some View {
         RoundedRectangle(cornerRadius: 3, style: .continuous)
-            .fill(drawsOpaqueMask ? Color.black : CalorynTheme.skeletonBase)
+            .fill(drawsOpaqueMask ? Color.black : CalorynTheme.fillLoading)
             .frame(maxWidth: width)
             .frame(height: height)
             .frame(height: max(lineHeight ?? height, height))
@@ -34,7 +34,7 @@ struct ShimmeringPlaceholder<Content: View>: View {
                         let width = proxy.size.width
                         let band = max(width * 0.42, 1)
                         LinearGradient(
-                            colors: [.clear, CalorynTheme.skeletonShine, .clear],
+                            colors: [.clear, CalorynTheme.fillLoadingHighlight, .clear],
                             startPoint: .leading,
                             endPoint: .trailing
                         )

@@ -35,8 +35,8 @@ struct MissingFoodEntryView: View {
                         .foregroundStyle(CalorynTheme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                .listRowBackground(CalorynTheme.cardBackground)
-                .listRowSeparatorTint(CalorynTheme.hairline)
+                .listRowBackground(CalorynTheme.backgroundSecondary)
+                .listRowSeparatorTint(CalorynTheme.separator)
 
                 Section {
                     LabeledContent("Food") {
@@ -94,19 +94,19 @@ struct MissingFoodEntryView: View {
                     sectionHeader("Entry")
                 }
                 .foregroundStyle(CalorynTheme.textPrimary)
-                .listRowBackground(CalorynTheme.cardBackground)
-                .listRowSeparatorTint(CalorynTheme.hairline)
+                .listRowBackground(CalorynTheme.backgroundSecondary)
+                .listRowSeparatorTint(CalorynTheme.separator)
 
                 Section {
                     Button(role: .destructive) {
                         showingDeleteConfirmation = true
                     } label: {
                         Text("Delete log entry")
-                            .foregroundStyle(CalorynTheme.textPrimary)
+                            .foregroundStyle(CalorynTheme.accent)
                             .frame(maxWidth: .infinity)
                     }
                 }
-                .listRowBackground(CalorynTheme.cardBackground)
+                .listRowBackground(CalorynTheme.backgroundSecondary)
             }
             .calorynFormStyle()
             .calorynSheetCanvas()
@@ -118,7 +118,7 @@ struct MissingFoodEntryView: View {
                     } label: {
                         Image(systemName: "xmark")
                             .font(CalorynTheme.toolbarIcon)
-                            .foregroundStyle(CalorynTheme.textPrimary)
+                            .foregroundStyle(CalorynTheme.accent)
                     }
                     .accessibilityLabel("Close")
                 }
@@ -131,7 +131,7 @@ struct MissingFoodEntryView: View {
                             .font(CalorynTheme.toolbarAction)
                             .foregroundStyle(
                                 FavoriteFoodLogging.isSafePortion(portionGrams)
-                                    ? CalorynTheme.textPrimary
+                                    ? CalorynTheme.accent
                                     : CalorynTheme.textTertiary
                             )
                     }
@@ -191,7 +191,7 @@ struct MissingFoodEntryView: View {
             )
             .datePickerStyle(.graphical)
             .labelsHidden()
-            .tint(CalorynTheme.controlTint)
+            .tint(CalorynTheme.accentControl)
         }
     }
 
