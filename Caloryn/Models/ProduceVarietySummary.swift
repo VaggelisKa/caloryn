@@ -137,7 +137,9 @@ struct ProduceVarietySummary {
 
         if word.hasSuffix("es") {
             let stem = String(word.dropLast(2))
-            if stem.hasSuffix("ch") || stem.hasSuffix("sh") || stem.hasSuffix("s") || stem.hasSuffix("x") || stem.hasSuffix("z") {
+            // "-oes" too: tomatoes, potatoes, mangoes.
+            if stem.hasSuffix("ch") || stem.hasSuffix("sh") || stem.hasSuffix("s") || stem.hasSuffix("x") || stem.hasSuffix("z")
+                || stem.hasSuffix("o") {
                 return stem
             }
         }
