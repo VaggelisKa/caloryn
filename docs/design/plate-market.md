@@ -69,7 +69,7 @@ from `TextPrimary` and read as black, to `#6A3D66` in the same hue: 7.8:1 on the
 8.5:1 on white, so still well past 4.5:1, and the only ink lighter than its own fill.
 
 Existing `Sage`, `Stone`, `Terracotta`, `Carb`, `Fiber`, `HistoryUnder` assets stay in
-the catalog (widgets and a few unchanged screens read them) but the app stops using them
+the catalog (a few unchanged screens read them) but the app stops using them
 for meaning:
 
 - `proteinColor`, `carbColor`, `fatColor`, `fiberColor` resolve to `TextPrimary`. Macros
@@ -233,6 +233,28 @@ Boards are named by their mock file. Where a screen has no board, apply the voca
   ingredient amount, scanner, history drill-downs, goal and profile edit): restyle to the
   vocabulary. Forms keep `calorynFormStyle()` with white group surfaces. No new features.
 
+## App icon and widgets
+
+Finished after the merge of the redesign (the first cut shipped the sage icon and widgets).
+
+- **Icon**: the welcome screen's mark — the four-meal ring with the bite out of its
+  top-left, no glyph — on the light page, filling 76% of the icon (Apple's icon-grid
+  circle). The dark variant draws the dark fills on a transparent background, so the
+  system's dark backdrop shows through the hole and the bite; the tinted variant is the
+  same ring in four greys, brightest for breakfast and darkest for dinner, so the sectors
+  stay tellable apart once the system tints them. `scripts/render-app-icon.swift` draws all
+  three from the Color Sets; re-run it after a palette change rather than editing the PNGs.
+- **Widgets**: paper and ink, no cards. The Today widget draws the day as the same plate —
+  Swift Charts, empty hole, meals in their fill, the rest in `Hairline`, the overshoot in
+  ink — with the number beside the ring and the "x of y eaten" line under it; the large
+  family adds the legend. Quick log is a hairline row per meal, the name in the meal's ink
+  and the meal header's wash-and-plus at the end, no meal glyphs. The widget snapshot
+  carries each meal's kcal (`WidgetCalorieSummary.meals`; a snapshot from before decodes
+  to an empty list and draws its total in `HistoryEaten`). `WidgetPlateSummary` in
+  `CalorynShared` restates `CalorieDonutSummary`'s sector rule for the widget target. The
+  whole plate is `widgetAccentable()`, so in the tinted rendering mode the meals take the
+  accent and the track keeps the hairline's alpha.
+
 ## Where the build differs from the boards, on purpose
 
 The boards are the reference except here. Each is either the scope above winning over a
@@ -245,10 +267,17 @@ mock, or a decision this change does not make.
   the board draws a flat `Surface` circle: chrome stays glass (Scope).
 - **No step-progress capsules in onboarding.** `PlateGoal` draws six above the goal step;
   the flow has never had them, and adding one is a feature, not a skin.
-- **The app icon is unchanged.** It is still the sage disc, while the welcome screen draws
-  the four-meal ring. A new icon is a brand-asset decision outside this change.
-- **Widgets are unchanged.** They keep reading `Sage` and `Terracotta` (Tokens), so over
-  budget is still terracotta there.
+- **Inactive tab items stay in the system's label colour, not `TextSecondary`.** On the
+  iOS 26 Liquid Glass tab bar the selected item takes `.tint` and every other item is drawn
+  in the vibrant label colour, which on this page reads as ink. Checked against the iOS 27
+  SDK on iOS 26.5 and 27.0 simulators (2026-10-18): `UITabBar.appearance()
+  .unselectedItemTintColor`, a `UITabBarAppearance` with `normal.iconColor` and
+  `titleTextAttributes` on every layout, `UITabBarItem.appearance()
+  .setTitleTextAttributes(_:for: .normal)` and a `.foregroundStyle` on the `Tab` label all
+  leave the inactive items exactly as they were; `.tint` recolours only the selected one.
+  Nothing in the iOS 27 SDK adds a public knob (`UITabBarController` gains a prominent tab
+  and batch updates, SwiftUI nothing tab-colour-related). The chrome is the system's, so
+  the system look stays.
 - **The edited product catalog keeps the system navigation-bar search field** rather than
   a `Surface` well: it is navigation chrome, like the bar it drops from.
 

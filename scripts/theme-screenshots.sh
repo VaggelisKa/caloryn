@@ -23,8 +23,9 @@ RESULT="$(mktemp -d)/theme.xcresult"
 # An iOS 26 iPhone simulator; the UI test target cannot run below 26.0. A already-booted one
 # wins, so running this does not boot a second simulator alongside whichever one you are
 # testing on by hand — an earlier version picked the first *available* device and did exactly
-# that.
-UDID="$(xcrun simctl list devices available -j \
+# that. With several booted (one per agent), name yours in CALORYN_SIM_UDID: a test plan
+# must never share a simulator with another run.
+UDID="${CALORYN_SIM_UDID:-$(xcrun simctl list devices available -j \
   | python3 -c '
 import json,sys
 d=json.load(sys.stdin)["devices"]
@@ -38,7 +39,7 @@ for runtime, devices in d.items():
         if fallback is None: fallback = dev["udid"]
 if fallback is None: raise SystemExit("no available iOS 26 iPhone simulator")
 print(fallback)
-')"
+')}"
 
 echo "==> simulator $UDID"
 echo "==> running ThemeScreenshotTests (both appearances, ~3 min)"
