@@ -81,13 +81,12 @@ struct DailyProgressWidget: Widget {
             provider: DailyProgressProvider()
         ) { entry in
             DailyProgressWidgetView(entry: entry)
-                .fontDesign(.rounded)
                 .containerBackground(for: .widget) {
-                    WidgetTheme.background
+                    WidgetTheme.page
                 }
         }
         .configurationDisplayName("Today")
-        .description("See today's calorie progress and quickly log a meal.")
+        .description("See today's plate and quickly log a meal.")
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
     }
 }
@@ -111,15 +110,13 @@ private struct DailyProgressWidgetView: View {
                 }
             case .needsOnboarding:
                 WidgetMessageView(
-                    icon: "leaf.fill",
                     title: "Start with Caloryn",
-                    message: "Finish setup to see your daily progress."
+                    message: "Finish setup to see your day."
                 )
             case .unavailable:
                 WidgetMessageView(
-                    icon: "arrow.clockwise",
                     title: "Open Caloryn",
-                    message: "Open the app to update today's progress."
+                    message: "Open the app to update today's plate."
                 )
             }
         }
@@ -127,18 +124,27 @@ private struct DailyProgressWidgetView: View {
     }
 }
 
+/// Header, then the plate with its figures beside it, then the eaten line: the Today hero
+/// folded into a square. The figures column takes what the plate leaves; at a four-digit
+/// total the number scales down rather than wrapping.
 private struct SmallProgressView: View {
     let entry: DailyProgressEntry
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 0) {
             WidgetHeader(isStale: entry.isStale)
 
-            ProgressRing(summary: entry.snapshot.calories, compact: true)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            Spacer(minLength: 4)
 
-            ConsumedFooter(calories: entry.snapshot.calories)
-                .padding(.top, 3)
+            HStack(spacing: 10) {
+                WidgetPlateView(summary: WidgetPlateSummary(calories: entry.snapshot.calories), size: 64)
+                WidgetPlateFigures(calories: entry.snapshot.calories, numberFont: .title2.weight(.heavy))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            Spacer(minLength: 4)
+
+            WidgetEatenLine(calories: entry.snapshot.calories)
         }
         .privacySensitive()
         .accessibilityElement(children: .combine)
@@ -146,13 +152,8 @@ private struct SmallProgressView: View {
     }
 }
 
-/// The ring here is bound by the height of its column, not its width: the medium widget
-/// is about 158pt tall, and the header, footer and the gaps around them were taking
-/// roughly a third of it. So the gaps are deliberately uneven rather than a uniform
-/// `VStack` spacing — the header can sit close to the ring, but the footer cannot, or it
-/// reads as attached to the circle instead of below it. Measured at 338×158: ~83pt of
-/// ring before, ~85pt after — most of the gain goes to the ring, but not at the cost of
-/// the footer reading as part of it.
+/// The plate on the left, the log rows on the right, a hairline between: the medium widget
+/// is about 158pt tall, so the plate is bound by its column's height, not its width.
 private struct MediumProgressView: View {
     let entry: DailyProgressEntry
 
@@ -161,17 +162,26 @@ private struct MediumProgressView: View {
             VStack(alignment: .leading, spacing: 0) {
                 WidgetHeader(isStale: entry.isStale)
 
-                ProgressRing(summary: entry.snapshot.calories, compact: false)
-                    .padding(.top, 2)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                Spacer(minLength: 4)
 
-                ConsumedFooter(calories: entry.snapshot.calories)
-                    .padding(.top, 9)
+                HStack(spacing: 10) {
+                    WidgetPlateView(summary: WidgetPlateSummary(calories: entry.snapshot.calories), size: 72)
+                    WidgetPlateFigures(calories: entry.snapshot.calories, numberFont: .title.weight(.heavy))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                Spacer(minLength: 4)
+
+                WidgetEatenLine(calories: entry.snapshot.calories)
             }
             .frame(maxWidth: .infinity)
             .privacySensitive()
             .accessibilityElement(children: .combine)
             .accessibilityLabel(WidgetAccessibility.summary(for: entry.snapshot.calories))
+
+            Rectangle()
+                .fill(WidgetTheme.hairline)
+                .frame(width: 1)
 
             QuickLogSection()
                 .frame(maxWidth: .infinity)
@@ -179,26 +189,35 @@ private struct MediumProgressView: View {
     }
 }
 
+/// The full hero — plate, figures and legend — over the log rows, parted by a hairline.
 private struct LargeProgressView: View {
     let entry: DailyProgressEntry
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 10) {
                 WidgetHeader(isStale: entry.isStale)
 
-                ProgressRing(summary: entry.snapshot.calories, compact: false)
-                    .frame(height: 128)
-                    .frame(maxWidth: .infinity)
+                HStack(alignment: .center, spacing: 14) {
+                    WidgetPlateView(summary: WidgetPlateSummary(calories: entry.snapshot.calories), size: 124)
 
-                ConsumedFooter(calories: entry.snapshot.calories)
-                    .padding(.top, 3)
+                    VStack(alignment: .leading, spacing: 6) {
+                        VStack(alignment: .leading, spacing: 0) {
+                            WidgetPlateFigures(calories: entry.snapshot.calories, numberFont: .largeTitle.weight(.heavy))
+                            WidgetEatenLine(calories: entry.snapshot.calories)
+                        }
+                        WidgetPlateLegend(calories: entry.snapshot.calories)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
             .privacySensitive()
             .accessibilityElement(children: .combine)
             .accessibilityLabel(WidgetAccessibility.summary(for: entry.snapshot.calories))
 
-            Spacer(minLength: 0)
+            Rectangle()
+                .fill(WidgetTheme.hairline)
+                .frame(height: 1)
 
             QuickLogSection()
         }
@@ -207,22 +226,11 @@ private struct LargeProgressView: View {
 
 private struct QuickLogSection: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Log a meal")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.primary)
+        VStack(alignment: .leading, spacing: 4) {
+            WidgetSectionTitle(title: "Log a meal")
 
-            VStack(spacing: 8) {
-                HStack(spacing: 8) {
-                    QuickLogButton(meal: .breakfast)
-                    QuickLogButton(meal: .lunch)
-                }
-                HStack(spacing: 8) {
-                    QuickLogButton(meal: .dinner)
-                    QuickLogButton(meal: .snack)
-                }
-            }
-            .frame(maxHeight: .infinity)
+            WidgetQuickLogRows()
+                .frame(maxHeight: .infinity)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -233,101 +241,17 @@ private struct WidgetHeader: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            Text("Today")
-                .font(.headline)
-                .foregroundStyle(.primary)
+            WidgetSectionTitle(title: "Today")
 
             Spacer(minLength: 4)
 
             if isStale {
                 Image(systemName: "arrow.clockwise")
                     .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(WidgetTheme.secondary)
                     .accessibilityLabel("Update needed")
             }
         }
-    }
-}
-
-private struct ConsumedFooter: View {
-    let calories: WidgetCalorieSummary
-
-    var body: some View {
-        Text("\(calories.consumed.formatted()) of \(calories.target.formatted()) kcal")
-            .font(.caption.weight(.medium).monospacedDigit())
-            .foregroundStyle(.secondary)
-            .lineLimit(1)
-            .minimumScaleFactor(0.8)
-            .frame(maxWidth: .infinity, alignment: .center)
-    }
-}
-
-struct QuickLogButton: View {
-    let meal: WidgetMeal
-
-    var body: some View {
-        Link(destination: AppRoute.addFood(meal: meal).url) {
-            VStack(spacing: 5) {
-                Image(systemName: meal.systemImage)
-                    .font(.footnote.weight(.semibold))
-                Text(meal.displayName)
-                    .font(.caption2.weight(.semibold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            }
-            .padding(.vertical, 6)
-            .padding(.horizontal, 4)
-            .foregroundStyle(WidgetTheme.sage)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .frame(minHeight: 40)
-            .background(WidgetTheme.sage.opacity(0.14), in: .rect(cornerRadius: 12))
-        }
-        .accessibilityLabel("Log \(meal.displayName)")
-    }
-}
-
-private struct ProgressRing: View {
-    let summary: WidgetCalorieSummary
-    let compact: Bool
-
-    private var lineWidth: CGFloat { compact ? 8 : 9 }
-
-    var body: some View {
-        ZStack {
-            Circle()
-                .stroke(WidgetTheme.ringTrack, lineWidth: lineWidth)
-
-            Circle()
-                .trim(from: 0, to: summary.progress)
-                .stroke(
-                    summary.isOver ? WidgetTheme.terracotta : WidgetTheme.sage,
-                    style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
-                )
-                .rotationEffect(.degrees(-90))
-                .widgetAccentable()
-
-            VStack(spacing: 0) {
-                Text(primaryValue.formatted())
-                    .font((compact ? Font.title3 : .title2).weight(.bold).monospacedDigit())
-                    .contentTransition(.numericText())
-                    .minimumScaleFactor(0.7)
-                    .lineLimit(1)
-
-                Text(summary.isOver ? "over" : "left")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.secondary)
-            }
-            // Keeps the value off the stroke. Without it the text is laid out against the
-            // ring's full square, so a four-digit total sits right on the rim rather than
-            // scaling down — which is what it did on medium at every realistic target.
-            .padding(lineWidth + 2)
-        }
-        .aspectRatio(1, contentMode: .fit)
-        .accessibilityHidden(true)
-    }
-
-    private var primaryValue: Int {
-        summary.isOver ? summary.overAmount : summary.remaining
     }
 }
 
@@ -340,27 +264,22 @@ private enum WidgetAccessibility {
     }
 }
 
+/// Title and a line of explanation, nothing else: no glyph stands in for the plate.
 private struct WidgetMessageView: View {
-    let icon: String
     let title: String
     let message: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Image(systemName: icon)
-                .font(.title2.weight(.semibold))
-                .foregroundStyle(WidgetTheme.sage)
-                .widgetAccentable()
-
+        VStack(alignment: .leading, spacing: 6) {
             Spacer(minLength: 0)
 
             Text(title)
-                .font(.headline)
-                .foregroundStyle(.primary)
+                .font(.headline.weight(.bold))
+                .foregroundStyle(WidgetTheme.ink)
 
             Text(message)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(WidgetTheme.secondary)
                 .lineLimit(3)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -385,7 +304,12 @@ private struct WidgetMessageView: View {
             generatedAt: .now,
             dayStart: Calendar.current.startOfDay(for: .now),
             state: .ready,
-            calories: WidgetCalorieSummary(consumed: 2_450, baseTarget: 2_000, target: 2_000)
+            calories: WidgetCalorieSummary(
+                consumed: 2_450,
+                baseTarget: 2_000,
+                target: 2_000,
+                mealCalories: [.breakfast: 382, .lunch: 463, .dinner: 1_377, .snack: 228]
+            )
         ),
         isStale: false
     )
@@ -424,7 +348,12 @@ private struct WidgetMessageView: View {
             generatedAt: .now,
             dayStart: Calendar.current.startOfDay(for: .now),
             state: .ready,
-            calories: WidgetCalorieSummary(consumed: 2_450, baseTarget: 2_000, target: 2_000)
+            calories: WidgetCalorieSummary(
+                consumed: 2_450,
+                baseTarget: 2_000,
+                target: 2_000,
+                mealCalories: [.breakfast: 382, .lunch: 463, .dinner: 1_377, .snack: 228]
+            )
         ),
         isStale: false
     )

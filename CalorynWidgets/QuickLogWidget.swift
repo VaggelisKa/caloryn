@@ -34,9 +34,8 @@ struct QuickLogWidget: Widget {
             provider: QuickLogProvider()
         ) { _ in
             QuickLogWidgetView()
-                .fontDesign(.rounded)
                 .containerBackground(for: .widget) {
-                    WidgetTheme.background
+                    WidgetTheme.page
                 }
         }
         .configurationDisplayName("Log a Meal")
@@ -47,22 +46,11 @@ struct QuickLogWidget: Widget {
 
 private struct QuickLogWidgetView: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Log a meal")
-                .font(.headline)
-                .foregroundStyle(.primary)
+        VStack(alignment: .leading, spacing: 4) {
+            WidgetSectionTitle(title: "Log a meal")
 
-            VStack(spacing: 8) {
-                HStack(spacing: 8) {
-                    QuickLogButton(meal: .breakfast)
-                    QuickLogButton(meal: .lunch)
-                }
-                HStack(spacing: 8) {
-                    QuickLogButton(meal: .dinner)
-                    QuickLogButton(meal: .snack)
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            WidgetQuickLogRows()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 }
