@@ -166,9 +166,10 @@ because no iOS 26 capture can show it.
 
 iOS 26 renders navigation-bar and toolbar buttons inside a glass container that honours
 **neither** the `AccentColor` asset **nor** `.tint()`. Both were measured: with `.tint()`
-applied to the sheet canvas the close glyph still rendered `#000000`. Only
-`.foregroundStyle(CalorynTheme.sage)` on the label itself works, which is why a couple of
-buttons in the codebase already had it while their neighbours did not.
+applied to the sheet canvas the close glyph still rendered `#000000`. Only a
+`.foregroundStyle(...)` on the label itself works — `CalorynTheme.sage` when this was
+measured, `CalorynTheme.textPrimary` since the Plate redesign retired sage — which is why
+a couple of buttons in the codebase already had it while their neighbours did not.
 
 This is the same root cause as the back button above, and it means the `AccentColor` asset
 does *less* than it appears: it covers controls in content, not chrome.

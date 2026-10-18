@@ -75,9 +75,10 @@ Existing `Stone` and `Terracotta` assets stay in the catalog (a few unchanged sc
 read them) but the app stops using them for meaning. The `Sage`, `Carb`, `Fiber`,
 `HistoryUnder` and `WarmWhite` sets lost their last reader and were removed:
 
-- `proteinColor`, `carbColor`, `fatColor`, `fiberColor` resolve to `TextPrimary`. Macros
-  are told apart by their label, never by colour, because the meal palette now owns
-  colour and the two systems would collide (sage was both "protein" and "lunch").
+- Macros are told apart by their label, never by colour, because the meal palette now
+  owns colour and the two systems would collide (sage was both "protein" and "lunch").
+  The `proteinColor`/`carbColor`/`fatColor`/`fiberColor` aliases first resolved to
+  `TextPrimary` and were later removed along with their last reader.
 - `HistoryTheme`: `under` → `HistoryEatenLight`, `onTrack` → `HistoryEaten`, `over` →
   `TextPrimary`, `notLogged` → `Hairline`. Red no longer means "over"; it means lunch.
   (The first draft had `under` → `TextSecondary`, which is 1.04:1 against `HistoryEaten`
@@ -88,8 +89,8 @@ read them) but the app stops using them for meaning. The `Sage`, `Carb`, `Fiber`
 
 `CalorynTheme` gains: `hairline`, `mealFill(_ meal: MealType)`, `mealInk(_ meal: MealType)`,
 `mealOnFill(_ meal: MealType)`, `textTertiary`, `historyEaten`, `historyEatenLight`,
-`typeBadgeFill`, `typeBadgeText`. Keep the existing names (`sage`, `terracotta`, …) so unchanged call sites
-compile; retire them from new code.
+`typeBadgeFill`, `typeBadgeText`. The remaining old names (`stone`, `terracotta`) stay
+for unchanged call sites; retire them from new code. `sage` has since been removed.
 
 ## Vocabulary
 
