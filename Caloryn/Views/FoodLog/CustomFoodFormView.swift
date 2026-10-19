@@ -433,6 +433,7 @@ struct CustomFoodFormView: View {
                         isFavorite: materialization.food.isFavorite
                     )
                 }
+                CalorynHaptics.success()
             } catch {
             }
             BarcodeRecoveryAnalytics.record(
@@ -464,6 +465,7 @@ struct CustomFoodFormView: View {
                 CalorynAppShortcutRefresh.favoriteWasEdited(
                     isFavorite: food.isFavorite
                 )
+                CalorynHaptics.success()
             } catch {
             }
             onSaved?(food)
@@ -493,7 +495,9 @@ struct CustomFoodFormView: View {
                 suppliedFat: draft.suppliedFat
             )
             modelContext.insert(food)
-            try? modelContext.save()
+            if (try? modelContext.save()) != nil {
+                CalorynHaptics.success()
+            }
             onSaved?(food)
         }
         dismiss()

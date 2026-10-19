@@ -322,6 +322,7 @@ struct MultiAddReviewView: View {
                 switch outcome {
                 case .completed:
                     recoveryState = nil
+                    CalorynHaptics.success()
                     onLogged()
                 case .needsRecovery(let state):
                     recoveryState = state

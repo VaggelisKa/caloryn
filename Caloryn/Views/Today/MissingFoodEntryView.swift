@@ -199,6 +199,7 @@ struct MissingFoodEntryView: View {
         ChipFlowLayout(spacing: 6, lineSpacing: 6) {
             ForEach(MealType.allCases) { meal in
                 Button {
+                    if mealType != meal { CalorynHaptics.selectionChanged() }
                     mealType = meal
                 } label: {
                     Text(meal.displayName)
@@ -230,6 +231,7 @@ struct MissingFoodEntryView: View {
                 modelContext: modelContext,
                 snackIndex: snackIndex
             )
+            CalorynHaptics.success()
             dismiss()
         } catch {
             errorMessage = error.localizedDescription

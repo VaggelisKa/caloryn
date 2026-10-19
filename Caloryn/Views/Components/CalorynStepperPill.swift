@@ -56,9 +56,9 @@ struct CalorynStepperPill: View {
         .accessibilityAdjustableAction { direction in
             switch direction {
             case .increment:
-                if canIncrement { onIncrement() }
+                if canIncrement { step(onIncrement) }
             case .decrement:
-                if canDecrement { onDecrement() }
+                if canDecrement { step(onDecrement) }
             @unknown default:
                 break
             }
@@ -97,7 +97,7 @@ struct CalorynStepperPill: View {
 
     private func stepButton(systemImage: String, isEnabled: Bool, action: @escaping () -> Void) -> some View {
         Button {
-            withAnimation(.smooth(duration: 0.2)) { action() }
+            step(action)
         } label: {
             Image(systemName: systemImage)
                 .font(size == .regular ? CalorynTheme.inlineIcon : CalorynTheme.compactIcon)
@@ -118,6 +118,11 @@ struct CalorynStepperPill: View {
         }
         .buttonStyle(.borderless)
         .disabled(!isEnabled)
+    }
+
+    private func step(_ action: () -> Void) {
+        CalorynHaptics.selectionChanged()
+        withAnimation(.smooth(duration: 0.2)) { action() }
     }
 }
 

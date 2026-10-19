@@ -615,6 +615,7 @@ struct FoodSearchView: View {
         withAnimation(selectionChangeAnimation) {
             multiAddSelection.toggle(group)
         }
+        CalorynHaptics.selectionChanged()
     }
 
     private func toggle(
@@ -624,6 +625,7 @@ struct FoodSearchView: View {
         try withAnimation(selectionChangeAnimation) {
             try multiAddSelection.toggle(id, makeGroup: makeGroup)
         }
+        CalorynHaptics.selectionChanged()
     }
 
     func toggleFoodSelection(_ food: FoodItem) {
@@ -703,6 +705,7 @@ struct FoodSearchView: View {
                 availableFoods: recentFoods,
                 modelContext: modelContext
             )
+            CalorynHaptics.success()
             dismiss()
         } catch {
             mealErrorMessage = error.localizedDescription
@@ -809,13 +812,11 @@ struct FoodSearchView: View {
     }
 
     private func triggerBarcodeLookupHaptic(_ feedback: BarcodeLookupFlow.FailureFeedback) {
-        let generator = UINotificationFeedbackGenerator()
-        generator.prepare()
         switch feedback {
         case .warning:
-            generator.notificationOccurred(.warning)
+            CalorynHaptics.warning()
         case .error:
-            generator.notificationOccurred(.error)
+            CalorynHaptics.error()
         }
     }
 
