@@ -14,6 +14,7 @@ struct HistoryView: View {
     @State private var navigationPath: [HistoryDrillDownRoute] = []
     @State private var analyticsDayStart = Calendar.current.startOfDay(for: .now)
     @State private var hasLoadedAnalytics = false
+    @State private var isContentVisible = false
 
     #if DEBUG
     @State private var debugLaunch = HistoryDebugLaunch.current
@@ -138,6 +139,7 @@ struct HistoryView: View {
                         }
                     }
                 }
+                .opacity(isContentVisible ? 1 : 0)
                 .padding(.horizontal, CalorynTheme.pagePadding)
                 .padding(.top, 4)
                 .padding(.bottom, 28)
@@ -153,8 +155,9 @@ struct HistoryView: View {
         .task(id: analyticsRefreshID) {
             refreshAnalytics(for: historyState.range)
             if !hasLoadedAnalytics {
-                withAnimation(.smooth(duration: 0.25)) {
-                    hasLoadedAnalytics = true
+                hasLoadedAnalytics = true
+                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.25)) {
+                    isContentVisible = true
                 }
             }
             #if DEBUG

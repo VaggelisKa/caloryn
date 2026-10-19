@@ -111,7 +111,11 @@ struct HistoryDayPlateGrid: View {
                     .frame(maxWidth: .infinity)
                 }
             }
-            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { gridWidth = $0 }
+            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width in
+                var transaction = Transaction()
+                transaction.disablesAnimations = true
+                withTransaction(transaction) { gridWidth = width }
+            }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(strip.accessibilityLabel)
             .accessibilityValue(coverageText ?? "")
