@@ -99,6 +99,7 @@ struct GramAmountField: View {
     private func stepButton(_ step: PortionSelection.GramStep) -> some View {
         Button {
             isFocused = false
+            CalorynHaptics.selectionChanged()
             onStep(step)
         } label: {
             Image(systemName: step == .more ? "plus" : "minus")
@@ -123,6 +124,7 @@ struct GramAmountField: View {
     private func quickOption(_ grams: Int) -> some View {
         Button {
             isFocused = false
+            if !isSelected(grams) { CalorynHaptics.selectionChanged() }
             onQuickOption(grams)
         } label: {
             Text(quickOptionLabel(grams))

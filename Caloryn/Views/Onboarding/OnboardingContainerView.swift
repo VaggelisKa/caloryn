@@ -141,6 +141,7 @@ struct OnboardingContainerView: View {
         }
 
         saveProfile()
+        CalorynHaptics.success()
     }
 
     private func saveProfile() {

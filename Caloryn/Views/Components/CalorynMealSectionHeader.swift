@@ -32,7 +32,10 @@ struct CalorynMealSectionHeader: View {
     }
 
     var body: some View {
-        Button(action: onAdd) {
+        Button {
+            CalorynHaptics.tap()
+            onAdd()
+        } label: {
             HStack(spacing: 10) {
                 if dynamicTypeSize.isAccessibilitySize {
                     VStack(alignment: .leading, spacing: 2) {

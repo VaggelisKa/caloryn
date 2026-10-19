@@ -270,6 +270,7 @@ struct RecipeFormView: View {
             }
         } catch {
         }
+        CalorynHaptics.success()
         onSaved?(recipe)
         dismiss()
     }

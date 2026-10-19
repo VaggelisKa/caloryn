@@ -384,6 +384,7 @@ struct PortionPickerView: View {
         HStack(spacing: 6) {
             ForEach(unitOptions, id: \.mode) { option in
                 Button {
+                    if selection.mode != option.mode { CalorynHaptics.selectionChanged() }
                     selection.mode = option.mode
                 } label: {
                     Text(option.label)
@@ -450,6 +451,7 @@ struct PortionPickerView: View {
 
     private func mealChip(_ meal: MealType) -> some View {
         Button {
+            if selectedMeal != meal { CalorynHaptics.selectionChanged() }
             selectedMeal = meal
         } label: {
             Text(meal.displayName)
@@ -492,6 +494,7 @@ struct PortionPickerView: View {
             )
             try? modelContext.save()
         }
+        CalorynHaptics.success()
         if let onLogged {
             onLogged()
         } else {

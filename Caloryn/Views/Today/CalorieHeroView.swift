@@ -1,5 +1,4 @@
 import SwiftUI
-import UIKit
 
 struct CalorieHeroView: View {
     let summary: TodayHeroSummary
@@ -186,8 +185,7 @@ struct CalorieHeroView: View {
 
     private func requestDetails() {
         guard let onDetailsRequested else { return }
-        let generator = UIImpactFeedbackGenerator(style: .medium)
-        generator.impactOccurred(intensity: 0.75)
+        CalorynHaptics.tap(.medium, intensity: 0.75)
         onDetailsRequested()
     }
 }

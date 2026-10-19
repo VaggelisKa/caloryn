@@ -441,6 +441,7 @@ struct CustomFoodFormView: View {
                     ? .completed
                     : (materialization.isNew ? .completed : .reused)
             )
+            CalorynHaptics.success()
             onSaved?(materialization.food)
             dismiss()
             return
@@ -496,6 +497,7 @@ struct CustomFoodFormView: View {
             try? modelContext.save()
             onSaved?(food)
         }
+        CalorynHaptics.success()
         dismiss()
     }
 
