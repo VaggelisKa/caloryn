@@ -96,41 +96,45 @@ struct HistoryView: View {
                         VStack(alignment: .leading, spacing: 22) {
                             rangePicker
 
-                            HistoryOverviewSection(
-                                range: state.range,
-                                summary: history.current,
-                                overview: overview,
-                                today: analyticsDayStart
-                            )
-                        }
+                            crossfading(on: state.range) {
+                                VStack(alignment: .leading, spacing: 26) {
+                                    HistoryOverviewSection(
+                                        range: state.range,
+                                        summary: history.current,
+                                        overview: overview,
+                                        today: analyticsDayStart
+                                    )
 
-                        if let recurringPattern = state.recurringPattern {
-                            HistoryRecurringCaloriePatternCard(
-                                pattern: recurringPattern,
-                                action: { openPatternDetails(recurringPattern) }
-                            )
-                        }
+                                    if let recurringPattern = state.recurringPattern {
+                                        HistoryRecurringCaloriePatternCard(
+                                            pattern: recurringPattern,
+                                            action: { openPatternDetails(recurringPattern) }
+                                        )
+                                    }
 
-                        if overview.hasLoggedDays {
-                            HistoryOnTrackSection(overview: overview)
-                        }
+                                    if overview.hasLoggedDays {
+                                        HistoryOnTrackSection(overview: overview)
+                                    }
 
-                        if state.range.days >= HistoryRange.month.days {
-                            HistoryWeeklyRollupSection(projection: patternDiscovery.weeklyConsistency)
-                        }
+                                    if state.range.days >= HistoryRange.month.days {
+                                        HistoryWeeklyRollupSection(projection: patternDiscovery.weeklyConsistency)
+                                    }
 
-                        HistoryCalorieTrendSection(
-                            projection: patternDiscovery.calorieTrend,
-                            drillDownAction: patternDiscovery.calorieTrend.canDrillDown
-                                ? { openCalorieTrendDetail(range: state.range, summary: history.current) }
-                                : nil
-                        )
+                                    HistoryCalorieTrendSection(
+                                        projection: patternDiscovery.calorieTrend,
+                                        drillDownAction: patternDiscovery.calorieTrend.canDrillDown
+                                            ? { openCalorieTrendDetail(range: state.range, summary: history.current) }
+                                            : nil
+                                    )
 
-                        if history.macroPatterns.contains(where: { $0.current.loggedDays > 0 }) {
-                            HistoryMacroPatternsSection(
-                                range: state.range,
-                                projection: patternDiscovery.macroPatterns
-                            )
+                                    if history.macroPatterns.contains(where: { $0.current.loggedDays > 0 }) {
+                                        HistoryMacroPatternsSection(
+                                            range: state.range,
+                                            projection: patternDiscovery.macroPatterns
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -147,9 +151,7 @@ struct HistoryView: View {
         }
         .calorynPageCanvas()
         .task(id: analyticsRefreshID) {
-            withAnimation(hasLoadedAnalytics ? changeAnimation : nil) {
-                refreshAnalytics(for: historyState.range)
-            }
+            refreshAnalytics(for: historyState.range)
             if !hasLoadedAnalytics {
                 withAnimation(.smooth(duration: 0.25)) {
                     hasLoadedAnalytics = true
@@ -196,7 +198,19 @@ struct HistoryView: View {
     }
 
     private var changeAnimation: Animation? {
-        reduceMotion ? nil : .smooth(duration: 0.4)
+        reduceMotion ? nil : .easeInOut(duration: 0.2)
+    }
+
+    private func crossfading(
+        on range: HistoryRange,
+        @ViewBuilder content: () -> some View
+    ) -> some View {
+        ZStack(alignment: .topLeading) {
+            content()
+                .id(range)
+                .transition(.opacity)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func selectRange(_ range: HistoryRange) {
