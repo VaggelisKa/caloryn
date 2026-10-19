@@ -36,6 +36,17 @@ extension View {
         }
     }
 
+    @ViewBuilder
+    func adaptiveUnitedInteractiveGlass(tint: Color, id: String, in namespace: Namespace.ID) -> some View {
+        if #available(iOS 26.0, *) {
+            self
+                .glassEffect(.regular.tint(tint).interactive(), in: .capsule)
+                .glassEffectUnion(id: id, namespace: namespace)
+        } else {
+            self.background(tint, in: Circle())
+        }
+    }
+
     func adaptiveGlassProminentButton() -> some View {
         buttonStyle(CalorynProminentButtonStyle())
     }
@@ -46,6 +57,20 @@ extension View {
             self.buttonStyle(.glassProminent)
         } else {
             self.buttonStyle(.borderedProminent)
+        }
+    }
+}
+
+struct AdaptiveGlassGroup<Content: View>: View {
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        if #available(iOS 26.0, *) {
+            GlassEffectContainer {
+                content
+            }
+        } else {
+            content
         }
     }
 }

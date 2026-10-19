@@ -27,6 +27,7 @@ struct TodayView: View {
     @State private var showingNutritionDetails = false
     @State private var foodSearchPresentation: FoodSearchPresentation?
     @State private var entryToEdit: FoodLogEntry?
+    @Namespace private var dayButtonGlass
 
     @AppStorage("showNutriscore") private var showNutriscore = true
     @State private var activeEnergyTracker = ActiveEnergyDayTracker()
@@ -246,23 +247,25 @@ struct TodayView: View {
 
             Spacer(minLength: 8)
 
-            HStack(spacing: 0) {
-                dayButton(
-                    systemImage: "chevron.left",
-                    label: "Previous day",
-                    identifier: "today.previousDay",
-                    isEnabled: true
-                ) {
-                    selectedDate = selectedDate.yesterday
-                }
+            AdaptiveGlassGroup {
+                HStack(spacing: 0) {
+                    dayButton(
+                        systemImage: "chevron.left",
+                        label: "Previous day",
+                        identifier: "today.previousDay",
+                        isEnabled: true
+                    ) {
+                        selectedDate = selectedDate.yesterday
+                    }
 
-                dayButton(
-                    systemImage: "chevron.right",
-                    label: "Next day",
-                    identifier: "today.nextDay",
-                    isEnabled: !selectedDate.isAtFutureLogLimit
-                ) {
-                    selectedDate = selectedDate.tomorrow
+                    dayButton(
+                        systemImage: "chevron.right",
+                        label: "Next day",
+                        identifier: "today.nextDay",
+                        isEnabled: !selectedDate.isAtFutureLogLimit
+                    ) {
+                        selectedDate = selectedDate.tomorrow
+                    }
                 }
             }
             .padding(.trailing, -(Self.minimumHitTarget - Self.dayButtonSize) / 2)
@@ -284,7 +287,7 @@ struct TodayView: View {
                 .imageScale(.small)
                 .foregroundStyle(isEnabled ? CalorynTheme.accent : CalorynTheme.textTertiary)
                 .frame(width: Self.dayButtonSize, height: Self.dayButtonSize)
-                .adaptiveCircleInteractiveGlass(tint: CalorynTheme.backgroundSecondary)
+                .adaptiveUnitedInteractiveGlass(tint: CalorynTheme.backgroundSecondary, id: "dayButtons", in: dayButtonGlass)
                 .frame(width: Self.minimumHitTarget, height: Self.minimumHitTarget)
                 .contentShape([.interaction, .accessibility], .rect)
         }
