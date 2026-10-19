@@ -19,8 +19,6 @@ struct HistorySectionTitle: View {
 struct HistoryInkBar: View {
     let ratio: Double
 
-    @State private var isRevealed = false
-
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
@@ -29,11 +27,10 @@ struct HistoryInkBar: View {
 
                 Rectangle()
                     .fill(CalorynTheme.dataPrimary)
-                    .frame(width: isRevealed ? geometry.size.width * min(1, max(0, ratio)) : 0)
+                    .frame(width: geometry.size.width * min(1, max(0, ratio)))
             }
         }
         .frame(height: 8)
-        .revealOnAppear($isRevealed)
         .clipShape(Capsule())
         .accessibilityHidden(true)
     }

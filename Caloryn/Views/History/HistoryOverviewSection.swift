@@ -39,7 +39,6 @@ struct HistoryOverviewSection: View {
                         .foregroundStyle(CalorynTheme.textPrimary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
-                        .contentTransition(.numericText())
 
                     Text(overview.averageUnitText)
                         .font(CalorynTheme.cardSubtitle.weight(.medium))
@@ -227,7 +226,6 @@ struct HistoryOnTrackSection: View {
                     .font(CalorynTheme.heroNumber(size: countSize))
                     .tracking(-countSize * 0.005)
                     .foregroundStyle(CalorynTheme.textPrimary)
-                    .contentTransition(.numericText())
 
                 Text(overview.onTrackSupportText)
                     .font(CalorynTheme.cardSubtitle)
