@@ -481,7 +481,6 @@ struct PortionPickerView: View {
                 portionGrams: portionGrams,
                 snackIndex: snackIndex
             )
-            try? modelContext.save()
         } else {
             DailyFoodLogCommands.logFood(
                 foodItem: activeFoodItem,
@@ -492,9 +491,10 @@ struct PortionPickerView: View {
                 modelContext: modelContext,
                 snackIndex: snackIndex
             )
-            try? modelContext.save()
         }
-        CalorynHaptics.success()
+        if (try? modelContext.save()) != nil {
+            CalorynHaptics.success()
+        }
         if let onLogged {
             onLogged()
         } else {

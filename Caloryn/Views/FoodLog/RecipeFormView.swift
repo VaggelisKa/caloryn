@@ -268,9 +268,9 @@ struct RecipeFormView: View {
                     isFavorite: recipe.isFavorite
                 )
             }
+            CalorynHaptics.success()
         } catch {
         }
-        CalorynHaptics.success()
         onSaved?(recipe)
         dismiss()
     }

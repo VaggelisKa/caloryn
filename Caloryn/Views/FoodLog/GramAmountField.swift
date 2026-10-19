@@ -99,7 +99,7 @@ struct GramAmountField: View {
     private func stepButton(_ step: PortionSelection.GramStep) -> some View {
         Button {
             isFocused = false
-            CalorynHaptics.selectionChanged()
+            if stepChangesAmount(step) { CalorynHaptics.selectionChanged() }
             onStep(step)
         } label: {
             Image(systemName: step == .more ? "plus" : "minus")
@@ -134,6 +134,11 @@ struct GramAmountField: View {
         .accessibilityIdentifier("\(identifierPrefix).quickGrams.\(grams)")
         .accessibilityLabel("\(grams) grams")
         .accessibilityAddTraits(isSelected(grams) ? .isSelected : [])
+    }
+
+    private func stepChangesAmount(_ step: PortionSelection.GramStep) -> Bool {
+        guard let grams = PortionSelection.parsedGrams(text) else { return true }
+        return PortionSelection.stepped(Double(grams), step) != Double(grams)
     }
 
     private func isSelected(_ grams: Int) -> Bool {
