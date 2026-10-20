@@ -37,6 +37,27 @@ final class DailyWidgetSnapshotProjectorTests: XCTestCase {
         XCTAssertEqual(snapshot.calories.remaining, 1_500)
     }
 
+    func testProjectionLeavesTomorrowOutOfADayThatStartsLateForDaylightSaving() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try XCTUnwrap(TimeZone(identifier: "America/Havana"))
+        let now = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 3, day: 8, hour: 12)))
+        let tomorrow = try XCTUnwrap(calendar.date(byAdding: .day, value: 1, to: now))
+        let food = makeTestFoodItem(caloriesPer100g: 100)
+        let todayEntry = makeTestEntry(foodItem: food, portionGrams: 300)
+        todayEntry.date = calendar.startOfDay(for: now)
+        let tomorrowEntry = makeTestEntry(foodItem: food, portionGrams: 900)
+        tomorrowEntry.date = calendar.startOfDay(for: tomorrow)
+
+        let snapshot = DailyWidgetSnapshotProjector.makeSnapshot(
+            profile: makeProfile(target: 2_000),
+            entries: [todayEntry, tomorrowEntry],
+            now: now,
+            calendar: calendar
+        )
+
+        XCTAssertEqual(snapshot.calories.consumed, 300)
+    }
+
     func testProjectionSplitsTodayByMealWithSnackSlotsSharingOneKey() {
         let now = makeTestDate(year: 2026, month: 7, day: 15)
         let profile = makeProfile(target: 2_000)
