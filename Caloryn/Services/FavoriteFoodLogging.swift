@@ -222,7 +222,7 @@ enum FavoriteFoodLogging {
         reusablePortion(
             from: food.logEntries ?? [],
             where: { _ in true },
-            sortedBy: { lhs, rhs in
+            orderedBy: { lhs, rhs in
                 if lhs.createdAt != rhs.createdAt {
                     return lhs.createdAt > rhs.createdAt
                 }
@@ -253,7 +253,7 @@ enum FavoriteFoodLogging {
         guard let portion = reusablePortion(
             from: entries,
             where: { $0.date < end },
-            sortedBy: { lhs, rhs in
+            orderedBy: { lhs, rhs in
                 if lhs.date != rhs.date {
                     return lhs.date > rhs.date
                 }
@@ -274,21 +274,14 @@ enum FavoriteFoodLogging {
     private static func reusablePortion(
         from entries: [FoodLogEntry],
         where isIncluded: (FoodLogEntry) -> Bool,
-        sortedBy areInIncreasingOrder: (FoodLogEntry, FoodLogEntry) -> Bool,
+        orderedBy isMoreRecent: (FoodLogEntry, FoodLogEntry) -> Bool,
         hasSameRecency: (FoodLogEntry, FoodLogEntry) -> Bool
     ) -> Double? {
-        let orderedEntries = entries
-            .filter(isIncluded)
-            .sorted(by: areInIncreasingOrder)
-
-        guard let latest = orderedEntries.first else {
-            return nil
-        }
-
-        let equallyRecentPortions = orderedEntries
-            .prefix { hasSameRecency($0, latest) }
-            .map(\.portionGrams)
-        guard equallyRecentPortions.allSatisfy({ $0 == latest.portionGrams }),
+        let includedEntries = entries.filter(isIncluded)
+        guard let latest = includedEntries.min(by: isMoreRecent),
+              includedEntries.allSatisfy({
+                  !hasSameRecency($0, latest) || $0.portionGrams == latest.portionGrams
+              }),
               isSafePortion(latest.portionGrams) else {
             return nil
         }
