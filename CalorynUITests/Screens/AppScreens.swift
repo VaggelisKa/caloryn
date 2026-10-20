@@ -201,6 +201,7 @@ struct HistoryScreen: Screen {
     let app: XCUIApplication
 
     var rangePicker: XCUIElement { element("history.rangePicker") }
+    var averageCalories: XCUIElement { element("history.goalSummary.metric.kcal/day-avg") }
     var calorieTrendCard: XCUIElement { element("history.calorieTrend.card") }
     var calorieTrendDetails: XCUIElement { element("history.calorieTrend.details") }
     var recurringPatternCard: XCUIElement { element("history.recurringPattern.card") }

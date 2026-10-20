@@ -410,6 +410,33 @@ final class JourneyTests: UITestCase {
         }
     }
 
+    func testGivenHistoryWasOpenedWhenTodaysEntryPortionIsEditedThenHistoryShowsTheNewAverage() {
+        let app = launch(fixture: .history)
+        let tabs = TabBar(app: app)
+        let today = TodayScreen(app: app)
+        let portion = PortionPickerScreen(app: app)
+        let history = HistoryScreen(app: app)
+
+        given("History already showing a week that averages 679 kcal a day") {
+            XCTAssertTrue(tabs.isVisible)
+            tabs.go(to: .history)
+            XCTAssertTrue(history.averageCalories.awaitLabel(containing: "679"))
+        }
+
+        when("today's 100g of oats is changed to 200g on Today") {
+            tabs.go(to: .today)
+            today.tap(today.entry(named: "Rolled Oats"))
+            portion.typeGrams(200)
+            portion.awaitCalories(760)
+            portion.tap(portion.save)
+        }
+
+        then("returning to History shows the average with the new portion counted") {
+            tabs.go(to: .history)
+            XCTAssertTrue(history.averageCalories.awaitLabel(containing: "733"))
+        }
+    }
+
     func testGivenAProfileWhenTheCalorieTargetIsViewedThenSettingsShowsIt() {
         let app = launch(fixture: .profileOnly)
         let tabs = TabBar(app: app)
