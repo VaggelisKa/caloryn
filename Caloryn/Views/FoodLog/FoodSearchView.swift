@@ -33,6 +33,7 @@ struct FoodSearchView: View {
     @State private var selectedResult: FoodSearchResult?
     @State var selectedFoodItem: PortionDestination?
     @State private var showingScanner = false
+    @State private var revealFoodAfterScannerDismiss = false
     @State private var hasPresentedInitialScanner = false
     @State private var showingCustomFoodForm = false
     @State private var barcodeFlow = BarcodeLookupFlow(
@@ -100,10 +101,14 @@ struct FoodSearchView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                searchBar
+                if screenContent != .barcodeLookupProgress {
+                    searchBar
+                }
 
                 switch screenContent {
-                case .barcodeLookupFailure, .barcodeLookupProgress:
+                case .barcodeLookupProgress:
+                    BarcodeLookupProgressView(barcode: barcodeFlow.pendingBarcode)
+                case .barcodeLookupFailure:
                     barcodeLookupOverlay
                 case .recent:
                     recentFoodsList
@@ -193,7 +198,7 @@ struct FoodSearchView: View {
             }
             .safeAreaInset(edge: .bottom) {
                 Group {
-                    if isSelectingMultiple, selectedItemCount > 0 {
+                    if isSelectingMultiple, selectedItemCount > 0, screenContent != .barcodeLookupProgress {
                         Button {
                             multiAddPresentation = MultiAddPresentation(
                                 groups: multiAddSelection.groups
@@ -260,7 +265,13 @@ struct FoodSearchView: View {
                 )
                 .presentationDragIndicator(.visible)
             }
-            .fullScreenCover(isPresented: $showingScanner) {
+            .fullScreenCover(isPresented: $showingScanner, onDismiss: {
+                barcodeFlow.scannerDismissed()
+                if revealFoodAfterScannerDismiss {
+                    revealFoodAfterScannerDismiss = false
+                    barcodeFlow.lookupSucceeded()
+                }
+            }) {
                 barcodeScannerSheet
             }
             .alert("Couldn’t Add Meal", isPresented: mealErrorIsPresented) {
@@ -725,25 +736,49 @@ struct FoodSearchView: View {
 
     private var barcodeScannerSheet: some View {
         ZStack(alignment: .topLeading) {
-            BarcodeScannerView { code in
-                showingScanner = false
-                barcodeFlow.scanned(code)
+            if let barcode = barcodeFlow.scannerLookupBarcode {
+                BarcodeLookupProgressView(barcode: barcode)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .calorynSheetCanvas()
+            } else {
+                BarcodeScannerView { code in
+                    acceptScannedBarcode(code)
+                }
+                .ignoresSafeArea()
             }
-            .ignoresSafeArea()
 
             Button {
-                showingScanner = false
+                abandonScanner()
             } label: {
-                Image(systemName: "xmark")
-                    .font(CalorynTheme.toolbarIcon)
-                    // swiftlint:disable:next raw_white_color
-                    .foregroundStyle(.white)
-                    .frame(width: 40, height: 40)
-                    .adaptiveCircleInteractiveGlass()
+                scannerCloseGlyph
             }
-            .accessibilityLabel("Close")
+            .accessibilityLabel(
+                barcodeFlow.scannerLookupBarcode == nil ? "Close" : "Cancel lookup"
+            )
             .padding(.top, 56)
             .padding(.leading, 20)
+        }
+        .animation(
+            accessibilityReduceMotion ? nil : .smooth(duration: 0.28),
+            value: barcodeFlow.scannerLookupBarcode
+        )
+    }
+
+    @ViewBuilder
+    private var scannerCloseGlyph: some View {
+        if barcodeFlow.scannerLookupBarcode == nil {
+            Image(systemName: "xmark")
+                .font(CalorynTheme.toolbarIcon)
+                // swiftlint:disable:next raw_white_color
+                .foregroundStyle(.white)
+                .frame(width: 40, height: 40)
+                .adaptiveCircleInteractiveGlass()
+        } else {
+            Image(systemName: "xmark")
+                .font(CalorynTheme.toolbarIcon)
+                .foregroundStyle(CalorynTheme.accent)
+                .frame(width: 40, height: 40)
+                .adaptiveCircleInteractiveGlass()
         }
     }
 
@@ -757,20 +792,33 @@ struct FoodSearchView: View {
                     onRetry: handleRetryableBarcodeFailureAction,
                     onCreateManually: openManualBarcodeRecovery
                 )
-            } else {
-                VStack(spacing: 14) {
-                    Spacer()
-                    ProgressView()
-                        .controlSize(.large)
-                        .tint(CalorynTheme.accent)
-                    Text("Looking up the product…")
-                        .font(CalorynTheme.bodyText)
-                        .foregroundStyle(CalorynTheme.textSecondary)
-                    Spacer()
-                }
             }
         }
         .frame(maxWidth: .infinity)
+    }
+
+    private func acceptScannedBarcode(_ code: String) {
+        barcodeFlow.scanned(code)
+        if !barcodeFlow.isLookingUp {
+            showingScanner = false
+        }
+    }
+
+    private func abandonScanner() {
+        revealFoodAfterScannerDismiss = false
+        if barcodeFlow.isLookingUp {
+            selectedResult = nil
+            selectedFoodItem = nil
+            barcodeFlow.lookupCancelled()
+        }
+        showingScanner = false
+    }
+
+    private var opensPortionFromScan: Bool {
+        if case .logging = mode, !isSelectingMultiple {
+            return true
+        }
+        return false
     }
 
     private func performBarcodeLookup(_ code: String) async {
@@ -780,19 +828,56 @@ struct FoodSearchView: View {
             providerLookup: searchService.lookupBarcode
         )
         guard !Task.isCancelled else { return }
+        guard barcodeFlow.pendingBarcode == code else { return }
 
         switch outcome {
         case .remote(let result):
-            barcodeFlow.lookupSucceeded()
-            handleProductSelection(result)
+            if opensPortionFromScan {
+                stageResolvedBarcode { selectedResult = result }
+                await revealStagedBarcodeFood()
+            } else {
+                barcodeFlow.lookupSucceeded()
+                showingScanner = false
+                handleProductSelection(result)
+            }
         case .local(let food, _):
-            barcodeFlow.lookupSucceeded()
             try? modelContext.save()
-            handleFoodItemSelection(food)
+            if opensPortionFromScan {
+                stageResolvedBarcode {
+                    selectedFoodItem = PortionDestination(food: food)
+                }
+                await revealStagedBarcodeFood()
+            } else {
+                barcodeFlow.lookupSucceeded()
+                showingScanner = false
+                handleFoodItemSelection(food)
+            }
         case .failure(let error):
             guard let feedback = barcodeFlow.lookupFailed(error) else { return }
+            showingScanner = false
             triggerBarcodeLookupHaptic(feedback)
         }
+    }
+
+    private func stageResolvedBarcode(_ stage: () -> Void) {
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            stage()
+        }
+    }
+
+    private func revealStagedBarcodeFood() async {
+        guard showingScanner else {
+            barcodeFlow.lookupSucceeded()
+            return
+        }
+        // The portion has to commit under the cover before the cover leaves,
+        // or the search sheet flashes in the gap.
+        await Task.yield()
+        guard showingScanner, barcodeFlow.pendingBarcode != nil else { return }
+        revealFoodAfterScannerDismiss = true
+        showingScanner = false
     }
 
     private func openManualBarcodeRecovery() {
@@ -878,6 +963,58 @@ struct FoodSearchView: View {
         }
     }
     #endif
+}
+
+private struct BarcodeLookupProgressView: View {
+    var barcode: String?
+
+    @ScaledMetric(relativeTo: .largeTitle) private var symbolSize: CGFloat = 52
+
+    var body: some View {
+        VStack(spacing: 18) {
+            Spacer(minLength: 24)
+
+            Image(systemName: "barcode.viewfinder")
+                .font(.system(size: symbolSize, weight: .light))
+                .foregroundStyle(CalorynTheme.accent)
+                .accessibilityHidden(true)
+
+            ProgressView()
+                .controlSize(.large)
+                .tint(CalorynTheme.accent)
+                .accessibilityHidden(true)
+
+            VStack(spacing: 6) {
+                Text("Looking up this food")
+                    .font(CalorynTheme.sectionHeaderTitle)
+                    .foregroundStyle(CalorynTheme.textPrimary)
+                Text("Checking your foods and the catalog.")
+                    .font(CalorynTheme.bodyText)
+                    .foregroundStyle(CalorynTheme.textSecondary)
+                    .multilineTextAlignment(.center)
+                if let barcode, !barcode.isEmpty {
+                    Text("Barcode \(barcode)")
+                        .font(CalorynTheme.numericCaption)
+                        .foregroundStyle(CalorynTheme.textSecondary)
+                        .textSelection(.enabled)
+                }
+            }
+            .padding(.horizontal, CalorynTheme.pagePadding)
+
+            Spacer(minLength: 24)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityIdentifier("barcodeLookup.progress")
+    }
+
+    private var accessibilityLabel: String {
+        if let barcode, !barcode.isEmpty {
+            return "Looking up this food. Barcode \(barcode). Checking your foods and the catalog."
+        }
+        return "Looking up this food. Checking your foods and the catalog."
+    }
 }
 
 private struct FoodLookupFailureView: View {

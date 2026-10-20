@@ -21,6 +21,8 @@ struct BarcodeLookupFlow: Equatable {
 
     private(set) var manualRecoveryBarcode: String?
 
+    private(set) var scannerLookupBarcode: String?
+
     init(error: FoodLookupError? = nil, lastScannedBarcode: String? = nil) {
         self.error = error
         self.lastScannedBarcode = lastScannedBarcode
@@ -44,6 +46,7 @@ struct BarcodeLookupFlow: Equatable {
         }
         lastScannedBarcode = normalizedBarcode
         beginLookup(normalizedBarcode)
+        scannerLookupBarcode = normalizedBarcode
     }
 
     mutating func lookupSucceeded() {
@@ -87,8 +90,21 @@ struct BarcodeLookupFlow: Equatable {
         clearRecoveryContext()
     }
 
+    mutating func lookupCancelled() {
+        isLookingUp = false
+        pendingBarcode = nil
+        error = nil
+        lastScannedBarcode = nil
+        manualRecoveryBarcode = nil
+    }
+
+    mutating func scannerDismissed() {
+        scannerLookupBarcode = nil
+    }
+
     mutating func scannerOpened() {
         clearRecoveryContext()
+        scannerLookupBarcode = nil
     }
 
     mutating func nameSearchStarted() {
