@@ -63,49 +63,36 @@ struct FoodSearchView: View {
         )
     }
 
-    private var showingRecent: Bool { listing.showingRecent }
-
-    private var recipes: [FoodItem] { listing.recipes }
-
-    private var manualEntries: [FoodItem] { listing.manualEntries }
-
-    private var displayedRecentFoods: [FoodItem] { listing.displayedRecentFoods }
-
-    private var contextualSuggestions: [(FoodItem, ContextualFoodSuggestion)] {
-        listing.contextualSuggestions
-    }
-
     private var selectedItemCount: Int {
         multiAddSelection.itemCount
     }
 
-    private var selectableOptionCount: Int {
-        listing.selectableOptionCount(
-            isLookingUpBarcode: barcodeFlow.isLookingUp,
-            hasBarcodeLookupError: barcodeFlow.hasError
-        )
+    private var screenContent: FoodSearchScreenContent {
+        screenContent(for: listing)
     }
 
-    private var screenContent: FoodSearchScreenContent {
+    private func screenContent(for listing: FoodSearchListing) -> FoodSearchScreenContent {
         FoodSearchScreenContent.resolve(
             isLookingUpBarcode: barcodeFlow.isLookingUp,
             hasBarcodeLookupError: barcodeFlow.hasError,
-            showingRecent: showingRecent,
+            showingRecent: listing.showingRecent,
             isSearching: searchService.isSearching,
             hasSearchFailure: searchService.failure != nil,
-            hasLocalMatches: hasLocalMatches,
-            hasProductSearchResults: hasProductSearchResults
+            hasLocalMatches: listing.hasLocalMatches,
+            hasProductSearchResults: listing.hasProductSearchResults
         )
     }
 
     var body: some View {
+        let resolvedListing = listing
+        let resolvedScreenContent = screenContent(for: resolvedListing)
         NavigationStack {
             VStack(spacing: 0) {
-                if showsSearchBar {
+                if showsSearchBar(for: resolvedScreenContent) {
                     searchBar
                 }
 
-                switch screenContent {
+                switch resolvedScreenContent {
                 case .barcodeLookupProgress:
                     BarcodeLookupProgressView(
                         barcode: barcodeFlow.pendingBarcode,
@@ -114,7 +101,7 @@ struct FoodSearchView: View {
                 case .barcodeLookupFailure:
                     barcodeLookupOverlay
                 case .recent:
-                    recentFoodsList
+                    recentFoodsList(resolvedListing)
                 case .searchProgress:
                     FoodSearchSkeletonList()
                 case .searchFailure:
@@ -137,7 +124,7 @@ struct FoodSearchView: View {
                             .foregroundStyle(CalorynTheme.textSecondary)
                     }
                 case .results:
-                    searchResultsList
+                    searchResultsList(resolvedListing)
                 }
             }
             .calorynSheetCanvas()
@@ -161,7 +148,10 @@ struct FoodSearchView: View {
                     ToolbarItem(placement: .primaryAction) {
                         let isEnabled = mode.isMultiSelectionControlEnabled(
                             isSelectingMultiple: isSelectingMultiple,
-                            selectableOptionCount: selectableOptionCount
+                            selectableOptionCount: resolvedListing.selectableOptionCount(
+                                isLookingUpBarcode: barcodeFlow.isLookingUp,
+                                hasBarcodeLookupError: barcodeFlow.hasError
+                            )
                         )
                         Button {
                             toggleMultiSelectionMode()
@@ -201,7 +191,7 @@ struct FoodSearchView: View {
             }
             .safeAreaInset(edge: .bottom) {
                 Group {
-                    if isSelectingMultiple, selectedItemCount > 0, screenContent != .barcodeLookupProgress {
+                    if isSelectingMultiple, selectedItemCount > 0, resolvedScreenContent != .barcodeLookupProgress {
                         Button {
                             multiAddPresentation = MultiAddPresentation(
                                 groups: multiAddSelection.groups
@@ -304,7 +294,7 @@ struct FoodSearchView: View {
         }
     }
 
-    private var showsSearchBar: Bool {
+    private func showsSearchBar(for screenContent: FoodSearchScreenContent) -> Bool {
         screenContent != .barcodeLookupProgress || barcodeFlow.scannerLookupBarcode == nil
     }
 
@@ -412,11 +402,11 @@ struct FoodSearchView: View {
         }
     }
 
-    private var recentFoodsList: some View {
+    private func recentFoodsList(_ listing: FoodSearchListing) -> some View {
         List {
-            if !contextualSuggestions.isEmpty {
+            if !listing.contextualSuggestions.isEmpty {
                 foodSection(title: FoodLogSheetCopy.suggestionsTitle(for: mealType)) {
-                    ForEach(contextualSuggestions, id: \.1.id) { pair in
+                    ForEach(listing.contextualSuggestions, id: \.1.id) { pair in
                         contextualSuggestionRow(
                             food: pair.0,
                             suggestion: pair.1
@@ -433,25 +423,25 @@ struct FoodSearchView: View {
                 }
             }
 
-            if mode.isSelection, !recipes.isEmpty {
+            if mode.isSelection, !listing.recipes.isEmpty {
                 foodSection(title: "Recipes") {
-                    ForEach(recipes) { recipe in
+                    ForEach(listing.recipes) { recipe in
                         recipeRow(for: recipe)
                     }
                 }
             }
 
-            if mode.isSelection, !manualEntries.isEmpty {
+            if mode.isSelection, !listing.manualEntries.isEmpty {
                 foodSection(title: "Your own entries") {
-                    ForEach(manualEntries) { food in
+                    ForEach(listing.manualEntries) { food in
                         personalFoodRow(for: food)
                     }
                 }
             }
 
-            if !displayedRecentFoods.isEmpty {
+            if !listing.displayedRecentFoods.isEmpty {
                 foodSection(title: "Recent") {
-                    ForEach(displayedRecentFoods) { food in
+                    ForEach(listing.displayedRecentFoods) { food in
                         savedFoodRow(for: food)
                     }
                 }
@@ -461,60 +451,42 @@ struct FoodSearchView: View {
         .scrollDismissesKeyboard(.immediately)
     }
 
-    private var matchingManualEntries: [FoodItem] { listing.matchingManualEntries }
-
-    private var matchingEditedProducts: [FoodItem] { listing.matchingEditedProducts }
-
-    private var visibleProviderSearchResults: [FoodSearchResult] {
-        listing.visibleProviderSearchResults
-    }
-
-    private var matchingRecipes: [FoodItem] { listing.matchingRecipes }
-
-    private var matchingMeals: [MealTemplate] { listing.matchingMeals }
-
-    private var hasLocalMatches: Bool { listing.hasLocalMatches }
-
-    private var hasCategorizedLocalMatches: Bool { listing.hasCategorizedLocalMatches }
-
-    private var hasProductSearchResults: Bool { listing.hasProductSearchResults }
-
-    private var searchResultsList: some View {
+    private func searchResultsList(_ listing: FoodSearchListing) -> some View {
         List {
-            if !matchingMeals.isEmpty {
+            if !listing.matchingMeals.isEmpty {
                 foodSection(title: "Meals") {
-                    ForEach(matchingMeals) { meal in
+                    ForEach(listing.matchingMeals) { meal in
                         mealRow(for: meal)
                     }
                 }
             }
 
-            if !matchingRecipes.isEmpty {
+            if !listing.matchingRecipes.isEmpty {
                 foodSection(title: "Recipes") {
-                    ForEach(matchingRecipes) { food in
+                    ForEach(listing.matchingRecipes) { food in
                         recipeRow(for: food)
                     }
                 }
             }
 
-            if !matchingManualEntries.isEmpty {
+            if !listing.matchingManualEntries.isEmpty {
                 foodSection(title: "Your own entries") {
-                    ForEach(matchingManualEntries) { food in
+                    ForEach(listing.matchingManualEntries) { food in
                         personalFoodRow(for: food)
                     }
                 }
             }
 
-            if hasProductSearchResults {
+            if listing.hasProductSearchResults {
                 foodSection(
                     title: "Search results",
-                    showsTitle: hasCategorizedLocalMatches
+                    showsTitle: listing.hasCategorizedLocalMatches
                 ) {
-                    ForEach(matchingEditedProducts) { food in
+                    ForEach(listing.matchingEditedProducts) { food in
                         savedFoodRow(for: food)
                     }
 
-                    ForEach(visibleProviderSearchResults) { result in
+                    ForEach(listing.visibleProviderSearchResults) { result in
                         remoteProductRow(result)
                     }
                 }
