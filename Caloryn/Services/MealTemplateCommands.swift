@@ -328,9 +328,15 @@ enum MealTemplateCommands {
         if let transactionFoodResolver {
             resolvedFoods = try transactionFoodResolver(transactionContext)
         } else {
-            let availableFoodIDs = Set(availableFoods.map(\.id))
-            resolvedFoods = try transactionContext.fetch(FetchDescriptor<FoodItem>())
-                .filter { availableFoodIDs.contains($0.id) }
+            let sourceFoodIDs = Array(
+                Set(plan.items.compactMap(\.snapshot.sourceFoodID))
+                    .intersection(availableFoods.map(\.id))
+            )
+            resolvedFoods = try transactionContext.fetch(
+                FetchDescriptor<FoodItem>(
+                    predicate: #Predicate { sourceFoodIDs.contains($0.id) }
+                )
+            )
         }
         let foodsByID = resolvedFoods.reduce(into: [UUID: FoodItem]()) { result, food in
             result[food.id] = food
