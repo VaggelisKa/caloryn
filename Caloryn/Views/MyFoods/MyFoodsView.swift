@@ -93,7 +93,7 @@ struct MyFoodsView: View {
         } else {
             List {
                 if listing.showsFavoritesSection {
-                    favoritesSection
+                    favoritesSection(listing)
                         .libraryHairlineSection()
                 }
 
@@ -103,17 +103,17 @@ struct MyFoodsView: View {
                 }
 
                 if listing.showsRecipesSection {
-                    recipesSection
+                    recipesSection(listing)
                         .libraryHairlineSection()
                 }
 
                 if listing.showsManualEntriesSection {
-                    manualEntriesSection
+                    manualEntriesSection(listing)
                         .libraryHairlineSection()
                 }
 
                 if listing.showsEditedProductCatalogSection {
-                    editedProductCatalogSection
+                    editedProductCatalogSection(listing)
                         .libraryHairlineSection()
                 }
             }
@@ -163,9 +163,8 @@ struct MyFoodsView: View {
         }
     }
 
-    private var favoritesSection: some View {
-        let listing = listing
-        return Section {
+    private func favoritesSection(_ listing: MyFoodsListing) -> some View {
+        Section {
             ForEach(listing.visibleFavorites) { food in
                 libraryButton(for: food)
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
@@ -229,7 +228,7 @@ struct MyFoodsView: View {
         .accessibilityIdentifier("myFoods.createMenu")
     }
 
-    private var manualEntriesSection: some View {
+    private func manualEntriesSection(_ listing: MyFoodsListing) -> some View {
         Section {
             ForEach(listing.nonFavoriteManualEntries) { food in
                 libraryButton(for: food)
@@ -245,7 +244,7 @@ struct MyFoodsView: View {
         }
     }
 
-    private var recipesSection: some View {
+    private func recipesSection(_ listing: MyFoodsListing) -> some View {
         Section {
             ForEach(listing.nonFavoriteRecipes) { recipe in
                 libraryButton(for: recipe)
@@ -261,7 +260,7 @@ struct MyFoodsView: View {
         }
     }
 
-    private var editedProductCatalogSection: some View {
+    private func editedProductCatalogSection(_ listing: MyFoodsListing) -> some View {
         let editedProductCount = listing.editedProducts.count
         return Section {
             NavigationLink {
@@ -411,6 +410,7 @@ private struct EditedProductCatalogView: View {
     }
 
     var body: some View {
+        let products = products
         Group {
             if products.isEmpty {
                 if hasEditedProducts {
