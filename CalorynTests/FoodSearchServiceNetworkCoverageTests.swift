@@ -10,6 +10,7 @@ struct FoodSearchServiceNetworkCoverageTests {
         case nonHTTP(String)
         case transport(URLError.Code)
         case foreignError
+        indirect case held(FoodSearchNetworkGate, Reply)
 
         var testDescription: String {
             switch self {
@@ -17,6 +18,7 @@ struct FoodSearchServiceNetworkCoverageTests {
             case .nonHTTP: "non-HTTP response"
             case .transport(let code): "URLError \(code.rawValue)"
             case .foreignError: "non-URL error"
+            case .held(_, let reply): "\(reply.testDescription) once released"
             }
         }
     }
@@ -613,10 +615,108 @@ struct FoodSearchServiceNetworkCoverageTests {
         #expect(service.errorMessage == "The lookup was cancelled.")
         #expect(service.searchResults.isEmpty)
     }
+
+    @Test("Repeating the query already on screen sends nothing and keeps its results showing")
+    func repeatOfShownQuery() async {
+        let log = FoodSearchNetworkRequestLog()
+        let body = Self.searchBody(Self.hit(code: "611", name: "Greek Yogurt"))
+        FoodSearchNetworkCoverageStub.install { request in
+            log.append(request)
+            return .http(200, body)
+        }
+        let service = makeService(policy: .only(.calorynAPI))
+
+        service.search(query: "greek")
+        #expect(await eventually { !service.isSearching })
+
+        for repeated in ["greek ", "greek"] {
+            service.search(query: repeated)
+            #expect(!service.isSearching)
+            try? await Task.sleep(for: .milliseconds(450))
+        }
+
+        #expect(log.requests.count == 1)
+        #expect(service.searchResults.map(\.product.productName) == ["Greek Yogurt"])
+        #expect(service.failure == nil)
+    }
+
+    @Test("Submitting the query already in flight neither cancels it nor sends it again")
+    func repeatOfInFlightQuery() async {
+        let log = FoodSearchNetworkRequestLog()
+        let gate = FoodSearchNetworkGate()
+        let body = Self.searchBody(Self.hit(code: "612", name: "Greek Yogurt"))
+        FoodSearchNetworkCoverageStub.install { request in
+            log.append(request)
+            return .held(gate, .http(200, body))
+        }
+        let service = makeService(policy: .only(.calorynAPI))
+
+        service.search(query: "greek")
+        #expect(await eventually { log.requests.count == 1 })
+        service.search(query: "greek")
+        gate.open()
+
+        #expect(await eventually { !service.isSearching })
+        #expect(log.requests.count == 1)
+        #expect(service.searchResults.map(\.product.productName) == ["Greek Yogurt"])
+        #expect(service.failure == nil)
+    }
+
+    @Test("Retrying a failed query sends it again")
+    func retryOfFailedQuery() async {
+        let log = FoodSearchNetworkRequestLog()
+        let body = Self.searchBody(Self.hit(code: "613", name: "Greek Yogurt"))
+        FoodSearchNetworkCoverageStub.install { request in
+            log.append(request)
+            return log.requests.count == 1 ? .http(503, "{}") : .http(200, body)
+        }
+        let service = makeService(policy: .only(.calorynAPI))
+
+        service.search(query: "greek")
+        #expect(await eventually { !service.isSearching })
+        #expect(service.failure == .unavailable)
+
+        service.search(query: "greek")
+        #expect(service.isSearching)
+        #expect(service.failure == nil)
+        #expect(await eventually { !service.isSearching })
+
+        #expect(log.requests.count == 2)
+        #expect(service.searchResults.map(\.product.productName) == ["Greek Yogurt"])
+    }
+
+    @Test("Typing a query again after clearing the field searches again", arguments: [true, false])
+    func queryRetypedAfterClearing(clearsResults: Bool) async {
+        let log = FoodSearchNetworkRequestLog()
+        let body = Self.searchBody(Self.hit(code: "614", name: "Greek Yogurt"))
+        FoodSearchNetworkCoverageStub.install { request in
+            log.append(request)
+            return .http(200, body)
+        }
+        let service = makeService(policy: .only(.calorynAPI))
+
+        service.search(query: "greek")
+        #expect(await eventually { !service.isSearching })
+        if clearsResults {
+            service.clearResults()
+        } else {
+            service.search(query: "")
+        }
+        #expect(service.searchResults.isEmpty)
+
+        service.search(query: "greek")
+        #expect(service.isSearching)
+        #expect(await eventually { !service.isSearching })
+
+        #expect(log.requests.count == 2)
+        #expect(service.searchResults.map(\.product.productName) == ["Greek Yogurt"])
+    }
 }
 
 nonisolated private final class FoodSearchNetworkCoverageStub: URLProtocol {
     typealias Handler = @Sendable (URLRequest) -> FoodSearchServiceNetworkCoverageTests.Reply
+
+    private let stopped = FoodSearchNetworkFlag()
 
     nonisolated private static let lock = NSLock()
     nonisolated(unsafe) private static var handler: Handler?
@@ -643,7 +743,15 @@ nonisolated private final class FoodSearchNetworkCoverageStub: URLProtocol {
             return
         }
 
-        switch handler(request) {
+        respond(with: handler(request), for: url)
+    }
+
+    override func stopLoading() {
+        stopped.raise()
+    }
+
+    private func respond(with reply: FoodSearchServiceNetworkCoverageTests.Reply, for url: URL) {
+        switch reply {
         case .http(let status, let body):
             guard let response = HTTPURLResponse(
                 url: url,
@@ -670,10 +778,13 @@ nonisolated private final class FoodSearchNetworkCoverageStub: URLProtocol {
                 self,
                 didFailWithError: NSError(domain: "FoodSearchNetworkCoverageStub", code: 7)
             )
+        case .held(let gate, let heldReply):
+            gate.whenOpen { [weak self] in
+                guard let self, !self.stopped.isRaised else { return }
+                self.respond(with: heldReply, for: url)
+            }
         }
     }
-
-    override func stopLoading() {}
 
     private func deliver(_ response: URLResponse, body: String) {
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
@@ -696,6 +807,49 @@ nonisolated private final class FoodSearchNetworkRequestLog: @unchecked Sendable
         lock.lock()
         defer { lock.unlock() }
         return stored
+    }
+}
+
+nonisolated final class FoodSearchNetworkGate: @unchecked Sendable {
+    private let lock = NSLock()
+    private var isOpen = false
+    private var waiting: [() -> Void] = []
+
+    func whenOpen(_ action: @escaping () -> Void) {
+        lock.lock()
+        guard !isOpen else {
+            lock.unlock()
+            action()
+            return
+        }
+        waiting.append(action)
+        lock.unlock()
+    }
+
+    func open() {
+        lock.lock()
+        isOpen = true
+        let released = waiting
+        waiting = []
+        lock.unlock()
+        released.forEach { $0() }
+    }
+}
+
+nonisolated private final class FoodSearchNetworkFlag: @unchecked Sendable {
+    private let lock = NSLock()
+    private var raised = false
+
+    var isRaised: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return raised
+    }
+
+    func raise() {
+        lock.lock()
+        raised = true
+        lock.unlock()
     }
 }
 

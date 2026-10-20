@@ -17,6 +17,7 @@ final class FoodSearchService {
     var errorMessage: String? { failure?.presentation.message }
 
     private var searchTask: Task<Void, Never>?
+    private var activeQuery: FoodSearchQuery?
     private let policy: FoodProviderPolicy
     private let session: URLSession
     private let countryCode: String?
@@ -61,7 +62,10 @@ final class FoodSearchService {
         #endif
     }
 
-    func search(query: String) {
+    func search(query typed: String) {
+        let query = FoodSearchQuery(typed)
+        if query == activeQuery, failure == nil { return }
+
         searchTask?.cancel()
 
         #if DEBUG
@@ -71,14 +75,15 @@ final class FoodSearchService {
         }
         #endif
 
-        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else {
+        guard !query.isEmpty else {
+            activeQuery = nil
             searchResults = []
             isSearching = false
             failure = nil
             return
         }
 
+        activeQuery = query
         isSearching = true
         failure = nil
 
@@ -86,7 +91,7 @@ final class FoodSearchService {
             do {
                 try await Task.sleep(for: .milliseconds(300))
                 try Task.checkCancellation()
-                await performSearch(query: trimmed)
+                await performSearch(query: query.text)
             } catch {
                 // Search cancellation is expected when the query changes or the view clears.
             }
@@ -124,6 +129,7 @@ final class FoodSearchService {
 
     func clearResults() {
         searchTask?.cancel()
+        activeQuery = nil
         searchResults = []
         isSearching = false
         failure = nil
