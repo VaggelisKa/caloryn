@@ -781,6 +781,14 @@ struct FoodSearchView: View {
             accessibilityReduceMotion ? nil : .smooth(duration: 0.28),
             value: barcodeFlow.scannerLookupBarcode
         )
+        #if DEBUG
+        .task {
+            guard barcodeFlow.scannerLookupBarcode == nil,
+                  let code = ProcessInfo.processInfo.environment["CALORYN_UITEST_BARCODE"],
+                  !code.isEmpty else { return }
+            acceptScannedBarcode(code)
+        }
+        #endif
     }
 
     @ViewBuilder

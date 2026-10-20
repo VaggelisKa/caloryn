@@ -133,6 +133,12 @@ final class FoodSearchService {
         let trimmed = code.trimmingCharacters(in: .whitespacesAndNewlines)
         guard Self.isValidBarcode(trimmed) else { throw FoodLookupError.invalidRequest }
 
+        #if DEBUG
+        if let fixture = try await Self.debugBarcodeLookupFixture(matching: trimmed) {
+            return fixture
+        }
+        #endif
+
         let attempt = try await executeWithFailover(operation: .barcode) { provider in
             try await self.fetchBarcode(trimmed, provider: provider)
         }
@@ -539,6 +545,37 @@ final class FoodSearchService {
 
     static var pinsSearchInFlight: Bool {
         ProcessInfo.processInfo.environment["CALORYN_LOOKUP_FIXTURE"] == "search-loading"
+    }
+
+    private static func debugBarcodeLookupFixture(matching code: String) async throws -> FoodSearchResult? {
+        switch ProcessInfo.processInfo.environment["CALORYN_LOOKUP_FIXTURE"] {
+        case "barcode-lookup-found":
+            await Task.yield()
+            return FoodSearchResult(
+                product: OpenFoodFactsProduct.fixture(
+                    code: code,
+                    name: "Fixture Bar",
+                    brand: "Caloryn",
+                    energy: 250,
+                    protein: 5,
+                    carbohydrates: 30,
+                    fat: 12,
+                    fiber: 2
+                ),
+                provenance: FoodProvenance(
+                    provider: .calorynAPI,
+                    source: .calorynCatalog,
+                    completeness: .complete,
+                    recoveredByFallback: false
+                )
+            )
+        case "barcode-lookup-unavailable":
+            try await Task.sleep(for: .milliseconds(2500))
+            try Task.checkCancellation()
+            throw FoodLookupError.unavailable
+        default:
+            return nil
+        }
     }
 
     private func applyDebugFixtureIfRequested() {

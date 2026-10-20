@@ -143,6 +143,7 @@ struct FoodSearchScreen: Screen {
     let app: XCUIApplication
 
     var searchField: XCUIElement { element("foodSearch.searchField") }
+    var scan: XCUIElement { app.buttons["Scan a barcode"] }
 
     func result(named name: String) -> XCUIElement {
         element("foodSearch.result.\(name)")
