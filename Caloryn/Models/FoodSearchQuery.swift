@@ -9,8 +9,11 @@ struct FoodSearchQuery: Equatable {
         text = typed.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    var isEmpty: Bool {
-        text.isEmpty
+    var meetsSearchMinimum: Bool {
+        guard text.utf16.count >= 2 else { return false }
+        return text.precomposedStringWithCompatibilityMapping.unicodeScalars
+            .split(whereSeparator: { !Self.isLetterOrDigit($0) })
+            .contains { String(String.UnicodeScalarView($0)).lowercased().unicodeScalars.count >= 2 }
     }
 
     var calorynAPIText: String {
@@ -20,5 +23,15 @@ struct FoodSearchQuery: Equatable {
             .map { String(String.UnicodeScalarView($0)) }
             .joined(separator: " ")
         return collapsed.unicodeScalars.allSatisfy(\.isASCII) ? collapsed.lowercased() : collapsed
+    }
+
+    private static func isLetterOrDigit(_ scalar: Unicode.Scalar) -> Bool {
+        switch scalar.properties.generalCategory {
+        case .uppercaseLetter, .lowercaseLetter, .titlecaseLetter, .modifierLetter, .otherLetter,
+             .decimalNumber, .letterNumber, .otherNumber:
+            true
+        default:
+            false
+        }
     }
 }

@@ -28,7 +28,8 @@ struct FoodSearchListing {
     let suggestions: [ContextualFoodSuggestion]
 
     let query: String
-    let showingRecent: Bool
+    private let isBlank: Bool
+    private let meetsSearchMinimum: Bool
     let recipes: [FoodItem]
     let manualEntries: [FoodItem]
     let editedProducts: [FoodItem]
@@ -57,7 +58,8 @@ struct FoodSearchListing {
 
         let query = searchText.lowercased().trimmingCharacters(in: .whitespaces)
         self.query = query
-        showingRecent = searchText.trimmingCharacters(in: .whitespaces).isEmpty
+        isBlank = searchText.trimmingCharacters(in: .whitespaces).isEmpty
+        meetsSearchMinimum = FoodSearchQuery(searchText).meetsSearchMinimum
 
         let suggestedIDs = Set(suggestions.map(\.foodID))
         var recipes: [FoodItem] = []
@@ -118,6 +120,10 @@ struct FoodSearchListing {
         matchingMeals = mode.supportsMultiSelection && !query.isEmpty
             ? mealTemplates.filter { $0.name.lowercased().contains(query) }
             : []
+    }
+
+    var showingRecent: Bool {
+        isBlank || (!meetsSearchMinimum && !hasLocalMatches)
     }
 
     var hasCategorizedLocalMatches: Bool {

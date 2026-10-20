@@ -75,7 +75,7 @@ final class FoodSearchService {
         }
         #endif
 
-        guard !query.isEmpty else {
+        guard query.meetsSearchMinimum else {
             activeQuery = nil
             searchResults = []
             isSearching = false
@@ -100,7 +100,7 @@ final class FoodSearchService {
 
     func searchImmediately(query typed: String) async throws -> [FoodSearchResult] {
         let query = FoodSearchQuery(typed)
-        guard !query.isEmpty else { throw FoodLookupError.invalidRequest }
+        guard query.meetsSearchMinimum else { throw FoodLookupError.invalidRequest }
 
         let locale = SearchLocaleContext.current
         let attempt = try await executeWithFailover(operation: .search) { provider in

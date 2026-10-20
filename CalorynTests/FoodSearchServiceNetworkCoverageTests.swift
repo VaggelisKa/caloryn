@@ -413,6 +413,42 @@ struct FoodSearchServiceNetworkCoverageTests {
         #expect(telemetry.events.isEmpty)
     }
 
+    @Test(
+        "A query the food API always rejects never reaches a provider",
+        arguments: ["c", " 7 ", "!!", "a b", "1-2", "\u{1F34E}\u{1F34E}", "\u{FB01}", "\u{338F}", "\u{0130}"]
+    )
+    func queryBelowTheSearchMinimumIsNotSent(_ typed: String) async {
+        let log = FoodSearchNetworkRequestLog()
+        let telemetry = FoodSearchNetworkTelemetryLog()
+        FoodSearchNetworkCoverageStub.install { request in
+            log.append(request)
+            return .http(400, "{}")
+        }
+        let service = makeService(telemetry: telemetry)
+
+        #expect(await searchError(service, query: typed) as? FoodLookupError == .invalidRequest)
+        #expect(log.requests.isEmpty)
+        #expect(telemetry.events.isEmpty)
+    }
+
+    @Test(
+        "Two letters or digits in a row are enough to search, as the food API counts them",
+        arguments: ["ab", "a 12", "\u{00C6}b", "\u{725B}\u{5976}", "e\u{0301}x", "\u{0130}.", "\u{FB01}!"]
+    )
+    func queryAtTheSearchMinimumIsSent(_ typed: String) async throws {
+        let log = FoodSearchNetworkRequestLog()
+        let body = Self.searchBody(Self.hit(code: "620", name: "Any Food"))
+        FoodSearchNetworkCoverageStub.install { request in
+            log.append(request)
+            return .http(200, body)
+        }
+        let service = makeService(policy: .only(.calorynAPI))
+
+        _ = try await service.searchImmediately(query: typed)
+
+        #expect(log.requests.count == 1)
+    }
+
     @Test("A search response that is not JSON is invalid data")
     func malformedSearchResponse() async {
         FoodSearchNetworkCoverageStub.install { _ in .http(200, "<html>maintenance</html>") }
@@ -614,6 +650,30 @@ struct FoodSearchServiceNetworkCoverageTests {
         #expect(service.failure == .cancelled)
         #expect(service.errorMessage == "The lookup was cancelled.")
         #expect(service.searchResults.isEmpty)
+    }
+
+    @Test("Typing a query too short to search clears the earlier results and shows no failure")
+    func queryBelowTheSearchMinimumRestsLikeAnEmptyQuery() async {
+        let log = FoodSearchNetworkRequestLog()
+        let body = Self.searchBody(Self.hit(code: "621", name: "Cheddar"))
+        FoodSearchNetworkCoverageStub.install { request in
+            log.append(request)
+            return (Self.queryItems(request)["q"] ?? "").count < 2 ? .http(400, "{}") : .http(200, body)
+        }
+        let service = makeService(policy: .only(.calorynAPI))
+
+        service.search(query: "ch")
+        #expect(await eventually { !service.isSearching })
+        #expect(service.searchResults.map(\.product.productName) == ["Cheddar"])
+
+        service.search(query: "c")
+        #expect(!service.isSearching)
+        try? await Task.sleep(for: .milliseconds(450))
+
+        #expect(log.requests.map { Self.queryItems($0)["q"] } == ["ch"])
+        #expect(service.searchResults.isEmpty)
+        #expect(service.failure == nil)
+        #expect(!service.isSearching)
     }
 
     @Test("Repeating the query already on screen sends nothing and keeps its results showing")
