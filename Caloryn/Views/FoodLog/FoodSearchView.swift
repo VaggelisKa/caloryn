@@ -101,13 +101,16 @@ struct FoodSearchView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                if screenContent != .barcodeLookupProgress {
+                if showsSearchBar {
                     searchBar
                 }
 
                 switch screenContent {
                 case .barcodeLookupProgress:
-                    BarcodeLookupProgressView(barcode: barcodeFlow.pendingBarcode)
+                    BarcodeLookupProgressView(
+                        barcode: barcodeFlow.pendingBarcode,
+                        onCancel: sheetLookupCancel
+                    )
                 case .barcodeLookupFailure:
                     barcodeLookupOverlay
                 case .recent:
@@ -301,6 +304,15 @@ struct FoodSearchView: View {
         }
     }
 
+    private var showsSearchBar: Bool {
+        screenContent != .barcodeLookupProgress || barcodeFlow.scannerLookupBarcode == nil
+    }
+
+    private var sheetLookupCancel: (() -> Void)? {
+        guard barcodeFlow.scannerLookupBarcode == nil else { return nil }
+        return { cancelBarcodeLookup() }
+    }
+
     private var sheetTitle: String {
         guard case .logging = mode else { return mode.title }
         return "Add to \(mealType.displayName)"
@@ -367,6 +379,9 @@ struct FoodSearchView: View {
 
             Button {
                 isSearchFocused = false
+                if barcodeFlow.isLookingUp {
+                    barcodeFlow.lookupCancelled()
+                }
                 barcodeFlow.scannerOpened()
                 showingScanner = true
             } label: {
@@ -382,6 +397,10 @@ struct FoodSearchView: View {
         .padding(.top, 8)
         .padding(.bottom, 6)
         .onChange(of: searchText) {
+            if barcodeFlow.isLookingUp,
+               !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                barcodeFlow.lookupCancelled()
+            }
             if FoodSearchScreenContent.dismissesBarcodeFailure(
                 forSearchText: searchText,
                 errorDismissesOnNameSearch: barcodeFlow.errorDismissesOnNameSearch
@@ -804,6 +823,10 @@ struct FoodSearchView: View {
         }
     }
 
+    private func cancelBarcodeLookup() {
+        barcodeFlow.lookupCancelled()
+    }
+
     private func abandonScanner() {
         revealFoodAfterScannerDismiss = false
         if barcodeFlow.isLookingUp {
@@ -967,6 +990,7 @@ struct FoodSearchView: View {
 
 private struct BarcodeLookupProgressView: View {
     var barcode: String?
+    var onCancel: (() -> Void)?
 
     @ScaledMetric(relativeTo: .largeTitle) private var symbolSize: CGFloat = 52
 
@@ -1000,13 +1024,22 @@ private struct BarcodeLookupProgressView: View {
                 }
             }
             .padding(.horizontal, CalorynTheme.pagePadding)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(accessibilityLabel)
+            .accessibilityIdentifier("barcodeLookup.progress")
+
+            if let onCancel {
+                Button("Cancel", action: onCancel)
+                    .buttonStyle(.bordered)
+                    .tint(CalorynTheme.accent)
+                    .controlSize(.large)
+                    .accessibilityLabel("Cancel lookup")
+                    .accessibilityIdentifier("barcodeLookup.cancel")
+            }
 
             Spacer(minLength: 24)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(accessibilityLabel)
-        .accessibilityIdentifier("barcodeLookup.progress")
     }
 
     private var accessibilityLabel: String {
