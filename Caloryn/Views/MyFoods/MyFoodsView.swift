@@ -3,7 +3,10 @@ import SwiftUI
 
 struct MyFoodsView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \FoodItem.name) private var foodItems: [FoodItem]
+    @Query(
+        filter: #Predicate<FoodItem> { $0.isCustom || $0.isRecipe },
+        sort: \FoodItem.name
+    ) private var foodItems: [FoodItem]
     @Query(sort: \MealTemplate.updatedAt, order: .reverse) private var mealTemplates: [MealTemplate]
 
     @State private var showingManualEntryForm = false
@@ -391,7 +394,10 @@ struct MyFoodsView: View {
 }
 
 private struct EditedProductCatalogView: View {
-    @Query(sort: \FoodItem.name) private var foodItems: [FoodItem]
+    @Query(
+        filter: #Predicate<FoodItem> { $0.isCustom && !$0.isRecipe },
+        sort: \FoodItem.name
+    ) private var foodItems: [FoodItem]
 
     @State private var searchText = ""
     @State private var editingProduct: FoodItem?
