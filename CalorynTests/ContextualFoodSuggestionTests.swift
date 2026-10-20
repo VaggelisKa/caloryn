@@ -395,6 +395,37 @@ final class ContextualFoodSuggestionDestinationTests: XCTestCase {
         XCTAssertEqual(after, before)
     }
 
+    func testRankingTheStoreMatchesRankingEveryLoggedEntry() throws {
+        let context = try makeContext()
+        let oats = insertFood("Oats", into: context)
+        let soup = insertFood("Soup", into: context)
+        log(oats, [(-120, 90), (-6, 120), (-5, 130), (-2, 200), (-1, 175), (0, 180), (2, 250)], into: context)
+        log(soup, [(-95, 60), (-40, 300), (-3, 310), (-1, 320), (1, 330), (4, 340)], into: context)
+        try context.save()
+        let foods = try context.fetch(FetchDescriptor<FoodItem>())
+        let entries = try context.fetch(FetchDescriptor<FoodLogEntry>())
+
+        for offset in [-100, -10, -4, -1, 0, 1, 3, 7] {
+            let fromStore = ContextualFoodSuggestionAdapter.rank(
+                foods: foods,
+                modelContext: context,
+                destinationDate: day(offset),
+                destinationMeal: .breakfast,
+                now: now
+            )
+            let fromEveryEntry = ContextualFoodSuggestionAdapter.rank(
+                foods: foods,
+                entries: entries,
+                destinationDate: day(offset),
+                destinationMeal: .breakfast,
+                now: now
+            )
+
+            XCTAssertEqual(fromStore.count, 2, "day \(offset)")
+            XCTAssertEqual(fromStore, fromEveryEntry, "day \(offset)")
+        }
+    }
+
     private func suggestions(
         in context: ModelContext,
         destinationDayOffset: Int

@@ -52,6 +52,7 @@ enum FavoriteFoodLogging {
         destinationMeal: MealType,
         destinationDate: Date,
         destinationSnackIndex: Int = 0,
+        history: [FoodLogEntry]? = nil,
         calendar: Calendar = .current
     ) -> FavoriteFoodLogPlan {
         let date = calendar.startOfDay(for: destinationDate)
@@ -71,7 +72,7 @@ enum FavoriteFoodLogging {
         }
 
         let action = lastPortionAction(
-            for: food,
+            in: history ?? food.logEntries ?? [],
             onOrBefore: date,
             calendar: calendar
         )
@@ -233,18 +234,24 @@ enum FavoriteFoodLogging {
         )
     }
 
+    static func lastPortionCutoff(
+        onOrBefore destinationDate: Date,
+        calendar: Calendar
+    ) -> Date? {
+        calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: destinationDate))
+    }
+
     private static func lastPortionAction(
-        for food: FoodItem,
+        in entries: [FoodLogEntry],
         onOrBefore destinationDate: Date,
         calendar: Calendar
     ) -> FavoriteFoodLogPlan.Action {
-        let start = calendar.startOfDay(for: destinationDate)
-        guard let end = calendar.date(byAdding: .day, value: 1, to: start) else {
+        guard let end = lastPortionCutoff(onOrBefore: destinationDate, calendar: calendar) else {
             return .confirmQuantity
         }
 
         guard let portion = reusablePortion(
-            from: food.logEntries ?? [],
+            from: entries,
             where: { $0.date < end },
             sortedBy: { lhs, rhs in
                 if lhs.date != rhs.date {
