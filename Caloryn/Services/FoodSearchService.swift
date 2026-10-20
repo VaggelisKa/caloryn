@@ -334,7 +334,7 @@ final class FoodSearchService {
         case .calorynAPI:
             urlString = "\(Self.calorynAPIBaseURL)/api/v1/products/\(encodedCode)"
         case .openFoodFacts:
-            urlString = "\(Self.openFoodFactsBarcodeBaseURL)/api/v0/product/\(encodedCode).json"
+            urlString = "\(Self.openFoodFactsBarcodeBaseURL)/api/v0/product/\(encodedCode).json?fields=\(Self.searchFields)"
         }
 
         guard let url = URL(string: urlString) else { throw FoodLookupError.invalidRequest }

@@ -25,6 +25,10 @@ struct FoodSearchServiceNetworkCoverageTests {
     nonisolated private static let calorynHost = "caloryn-api.vercel.app"
     nonisolated private static let openFoodFactsSearchHost = "search.openfoodfacts.org"
     nonisolated private static let openFoodFactsBarcodeHost = "world.openfoodfacts.org"
+    nonisolated private static let decodedProductFields = [
+        "code", "product_name", "brands", "serving_size", "serving_quantity", "product_quantity",
+        "quantity", "nutriments", "nutrition_grades", "categories_tags", "lang", "countries_tags",
+    ].joined(separator: ",")
 
     nonisolated private static let completeNutriments =
         #""energy-kcal_100g": 62, "proteins_100g": 11, "carbohydrates_100g": 4, "fat_100g": 0.2"#
@@ -268,9 +272,11 @@ struct FoodSearchServiceNetworkCoverageTests {
 
         let result = try await service.lookupBarcode(Self.barcode)
 
-        #expect(log.requests.compactMap(\.url?.absoluteString) == [
-            "https://world.openfoodfacts.org/api/v0/product/5711953150388.json",
-        ])
+        let request = try #require(log.requests.first)
+        #expect(log.requests.count == 1)
+        #expect(request.url?.host == Self.openFoodFactsBarcodeHost)
+        #expect(request.url?.path == "/api/v0/product/5711953150388.json")
+        #expect(Self.queryItems(request) == ["fields": Self.decodedProductFields])
         #expect(result.provenance == FoodProvenance(
             provider: .openFoodFacts,
             source: .openFoodFactsCommunity,
@@ -323,10 +329,7 @@ struct FoodSearchServiceNetworkCoverageTests {
         #expect(request.url?.path == "/search")
         #expect(items["q"] == "rolled oats")
         #expect(items["page_size"] == "30")
-        #expect(items["fields"] == [
-            "code", "product_name", "brands", "serving_size", "serving_quantity", "product_quantity",
-            "quantity", "nutriments", "nutrition_grades", "categories_tags", "lang", "countries_tags",
-        ].joined(separator: ","))
+        #expect(items["fields"] == Self.decodedProductFields)
         #expect(items["country"] == nil)
         #expect(items["limit"] == nil)
         #expect(languages.contains("en"))
