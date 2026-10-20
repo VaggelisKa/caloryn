@@ -18,7 +18,7 @@ enum DailyWidgetSnapshotProjector {
         }
 
         let dayStart = calendar.startOfDay(for: now)
-        let dayEntries = entries.filter { calendar.isDate($0.date, inSameDayAs: dayStart) }
+        let dayEntries = DayFoodLogSelection.entries(entries, on: dayStart, calendar: calendar, date: \.date)
         let consumedCalories = dayEntries.reduce(0) { $0 + $1.calories }
         let mealCalories = mealCalories(for: dayEntries)
         let budget = profile.activityBudget(

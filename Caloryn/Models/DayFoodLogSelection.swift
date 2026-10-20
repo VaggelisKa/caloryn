@@ -15,14 +15,16 @@ struct DayFoodLogProjection<Entry> {
         createdAt: (Entry) -> Date
     ) {
         let previousDay = calendar.date(byAdding: .day, value: -1, to: day) ?? day
+        let selectedDay = CalendarDay(containing: day, in: calendar)
+        let dayBefore = CalendarDay(containing: previousDay, in: calendar)
         var today: [Entry] = []
         var yesterday: [Entry] = []
 
         for entry in entries {
             let entryDate = date(entry)
-            if calendar.isDate(entryDate, inSameDayAs: day) {
+            if selectedDay.contains(entryDate) {
                 today.append(entry)
-            } else if calendar.isDate(entryDate, inSameDayAs: previousDay) {
+            } else if dayBefore.contains(entryDate) {
                 yesterday.append(entry)
             }
         }
@@ -49,7 +51,8 @@ enum DayFoodLogSelection {
         calendar: Calendar = .current,
         date: (Entry) -> Date
     ) -> [Entry] {
-        entries.filter { calendar.isDate(date($0), inSameDayAs: day) }
+        let selectedDay = CalendarDay(containing: day, in: calendar)
+        return entries.filter { selectedDay.contains(date($0)) }
     }
 
     static func entries<Entry>(
@@ -80,5 +83,24 @@ enum DayFoodLogSelection {
 
     static func canCopyYesterday(loggedTodayCount: Int, loggedYesterdayCount: Int) -> Bool {
         loggedTodayCount == 0 && loggedYesterdayCount > 0
+    }
+}
+
+private struct CalendarDay {
+    private let day: Date
+    private let calendar: Calendar
+    private let bounds: Range<Date>?
+
+    init(containing day: Date, in calendar: Calendar) {
+        self.day = day
+        self.calendar = calendar
+        bounds = calendar.dateInterval(of: .day, for: day).map { $0.start..<$0.end }
+    }
+
+    func contains(_ date: Date) -> Bool {
+        guard let bounds else {
+            return calendar.isDate(date, inSameDayAs: day)
+        }
+        return bounds.contains(date)
     }
 }
