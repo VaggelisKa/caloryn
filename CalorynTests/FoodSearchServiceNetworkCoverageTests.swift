@@ -339,6 +339,63 @@ struct FoodSearchServiceNetworkCoverageTests {
         #expect(results.map(\.provenance.recoveredByFallback) == [false])
     }
 
+    @Test(
+        "The food API is sent one spelling of a query: single spaces, and lower case when it is plain ASCII",
+        arguments: [
+            ("greek yogurt", "greek yogurt"),
+            ("Greek   Yogurt", "greek yogurt"),
+            ("  GREEK\tyogurt\n", "greek yogurt"),
+            ("greek\u{00A0}\u{3000}yogurt", "greek yogurt"),
+            ("Skyr  Æble", "Skyr Æble"),
+            ("İSTANBUL  kebab", "İSTANBUL kebab"),
+        ] as [(String, String)]
+    )
+    func calorynAPIQuerySpelling(typed: String, sent: String) async throws {
+        let log = FoodSearchNetworkRequestLog()
+        let body = Self.searchBody(Self.hit(code: "111", name: "Greek Yogurt"))
+        FoodSearchNetworkCoverageStub.install { request in
+            log.append(request)
+            return .http(200, body)
+        }
+        let service = makeService(policy: .only(.calorynAPI))
+
+        _ = try await service.searchImmediately(query: typed)
+
+        #expect(log.requests.map { Self.queryItems($0)["q"] } == [sent])
+    }
+
+    @Test("A query over the food API's 100-character limit is sent as typed, so the API still rejects it")
+    func overlongQueryIsSentAsTyped() async {
+        let log = FoodSearchNetworkRequestLog()
+        FoodSearchNetworkCoverageStub.install { request in
+            log.append(request)
+            return .http(400, "{}")
+        }
+        let service = makeService(policy: .only(.calorynAPI))
+        let typed = "Greek  Yogurt " + String(repeating: "honey", count: 18)
+
+        let error = await searchError(service, query: typed)
+
+        #expect(error as? FoodLookupError == .invalidRequest)
+        #expect(log.requests.map { Self.queryItems($0)["q"] } == [typed])
+    }
+
+    @Test("The community fallback is sent the query as typed")
+    func communityFallbackQuerySpelling() async throws {
+        let log = FoodSearchNetworkRequestLog()
+        let body = Self.searchBody(Self.hit(code: "112", name: "Community Yogurt"))
+        FoodSearchNetworkCoverageStub.install { request in
+            log.append(request)
+            return request.url?.host == Self.calorynHost ? .http(404, "{}") : .http(200, body)
+        }
+        let service = makeService()
+
+        _ = try await service.searchImmediately(query: " Greek   Yogurt ")
+
+        #expect(log.requests.compactMap(\.url?.host) == [Self.calorynHost, Self.openFoodFactsSearchHost])
+        #expect(log.requests.map { Self.queryItems($0)["q"] } == ["greek yogurt", "Greek   Yogurt"])
+    }
+
     @Test("A blank query is rejected before any provider is asked")
     func blankQuery() async {
         let log = FoodSearchNetworkRequestLog()
