@@ -3,6 +3,7 @@ import SwiftUI
 import SwiftData
 
 struct HistoryView: View {
+    @Environment(AppRouter.self) private var router
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -35,6 +36,8 @@ struct HistoryView: View {
     }
 
     private var profile: UserProfile? { profiles.first }
+
+    private var isSelectedTab: Bool { router.selectedTab == .history }
 
     private func relevantEntries(for range: HistoryRange) -> [FoodLogEntry] {
         relevantEntries(
@@ -152,7 +155,8 @@ struct HistoryView: View {
             }
         }
         .calorynPageCanvas()
-        .task(id: analyticsRefreshID) {
+        .task(id: isSelectedTab ? analyticsRefreshID : nil) {
+            guard isSelectedTab else { return }
             refreshAnalytics(for: historyState.range)
             if !hasLoadedAnalytics {
                 hasLoadedAnalytics = true
