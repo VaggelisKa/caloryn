@@ -145,6 +145,44 @@ struct FoodSearchListingTests {
         #expect(displayed.last?.name == "Food 20")
     }
 
+    @Test("Foods the recents section hides do not use up its cap")
+    func hiddenFoodsDoNotUseUpTheRecentsCap() {
+        let suggested = makeTestFoodItem(name: "Oats")
+        let head = [
+            manualEntry(name: "My Shake"),
+            manualEntry(name: "My Bar"),
+            recipe(name: "Chili"),
+            suggested
+        ]
+        let catalog = (1...25).map { makeTestFoodItem(name: "Food \($0)") }
+        let displayed = listing(
+            recentFoods: head + catalog,
+            suggestions: [suggestion(for: suggested)]
+        ).displayedRecentFoods
+
+        #expect(displayed.map(\.name) == catalog.prefix(FoodSearchListing.recentFoodLimit).map(\.name))
+    }
+
+    @Test("The recents cap does not cut short the other sections")
+    func recentsCapLeavesOtherSectionsWhole() {
+        let catalog = (1...25).map { makeTestFoodItem(name: "Food \($0)") }
+        let tail = [
+            manualEntry(name: "Late Shake"),
+            recipe(name: "Late Stew"),
+            editedProduct(name: "Late Skyr", barcode: "5711953150388")
+        ]
+        let mode = FoodSearchListing.Mode(includesRecipes: true, supportsMultiSelection: false)
+        let resting = listing(mode: mode, recentFoods: catalog + tail)
+        let searching = listing(mode: mode, searchText: "late", recentFoods: catalog + tail)
+
+        #expect(resting.manualEntries.map(\.name) == ["Late Shake"])
+        #expect(resting.recipes.map(\.name) == ["Late Stew"])
+        #expect(resting.editedProducts.map(\.name) == ["Late Skyr"])
+        #expect(searching.matchingManualEntries.map(\.name) == ["Late Shake"])
+        #expect(searching.matchingRecipes.map(\.name) == ["Late Stew"])
+        #expect(searching.matchingEditedProducts.map(\.name) == ["Late Skyr"])
+    }
+
     @Test("Suggestions resolve to the food they point at, in suggestion order")
     func suggestionsPairWithTheirFood() {
         let first = makeTestFoodItem(name: "Eggs")
@@ -155,6 +193,29 @@ struct FoodSearchListingTests {
         )
 
         #expect(listing.contextualSuggestions.map(\.0.name) == ["Eggs", "Toast"])
+    }
+
+    @Test("A suggested food of the user's own still keeps its own section")
+    func suggestedManualEntryStaysInItsSection() {
+        let shake = manualEntry(name: "My Shake")
+        let listing = listing(recentFoods: [shake], suggestions: [suggestion(for: shake)])
+
+        #expect(listing.contextualSuggestions.map(\.0.name) == ["My Shake"])
+        #expect(listing.manualEntries.map(\.name) == ["My Shake"])
+    }
+
+    @Test("Two foods sharing an id resolve a suggestion to the later one in the list")
+    func duplicateIDsResolveToTheLaterFood() {
+        let earlier = makeTestFoodItem(name: "Oats")
+        let later = makeTestFoodItem(name: "Porridge Oats")
+        later.id = earlier.id
+        let listing = listing(
+            recentFoods: [earlier, later],
+            suggestions: [suggestion(for: earlier)]
+        )
+
+        #expect(listing.contextualSuggestions.map(\.0.name) == ["Porridge Oats"])
+        #expect(listing.displayedRecentFoods.isEmpty)
     }
 
     @Test("A suggestion whose food has left the library is dropped, not crashed on")
