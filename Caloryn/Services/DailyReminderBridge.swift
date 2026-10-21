@@ -4,14 +4,15 @@ import SwiftUI
 struct DailyReminderBridge: View {
     @Environment(\.scenePhase) private var scenePhase
     @Query(sort: \UserProfile.updatedAt, order: .reverse) private var profiles: [UserProfile]
-    @Query private var allEntries: [FoodLogEntry]
+    @Query(filter: FoodLogEntryWindow.loggedSince(FoodLogEntryWindow.recentStart(now: .now, calendar: .current)))
+    private var recentEntries: [FoodLogEntry]
     @AppStorage("dailyReminderEnabled") private var isEnabled = false
     @AppStorage("dailyReminderMinutesFromMidnight") private var reminderMinutes = DailyReminderPlanner.defaultReminderMinutes
     @State private var scheduler = DailyReminderScheduler()
 
     private var currentPlan: [PlannedReminder] {
         let target = profiles.first?.dailyCalorieTarget
-        let consumedToday = DayFoodLogSelection.entries(allEntries, on: .now, date: \.date)
+        let consumedToday = DayFoodLogSelection.entries(recentEntries, on: .now, date: \.date)
             .reduce(0) { $0 + $1.calories }
 
         return DailyReminderPlanner.makePlan(

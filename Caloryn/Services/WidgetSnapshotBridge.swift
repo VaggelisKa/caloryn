@@ -37,7 +37,8 @@ final class WidgetSyncCoordinator {
 struct WidgetSnapshotBridge: View {
     @Environment(\.scenePhase) private var scenePhase
     @Query(sort: \UserProfile.updatedAt, order: .reverse) private var profiles: [UserProfile]
-    @Query private var allEntries: [FoodLogEntry]
+    @Query(filter: FoodLogEntryWindow.loggedSince(FoodLogEntryWindow.recentStart(now: .now, calendar: .current)))
+    private var recentEntries: [FoodLogEntry]
 
     @State private var activeEnergyTracker = ActiveEnergyDayTracker()
     @State private var syncCoordinator = WidgetSyncCoordinator()
@@ -57,7 +58,7 @@ struct WidgetSnapshotBridge: View {
     private var currentSnapshot: DailyWidgetSnapshot {
         DailyWidgetSnapshotProjector.makeSnapshot(
             profile: profile,
-            entries: allEntries,
+            entries: recentEntries,
             activeEnergyKcal: activeEnergyTracker.activeEnergyKcal,
             recentActiveEnergySamples: activeEnergyTracker.recentActiveEnergySamples,
             isActivityLoading: activeEnergyTracker.isLoading,

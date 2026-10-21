@@ -552,6 +552,43 @@ final class JourneyTests: UITestCase {
         }
     }
 
+    func testGivenALoggedDayWhenItsOnlyEntryIsDeletedThenThereIsNothingToExport() {
+        let app = launch(fixture: .loggedDay)
+        let tabs = TabBar(app: app)
+        let today = TodayScreen(app: app)
+        let portion = PortionPickerScreen(app: app)
+        let settings = SettingsScreen(app: app)
+        let entry = today.entry(named: "Rolled Oats")
+
+        given("Settings offering to export the one logged entry") {
+            XCTAssertTrue(tabs.isVisible)
+            tabs.go(to: .settings)
+            XCTAssertTrue(settings.revealExport().isEnabled, "A logged entry should be exportable")
+        }
+
+        when("that entry is deleted from Today") {
+            tabs.go(to: .today)
+            today.tap(entry)
+            today.tap(portion.delete)
+            today.tap(app.buttons["Delete"].firstMatch)
+            let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: entry)
+            XCTAssertEqual(XCTWaiter().wait(for: [gone], timeout: UITestCase.defaultTimeout), .completed)
+        }
+
+        then("Settings no longer offers an export") {
+            tabs.go(to: .settings)
+            let disabled = XCTNSPredicateExpectation(
+                predicate: NSPredicate(format: "isEnabled == false"),
+                object: settings.export
+            )
+            XCTAssertEqual(
+                XCTWaiter().wait(for: [disabled], timeout: UITestCase.defaultTimeout),
+                .completed,
+                "With nothing logged there should be nothing to export"
+            )
+        }
+    }
+
     func testGivenTheMainScreensWhenAuditedThenNoAccessibilityIssuesAreReported() throws {
         let app = launch(fixture: .history)
         let tabs = TabBar(app: app)
