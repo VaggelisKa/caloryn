@@ -392,6 +392,7 @@ struct FoodSearchView: View {
             }
             .adaptiveCircleInteractiveGlass(tint: CalorynTheme.backgroundInset, edge: CalorynTheme.separator)
             .accessibilityLabel("Scan a barcode")
+            .accessibilityIdentifier("foodSearch.scanBarcode")
         }
         .padding(.horizontal, CalorynTheme.pagePadding)
         .padding(.top, 8)
@@ -774,6 +775,7 @@ struct FoodSearchView: View {
             .accessibilityLabel(
                 barcodeFlow.scannerLookupBarcode == nil ? "Close" : "Cancel lookup"
             )
+            .accessibilityIdentifier("barcodeScanner.close")
             .padding(.top, 56)
             .padding(.leading, 20)
         }

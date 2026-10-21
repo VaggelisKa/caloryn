@@ -40,6 +40,33 @@ final class FeatureJourneyTests: UITestCase {
         }
     }
 
+    func testGivenAddFoodWhenTheBarcodeScannerIsOpenedAndClosedThenAddFoodReturnsEachTime() {
+        XCUIApplication().resetAuthorizationStatus(for: .camera)
+        let app = launch(fixture: .profileOnly)
+        let today = TodayScreen(app: app)
+        let search = FoodSearchScreen(app: app)
+        let scanner = BarcodeScannerScreen(app: app)
+        addUIInterruptionMonitor(withDescription: "Camera access") { alert in
+            alert.buttons["Allow"].tap()
+            return true
+        }
+
+        given("Add Food is open") {
+            today.tap(today.mealHeader("breakfast"))
+        }
+
+        for moment in ["while camera access is being asked for", "once camera access is decided"] {
+            when("the scanner is opened and closed \(moment)") {
+                search.tap(search.scan)
+                scanner.tap(scanner.close)
+            }
+
+            then("Add Food is back and can open the scanner again") {
+                search.awaitTappable(search.scan)
+            }
+        }
+    }
+
     func testGivenARecipeBuiltFromAnIngredientWhenItIsSavedThenItLogsAtItsWholeWeight() {
         let app = launch(fixture: .customFoods)
         let tabs = TabBar(app: app)
