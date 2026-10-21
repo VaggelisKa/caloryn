@@ -20,8 +20,12 @@ struct CalorynIntentDataStore: Sendable {
         guard try FavoriteIntentLogging.hasAuthenticatedUser(in: context) else {
             return []
         }
-        let foods = try context.fetch(FetchDescriptor<FoodItem>())
-        return FavoriteIntentCatalog.candidates(from: foods)
+        let pinnedFoods = try context.fetch(
+            FetchDescriptor<FoodItem>(
+                predicate: #Predicate { $0.isPinnedRaw == true }
+            )
+        )
+        return FavoriteIntentCatalog.candidates(from: pinnedFoods)
     }
 
     @MainActor
@@ -66,9 +70,7 @@ struct CalorynIntentDataStore: Sendable {
             )
         }
 
-        let entries = try context.fetch(FetchDescriptor<FoodLogEntry>())
-        let currentConsumed = entries
-            .filter { calendar.isDate($0.date, inSameDayAs: now) }
+        let currentConsumed = try entries(onSameDayAs: now, calendar: calendar, in: context)
             .reduce(0) { $0 + $1.calories }
         let expectsDynamicTarget = profile.effectiveEnergyCalculationMode == .dynamicHealth
         let snapshot = try? widgetSnapshotStore.load()
@@ -114,7 +116,7 @@ struct CalorynIntentDataStore: Sendable {
         now: Date,
         calendar: Calendar
     ) {
-        guard let entries = try? context.fetch(FetchDescriptor<FoodLogEntry>()),
+        guard let dayEntries = try? entries(onSameDayAs: now, calendar: calendar, in: context),
               let profiles = try? context.fetch(
                 FetchDescriptor<UserProfile>(
                     sortBy: [SortDescriptor(\.updatedAt, order: .reverse)]
@@ -124,7 +126,6 @@ struct CalorynIntentDataStore: Sendable {
             return
         }
 
-        let dayEntries = entries.filter { calendar.isDate($0.date, inSameDayAs: now) }
         let consumed = dayEntries.reduce(0) { $0 + $1.calories }
         let previous = try? widgetSnapshotStore.load()
 
@@ -149,13 +150,32 @@ struct CalorynIntentDataStore: Sendable {
         } else {
             snapshot = DailyWidgetSnapshotProjector.makeSnapshot(
                 profile: profile,
-                entries: entries,
+                entries: dayEntries,
                 now: now,
                 calendar: calendar
             )
         }
 
         WidgetSyncCoordinator(store: widgetSnapshotStore).publish(snapshot)
+    }
+
+    @MainActor
+    private func entries(
+        onSameDayAs day: Date,
+        calendar: Calendar,
+        in context: ModelContext
+    ) throws -> [FoodLogEntry] {
+        guard let interval = calendar.dateInterval(of: .day, for: day) else {
+            return try context.fetch(FetchDescriptor<FoodLogEntry>())
+                .filter { calendar.isDate($0.date, inSameDayAs: day) }
+        }
+        let start = interval.start
+        let end = interval.end
+        return try context.fetch(
+            FetchDescriptor<FoodLogEntry>(
+                predicate: #Predicate { $0.date >= start && $0.date < end }
+            )
+        )
     }
 }
 

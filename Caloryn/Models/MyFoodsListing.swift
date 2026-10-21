@@ -2,49 +2,59 @@ import Foundation
 
 @MainActor
 struct MyFoodsListing {
-    var foodItems: [FoodItem]
-    var mealTemplateCount: Int
-    var showsAllFavorites: Bool
+    let mealTemplateCount: Int
+    let showsAllFavorites: Bool
+
+    let manualEntries: [FoodItem]
+    let editedProducts: [FoodItem]
+    let recipes: [FoodItem]
+    let favorites: [FoodItem]
+    let visibleFavorites: [FoodItem]
+    let nonFavoriteManualEntries: [FoodItem]
+    let nonFavoriteRecipes: [FoodItem]
 
     init(
         foodItems: [FoodItem],
         mealTemplateCount: Int = 0,
         showsAllFavorites: Bool = false
     ) {
-        self.foodItems = foodItems
         self.mealTemplateCount = mealTemplateCount
         self.showsAllFavorites = showsAllFavorites
-    }
 
-    var manualEntries: [FoodItem] {
-        foodItems.filter(\.isManualEntry)
-    }
+        var manualEntries: [FoodItem] = []
+        var editedProducts: [FoodItem] = []
+        var recipes: [FoodItem] = []
+        var nonFavoriteManualEntries: [FoodItem] = []
+        var nonFavoriteRecipes: [FoodItem] = []
+        for food in foodItems {
+            let isFavorite = food.isFavorite
+            if food.isManualEntry {
+                manualEntries.append(food)
+                if !isFavorite {
+                    nonFavoriteManualEntries.append(food)
+                }
+            }
+            if food.isEditedCatalogProduct {
+                editedProducts.append(food)
+            }
+            if food.isRecipe {
+                recipes.append(food)
+                if !isFavorite {
+                    nonFavoriteRecipes.append(food)
+                }
+            }
+        }
+        self.manualEntries = manualEntries
+        self.editedProducts = editedProducts
+        self.recipes = recipes
+        self.nonFavoriteManualEntries = nonFavoriteManualEntries
+        self.nonFavoriteRecipes = nonFavoriteRecipes
 
-    var editedProducts: [FoodItem] {
-        foodItems.filter(\.isEditedCatalogProduct)
-    }
-
-    var recipes: [FoodItem] {
-        foodItems.filter(\.isRecipe)
-    }
-
-    var favorites: [FoodItem] {
-        FavoriteFoodLogging.sortedFavorites(from: foodItems)
-    }
-
-    var visibleFavorites: [FoodItem] {
-        FavoriteFoodLogging.visibleFavorites(
-            from: foodItems,
-            showsAll: showsAllFavorites
-        )
-    }
-
-    var nonFavoriteManualEntries: [FoodItem] {
-        manualEntries.filter { !$0.isFavorite }
-    }
-
-    var nonFavoriteRecipes: [FoodItem] {
-        recipes.filter { !$0.isFavorite }
+        let favorites = FavoriteFoodLogging.sortedFavorites(from: foodItems)
+        self.favorites = favorites
+        visibleFavorites = showsAllFavorites
+            ? favorites
+            : Array(favorites.prefix(FavoriteFoodLogging.collapsedFavoriteLimit))
     }
 
     var showsFavoritesSection: Bool {

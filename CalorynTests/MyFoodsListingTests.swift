@@ -51,6 +51,43 @@ struct MyFoodsListingTests {
         #expect(listing.recipes.map(\.name) == ["Chili"])
     }
 
+    @Test("Every section keeps the order the library hands it")
+    func sectionsKeepLibraryOrder() {
+        let listing = listing(foodItems: [
+            manualEntry(name: "Zucchini"),
+            recipe(name: "Yellow curry"),
+            editedProduct(name: "Xtra Skyr", barcode: "5711953150388"),
+            manualEntry(name: "Apple"),
+            recipe(name: "Banana bread"),
+            editedProduct(name: "Corn flakes", barcode: "5000127000016"),
+            manualEntry(name: "Mango", favorite: true),
+        ])
+
+        #expect(listing.manualEntries.map(\.name) == ["Zucchini", "Apple", "Mango"])
+        #expect(listing.nonFavoriteManualEntries.map(\.name) == ["Zucchini", "Apple"])
+        #expect(listing.recipes.map(\.name) == ["Yellow curry", "Banana bread"])
+        #expect(listing.nonFavoriteRecipes.map(\.name) == ["Yellow curry", "Banana bread"])
+        #expect(listing.editedProducts.map(\.name) == ["Xtra Skyr", "Corn flakes"])
+    }
+
+    @Test("Favorites run newest pinned first, and the collapsed list is the first few of them")
+    func favoritesOrderAndCollapse() {
+        let pinnedAt = makeTestDate(year: 2026, month: 7, day: 1)
+        let favorites = (0...FavoriteFoodLogging.collapsedFavoriteLimit).map { offset in
+            let food = makeTestFoodItem(name: "Favorite \(offset)", isCustom: true)
+            food.setFavorite(true, at: pinnedAt.addingTimeInterval(Double(offset) * 60))
+            return food
+        }
+        let newestFirst = favorites.reversed().map(\.name)
+
+        let collapsed = listing(foodItems: favorites)
+        let expanded = listing(foodItems: favorites, showsAllFavorites: true)
+
+        #expect(collapsed.favorites.map(\.name) == newestFirst)
+        #expect(collapsed.visibleFavorites.map(\.name) == Array(newestFirst.prefix(FavoriteFoodLogging.collapsedFavoriteLimit)))
+        #expect(expanded.visibleFavorites.map(\.name) == newestFirst)
+    }
+
     @Test("Favorites are only ever manual entries or recipes marked favorite")
     func favoritesAreUserCreatedAndPinned() {
         let favoritedManual = manualEntry(name: "Oats", favorite: true)

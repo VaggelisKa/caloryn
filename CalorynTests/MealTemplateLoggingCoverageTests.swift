@@ -471,6 +471,43 @@ struct MealTemplateCommandsCoverageTests {
         #expect(try verify.fetchCount(FetchDescriptor<FoodLogEntry>()) == 4)
     }
 
+    @Test("A logged meal links an item to its stored food only when the caller offered that food")
+    func loggingTemplateLinksOnlyOfferedFoods() throws {
+        let container = try makeMealContainer()
+        let context = ModelContext(container)
+        let oats = makeTestFoodItem(name: "Oats", caloriesPer100g: 389)
+        let milk = makeTestFoodItem(name: "Milk", caloriesPer100g: 64)
+        let honey = makeTestFoodItem(name: "Honey", caloriesPer100g: 304)
+        [oats, milk, honey].forEach(context.insert)
+        try context.save()
+        let plan = try MealTemplateCommands.plan(
+            sourceName: "Porridge",
+            snapshots: [
+                FoodLogEntrySnapshot(foodItem: oats, portionGrams: 80),
+                FoodLogEntrySnapshot(foodItem: milk, portionGrams: 200),
+                FoodLogEntrySnapshot(foodItem: oats, portionGrams: 40),
+                FoodLogEntrySnapshot(foodItem: honey, portionGrams: 10),
+            ],
+            destinationDate: utcDate(2026, 7, 22, 9),
+            destinationMeal: .breakfast,
+            calendar: utcCalendar()
+        )
+
+        let logged = try MealTemplateCommands.log(
+            plan: plan,
+            availableFoods: [honey, oats],
+            modelContext: context,
+            now: utcDate(2026, 7, 22, 9)
+        )
+
+        #expect(logged.map(\.foodName) == ["Oats", "Milk", "Oats", "Honey"])
+        #expect(logged.map { $0.foodItem?.id } == [oats.id, nil, oats.id, honey.id])
+        let stored = try ModelContext(container).fetch(
+            FetchDescriptor<FoodLogEntry>(sortBy: [SortDescriptor(\.replicationItemIndex)])
+        )
+        #expect(stored.map { $0.foodItem?.id } == [oats.id, nil, oats.id, honey.id])
+    }
+
     @Test("Only snapshots whose source food is gone or never recorded count as missing")
     func missingSourceCount() {
         let kept = makeTestFoodItem(name: "Kept")

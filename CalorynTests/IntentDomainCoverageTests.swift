@@ -601,6 +601,31 @@ struct CalorynIntentDataStoreCoverageTests {
         #expect(candidates.map(\.portionGrams) == [150, 50])
     }
 
+    @Test("A pinned catalog or edited product is never offered, however recently it was pinned")
+    func candidatesSkipPinnedProducts() throws {
+        let container = try makeIntentContainer()
+        let context = container.mainContext
+        context.insert(makeManualProfile())
+        let favorite = try insertFavoriteFood(name: "Oats", portion: 50, favoritedAt: localDate(2026, 7, 1), in: context)
+        let catalogProduct = makeTestFoodItem(name: "Provider Skyr")
+        catalogProduct.isPinnedRaw = true
+        catalogProduct.pinnedAt = localDate(2026, 7, 3)
+        let editedProduct = makeTestFoodItem(name: "Edited Skyr", isCustom: true)
+        editedProduct.providerProductIdentityRaw = "5711953150388"
+        editedProduct.setFavorite(true, at: localDate(2026, 7, 4))
+        for product in [catalogProduct, editedProduct] {
+            context.insert(product)
+            context.insert(makeTestEntry(date: localDate(2026, 7, 20), foodItem: product, portionGrams: 150))
+        }
+        try context.save()
+        let (snapshotStore, directory) = makeTemporarySnapshotStore()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let store = CalorynIntentDataStore(modelContainer: container, widgetSnapshotStore: snapshotStore)
+
+        #expect(try store.favoriteCandidates().map(\.id) == [favorite.id.uuidString])
+    }
+
     @Test("Logging with no snapshot on disk projects a fresh one from the profile")
     func logFavoriteProjectsFreshSnapshot() throws {
         let container = try makeIntentContainer()
@@ -726,6 +751,41 @@ struct CalorynIntentDataStoreCoverageTests {
         #expect(snapshot.calories.consumed == 150)
     }
 
+    @Test("Logging counts entries from today's midnight up to, not including, tomorrow's", arguments: [false, true])
+    func logFavoriteCountsOnlyTodaysEntries(hasSameDaySnapshot: Bool) throws {
+        let container = try makeIntentContainer()
+        let context = container.mainContext
+        context.insert(makeManualProfile(target: 1_700))
+        let favorite = try insertFavoriteFood(name: "Yogurt", portion: 100, favoritedAt: localDate(2026, 7, 1), in: context)
+        let soup = makeTestFoodItem(name: "Soup", caloriesPer100g: 100)
+        context.insert(soup)
+        let todayStart = localDate(2026, 7, 25, 0)
+        let tomorrowStart = localDate(2026, 7, 26, 0)
+        let boundaryEntries: [(Date, MealType, Double)] = [
+            (todayStart, .breakfast, 300),
+            (todayStart.addingTimeInterval(-1), .lunch, 900),
+            (tomorrowStart, .dinner, 500),
+        ]
+        for (date, meal, grams) in boundaryEntries {
+            let entry = makeTestEntry(mealType: meal, foodItem: soup, portionGrams: grams)
+            entry.date = date
+            context.insert(entry)
+        }
+        try context.save()
+        let (snapshotStore, directory) = makeTemporarySnapshotStore()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        if hasSameDaySnapshot {
+            try snapshotStore.save(readySnapshot(consumed: 0, baseTarget: 1_700, target: 1_700, on: localDate(2026, 7, 25, 8)))
+        }
+        let store = CalorynIntentDataStore(modelContainer: container, widgetSnapshotStore: snapshotStore)
+
+        _ = try store.logFavorite(id: favorite.id.uuidString, meal: .snack, now: localDate(2026, 7, 25, 15), calendar: deviceDayCalendar)
+
+        let snapshot = try #require(try snapshotStore.load())
+        #expect(snapshot.calories.consumed == 400)
+        #expect(mealSummary(snapshot) == ["breakfast=300", "snack=100"])
+    }
+
     @Test("A refused log neither writes an entry nor touches the widget snapshot")
     func refusedLogLeavesSnapshotAlone() throws {
         let container = try makeIntentContainer()
@@ -801,6 +861,47 @@ struct CalorynIntentDataStoreCoverageTests {
         let store = CalorynIntentDataStore(modelContainer: container, widgetSnapshotStore: snapshotStore)
 
         let response = try await store.todayCaloriesResponse(now: now, calendar: deviceDayCalendar, locale: englishLocale)
+
+        #expect(response == .available("300 of 1,700 calories logged today. 1,400 remaining."))
+    }
+
+    @Test("Checking calories finds today's entries on a day whose midnight a daylight-saving change skips")
+    func todayCaloriesAcrossMidnightDaylightSaving() async throws {
+        var santiago = Calendar(identifier: .gregorian)
+        santiago.timeZone = try #require(TimeZone(identifier: "America/Santiago"))
+        func santiagoDate(_ day: Int, _ hour: Int, _ minute: Int = 0, _ second: Int = 0) throws -> Date {
+            try #require(santiago.date(from: DateComponents(year: 2025, month: 9, day: day, hour: hour, minute: minute, second: second)))
+        }
+        let container = try makeIntentContainer()
+        let context = container.mainContext
+        context.insert(makeManualProfile())
+        let food = makeTestFoodItem(name: "Bread", caloriesPer100g: 100)
+        context.insert(food)
+        let boundaryEntries: [(Date, Double)] = [
+            (try santiagoDate(7, 1), 300),
+            (try santiagoDate(6, 23, 59, 59), 900),
+            (try santiagoDate(8, 0), 500),
+        ]
+        for (date, grams) in boundaryEntries {
+            let entry = makeTestEntry(foodItem: food, portionGrams: grams)
+            entry.date = date
+            context.insert(entry)
+        }
+        try context.save()
+        let now = try santiagoDate(7, 18)
+        let (snapshotStore, directory) = makeTemporarySnapshotStore()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try snapshotStore.save(DailyWidgetSnapshot(
+            generatedAt: now,
+            dayStart: santiago.startOfDay(for: now),
+            state: .ready,
+            calories: WidgetCalorieSummary(consumed: 300, baseTarget: 1_700, target: 1_700, dynamicAdjustment: 0),
+            usesDynamicTarget: false,
+            activityRefreshedAt: nil
+        ))
+        let store = CalorynIntentDataStore(modelContainer: container, widgetSnapshotStore: snapshotStore)
+
+        let response = try await store.todayCaloriesResponse(now: now, calendar: santiago, locale: englishLocale)
 
         #expect(response == .available("300 of 1,700 calories logged today. 1,400 remaining."))
     }
