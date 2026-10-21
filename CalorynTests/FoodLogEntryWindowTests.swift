@@ -73,6 +73,58 @@ struct FoodLogEntryWindowTests {
         }
     }
 
+    @Test(
+        "Given entries either side of every nearby midnight, when Today fetches the days around a selected day, then the day, the day before and each meal match the whole log",
+        arguments: [
+            ("Europe/Copenhagen", 2026, 3, 29, 0),
+            ("Europe/Copenhagen", 2026, 3, 30, 0),
+            ("Europe/Copenhagen", 2026, 10, 25, 15),
+            ("Europe/Copenhagen", 2026, 10, 26, 0),
+            ("America/Havana", 2026, 3, 9, 0)
+        ]
+    )
+    func daysAroundASelectedDay(zone: String, year: Int, month: Int, day: Int, hour: Int) throws {
+        let calendar = makeCalendar(zone)
+        let selected = try #require(calendar.date(from: DateComponents(year: year, month: month, day: day, hour: hour)))
+        let context = try makeContext()
+        try insertEntries(around: selected, calendar: calendar, into: context)
+
+        let everyEntry = try context.fetch(FetchDescriptor<FoodLogEntry>())
+        let around = try context.fetch(
+            FetchDescriptor(predicate: FoodLogEntryWindow.logged(
+                in: FoodLogEntryWindow.days(around: selected, calendar: calendar)
+            ))
+        )
+        #expect(around.count < everyEntry.count)
+
+        for viewingZone in [zone, Self.farEast, Self.farWest] {
+            let viewingCalendar = makeCalendar(viewingZone)
+            let fromWindow = projection(of: around, on: selected, calendar: viewingCalendar)
+            let fromEveryEntry = projection(of: everyEntry, on: selected, calendar: viewingCalendar)
+
+            #expect(!fromEveryEntry.today.isEmpty && !fromEveryEntry.yesterday.isEmpty, "\(viewingZone)")
+            #expect(fromWindow.today.map(\.id) == fromEveryEntry.today.map(\.id), "\(viewingZone)")
+            #expect(fromWindow.yesterday.map(\.id) == fromEveryEntry.yesterday.map(\.id), "\(viewingZone)")
+            for meal in MealType.allCases {
+                #expect(
+                    fromWindow.entries(for: meal).map(\.id) == fromEveryEntry.entries(for: meal).map(\.id),
+                    "\(meal) in \(viewingZone)"
+                )
+            }
+        }
+    }
+
+    private func projection(of entries: [FoodLogEntry], on day: Date, calendar: Calendar) -> DayFoodLogProjection<FoodLogEntry> {
+        DayFoodLogProjection(
+            entries,
+            on: day,
+            calendar: calendar,
+            date: \.date,
+            mealType: \.mealType,
+            createdAt: \.createdAt
+        )
+    }
+
     private func reminderPlan(today: [FoodLogEntry], now: Date, calendar: Calendar) -> [PlannedReminder] {
         let consumed = today.reduce(0) { $0 + $1.calories }
         return DailyReminderPlanner.makePlan(

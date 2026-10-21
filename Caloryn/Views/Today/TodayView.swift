@@ -3,13 +3,22 @@ import SwiftUI
 import SwiftData
 
 struct TodayView: View {
+    @State private var selectedDate: Date = Date().startOfDay
+
+    var body: some View {
+        TodayDayView(day: selectedDate, selectedDate: $selectedDate)
+    }
+}
+
+private struct TodayDayView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(AppRouter.self) private var router
     @Query(sort: \UserProfile.updatedAt, order: .reverse) private var profiles: [UserProfile]
-    @Query private var allEntries: [FoodLogEntry]
+    @Query private var entriesAroundDay: [FoodLogEntry]
+    @Binding private var selectedDate: Date
 
     private static let minimumHitTarget: CGFloat = 44
     private static let dayButtonSize: CGFloat = 36
@@ -22,7 +31,6 @@ struct TodayView: View {
         let startsWithScanner: Bool
     }
 
-    @State private var selectedDate: Date = Date().startOfDay
     @State private var lastKnownToday: Date = Date().startOfDay
     @State private var showingNutritionDetails = false
     @State private var foodSearchPresentation: FoodSearchPresentation?
@@ -31,6 +39,13 @@ struct TodayView: View {
 
     @AppStorage("showNutriscore") private var showNutriscore = true
     @State private var activeEnergyTracker = ActiveEnergyDayTracker()
+
+    init(day: Date, selectedDate: Binding<Date>) {
+        _entriesAroundDay = Query(
+            filter: FoodLogEntryWindow.logged(in: FoodLogEntryWindow.days(around: day, calendar: .current))
+        )
+        _selectedDate = selectedDate
+    }
 
     private var profile: UserProfile? { profiles.first }
     private func calorieBudget(consumed: Double) -> ActivityCalorieBudget {
@@ -69,7 +84,7 @@ struct TodayView: View {
 
     private var dayProjection: DayFoodLogProjection<FoodLogEntry> {
         DayFoodLogProjection(
-            allEntries,
+            entriesAroundDay,
             on: selectedDate,
             date: \.date,
             mealType: \.mealType,
