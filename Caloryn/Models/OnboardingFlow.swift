@@ -71,7 +71,7 @@ struct OnboardingMacroChoice: Equatable {
     var fatRatio: Double
     var grams: MacroGramGoals
 
-    func afterGoalSummary(isManual: Bool, calorieTarget: Int) -> OnboardingMacroChoice {
+    func afterGoalSummary(isManual: Bool, wasManual: Bool, calorieTarget: Int) -> OnboardingMacroChoice {
         if isManual {
             guard !grams.isValid else { return self }
             var choice = self
@@ -84,7 +84,7 @@ struct OnboardingMacroChoice: Equatable {
             return choice
         }
 
-        guard let snapped = grams.snappedRatios() else { return self }
+        guard wasManual, let snapped = grams.snappedRatios() else { return self }
         var choice = self
         choice.proteinRatio = snapped.protein
         choice.carbRatio = snapped.carbs

@@ -70,7 +70,11 @@ struct OnboardingContainerView: View {
                             carbRatio: carbRatio,
                             fatRatio: fatRatio,
                             grams: macroGramGoals
-                        ).afterGoalSummary(isManual: isManual, calorieTarget: target)
+                        ).afterGoalSummary(
+                            isManual: isManual,
+                            wasManual: isManualCalorieTarget,
+                            calorieTarget: target
+                        )
                         proteinRatio = choice.proteinRatio
                         carbRatio = choice.carbRatio
                         fatRatio = choice.fatRatio

@@ -36,11 +36,26 @@ struct OnboardingFlowTests {
             carbRatio: 0.40,
             fatRatio: 0.30,
             grams: MacroGramGoals(proteinText: "150", carbText: "180", fatText: "50")
-        ).afterGoalSummary(isManual: false, calorieTarget: 1_800)
+        ).afterGoalSummary(isManual: false, wasManual: true, calorieTarget: 1_800)
 
         #expect(abs(choice.proteinRatio - (600.0 / 1_770)) < 1e-12)
         #expect(abs(choice.carbRatio - (720.0 / 1_770)) < 1e-12)
         #expect(abs(choice.fatRatio - (450.0 / 1_770)) < 1e-12)
+        #expect(choice.grams.proteinText == "150")
+    }
+
+    @Test("Continuing the estimate keeps later slider edits instead of the earlier gram split")
+    func continuingTheEstimateKeepsSliderEdits() {
+        let choice = OnboardingMacroChoice(
+            proteinRatio: 0.25,
+            carbRatio: 0.45,
+            fatRatio: 0.30,
+            grams: MacroGramGoals(proteinText: "150", carbText: "180", fatText: "50")
+        ).afterGoalSummary(isManual: false, wasManual: false, calorieTarget: 1_800)
+
+        #expect(choice.proteinRatio == 0.25)
+        #expect(choice.carbRatio == 0.45)
+        #expect(choice.fatRatio == 0.30)
         #expect(choice.grams.proteinText == "150")
     }
 
@@ -51,7 +66,7 @@ struct OnboardingFlowTests {
             carbRatio: 0.45,
             fatRatio: 0.30,
             grams: .empty
-        ).afterGoalSummary(isManual: false, calorieTarget: 1_800)
+        ).afterGoalSummary(isManual: false, wasManual: true, calorieTarget: 1_800)
 
         #expect(choice.proteinRatio == 0.25)
         #expect(choice.carbRatio == 0.45)
