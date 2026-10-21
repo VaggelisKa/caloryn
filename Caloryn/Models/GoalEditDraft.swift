@@ -207,10 +207,10 @@ struct GoalEditDraft: Equatable {
 
     private func resolvedMacroGrams(_ text: String, saved: Double) -> Double? {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed == MacroGramGoals.fieldText(forGrams: saved) {
+        if trimmed == MacroGramGoals.fieldText(forGrams: saved), MacroGramGoals.accepts(saved) {
             return saved
         }
-        guard let value = trimmed.decimalInputValue, value > 0 else { return nil }
+        guard let value = trimmed.decimalInputValue, MacroGramGoals.accepts(value) else { return nil }
         return value
     }
 

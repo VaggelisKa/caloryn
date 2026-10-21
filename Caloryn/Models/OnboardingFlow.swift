@@ -64,3 +64,31 @@ enum OnboardingFlow {
         !isCompleting
     }
 }
+
+struct OnboardingMacroChoice: Equatable {
+    var proteinRatio: Double
+    var carbRatio: Double
+    var fatRatio: Double
+    var grams: MacroGramGoals
+
+    func afterGoalSummary(isManual: Bool, calorieTarget: Int) -> OnboardingMacroChoice {
+        if isManual {
+            guard !grams.isValid else { return self }
+            var choice = self
+            choice.grams = .derived(
+                calorieTarget: calorieTarget,
+                protein: proteinRatio,
+                carbs: carbRatio,
+                fat: fatRatio
+            )
+            return choice
+        }
+
+        guard let snapped = grams.snappedRatios() else { return self }
+        var choice = self
+        choice.proteinRatio = snapped.protein
+        choice.carbRatio = snapped.carbs
+        choice.fatRatio = snapped.fat
+        return choice
+    }
+}

@@ -27,7 +27,7 @@ struct MacroGramGoalsTests {
         #expect(goals.isValid)
     }
 
-    @Test("Zero, blank, and non-numeric text are not a gram goal", arguments: ["", "0", "-5", "abc", "1e3"])
+    @Test("Zero, blank, and non-numeric text are not a gram goal", arguments: ["", "0", "0.04", "-5", "abc", "1e3"])
     func invalidTextIsNotAGoal(text: String) {
         let goals = MacroGramGoals(proteinText: text, carbText: "180", fatText: "50")
 
@@ -46,5 +46,15 @@ struct MacroGramGoalsTests {
         let total = (snapped?.protein ?? 0) + (snapped?.carbs ?? 0) + (snapped?.fat ?? 0)
         #expect(abs(total - 1) < 1e-12)
         #expect(abs((snapped?.protein ?? 0) - (600.0 / 1_770)) < 1e-12)
+    }
+
+    @Test("A goal that rounds to a tenth of a gram reopens as that tenth")
+    func aTenthOfAGramReopensAsAPositiveGoal() {
+        let text = MacroGramGoals.fieldText(forGrams: 0.05)
+        let goals = MacroGramGoals(proteinText: text, carbText: "1", fatText: "1")
+
+        #expect(text == "0.1")
+        #expect(goals.grams(for: .protein) == 0.1)
+        #expect(goals.isValid)
     }
 }

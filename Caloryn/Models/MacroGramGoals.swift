@@ -33,9 +33,15 @@ struct MacroGramGoals: Equatable {
         }
     }
 
+    static func accepts(_ grams: Double) -> Bool {
+        guard grams.isFinite, grams > 0 else { return false }
+        guard let shown = fieldText(forGrams: grams).decimalInputValue else { return false }
+        return shown > 0
+    }
+
     func grams(for macro: MacroRatioSelection.Macro) -> Double? {
         let trimmed = text(for: macro).trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let value = trimmed.decimalInputValue, value > 0 else { return nil }
+        guard let value = trimmed.decimalInputValue, Self.accepts(value) else { return nil }
         return value
     }
 

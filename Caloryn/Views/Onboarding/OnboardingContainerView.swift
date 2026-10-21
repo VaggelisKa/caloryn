@@ -65,14 +65,16 @@ struct OnboardingContainerView: View {
                         activityLevel: activityLevel,
                         calorieDeficit: $calorieDeficit
                     ) { target, isManual in
-                        if isManual, !macroGramGoals.isValid {
-                            macroGramGoals = .derived(
-                                calorieTarget: target,
-                                protein: proteinRatio,
-                                carbs: carbRatio,
-                                fat: fatRatio
-                            )
-                        }
+                        let choice = OnboardingMacroChoice(
+                            proteinRatio: proteinRatio,
+                            carbRatio: carbRatio,
+                            fatRatio: fatRatio,
+                            grams: macroGramGoals
+                        ).afterGoalSummary(isManual: isManual, calorieTarget: target)
+                        proteinRatio = choice.proteinRatio
+                        carbRatio = choice.carbRatio
+                        fatRatio = choice.fatRatio
+                        macroGramGoals = choice.grams
                         finalCalorieTarget = target
                         isManualCalorieTarget = isManual
                         advance(from: .goalSummary, calorieTarget: target, usesDirectGrams: isManual)
