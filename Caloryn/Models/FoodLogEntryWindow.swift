@@ -24,4 +24,10 @@ enum FoodLogEntryWindow {
         let end = window.upperBound
         return #Predicate { $0.date >= start && $0.date < end }
     }
+
+    static var anyEntry: FetchDescriptor<FoodLogEntry> {
+        var descriptor = FetchDescriptor<FoodLogEntry>()
+        descriptor.fetchLimit = 1
+        return descriptor
+    }
 }

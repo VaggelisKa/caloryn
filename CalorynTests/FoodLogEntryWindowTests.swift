@@ -114,6 +114,28 @@ struct FoodLogEntryWindowTests {
         }
     }
 
+    @Test("Given an empty log, when an entry is logged and then removed, then the one-entry fetch tells Settings whether there is anything to export")
+    func anyEntryFollowsTheLog() throws {
+        let context = try makeContext()
+        func canExport() throws -> Bool {
+            SettingsDataSectionRules.isExportEnabled(loggedEntryCount: try context.fetch(FoodLogEntryWindow.anyEntry).count)
+        }
+
+        #expect(try !canExport())
+
+        let food = makeTestFoodItem()
+        context.insert(food)
+        let entries = (0..<3).map { _ in makeTestEntry(foodItem: food) }
+        for entry in entries { context.insert(entry) }
+        try context.save()
+        #expect(try context.fetch(FoodLogEntryWindow.anyEntry).count == 1)
+        #expect(try canExport())
+
+        for entry in entries { context.delete(entry) }
+        try context.save()
+        #expect(try !canExport())
+    }
+
     private func projection(of entries: [FoodLogEntry], on day: Date, calendar: Calendar) -> DayFoodLogProjection<FoodLogEntry> {
         DayFoodLogProjection(
             entries,

@@ -9,7 +9,9 @@ struct SettingsView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.openURL) private var openURL
     @Query(sort: \UserProfile.updatedAt, order: .reverse) private var profiles: [UserProfile]
-    @Query private var allEntries: [FoodLogEntry]
+    @Query(filter: FoodLogEntryWindow.loggedSince(FoodLogEntryWindow.recentStart(now: .now, calendar: .current)))
+    private var recentEntries: [FoodLogEntry]
+    @Query(FoodLogEntryWindow.anyEntry) private var anyEntry: [FoodLogEntry]
     @AppStorage("themePreference") private var themePreferenceRaw = ThemePreference.system.rawValue
     @AppStorage("showNutriscore") private var showNutriscore = true
     @AppStorage("iCloudSyncEnabled") private var iCloudSyncEnabled = true
@@ -395,7 +397,7 @@ struct SettingsView: View {
     }
 
     private func goalPlate(for profile: UserProfile) -> CalorieDonutSummary {
-        let entries = DayFoodLogSelection.entries(allEntries, on: .now, date: \.date)
+        let entries = DayFoodLogSelection.entries(recentEntries, on: .now, date: \.date)
             .map { SettingsGoalPlate.Entry(meal: $0.mealType, calories: $0.calories) }
         let budget = profile.activityBudget(
             consumed: SettingsGoalPlate.eaten(entries),
@@ -443,7 +445,7 @@ struct SettingsView: View {
     }
 
     private var dataSection: some View {
-        let isExportEnabled = SettingsDataSectionRules.isExportEnabled(loggedEntryCount: allEntries.count)
+        let isExportEnabled = SettingsDataSectionRules.isExportEnabled(loggedEntryCount: anyEntry.count)
 
         return Section {
             Toggle(isOn: $iCloudSyncEnabled) {
@@ -454,7 +456,7 @@ struct SettingsView: View {
             }
 
             Button {
-                exportURL = CSVExporter.exportURL(from: allEntries)
+                exportURL = CSVExporter.exportURL(from: everyLoggedEntry())
                 if SettingsDataSectionRules.presentsShareSheet(exportURL: exportURL) {
                     showExportSheet = true
                 }
@@ -479,6 +481,10 @@ struct SettingsView: View {
                 SettingsSectionFooter("Your food log syncs automatically across your devices via iCloud.")
             }
         }
+    }
+
+    private func everyLoggedEntry() -> [FoodLogEntry] {
+        (try? modelContext.fetch(FetchDescriptor<FoodLogEntry>())) ?? []
     }
 
     private var aboutSection: some View {
