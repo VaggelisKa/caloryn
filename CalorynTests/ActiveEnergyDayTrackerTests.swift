@@ -344,6 +344,75 @@ final class ActiveEnergyDayTrackerTests: XCTestCase {
         XCTAssertTrue(UserDefaults.standard.bool(forKey: AppleHealthAdjustmentSettings.authorizationRequestedKey))
     }
 
+    func testADynamicCallerSeesLoadingFromBeforeConfigurationUntilTheFirstReadingArrives() async {
+        let readStarted = expectation(description: "Active energy read started")
+        let tracker = ActiveEnergyDayTracker(reader: StubActiveEnergyReader(
+            isHealthAvailable: { true },
+            activeEnergyBurnedKcal: { _ in
+                readStarted.fulfill()
+                try await Task.sleep(nanoseconds: 120_000_000)
+                return 400
+            },
+            dailyActiveEnergyBurnedKcal: { _, _ in [] },
+            observeActiveEnergyChanges: { _ in nil }
+        ))
+
+        XCTAssertTrue(tracker.isLoading(whenEnabled: true))
+        XCTAssertFalse(tracker.isLoading(whenEnabled: false))
+
+        let configuring = Task { await tracker.configure(date: .now, isEnabled: true) }
+        await fulfillment(of: [readStarted], timeout: 1)
+        XCTAssertTrue(tracker.isLoading(whenEnabled: true))
+
+        await configuring.value
+        XCTAssertFalse(tracker.isLoading(whenEnabled: true))
+        XCTAssertEqual(tracker.activeEnergyKcal, 400, accuracy: 0.001)
+    }
+
+    func testAFailedFirstReadEndsTheWaitSoTheStaticTargetCanBeRecorded() async {
+        AppleHealthAdjustmentSettings.persist(
+            isEnabled: true,
+            authorizationRequested: true,
+            message: nil
+        )
+        let tracker = ActiveEnergyDayTracker(reader: StubActiveEnergyReader(
+            isHealthAvailable: { true },
+            activeEnergyBurnedKcal: { _ in throw TrackerError.denied },
+            dailyActiveEnergyBurnedKcal: { _, _ in [] },
+            observeActiveEnergyChanges: { _ in nil }
+        ))
+
+        await tracker.configure(date: .now, isEnabled: true)
+
+        XCTAssertFalse(tracker.isLoading(whenEnabled: true))
+    }
+
+    func testUnavailableHealthEndsTheWait() async {
+        let tracker = ActiveEnergyDayTracker(reader: StubActiveEnergyReader(
+            isHealthAvailable: { false },
+            activeEnergyBurnedKcal: { _ in 0 },
+            dailyActiveEnergyBurnedKcal: { _, _ in [] },
+            observeActiveEnergyChanges: { _ in nil }
+        ))
+
+        await tracker.configure(date: .now, isEnabled: true)
+
+        XCTAssertFalse(tracker.isLoading(whenEnabled: true))
+    }
+
+    func testAStaticCallerNeverWaitsForHealth() async {
+        let tracker = ActiveEnergyDayTracker(reader: StubActiveEnergyReader(
+            activeEnergyBurnedKcal: { _ in
+                XCTFail("A disabled tracker must not read Health.")
+                return 0
+            }
+        ))
+
+        XCTAssertFalse(tracker.isLoading(whenEnabled: false))
+        await tracker.configure(date: .now, isEnabled: false)
+        XCTAssertFalse(tracker.isLoading(whenEnabled: false))
+    }
+
     private func waitUntilActiveEnergy(
         on tracker: ActiveEnergyDayTracker,
         equals expectedValue: Double,

@@ -69,7 +69,9 @@ private struct TodayDayView: View {
             consumed: consumed,
             activeEnergyKcal: activeEnergyTracker.activeEnergyKcal,
             recentActiveEnergySamples: activeEnergyTracker.recentActiveEnergySamples,
-            isActivityLoading: activeEnergyTracker.isLoading,
+            isActivityLoading: activeEnergyTracker.isLoading(
+                whenEnabled: profile.effectiveEnergyCalculationMode == .dynamicHealth
+            ),
             activityMessage: activeEnergyTracker.message,
             date: selectedDate
         )

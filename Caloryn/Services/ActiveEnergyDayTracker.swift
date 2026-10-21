@@ -105,6 +105,10 @@ final class ActiveEnergyDayTracker {
         self.activeEnergyObservation = nil
     }
 
+    func isLoading(whenEnabled isEnabled: Bool) -> Bool {
+        isLoading || (isEnabled && lastRefresh == nil && message == nil)
+    }
+
     private func refresh() async {
         guard isEnabled else {
             reset()
