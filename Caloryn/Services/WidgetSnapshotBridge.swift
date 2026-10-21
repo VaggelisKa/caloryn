@@ -55,8 +55,13 @@ struct WidgetSnapshotBridge: View {
         )
     }
 
-    private var currentSnapshot: DailyWidgetSnapshot {
-        DailyWidgetSnapshotProjector.makeSnapshot(
+    private var publishableSnapshot: DailyWidgetSnapshot? {
+        let awaitsActivity = activeEnergyTracker.isLoading(
+            whenEnabled: profile?.effectiveEnergyCalculationMode == .dynamicHealth
+        )
+        guard !awaitsActivity else { return nil }
+
+        return DailyWidgetSnapshotProjector.makeSnapshot(
             profile: profile,
             entries: recentEntries,
             activeEnergyKcal: activeEnergyTracker.activeEnergyKcal,
@@ -68,7 +73,7 @@ struct WidgetSnapshotBridge: View {
     }
 
     var body: some View {
-        let snapshot = currentSnapshot
+        let snapshot = publishableSnapshot
 
         Color.clear
             .frame(width: 0, height: 0)
@@ -79,12 +84,14 @@ struct WidgetSnapshotBridge: View {
                     isEnabled: profile?.effectiveEnergyCalculationMode == .dynamicHealth
                 )
             }
-            .task(id: snapshot.renderIdentity) {
+            .task(id: snapshot?.renderIdentity) {
+                guard let snapshot else { return }
                 syncCoordinator.publish(snapshot)
             }
             .onChange(of: scenePhase) { _, newPhase in
                 guard newPhase == .active else { return }
                 activeEnergyTracker.refreshWhenActive()
+                guard let snapshot else { return }
                 syncCoordinator.publish(snapshot)
             }
             .onDisappear {

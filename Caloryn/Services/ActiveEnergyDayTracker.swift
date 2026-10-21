@@ -58,6 +58,7 @@ final class ActiveEnergyDayTracker {
     @ObservationIgnored private let reader: any ActiveEnergyReading
     @ObservationIgnored private var activeEnergyObservation: ActiveEnergyObservation?
     @ObservationIgnored private var currentRefreshID: UUID?
+    @ObservationIgnored private var isPausedByOwner = false
     private var selectedDate: Date = Date().startOfDay
     private var isEnabled = false
 
@@ -66,6 +67,7 @@ final class ActiveEnergyDayTracker {
     }
 
     func configure(date: Date, isEnabled: Bool) async {
+        isPausedByOwner = false
         let normalizedDate = date.startOfDay
         let dateChanged = !Calendar.current.isDate(normalizedDate, inSameDayAs: selectedDate)
         let enabledChanged = self.isEnabled != isEnabled
@@ -88,7 +90,7 @@ final class ActiveEnergyDayTracker {
     }
 
     func refreshWhenActive() {
-        guard isEnabled else { return }
+        guard isEnabled, !isPausedByOwner else { return }
         startObservingIfNeeded()
 
         Task {
@@ -97,9 +99,14 @@ final class ActiveEnergyDayTracker {
     }
 
     func stopObserving() {
+        isPausedByOwner = true
         guard let activeEnergyObservation else { return }
         activeEnergyObservation.stop()
         self.activeEnergyObservation = nil
+    }
+
+    func isLoading(whenEnabled isEnabled: Bool) -> Bool {
+        isLoading || (isEnabled && lastRefresh == nil && message == nil)
     }
 
     private func refresh() async {

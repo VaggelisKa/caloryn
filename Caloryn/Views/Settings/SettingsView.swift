@@ -99,6 +99,9 @@ struct SettingsView: View {
             guard scenePhase == .active, let profile else { return }
             await refreshPendingHealthAuthorizationIfNeeded(for: profile)
         }
+        .onDisappear {
+            settingsEnergyTracker.stopObserving()
+        }
     }
 
     @ViewBuilder
