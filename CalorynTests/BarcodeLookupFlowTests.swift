@@ -291,6 +291,92 @@ struct BarcodeLookupFlowTests {
         #expect(flow.errorDismissesOnNameSearch)
     }
 
+    @Test("A scan holds the lookup on the scanner until that cover is gone")
+    func scanHoldsTheLookupOnTheScanner() {
+        var flow = BarcodeLookupFlow()
+        flow.scanned(barcode)
+
+        #expect(flow.scannerLookupBarcode == barcode)
+
+        flow.lookupSucceeded()
+
+        #expect(!flow.isLookingUp)
+        #expect(flow.scannerLookupBarcode == barcode)
+
+        flow.scannerDismissed()
+
+        #expect(flow.scannerLookupBarcode == nil)
+    }
+
+    @Test("An unreadable scan does not claim the scanner")
+    func unreadableScanDoesNotClaimTheScanner() {
+        var flow = BarcodeLookupFlow()
+        flow.scanned("12x")
+
+        #expect(flow.scannerLookupBarcode == nil)
+        #expect(!flow.isLookingUp)
+    }
+
+    @Test("A failed lookup keeps the scanner cover until it has left")
+    func failureKeepsTheScannerCover() {
+        var flow = BarcodeLookupFlow()
+        flow.scanned(barcode)
+
+        let feedback = flow.lookupFailed(.notFound)
+
+        #expect(feedback == .warning)
+        #expect(flow.scannerLookupBarcode == barcode)
+
+        flow.scannerDismissed()
+
+        #expect(flow.scannerLookupBarcode == nil)
+        #expect(flow.hasError)
+        #expect(flow.lastScannedBarcode == barcode)
+    }
+
+    @Test("Cancelling a lookup drops the code without a failure, and the cover stays until it leaves")
+    func cancelDropsTheLookupWithoutAFailure() {
+        var flow = BarcodeLookupFlow()
+        flow.scanned(barcode)
+
+        flow.lookupCancelled()
+
+        #expect(!flow.isLookingUp)
+        #expect(flow.pendingBarcode == nil)
+        #expect(!flow.hasError)
+        #expect(flow.lastScannedBarcode == nil)
+        #expect(flow.scannerLookupBarcode == barcode)
+
+        flow.scannerDismissed()
+
+        #expect(flow.scannerLookupBarcode == nil)
+    }
+
+    @Test("Retrying a failure continues on the search sheet, not the scanner")
+    func retryStaysOffTheScanner() {
+        var flow = BarcodeLookupFlow()
+        flow.scanned(barcode)
+        _ = flow.lookupFailed(.unavailable)
+        flow.scannerDismissed()
+
+        let action = flow.retryRequested()
+
+        #expect(action == .repeatLookup)
+        #expect(flow.isLookingUp)
+        #expect(flow.pendingBarcode == barcode)
+        #expect(flow.scannerLookupBarcode == nil)
+    }
+
+    @Test("Opening the camera clears a lookup still painted on the scanner")
+    func openingTheCameraClearsTheScannerLookup() {
+        var flow = BarcodeLookupFlow()
+        flow.scanned(barcode)
+
+        flow.scannerOpened()
+
+        #expect(flow.scannerLookupBarcode == nil)
+    }
+
     @Test("A flow seeded with a failure behaves as if that scan had just failed")
     func seededFailureSupportsRecovery() {
         var flow = BarcodeLookupFlow(error: .notFound, lastScannedBarcode: barcode)
