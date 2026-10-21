@@ -72,6 +72,13 @@ extension Screen {
         return element
     }
 
+    func capture(_ name: String) {
+        let directory = URL(fileURLWithPath: "/tmp/caloryn-evidence", isDirectory: true)
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let screenshot = XCUIScreen.main.screenshot()
+        try? screenshot.pngRepresentation.write(to: directory.appendingPathComponent("\(name).png"))
+    }
+
     func tap(
         _ element: XCUIElement,
         timeout: TimeInterval = UITestCase.defaultTimeout,
@@ -125,7 +132,8 @@ extension XCUIElement {
     func replaceText(_ text: String) {
         tap()
         if let existing = value as? String, !existing.isEmpty {
-            typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: existing.count))
+            typeKey("a", modifierFlags: .command)
+            typeKey(XCUIKeyboardKey.delete, modifierFlags: [])
         }
         typeText(text)
     }

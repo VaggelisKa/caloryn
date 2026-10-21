@@ -19,7 +19,7 @@ struct OnboardingFlowTests {
             .activityLevel,
             .energyCalculationMode,
             .goalSummary,
-            .macroRatios(2_000),
+            .macroRatios(calorieTarget: 2_000, usesDirectGrams: false),
             .nutrientSelection
         ])
     }
@@ -29,9 +29,60 @@ struct OnboardingFlowTests {
         #expect(OnboardingFlow.step(after: .nutrientSelection) == nil)
     }
 
+    @Test("Choosing the estimate after typing grams keeps that split")
+    func choosingTheEstimateKeepsTheTypedSplit() {
+        let choice = OnboardingMacroChoice(
+            proteinRatio: 0.30,
+            carbRatio: 0.40,
+            fatRatio: 0.30,
+            grams: MacroGramGoals(proteinText: "150", carbText: "180", fatText: "50")
+        ).afterGoalSummary(isManual: false, wasManual: true, calorieTarget: 1_800)
+
+        #expect(abs(choice.proteinRatio - (600.0 / 1_770)) < 1e-12)
+        #expect(abs(choice.carbRatio - (720.0 / 1_770)) < 1e-12)
+        #expect(abs(choice.fatRatio - (450.0 / 1_770)) < 1e-12)
+        #expect(choice.grams.proteinText == "150")
+    }
+
+    @Test("Continuing the estimate keeps later slider edits instead of the earlier gram split")
+    func continuingTheEstimateKeepsSliderEdits() {
+        let choice = OnboardingMacroChoice(
+            proteinRatio: 0.25,
+            carbRatio: 0.45,
+            fatRatio: 0.30,
+            grams: MacroGramGoals(proteinText: "150", carbText: "180", fatText: "50")
+        ).afterGoalSummary(isManual: false, wasManual: false, calorieTarget: 1_800)
+
+        #expect(choice.proteinRatio == 0.25)
+        #expect(choice.carbRatio == 0.45)
+        #expect(choice.fatRatio == 0.30)
+        #expect(choice.grams.proteinText == "150")
+    }
+
+    @Test("Choosing the estimate with no gram goals keeps the percentage split")
+    func choosingTheEstimateWithoutGramsKeepsTheSplit() {
+        let choice = OnboardingMacroChoice(
+            proteinRatio: 0.25,
+            carbRatio: 0.45,
+            fatRatio: 0.30,
+            grams: .empty
+        ).afterGoalSummary(isManual: false, wasManual: true, calorieTarget: 1_800)
+
+        #expect(choice.proteinRatio == 0.25)
+        #expect(choice.carbRatio == 0.45)
+        #expect(choice.fatRatio == 0.30)
+    }
+
     @Test("The goal step hands its calorie target to the macro step")
     func goalStepCarriesTheTarget() {
-        #expect(OnboardingFlow.step(after: .goalSummary, calorieTarget: 1_750) == .macroRatios(1_750))
+        #expect(
+            OnboardingFlow.step(after: .goalSummary, calorieTarget: 1_750)
+                == .macroRatios(calorieTarget: 1_750, usesDirectGrams: false)
+        )
+        #expect(
+            OnboardingFlow.step(after: .goalSummary, calorieTarget: 1_800, usesDirectGrams: true)
+                == .macroRatios(calorieTarget: 1_800, usesDirectGrams: true)
+        )
     }
 
     @Test("No other step reads the calorie target")
@@ -44,7 +95,10 @@ struct OnboardingFlowTests {
         }
 
         #expect(
-            OnboardingFlow.step(after: .macroRatios(1_750), calorieTarget: 4_000) == .nutrientSelection
+            OnboardingFlow.step(
+                after: .macroRatios(calorieTarget: 1_750, usesDirectGrams: true),
+                calorieTarget: 4_000
+            ) == .nutrientSelection
         )
     }
 

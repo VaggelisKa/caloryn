@@ -214,6 +214,7 @@ struct GoalSummaryStepView: View {
             }
             .buttonStyle(.plain)
             .padding(.top, 4)
+            .accessibilityIdentifier("onboarding.goalSummary.setManually")
         }
     }
 
@@ -238,6 +239,7 @@ struct GoalSummaryStepView: View {
                 .font(CalorynTheme.numericBody)
                 .focused($isManualTargetFocused)
                 .calorynInputField(isFocused: isManualTargetFocused)
+                .accessibilityIdentifier("onboarding.goalSummary.manualTarget")
                 .accessibilityLabel("Your daily calories")
 
             Text("kcal a day")

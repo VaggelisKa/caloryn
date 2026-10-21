@@ -14,6 +14,27 @@ private func manualProfile(
     carbs: Double = 0.40,
     fat: Double = 0.30
 ) -> UserProfile {
+    profile(target: target, manualOverride: true, protein: protein, carbs: carbs, fat: fat)
+}
+
+@MainActor
+private func calculatedProfile(
+    target: Int,
+    protein: Double = 0.30,
+    carbs: Double = 0.40,
+    fat: Double = 0.30
+) -> UserProfile {
+    profile(target: target, manualOverride: false, protein: protein, carbs: carbs, fat: fat)
+}
+
+@MainActor
+private func profile(
+    target: Int,
+    manualOverride: Bool,
+    protein: Double,
+    carbs: Double,
+    fat: Double
+) -> UserProfile {
     UserProfile(
         age: 30,
         sex: .male,
@@ -21,7 +42,7 @@ private func manualProfile(
         weightKg: 80,
         activityLevel: .sedentary,
         dailyCalorieTarget: target,
-        manualOverride: true,
+        manualOverride: manualOverride,
         proteinRatio: protein,
         carbRatio: carbs,
         fatRatio: fat
@@ -43,9 +64,23 @@ struct UserProfileNutrientTargetCoverageTests {
         #expect(targets == profile.nutrientTargets)
     }
 
+    @Test("A manual override keeps its gram goals when the day's calorie figure changes")
+    func manualOverrideKeepsTypedGrams() {
+        let profile = manualProfile(target: 1_800)
+        profile.setTarget(160, for: .protein)
+        profile.setTarget(170, for: .carbs)
+        profile.setTarget(60, for: .fat)
+
+        let targets = profile.nutrientTargets(forCalorieTarget: 2_400)
+
+        #expect(isNear(targets[.protein], 160))
+        #expect(isNear(targets[.carbs], 170))
+        #expect(isNear(targets[.fat], 60))
+    }
+
     @Test("A calorie figure re-applies the default split to it")
     func defaultSplitScalesToANewFigure() {
-        let targets = manualProfile(target: 2_000).nutrientTargets(forCalorieTarget: 2_400)
+        let targets = calculatedProfile(target: 2_000).nutrientTargets(forCalorieTarget: 2_400)
 
         #expect(isNear(targets[.protein], 180))
         #expect(isNear(targets[.carbs], 240))
@@ -54,7 +89,7 @@ struct UserProfileNutrientTargetCoverageTests {
 
     @Test("A calorie figure re-applies the user's own split, not the default one")
     func customSplitScalesToANewFigure() {
-        let profile = manualProfile(target: 1_800, protein: 0.35, carbs: 0.35, fat: 0.30)
+        let profile = calculatedProfile(target: 1_800, protein: 0.35, carbs: 0.35, fat: 0.30)
         #expect(isNear(profile.proteinTargetG, 157.5))
         #expect(isNear(profile.fatTargetG, 60))
 
@@ -67,7 +102,7 @@ struct UserProfileNutrientTargetCoverageTests {
 
     @Test("Grams that claim more than the saved target scale with their proportions intact")
     func staleGramsKeepTheirProportions() {
-        let profile = manualProfile(target: 1_000)
+        let profile = calculatedProfile(target: 1_000)
         profile.setTarget(150, for: .protein)
         profile.setTarget(150, for: .carbs)
         profile.setTarget(50, for: .fat)
@@ -85,7 +120,7 @@ struct UserProfileNutrientTargetCoverageTests {
 
     @Test("A profile with no saved target scales the default 30/40/30 split")
     func zeroSavedTargetFallsBackToTheDefaultSplit() {
-        let profile = manualProfile(target: 0)
+        let profile = calculatedProfile(target: 0)
 
         #expect(profile.nutrientTargets.isEmpty)
 
@@ -111,7 +146,7 @@ struct UserProfileNutrientTargetCoverageTests {
 
     @Test("A zero calorie figure writes zero macro targets rather than leaving them out")
     func zeroCalorieFigureWritesZeroMacros() {
-        let targets = manualProfile(target: 2_000).nutrientTargets(forCalorieTarget: 0)
+        let targets = calculatedProfile(target: 2_000).nutrientTargets(forCalorieTarget: 0)
 
         #expect(targets[.protein] == 0)
         #expect(targets[.carbs] == 0)
@@ -143,7 +178,7 @@ struct UserProfileNutrientTargetCoverageTests {
         #expect(profile.target(for: nutrient) == nil)
         #expect(profile.nutrientTargets[nutrient] == nil)
         #expect(profile.isGoalEnabled(for: nutrient))
-        #expect(profile.nutrientTargets(forCalorieTarget: 2_000)[nutrient] == 0)
+        #expect(profile.nutrientTargets(forCalorieTarget: 2_000)[nutrient] == nil)
 
         profile.setTarget(90, for: nutrient)
         #expect(profile.target(for: nutrient) == 90)

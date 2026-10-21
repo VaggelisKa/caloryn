@@ -11,6 +11,9 @@ struct GoalEditDraft: Equatable {
     var proteinRatio: Double
     var carbRatio: Double
     var fatRatio: Double
+    var proteinGramsText: String
+    var carbGramsText: String
+    var fatGramsText: String
     var nutrientTargetTexts: [TrackedNutrient: String] = [:]
     var nutrientGoalKinds: [TrackedNutrient: NutrientGoalKind] = [:]
 
@@ -21,6 +24,9 @@ struct GoalEditDraft: Equatable {
         proteinRatio = seed.proteinRatio
         carbRatio = seed.carbRatio
         fatRatio = seed.fatRatio
+        proteinGramsText = seed.proteinGramsText
+        carbGramsText = seed.carbGramsText
+        fatGramsText = seed.fatGramsText
     }
 
     init(profile: UserProfile) {
@@ -40,16 +46,36 @@ struct GoalEditDraft: Equatable {
 
     var macroTotal: Double { proteinRatio + carbRatio + fatRatio }
 
+    var macroGramGoals: MacroGramGoals {
+        MacroGramGoals(proteinText: proteinGramsText, carbText: carbGramsText, fatText: fatGramsText)
+    }
+
     func proteinTargetGrams(tdee: Double) -> Double {
-        macroGrams(ratio: proteinRatio, caloriesPerGram: 4, tdee: tdee)
+        directOrDerivedGrams(for: .protein, ratio: proteinRatio, caloriesPerGram: 4, tdee: tdee)
     }
 
     func carbTargetGrams(tdee: Double) -> Double {
-        macroGrams(ratio: carbRatio, caloriesPerGram: 4, tdee: tdee)
+        directOrDerivedGrams(for: .carbs, ratio: carbRatio, caloriesPerGram: 4, tdee: tdee)
     }
 
     func fatTargetGrams(tdee: Double) -> Double {
-        macroGrams(ratio: fatRatio, caloriesPerGram: 9, tdee: tdee)
+        directOrDerivedGrams(for: .fat, ratio: fatRatio, caloriesPerGram: 9, tdee: tdee)
+    }
+
+    func macroAccountSummary(tdee: Double, locale: Locale = .current) -> String? {
+        macroGramGoals.accountSummary(calorieTarget: effectiveCalorieTarget(tdee: tdee), locale: locale)
+    }
+
+    private func directOrDerivedGrams(
+        for macro: MacroRatioSelection.Macro,
+        ratio: Double,
+        caloriesPerGram: Double,
+        tdee: Double
+    ) -> Double {
+        if manualOverride {
+            return macroGramGoals.grams(for: macro) ?? 0
+        }
+        return macroGrams(ratio: ratio, caloriesPerGram: caloriesPerGram, tdee: tdee)
     }
 
     private func macroGrams(ratio: Double, caloriesPerGram: Double, tdee: Double) -> Double {
@@ -61,7 +87,7 @@ struct GoalEditDraft: Equatable {
     }
 
     var isMacroValid: Bool {
-        abs(macroTotal - 1.0) <= Self.macroTotalTolerance
+        manualOverride ? macroGramGoals.isValid : abs(macroTotal - 1.0) <= Self.macroTotalTolerance
     }
 
     var isManualTargetValid: Bool {
@@ -128,18 +154,46 @@ struct GoalEditDraft: Equatable {
     }
 
     mutating func manualOverrideChanged(to isManual: Bool, tdee: Double) {
-        manualOverride = isManual
-        guard isManual else { return }
-        targetText = "\(calculatedTarget(tdee: tdee))"
+        if isManual {
+            let calories = Double(calculatedTarget(tdee: tdee))
+            proteinGramsText = MacroGramGoals.fieldText(
+                forGrams: NutritionCalculator.macroGrams(calories: calories, ratio: proteinRatio, caloriesPerGram: 4)
+            )
+            carbGramsText = MacroGramGoals.fieldText(
+                forGrams: NutritionCalculator.macroGrams(calories: calories, ratio: carbRatio, caloriesPerGram: 4)
+            )
+            fatGramsText = MacroGramGoals.fieldText(
+                forGrams: NutritionCalculator.macroGrams(calories: calories, ratio: fatRatio, caloriesPerGram: 9)
+            )
+            manualOverride = true
+            targetText = "\(calculatedTarget(tdee: tdee))"
+            return
+        }
+
+        if let snapped = macroGramGoals.snappedRatios() {
+            proteinRatio = snapped.protein
+            carbRatio = snapped.carbs
+            fatRatio = snapped.fat
+        }
+        manualOverride = false
     }
 
     func apply(to profile: UserProfile) {
         profile.manualOverride = manualOverride
         profile.calorieDeficit = calorieDeficit
 
-        if manualOverride, let manualTarget {
-            profile.dailyCalorieTarget = manualTarget
-            profile.energyCalculationMode = .lifestyleEstimate
+        if manualOverride {
+            if let manualTarget {
+                profile.dailyCalorieTarget = manualTarget
+                profile.energyCalculationMode = .lifestyleEstimate
+            }
+            if let protein = resolvedMacroGrams(proteinGramsText, saved: profile.proteinTargetG),
+               let carbs = resolvedMacroGrams(carbGramsText, saved: profile.carbTargetG),
+               let fat = resolvedMacroGrams(fatGramsText, saved: profile.fatTargetG) {
+                profile.proteinTargetG = protein
+                profile.carbTargetG = carbs
+                profile.fatTargetG = fat
+            }
         }
 
         profile.recalculate(proteinRatio: proteinRatio, carbRatio: carbRatio, fatRatio: fatRatio)
@@ -149,6 +203,15 @@ struct GoalEditDraft: Equatable {
             guard !isUnchangedGoal(for: nutrient, in: profile) else { continue }
             profile.setTarget(storedTarget(for: nutrient), for: nutrient)
         }
+    }
+
+    private func resolvedMacroGrams(_ text: String, saved: Double) -> Double? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed == MacroGramGoals.fieldText(forGrams: saved), MacroGramGoals.accepts(saved) {
+            return saved
+        }
+        guard let value = trimmed.decimalInputValue, MacroGramGoals.accepts(value) else { return nil }
+        return value
     }
 
     private func isUnchangedGoal(for nutrient: TrackedNutrient, in profile: UserProfile) -> Bool {

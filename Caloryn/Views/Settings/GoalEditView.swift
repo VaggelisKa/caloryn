@@ -6,6 +6,9 @@ private let nutrientGoalAnimationDuration: TimeInterval = 0.24
 
 private enum GoalEditFocus: Hashable {
     case manualTarget
+    case protein
+    case carbs
+    case fat
     case nutrient(TrackedNutrient)
 }
 
@@ -23,6 +26,7 @@ struct GoalEditView: View {
     }
 
     private var calculatedTarget: Int { draft.calculatedTarget(tdee: profile.tdee) }
+    private var previewCalorieTarget: Int { draft.effectiveCalorieTarget(tdee: profile.tdee) }
     private var previewProteinTarget: Double { draft.proteinTargetGrams(tdee: profile.tdee) }
     private var previewCarbTarget: Double { draft.carbTargetGrams(tdee: profile.tdee) }
     private var previewFatTarget: Double { draft.fatTargetGrams(tdee: profile.tdee) }
@@ -94,30 +98,66 @@ struct GoalEditView: View {
             }
 
             Section {
-                MacroGoalSliderRow(
-                    name: "Protein",
-                    ratio: $draft.proteinRatio,
-                    range: 0.10...0.50,
-                    gramsText: previewProteinTarget.spacedMacroFormatted
-                )
-                MacroGoalSliderRow(
-                    name: "Carbs",
-                    ratio: $draft.carbRatio,
-                    range: 0.10...0.60,
-                    gramsText: previewCarbTarget.spacedMacroFormatted
-                )
-                MacroGoalSliderRow(
-                    name: "Fat",
-                    ratio: $draft.fatRatio,
-                    range: 0.10...0.50,
-                    gramsText: previewFatTarget.spacedMacroFormatted
-                )
+                if draft.manualOverride {
+                    MacroGramFieldRow(
+                        name: "Protein",
+                        text: $draft.proteinGramsText,
+                        percentText: draft.macroGramGoals.sharePercentText(for: .protein, calorieTarget: previewCalorieTarget),
+                        identifier: "goalEdit.protein",
+                        focus: .protein,
+                        focusedField: $focusedField
+                    )
+                    MacroGramFieldRow(
+                        name: "Carbs",
+                        text: $draft.carbGramsText,
+                        percentText: draft.macroGramGoals.sharePercentText(for: .carbs, calorieTarget: previewCalorieTarget),
+                        identifier: "goalEdit.carbs",
+                        focus: .carbs,
+                        focusedField: $focusedField
+                    )
+                    MacroGramFieldRow(
+                        name: "Fat",
+                        text: $draft.fatGramsText,
+                        percentText: draft.macroGramGoals.sharePercentText(for: .fat, calorieTarget: previewCalorieTarget),
+                        identifier: "goalEdit.fat",
+                        focus: .fat,
+                        focusedField: $focusedField
+                    )
 
-                if !draft.isMacroValid {
-                    SettingsWarningText("Ratios should total 100% (currently \((draft.macroTotal * 100).truncatedSafely)%)")
+                    if let message = draft.macroGramGoals.validationMessage {
+                        SettingsWarningText(message)
+                    }
+                } else {
+                    MacroGoalSliderRow(
+                        name: "Protein",
+                        ratio: $draft.proteinRatio,
+                        range: 0.10...0.50,
+                        gramsText: previewProteinTarget.spacedMacroFormatted
+                    )
+                    MacroGoalSliderRow(
+                        name: "Carbs",
+                        ratio: $draft.carbRatio,
+                        range: 0.10...0.60,
+                        gramsText: previewCarbTarget.spacedMacroFormatted
+                    )
+                    MacroGoalSliderRow(
+                        name: "Fat",
+                        ratio: $draft.fatRatio,
+                        range: 0.10...0.50,
+                        gramsText: previewFatTarget.spacedMacroFormatted
+                    )
+
+                    if !draft.isMacroValid {
+                        SettingsWarningText("Ratios should total 100% (currently \((draft.macroTotal * 100).truncatedSafely)%)")
+                    }
                 }
             } header: {
                 SettingsSectionTitle("Macro goals")
+            } footer: {
+                if let summary = draft.manualOverride ? draft.macroAccountSummary(tdee: profile.tdee) : nil {
+                    SettingsSectionFooter(summary)
+                        .accessibilityIdentifier("goalEdit.macroAccount")
+                }
             }
             .listRowBackground(CalorynTheme.backgroundSecondary)
 
@@ -184,6 +224,47 @@ struct GoalEditView: View {
             get: { draft.goalKind(for: nutrient) },
             set: { draft.nutrientGoalKinds[nutrient] = $0 }
         )
+    }
+}
+
+private struct MacroGramFieldRow: View {
+    let name: String
+    @Binding var text: String
+    let percentText: String
+    let identifier: String
+    let focus: GoalEditFocus
+    @FocusState.Binding var focusedField: GoalEditFocus?
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Text(name)
+                .font(CalorynTheme.bodyText)
+                .foregroundStyle(CalorynTheme.textPrimary)
+
+            Spacer(minLength: 8)
+
+            Text(percentText)
+                .font(CalorynTheme.numericBody.weight(.semibold))
+                .foregroundStyle(CalorynTheme.textPrimary)
+                .accessibilityLabel("\(name) share of the calorie target")
+
+            TextField("0", text: $text)
+                .keyboardType(.decimalPad)
+                .multilineTextAlignment(.trailing)
+                .font(CalorynTheme.numericBody)
+                .foregroundStyle(CalorynTheme.textPrimary)
+                .focused($focusedField, equals: focus)
+                .calorynInputField(isFocused: focusedField == focus)
+                .frame(width: 92)
+                .accessibilityIdentifier(identifier)
+                .accessibilityLabel("\(name) goal in grams")
+
+            Text("g")
+                .font(CalorynTheme.caption)
+                .foregroundStyle(CalorynTheme.textSecondary)
+                .frame(width: 24, alignment: .leading)
+        }
+        .padding(.vertical, 2)
     }
 }
 
