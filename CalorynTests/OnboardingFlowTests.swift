@@ -19,7 +19,7 @@ struct OnboardingFlowTests {
             .activityLevel,
             .energyCalculationMode,
             .goalSummary,
-            .macroRatios(2_000),
+            .macroRatios(calorieTarget: 2_000, usesDirectGrams: false),
             .nutrientSelection
         ])
     }
@@ -31,7 +31,14 @@ struct OnboardingFlowTests {
 
     @Test("The goal step hands its calorie target to the macro step")
     func goalStepCarriesTheTarget() {
-        #expect(OnboardingFlow.step(after: .goalSummary, calorieTarget: 1_750) == .macroRatios(1_750))
+        #expect(
+            OnboardingFlow.step(after: .goalSummary, calorieTarget: 1_750)
+                == .macroRatios(calorieTarget: 1_750, usesDirectGrams: false)
+        )
+        #expect(
+            OnboardingFlow.step(after: .goalSummary, calorieTarget: 1_800, usesDirectGrams: true)
+                == .macroRatios(calorieTarget: 1_800, usesDirectGrams: true)
+        )
     }
 
     @Test("No other step reads the calorie target")
@@ -44,7 +51,10 @@ struct OnboardingFlowTests {
         }
 
         #expect(
-            OnboardingFlow.step(after: .macroRatios(1_750), calorieTarget: 4_000) == .nutrientSelection
+            OnboardingFlow.step(
+                after: .macroRatios(calorieTarget: 1_750, usesDirectGrams: true),
+                calorieTarget: 4_000
+            ) == .nutrientSelection
         )
     }
 

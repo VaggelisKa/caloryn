@@ -4,6 +4,26 @@ import SwiftData
 
 @MainActor
 final class OnboardingProfileSaveTests: XCTestCase {
+    func testManualSelectionCanStoreGramGoalsThatDoNotFillTheCalorieTarget() {
+        let profile = OnboardingProfileSave.makeProfile(
+            from: makeSelections(
+                calorieTarget: 1_800,
+                isManualTarget: true,
+                proteinGrams: 150,
+                carbGrams: 180,
+                fatGrams: 50
+            )
+        )
+
+        XCTAssertEqual(profile.dailyCalorieTarget, 1_800)
+        XCTAssertEqual(profile.proteinTargetG, 150, accuracy: 0.001)
+        XCTAssertEqual(profile.carbTargetG, 180, accuracy: 0.001)
+        XCTAssertEqual(profile.fatTargetG, 50, accuracy: 0.001)
+        XCTAssertEqual(profile.nutrientTargets(forCalorieTarget: 2_200)[.protein] ?? 0, 150, accuracy: 0.001)
+        XCTAssertEqual(profile.nutrientTargets(forCalorieTarget: 2_200)[.carbs] ?? 0, 180, accuracy: 0.001)
+        XCTAssertEqual(profile.nutrientTargets(forCalorieTarget: 2_200)[.fat] ?? 0, 50, accuracy: 0.001)
+    }
+
     func testManualSelectionPersistsTargetAndManualMode() {
         let profile = OnboardingProfileSave.makeProfile(
             from: makeSelections(calorieTarget: 1_800, isManualTarget: true, energyCalculationMode: .dynamicHealth)
@@ -121,7 +141,10 @@ final class OnboardingProfileSaveTests: XCTestCase {
     private func makeSelections(
         calorieTarget: Int,
         isManualTarget: Bool,
-        energyCalculationMode: EnergyCalculationMode = .lifestyleEstimate
+        energyCalculationMode: EnergyCalculationMode = .lifestyleEstimate,
+        proteinGrams: Double? = nil,
+        carbGrams: Double? = nil,
+        fatGrams: Double? = nil
     ) -> OnboardingProfileSave.Selections {
         OnboardingProfileSave.Selections(
             age: 30,
@@ -135,7 +158,10 @@ final class OnboardingProfileSaveTests: XCTestCase {
             isManualTarget: isManualTarget,
             proteinRatio: 0.30,
             carbRatio: 0.40,
-            fatRatio: 0.30
+            fatRatio: 0.30,
+            proteinGrams: proteinGrams,
+            carbGrams: carbGrams,
+            fatGrams: fatGrams
         )
     }
 }

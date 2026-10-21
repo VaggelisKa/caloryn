@@ -456,6 +456,75 @@ final class JourneyTests: UITestCase {
         }
     }
 
+    func testGivenAManualTargetWhenMacroGoalsAreTypedInGramsThenSettingsKeepsThem() {
+        let app = launch(fixture: .profileOnly)
+        let tabs = TabBar(app: app)
+        let settings = SettingsScreen(app: app)
+
+        when("the user types protein, carb, and fat goals that do not fill the calorie target") {
+            XCTAssertTrue(tabs.isVisible)
+            tabs.go(to: .settings)
+            settings.tap(settings.editGoal)
+            XCTAssertTrue(settings.proteinGoal.awaitExistence())
+            settings.goalTargetField.replaceText("1800")
+            settings.proteinGoal.replaceText("160")
+            settings.carbGoal.replaceText("170")
+            settings.fatGoal.replaceText("60")
+            XCTAssertTrue(settings.macroAccount.awaitLabel(containing: 1_860.formatted(.number)))
+            settings.capture("goal-edit-grams")
+            settings.tap(settings.saveGoal)
+        }
+
+        then("Settings shows the calorie target and the gram goals") {
+            XCTAssertTrue(settings.calorieTarget.awaitLabel(containing: 1_800.formatted(.number)))
+            XCTAssertTrue(app.staticTexts["At least 160 grams"].awaitExistence())
+            XCTAssertTrue(app.staticTexts["170 grams"].awaitExistence())
+            XCTAssertTrue(app.staticTexts["60 grams"].awaitExistence())
+            settings.capture("settings-gram-goals")
+        }
+    }
+
+    func testGivenOnboardingWhenTheCalorieTargetIsManualThenMacrosAreEnteredInGrams() {
+        let app = launch(fixture: .empty)
+        let onboarding = OnboardingScreen(app: app)
+
+        when("onboarding reaches a manual calorie target") {
+            XCTAssertTrue(onboarding.getStarted.awaitExistence())
+            onboarding.tap(onboarding.getStarted)
+            onboarding.tap(onboarding.element("onboarding.personalInfo.continue"))
+            onboarding.tap(onboarding.element("onboarding.activityLevel.continue"))
+            onboarding.tap(onboarding.element("onboarding.energyMode.continue"))
+            onboarding.tap(onboarding.setManually)
+            onboarding.awaitTappable(onboarding.manualCalorieTarget).replaceText("1800")
+            if app.keyboards.firstMatch.exists {
+                app.staticTexts["Your daily plate"].firstMatch.tap()
+            }
+            onboarding.tap(onboarding.element("onboarding.goalSummary.continue"))
+        }
+
+        then("protein, carbs, and fat are entered in grams and kept") {
+            XCTAssertTrue(onboarding.proteinGoal.awaitExistence())
+            onboarding.proteinGoal.replaceText("150")
+            onboarding.carbGoal.replaceText("180")
+            onboarding.fatGoal.replaceText("50")
+            XCTAssertTrue(onboarding.macroAccount.awaitLabel(containing: 1_770.formatted(.number)))
+            onboarding.capture("onboarding-gram-goals")
+            if app.keyboards.firstMatch.exists {
+                app.staticTexts["Macro goals"].firstMatch.tap()
+            }
+            onboarding.tap(onboarding.element("onboarding.macroRatios.continue"))
+            onboarding.tap(onboarding.startTracking)
+
+            let tabs = TabBar(app: app)
+            XCTAssertTrue(tabs.isVisible)
+            tabs.go(to: .settings)
+            XCTAssertTrue(app.staticTexts["At least 150 grams"].awaitExistence())
+            XCTAssertTrue(app.staticTexts["180 grams"].awaitExistence())
+            XCTAssertTrue(app.staticTexts["50 grams"].awaitExistence())
+            onboarding.capture("onboarding-settings-grams")
+        }
+    }
+
     func testGivenTheMainScreensWhenAuditedThenNoAccessibilityIssuesAreReported() throws {
         let app = launch(fixture: .history)
         let tabs = TabBar(app: app)

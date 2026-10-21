@@ -24,7 +24,7 @@ final class UserProfileTests: XCTestCase {
         XCTAssertEqual(profile.fatTargetG, 55.066, accuracy: 0.001)
     }
 
-    func testRecalculatePreservesManualCalorieTargetButUpdatesMacros() {
+    func testRecalculatePreservesManualCalorieTargetAndMacroGrams() {
         let profile = UserProfile(
             age: 40,
             sex: .male,
@@ -44,8 +44,8 @@ final class UserProfileTests: XCTestCase {
         XCTAssertEqual(profile.bmr, 1_830, accuracy: 0.001)
         XCTAssertEqual(profile.tdee, 3_156.75, accuracy: 0.001)
         XCTAssertEqual(profile.dailyCalorieTarget, 1_800)
-        XCTAssertEqual(profile.proteinTargetG, 90, accuracy: 0.001)
-        XCTAssertEqual(profile.carbTargetG, 225, accuracy: 0.001)
+        XCTAssertEqual(profile.proteinTargetG, 135, accuracy: 0.001)
+        XCTAssertEqual(profile.carbTargetG, 180, accuracy: 0.001)
         XCTAssertEqual(profile.fatTargetG, 60, accuracy: 0.001)
         XCTAssertGreaterThanOrEqual(profile.updatedAt, originalUpdatedAt)
     }

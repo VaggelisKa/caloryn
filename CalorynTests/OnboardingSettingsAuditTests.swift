@@ -230,7 +230,11 @@ struct AuditOnboardingGoalCalculationTests {
 
                 #expect(draft.appliesManualTarget == isManual, "\(context)")
                 #expect(target == (isManual ? 1_850 : basis.calculatedTarget), "\(context)")
-                #expect(OnboardingFlow.step(after: .goalSummary, calorieTarget: target) == .macroRatios(plate.targetKcal), "\(context)")
+                #expect(
+                    OnboardingFlow.step(after: .goalSummary, calorieTarget: target)
+                        == .macroRatios(calorieTarget: plate.targetKcal, usesDirectGrams: false),
+                    "\(context)"
+                )
 
                 #expect(profile.dailyCalorieTarget == plate.targetKcal, "\(context)")
                 #expect(profile.bmr.truncatedSafely == plate.restKcal, "\(context)")

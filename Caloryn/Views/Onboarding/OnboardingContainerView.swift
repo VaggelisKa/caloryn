@@ -18,6 +18,7 @@ struct OnboardingContainerView: View {
     @State private var proteinRatio: Double = 0.30
     @State private var carbRatio: Double = 0.40
     @State private var fatRatio: Double = 0.30
+    @State private var macroGramGoals = MacroGramGoals.empty
     @AppStorage("todayTrackedNutrients") private var selectedNutrientIDs = TrackedNutrient.defaultSelectionRaw
     @State private var isCompletingOnboarding = false
     @State private var isRequestingHealthAuthorization = false
@@ -64,20 +65,30 @@ struct OnboardingContainerView: View {
                         activityLevel: activityLevel,
                         calorieDeficit: $calorieDeficit
                     ) { target, isManual in
+                        if isManual, !macroGramGoals.isValid {
+                            macroGramGoals = .derived(
+                                calorieTarget: target,
+                                protein: proteinRatio,
+                                carbs: carbRatio,
+                                fat: fatRatio
+                            )
+                        }
                         finalCalorieTarget = target
                         isManualCalorieTarget = isManual
-                        advance(from: .goalSummary, calorieTarget: target)
+                        advance(from: .goalSummary, calorieTarget: target, usesDirectGrams: isManual)
                     }
-                case .macroRatios(let calorieTarget):
+                case .macroRatios(let calorieTarget, let usesDirectGrams):
                     MacroRatioStepView(
                         calorieTarget: calorieTarget,
                         proteinRatio: $proteinRatio,
                         carbRatio: $carbRatio,
                         fatRatio: $fatRatio,
+                        usesDirectGrams: usesDirectGrams,
+                        gramGoals: $macroGramGoals,
                         primaryButtonTitle: "Continue"
                     ) {
                         finalCalorieTarget = calorieTarget
-                        advance(from: .macroRatios(calorieTarget))
+                        advance(from: .macroRatios(calorieTarget: calorieTarget, usesDirectGrams: usesDirectGrams))
                     }
                 case .nutrientSelection:
                     NutrientSelectionStepView(
@@ -90,8 +101,12 @@ struct OnboardingContainerView: View {
         }
     }
 
-    private func advance(from step: OnboardingStep, calorieTarget: Int = 0) {
-        guard let next = OnboardingFlow.step(after: step, calorieTarget: calorieTarget) else { return }
+    private func advance(from step: OnboardingStep, calorieTarget: Int = 0, usesDirectGrams: Bool = false) {
+        guard let next = OnboardingFlow.step(
+            after: step,
+            calorieTarget: calorieTarget,
+            usesDirectGrams: usesDirectGrams
+        ) else { return }
         path.append(next)
     }
 
@@ -157,7 +172,10 @@ struct OnboardingContainerView: View {
             isManualTarget: isManualCalorieTarget,
             proteinRatio: proteinRatio,
             carbRatio: carbRatio,
-            fatRatio: fatRatio
+            fatRatio: fatRatio,
+            proteinGrams: isManualCalorieTarget ? macroGramGoals.grams(for: .protein) : nil,
+            carbGrams: isManualCalorieTarget ? macroGramGoals.grams(for: .carbs) : nil,
+            fatGrams: isManualCalorieTarget ? macroGramGoals.grams(for: .fat) : nil
         )
 
         if isManualCalorieTarget {

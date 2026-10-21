@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import Caloryn
 
@@ -44,8 +45,7 @@ struct GoalEditDraftTests {
     @Test("Macro previews reconcile back to the effective target")
     func macroPreviewsReconcileToTarget() {
         var draft = makeDraft()
-        draft.manualOverride = true
-        draft.targetText = "2000"
+        draft.manualOverride = false
         draft.proteinRatio = 0.30
         draft.carbRatio = 0.40
         draft.fatRatio = 0.30
@@ -54,19 +54,108 @@ struct GoalEditDraftTests {
             + draft.carbTargetGrams(tdee: tdee) * 4
             + draft.fatTargetGrams(tdee: tdee) * 9
 
-        #expect(abs(calories - 2_000) < 1)
+        #expect(abs(calories - Double(draft.effectiveCalorieTarget(tdee: tdee))) < 1)
     }
 
-    @Test("Editing the manual target moves the macro previews with it")
-    func macroPreviewsFollowTheTarget() {
-        var small = makeDraft()
-        small.manualOverride = true
-        small.targetText = "1500"
+    @Test("Editing the calorie target leaves a manual gram goal where it is")
+    func calorieEditLeavesGramGoals() {
+        var draft = makeDraft()
+        draft.manualOverride = true
+        draft.proteinGramsText = "160"
+        draft.carbGramsText = "170"
+        draft.fatGramsText = "60"
+        draft.targetText = "1500"
 
-        var large = small
-        large.targetText = "3000"
+        #expect(draft.proteinTargetGrams(tdee: tdee) == 160)
+        draft.targetText = "3000"
+        #expect(draft.proteinTargetGrams(tdee: tdee) == 160)
+        #expect(
+            draft.macroAccountSummary(tdee: tdee, locale: Locale(identifier: "en_US"))
+                == "Macros account for 1,860 of 3,000 kcal"
+        )
+    }
 
-        #expect(large.proteinTargetGrams(tdee: tdee) > small.proteinTargetGrams(tdee: tdee))
+    @Test("A manual override can save gram goals that do not fill the calorie target")
+    func manualSaveStoresTypedGrams() {
+        let profile = makeProfile()
+        var draft = GoalEditDraft(profile: profile)
+        draft.manualOverride = true
+        draft.targetText = "1800"
+        draft.proteinRatio = 0.90
+        draft.proteinGramsText = "160"
+        draft.carbGramsText = "170"
+        draft.fatGramsText = "60"
+
+        #expect(draft.canSave)
+        draft.apply(to: profile)
+
+        #expect(profile.dailyCalorieTarget == 1_800)
+        #expect(profile.proteinTargetG == 160)
+        #expect(profile.carbTargetG == 170)
+        #expect(profile.fatTargetG == 60)
+        #expect(profile.manualOverride)
+        #expect(profile.nutrientTargets(forCalorieTarget: 2_400)[.protein] == 160)
+    }
+
+    @Test("A blank macro goal blocks saving a manual override")
+    func blankMacroGoalBlocksManualSave() {
+        var draft = makeDraft()
+        draft.manualOverride = true
+        draft.targetText = "1800"
+        draft.proteinGramsText = ""
+
+        #expect(!draft.isMacroValid)
+        #expect(!draft.canSave)
+    }
+
+    @Test("Turning the override off snaps the gram goals back into a split")
+    func turningOverrideOffSnapsGramsIntoASplit() {
+        var draft = makeDraft()
+        draft.manualOverride = true
+        draft.proteinGramsText = "150"
+        draft.carbGramsText = "180"
+        draft.fatGramsText = "50"
+
+        draft.manualOverrideChanged(to: false, tdee: tdee)
+
+        #expect(!draft.manualOverride)
+        #expect(abs(draft.proteinRatio - (600.0 / 1_770)) < 1e-9)
+        #expect(abs(draft.carbRatio - (720.0 / 1_770)) < 1e-9)
+        #expect(abs(draft.fatRatio - (450.0 / 1_770)) < 1e-9)
+        #expect(draft.isMacroValid)
+    }
+
+    @Test("Turning the manual toggle on copies the current split into gram goals")
+    func togglingManualSeedsGramGoals() {
+        var draft = makeDraft()
+        draft.proteinRatio = 0.25
+        draft.carbRatio = 0.45
+        draft.fatRatio = 0.30
+
+        draft.manualOverrideChanged(to: true, tdee: tdee)
+
+        let calories = Double(draft.calculatedTarget(tdee: tdee))
+        let protein = NutritionCalculator.macroGrams(calories: calories, ratio: 0.25, caloriesPerGram: 4)
+        #expect(draft.proteinGramsText == MacroGramGoals.fieldText(forGrams: protein))
+        #expect(draft.canSave)
+    }
+
+    @Test("Saving a manual goal without editing the grams keeps their exact stored values")
+    func untouchedManualGramsSurviveASave() {
+        let profile = makeProfile()
+        profile.manualOverride = true
+        profile.dailyCalorieTarget = 1_800
+        profile.proteinTargetG = 157.25
+        profile.carbTargetG = 180.4
+        profile.fatTargetG = 55
+
+        var draft = GoalEditDraft(profile: profile)
+        draft.loadNutrientGoals(from: profile)
+        draft.apply(to: profile)
+
+        #expect(profile.proteinTargetG == 157.25)
+        #expect(profile.carbTargetG == 180.4)
+        #expect(profile.fatTargetG == 55)
     }
 
     @Test("Ratios that do not total 100% block saving")

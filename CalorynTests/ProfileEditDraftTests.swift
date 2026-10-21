@@ -105,17 +105,23 @@ struct ProfileEditDraftTests {
         #expect(abs(profile.proteinTargetG - proteinBefore) < 0.01)
     }
 
-    @Test("Apply respects a manual calorie override, recomputing only the grams")
-    func applyKeepsAManualTarget() {
+    @Test("Apply keeps a manual calorie target and the gram goals that go with it")
+    func applyKeepsAManualTargetAndItsGrams() {
         let profile = makeProfile()
         profile.manualOverride = true
         profile.dailyCalorieTarget = 1_800
+        profile.proteinTargetG = 160
+        profile.carbTargetG = 170
+        profile.fatTargetG = 60
 
         var draft = ProfileEditDraft(profile: profile)
         draft.weightKg = 110
         draft.apply(to: profile)
 
         #expect(profile.dailyCalorieTarget == 1_800)
+        #expect(profile.proteinTargetG == 160)
+        #expect(profile.carbTargetG == 170)
+        #expect(profile.fatTargetG == 60)
     }
 
     private func makeProfile() -> UserProfile {

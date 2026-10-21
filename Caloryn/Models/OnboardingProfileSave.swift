@@ -14,6 +14,9 @@ enum OnboardingProfileSave {
         var proteinRatio: Double
         var carbRatio: Double
         var fatRatio: Double
+        var proteinGrams: Double? = nil
+        var carbGrams: Double? = nil
+        var fatGrams: Double? = nil
     }
 
     static func makeProfile(from selections: Selections) -> UserProfile {
@@ -45,9 +48,18 @@ enum OnboardingProfileSave {
         )
         profile.tdee = NutritionCalculator.tdee(bmr: profile.bmr, activity: selections.activityLevel)
         profile.dailyCalorieTarget = selections.calorieTarget
-        profile.proteinTargetG = NutritionCalculator.macroGrams(calories: Double(selections.calorieTarget), ratio: selections.proteinRatio, caloriesPerGram: 4)
-        profile.carbTargetG = NutritionCalculator.macroGrams(calories: Double(selections.calorieTarget), ratio: selections.carbRatio, caloriesPerGram: 4)
-        profile.fatTargetG = NutritionCalculator.macroGrams(calories: Double(selections.calorieTarget), ratio: selections.fatRatio, caloriesPerGram: 9)
+        if selections.isManualTarget,
+           let proteinGrams = selections.proteinGrams,
+           let carbGrams = selections.carbGrams,
+           let fatGrams = selections.fatGrams {
+            profile.proteinTargetG = proteinGrams
+            profile.carbTargetG = carbGrams
+            profile.fatTargetG = fatGrams
+        } else {
+            profile.proteinTargetG = NutritionCalculator.macroGrams(calories: Double(selections.calorieTarget), ratio: selections.proteinRatio, caloriesPerGram: 4)
+            profile.carbTargetG = NutritionCalculator.macroGrams(calories: Double(selections.calorieTarget), ratio: selections.carbRatio, caloriesPerGram: 4)
+            profile.fatTargetG = NutritionCalculator.macroGrams(calories: Double(selections.calorieTarget), ratio: selections.fatRatio, caloriesPerGram: 9)
+        }
         profile.updatedAt = Date()
     }
 }

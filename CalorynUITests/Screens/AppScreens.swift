@@ -27,6 +27,12 @@ struct OnboardingScreen: Screen {
 
     var getStarted: XCUIElement { element("onboarding.getStarted") }
     var startTracking: XCUIElement { element("onboarding.startTracking") }
+    var setManually: XCUIElement { element("onboarding.goalSummary.setManually") }
+    var manualCalorieTarget: XCUIElement { element("onboarding.goalSummary.manualTarget") }
+    var proteinGoal: XCUIElement { element("onboarding.macroGrams.protein") }
+    var carbGoal: XCUIElement { element("onboarding.macroGrams.carbs") }
+    var fatGoal: XCUIElement { element("onboarding.macroGrams.fat") }
+    var macroAccount: XCUIElement { element("onboarding.macroGrams.account") }
 
     func activityLevel(_ level: String) -> XCUIElement {
         element("onboarding.activityLevel.option.\(level)")
@@ -245,6 +251,10 @@ struct SettingsScreen: Screen {
     var goalTargetField: XCUIElement { element("goalEdit.target") }
     var manualOverride: XCUIElement { element("goalEdit.manualOverride") }
     var saveGoal: XCUIElement { element("goalEdit.save") }
+    var proteinGoal: XCUIElement { element("goalEdit.protein") }
+    var carbGoal: XCUIElement { element("goalEdit.carbs") }
+    var fatGoal: XCUIElement { element("goalEdit.fat") }
+    var macroAccount: XCUIElement { element("goalEdit.macroAccount") }
 }
 
 struct MultiAddScreen: Screen {

@@ -6,12 +6,16 @@ enum OnboardingStep: Hashable {
     case activityLevel
     case energyCalculationMode
     case goalSummary
-    case macroRatios(Int)
+    case macroRatios(calorieTarget: Int, usesDirectGrams: Bool)
     case nutrientSelection
 }
 
 enum OnboardingFlow {
-    static func step(after step: OnboardingStep, calorieTarget: Int = 0) -> OnboardingStep? {
+    static func step(
+        after step: OnboardingStep,
+        calorieTarget: Int = 0,
+        usesDirectGrams: Bool = false
+    ) -> OnboardingStep? {
         switch step {
         case .welcome:
             .personalInfo
@@ -22,7 +26,7 @@ enum OnboardingFlow {
         case .energyCalculationMode:
             .goalSummary
         case .goalSummary:
-            .macroRatios(calorieTarget)
+            .macroRatios(calorieTarget: calorieTarget, usesDirectGrams: usesDirectGrams)
         case .macroRatios:
             .nutrientSelection
         case .nutrientSelection:

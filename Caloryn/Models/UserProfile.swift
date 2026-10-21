@@ -118,10 +118,10 @@ final class UserProfile {
         tdee = NutritionCalculator.tdee(bmr: bmr, activity: activityLevel)
         if !manualOverride {
             dailyCalorieTarget = NutritionCalculator.defaultTarget(tdee: tdee, deficit: calorieDeficit)
+            proteinTargetG = NutritionCalculator.macroGrams(calories: Double(dailyCalorieTarget), ratio: proteinRatio, caloriesPerGram: 4)
+            carbTargetG = NutritionCalculator.macroGrams(calories: Double(dailyCalorieTarget), ratio: carbRatio, caloriesPerGram: 4)
+            fatTargetG = NutritionCalculator.macroGrams(calories: Double(dailyCalorieTarget), ratio: fatRatio, caloriesPerGram: 9)
         }
-        proteinTargetG = NutritionCalculator.macroGrams(calories: Double(dailyCalorieTarget), ratio: proteinRatio, caloriesPerGram: 4)
-        carbTargetG = NutritionCalculator.macroGrams(calories: Double(dailyCalorieTarget), ratio: carbRatio, caloriesPerGram: 4)
-        fatTargetG = NutritionCalculator.macroGrams(calories: Double(dailyCalorieTarget), ratio: fatRatio, caloriesPerGram: 9)
         updatedAt = Date()
     }
 
@@ -160,7 +160,7 @@ final class UserProfile {
     func nutrientTargets(forCalorieTarget calorieTarget: Int? = nil) -> [TrackedNutrient: Double] {
         var targets = nutrientTargets
 
-        if let calorieTarget {
+        if let calorieTarget, !manualOverride {
             let ratios = macroRatios
             targets[.protein] = NutritionCalculator.macroGrams(
                 calories: Double(calorieTarget),
