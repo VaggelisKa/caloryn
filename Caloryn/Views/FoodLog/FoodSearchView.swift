@@ -561,32 +561,12 @@ struct FoodSearchView: View {
 
     private func captureSuggestionsIfNeeded() {
         guard !hasCapturedSuggestions, mode.supportsMultiSelection else { return }
-        let now = Date()
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: now)
-        guard let historyStart = calendar.date(
-            byAdding: .day,
-            value: -(ContextualFoodSuggestionRanker.historyDayCount - 1),
-            to: today
-        ), let historyEnd = calendar.date(byAdding: .day, value: 1, to: today) else {
-            hasCapturedSuggestions = true
-            return
-        }
-        let entries = (try? modelContext.fetch(
-            FetchDescriptor<FoodLogEntry>(
-                predicate: #Predicate { entry in
-                    entry.date >= historyStart && entry.date < historyEnd
-                }
-            )
-        )) ?? []
         suggestionSnapshot = ContextualFoodSuggestionAdapter.rank(
             foods: recentFoods,
-            entries: entries,
+            modelContext: modelContext,
             destinationDate: logDate,
             destinationMeal: mealType,
-            destinationSnackIndex: snackIndex,
-            now: now,
-            calendar: calendar
+            destinationSnackIndex: snackIndex
         )
         hasCapturedSuggestions = true
     }
