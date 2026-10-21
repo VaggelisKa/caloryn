@@ -20,12 +20,25 @@ struct FoodSearchListing {
 
     static let recentFoodLimit = 20
 
-    var mode: Mode
-    var searchText: String
-    var recentFoods: [FoodItem]
-    var mealTemplates: [MealTemplate]
-    var providerResults: [FoodSearchResult]
-    var suggestions: [ContextualFoodSuggestion]
+    let mode: Mode
+    let searchText: String
+    let recentFoods: [FoodItem]
+    let mealTemplates: [MealTemplate]
+    let providerResults: [FoodSearchResult]
+    let suggestions: [ContextualFoodSuggestion]
+
+    let query: String
+    let showingRecent: Bool
+    let recipes: [FoodItem]
+    let manualEntries: [FoodItem]
+    let editedProducts: [FoodItem]
+    let displayedRecentFoods: [FoodItem]
+    let contextualSuggestions: [(FoodItem, ContextualFoodSuggestion)]
+    let matchingManualEntries: [FoodItem]
+    let matchingEditedProducts: [FoodItem]
+    let visibleProviderSearchResults: [FoodSearchResult]
+    let matchingRecipes: [FoodItem]
+    let matchingMeals: [MealTemplate]
 
     init(
         mode: Mode,
@@ -41,86 +54,70 @@ struct FoodSearchListing {
         self.mealTemplates = mealTemplates
         self.providerResults = providerResults
         self.suggestions = suggestions
-    }
 
-    var query: String {
-        searchText.lowercased().trimmingCharacters(in: .whitespaces)
-    }
+        let query = searchText.lowercased().trimmingCharacters(in: .whitespaces)
+        self.query = query
+        showingRecent = searchText.trimmingCharacters(in: .whitespaces).isEmpty
 
-    var showingRecent: Bool {
-        searchText.trimmingCharacters(in: .whitespaces).isEmpty
-    }
-
-    var recipes: [FoodItem] {
-        guard mode.includesRecipes else { return [] }
-        return recentFoods.filter(\.isRecipe)
-    }
-
-    var manualEntries: [FoodItem] {
-        recentFoods.filter(\.isManualEntry)
-    }
-
-    var editedProducts: [FoodItem] {
-        recentFoods.filter(\.isEditedCatalogProduct)
-    }
-
-    var displayedRecentFoods: [FoodItem] {
         let suggestedIDs = Set(suggestions.map(\.foodID))
-        return Array(
-            recentFoods
-                .filter {
-                    (!$0.isUserCreatedFood || $0.isEditedCatalogProduct)
-                        && !suggestedIDs.contains($0.id)
-                }
-                .prefix(Self.recentFoodLimit)
-        )
-    }
-
-    var contextualSuggestions: [(FoodItem, ContextualFoodSuggestion)] {
-        guard mode.supportsMultiSelection else { return [] }
-        let foodsByID = recentFoods.reduce(into: [UUID: FoodItem]()) { result, food in
-            result[food.id] = food
+        var recipes: [FoodItem] = []
+        var manualEntries: [FoodItem] = []
+        var editedProducts: [FoodItem] = []
+        var displayedRecentFoods: [FoodItem] = []
+        var suggestedFoodsByID: [UUID: FoodItem] = [:]
+        for food in recentFoods {
+            if mode.includesRecipes, food.isRecipe {
+                recipes.append(food)
+            }
+            if food.isManualEntry {
+                manualEntries.append(food)
+            }
+            let isEditedCatalogProduct = food.isEditedCatalogProduct
+            if isEditedCatalogProduct {
+                editedProducts.append(food)
+            }
+            let id = food.id
+            if suggestedIDs.contains(id) {
+                suggestedFoodsByID[id] = food
+            } else if displayedRecentFoods.count < Self.recentFoodLimit,
+                      !food.isUserCreatedFood || isEditedCatalogProduct {
+                displayedRecentFoods.append(food)
+            }
         }
-        return suggestions.compactMap { suggestion in
-            foodsByID[suggestion.foodID].map { ($0, suggestion) }
-        }
-    }
+        self.recipes = recipes
+        self.manualEntries = manualEntries
+        self.editedProducts = editedProducts
+        self.displayedRecentFoods = displayedRecentFoods
 
-    var matchingManualEntries: [FoodItem] {
-        let query = query
-        guard !query.isEmpty else { return [] }
-        return manualEntries.filter {
+        contextualSuggestions = mode.supportsMultiSelection
+            ? suggestions.compactMap { suggestion in
+                suggestedFoodsByID[suggestion.foodID].map { ($0, suggestion) }
+            }
+            : []
+
+        matchingManualEntries = query.isEmpty ? [] : manualEntries.filter {
             $0.name.lowercased().contains(query)
                 || ($0.brand?.lowercased().contains(query) ?? false)
         }
-    }
 
-    var matchingEditedProducts: [FoodItem] {
-        EditedProductCatalog.loggingProducts(
+        let matchingEditedProducts = EditedProductCatalog.loggingProducts(
             in: editedProducts,
             matching: searchText,
             providerResults: providerResults
         )
-    }
-
-    var visibleProviderSearchResults: [FoodSearchResult] {
-        EditedProductCatalog.providerResults(
+        self.matchingEditedProducts = matchingEditedProducts
+        visibleProviderSearchResults = EditedProductCatalog.providerResults(
             providerResults,
             excludingProductsOverlaidBy: matchingEditedProducts
         )
-    }
 
-    var matchingRecipes: [FoodItem] {
-        let query = query
-        guard !query.isEmpty else { return [] }
-        return recipes.filter { $0.name.lowercased().contains(query) }
-    }
+        matchingRecipes = query.isEmpty ? [] : recipes.filter {
+            $0.name.lowercased().contains(query)
+        }
 
-    var matchingMeals: [MealTemplate] {
-        guard mode.supportsMultiSelection else { return [] }
-        let query = query
-        guard !query.isEmpty else { return [] }
-        return mealTemplates.filter { $0.name.lowercased().contains(query) }
+        matchingMeals = mode.supportsMultiSelection && !query.isEmpty
+            ? mealTemplates.filter { $0.name.lowercased().contains(query) }
+            : []
     }
 
     var hasCategorizedLocalMatches: Bool {
