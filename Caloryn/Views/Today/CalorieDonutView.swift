@@ -22,8 +22,7 @@ struct CalorieDonutView: View {
             slices: displayed,
             innerRadius: 0.7,
             angularInset: 1.5,
-            overAngularInset: 3,
-            colors: .hero
+            overAngularInset: 3
         )
         .frame(width: size, height: size)
         .animation(animates ? .calorynReveal : nil, value: displayed)
@@ -43,20 +42,13 @@ struct CalorieMiniDonutView: View {
     var size: CGFloat = 40
     var outline: Outline = .standard
     var uniformFill: Color? = nil
-    var innerRadiusRatio: CGFloat = 0
     var plateColor: Color = CalorynTheme.backgroundSecondary
     var fillsPlate: Bool = false
 
-    private var slices: [CalorieDonutChart.Slice] {
-        let slices = CalorieDonutChart.slices(for: summary, revealed: true)
-        guard uniformFill != nil else { return slices }
+    private static let antialiasedRimBleed: CGFloat = 1
 
-        let eaten = slices.filter { $0.kind != .remaining }.reduce(0) { $0 + $1.kcal }
-        let remaining = slices.first { $0.kind == .remaining }?.kcal ?? 0
-        return [
-            CalorieDonutChart.Slice(kind: .meal(.breakfast), kcal: eaten),
-            CalorieDonutChart.Slice(kind: .remaining, kcal: remaining),
-        ]
+    private var sectors: [CalorieMiniDonutSectors.Sector] {
+        CalorieMiniDonutSectors(sectors: summary.sectors, mergesEaten: uniformFill != nil).sectors
     }
 
     private var plateDiameter: CGFloat { size * 0.9 }
@@ -68,13 +60,20 @@ struct CalorieMiniDonutView: View {
                 .fill(plateColor)
                 .frame(width: plateDiameter, height: plateDiameter)
 
-            CalorieDonutChart(
-                slices: slices,
-                innerRadius: innerRadiusRatio,
-                angularInset: 1,
-                colors: .plate(uniformFill: uniformFill)
+            Canvas { context, _ in
+                let pie = CGRect(x: 0, y: 0, width: chartDiameter, height: chartDiameter)
+                for sector in sectors {
+                    context.fill(
+                        PlateSector(sector: sector).path(in: pie),
+                        with: .color(color(for: sector.fill))
+                    )
+                }
+            }
+            .frame(
+                width: chartDiameter + Self.antialiasedRimBleed,
+                height: chartDiameter + Self.antialiasedRimBleed
             )
-            .frame(width: chartDiameter, height: chartDiameter)
+            .frame(width: chartDiameter, height: chartDiameter, alignment: .topLeading)
             .opacity(outline == .today ? 0.55 : 1)
 
             outlineRing
@@ -103,6 +102,59 @@ struct CalorieMiniDonutView: View {
                 .frame(width: plateDiameter, height: plateDiameter)
         }
     }
+
+    private func color(for fill: CalorieMiniDonutSectors.Fill) -> Color {
+        switch fill {
+        case .meal(let meal): uniformFill ?? CalorynTheme.mealFill(meal)
+        case .over: uniformFill ?? CalorynTheme.dataPrimary
+        case .eaten: uniformFill ?? CalorynTheme.dataSecondary
+        }
+    }
+}
+
+private struct PlateSector: Shape {
+    private static let inset: Double = 1
+
+    let sector: CalorieMiniDonutSectors.Sector
+
+    func path(in rect: CGRect) -> Path {
+        guard !sector.isWholePlate else { return Path(ellipseIn: rect) }
+
+        let radius = Double(min(rect.width, rect.height)) / 2
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+
+        let start = sector.start * 2 * .pi - .pi / 2
+        let end = sector.end * 2 * .pi - .pi / 2
+        let span = end - start
+        var path = Path()
+        if span > .pi {
+            path.addArc(
+                center: center,
+                radius: Self.inset,
+                startAngle: .radians(start + .pi / 2),
+                endAngle: .radians(end - .pi / 2),
+                clockwise: false
+            )
+        } else {
+            let apexDistance = Self.inset / sin(span / 2)
+            guard apexDistance < radius else { return path }
+            let bisector = (start + end) / 2
+            path.move(to: CGPoint(
+                x: Double(center.x) + apexDistance * cos(bisector),
+                y: Double(center.y) + apexDistance * sin(bisector)
+            ))
+        }
+        let edge = asin(min(1, Self.inset / radius))
+        path.addArc(
+            center: center,
+            radius: radius,
+            startAngle: .radians(end - edge),
+            endAngle: .radians(start + edge),
+            clockwise: true
+        )
+        path.closeSubpath()
+        return path
+    }
 }
 
 struct CalorieDonutChart: View {
@@ -112,37 +164,17 @@ struct CalorieDonutChart: View {
         var id: CalorieDonutSummary.SectorKind { kind }
     }
 
-    enum Colors {
-        case hero
-        case plate(uniformFill: Color?)
-    }
-
     let slices: [Slice]
     let innerRadius: CGFloat
     let angularInset: CGFloat
-    let overAngularInset: CGFloat?
-    let colors: Colors
-
-    init(
-        slices: [Slice],
-        innerRadius: CGFloat,
-        angularInset: CGFloat,
-        overAngularInset: CGFloat? = nil,
-        colors: Colors
-    ) {
-        self.slices = slices
-        self.innerRadius = innerRadius
-        self.angularInset = angularInset
-        self.overAngularInset = overAngularInset
-        self.colors = colors
-    }
+    let overAngularInset: CGFloat
 
     var body: some View {
         Chart(slices) { slice in
             SectorMark(
                 angle: .value("kcal", slice.kcal),
                 innerRadius: .ratio(innerRadius),
-                angularInset: slice.kind == .over ? overAngularInset ?? angularInset : angularInset
+                angularInset: slice.kind == .over ? overAngularInset : angularInset
             )
             .foregroundStyle(color(for: slice.kind))
         }
@@ -150,17 +182,10 @@ struct CalorieDonutChart: View {
     }
 
     private func color(for kind: CalorieDonutSummary.SectorKind) -> Color {
-        switch (kind, colors) {
-        case (.meal(let meal), .hero), (.meal(let meal), .plate(uniformFill: nil)):
-            CalorynTheme.mealFill(meal)
-        case (.meal, .plate(uniformFill: let fill?)), (.over, .plate(uniformFill: let fill?)):
-            fill
-        case (.over, _):
-            CalorynTheme.dataPrimary
-        case (.remaining, .hero):
-            CalorynTheme.fillTrack
-        case (.remaining, .plate):
-            Color.clear
+        switch kind {
+        case .meal(let meal): CalorynTheme.mealFill(meal)
+        case .over: CalorynTheme.dataPrimary
+        case .remaining: CalorynTheme.fillTrack
         }
     }
 
