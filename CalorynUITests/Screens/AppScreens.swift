@@ -262,6 +262,25 @@ struct SettingsScreen: Screen {
     var carbGoal: XCUIElement { element("goalEdit.carbs") }
     var fatGoal: XCUIElement { element("goalEdit.fat") }
     var macroAccount: XCUIElement { element("goalEdit.macroAccount") }
+
+    var export: XCUIElement { element("settings.export") }
+
+    @discardableResult
+    func revealExport(
+        maximumScrolls: Int = 6,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        var scrolls = 0
+        while !(export.exists && export.isHittable), scrolls < maximumScrolls {
+            app.swipeUp()
+            scrolls += 1
+        }
+        if !(export.exists && export.isHittable) {
+            XCTFail("Never scrolled to \(export)", file: file, line: line)
+        }
+        return export
+    }
 }
 
 struct MultiAddScreen: Screen {

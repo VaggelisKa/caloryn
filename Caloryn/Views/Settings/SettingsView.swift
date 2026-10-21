@@ -471,6 +471,7 @@ struct SettingsView: View {
                 .contentShape(Rectangle())
             }
             .disabled(!isExportEnabled)
+            .accessibilityIdentifier("settings.export")
         } header: {
             SettingsSectionTitle("Your data")
         } footer: {

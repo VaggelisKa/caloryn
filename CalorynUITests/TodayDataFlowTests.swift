@@ -47,4 +47,28 @@ final class TodayDataFlowTests: UITestCase {
             "Deleting the copy should make yesterday available again"
         )
     }
+
+    func testEachDayStepShowsThatDaysOwnTotal() {
+        let app = launch(fixture: .history)
+        let today = TodayScreen(app: app)
+        let eatenByDaysAgo = [", 380 eaten", ", 570 eaten", ", 760 eaten", ", 950 eaten"]
+
+        XCTAssertTrue(today.calorieRing.awaitLabel(containing: eatenByDaysAgo[0]))
+
+        for (daysAgo, eaten) in eatenByDaysAgo.enumerated().dropFirst() {
+            today.tap(today.previousDay)
+            XCTAssertTrue(
+                today.calorieRing.awaitLabel(containing: eaten),
+                "Stepping back to \(daysAgo) days ago should count only that day's entry"
+            )
+        }
+
+        for (daysAgo, eaten) in eatenByDaysAgo.enumerated().reversed().dropFirst() {
+            today.tap(today.nextDay)
+            XCTAssertTrue(
+                today.calorieRing.awaitLabel(containing: eaten),
+                "Stepping forward to \(daysAgo) days ago should count only that day's entry"
+            )
+        }
+    }
 }
