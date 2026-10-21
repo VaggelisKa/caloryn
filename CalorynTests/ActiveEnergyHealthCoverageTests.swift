@@ -126,6 +126,45 @@ final class ActiveEnergyDayTrackerCoverageTests: XCTestCase {
         XCTAssertEqual(tracker.activeEnergyKcal, 75, accuracy: 0.001)
     }
 
+    func testAScreenThatStoppedObservingIsNotRevivedByReturningToTheForeground() async {
+        let reader = CoverageActiveEnergyReader()
+        var stopCount = 0
+        reader.observationToReturn = { ActiveEnergyObservation { stopCount += 1 } }
+        reader.activeEnergy = { _ in 120 }
+        let tracker = ActiveEnergyDayTracker(reader: reader)
+
+        await tracker.configure(date: makeTestDate(year: 2026, month: 2, day: 14), isEnabled: true)
+        tracker.stopObserving()
+        tracker.refreshWhenActive()
+        await settle()
+
+        XCTAssertEqual(reader.observeCallCount, 1)
+        XCTAssertEqual(stopCount, 1)
+        XCTAssertEqual(reader.activeEnergyRequests.count, 1)
+    }
+
+    func testConfiguringAgainAfterStoppingResumesObservingAndForegroundRefreshes() async {
+        let reader = CoverageActiveEnergyReader()
+        reader.observationToReturn = { ActiveEnergyObservation {} }
+        reader.activeEnergy = { _ in 120 }
+        let tracker = ActiveEnergyDayTracker(reader: reader)
+        let day = makeTestDate(year: 2026, month: 2, day: 14)
+
+        await tracker.configure(date: day, isEnabled: true)
+        tracker.stopObserving()
+        await tracker.configure(date: day, isEnabled: true)
+        XCTAssertEqual(reader.observeCallCount, 2)
+        XCTAssertEqual(reader.activeEnergyRequests.count, 2)
+
+        reader.activeEnergy = { _ in 260 }
+        tracker.refreshWhenActive()
+        await waitUntil { tracker.activeEnergyKcal == 260 }
+
+        XCTAssertEqual(reader.observeCallCount, 2)
+        XCTAssertEqual(reader.activeEnergyRequests.count, 3)
+        XCTAssertEqual(tracker.activeEnergyKcal, 260, accuracy: 0.001)
+    }
+
     func testRefreshWhenActiveDoesNothingWhileDisabled() async {
         let reader = CoverageActiveEnergyReader()
         let tracker = ActiveEnergyDayTracker(reader: reader)
