@@ -373,6 +373,12 @@ enum BarcodeLookupRecoveryCoordinator {
             return .failure(.invalidRequest)
         }
 
+        if let saved = BarcodeRecoveryService.preferredLocalFood(for: normalizedBarcode, in: localFoods),
+           !BarcodeRecoveryService.providerCanReconcile(saved, scannedIdentity: normalizedBarcode) {
+            BarcodeRecoveryAnalytics.record(path: .localFallback, result: .completed)
+            return .local(saved, .none)
+        }
+
         do {
             let providerResult = try await providerLookup(normalizedBarcode)
             switch BarcodeRecoveryService.reconcile(
@@ -612,13 +618,7 @@ enum BarcodeRecoveryService {
             return .remote(providerResult)
         }
 
-        if let existingIdentity = BarcodeIdentity.normalized(local.providerProductIdentityRaw) {
-            guard existingIdentity == providerIdentity else {
-                return .local(local, .none)
-            }
-        } else if local.isCustom {
-            // A migrated personal version without stable provider identity is
-            // intentionally preserved rather than attached by barcode alone.
+        guard providerCanReconcile(local, scannedIdentity: scannedIdentity) else {
             return .local(local, .none)
         }
 
@@ -645,6 +645,15 @@ enum BarcodeRecoveryService {
         local.providerProductIdentityRaw = providerIdentity
         local.refreshOverlayProvenance(from: providerResult.provenance)
         return .local(local, changes)
+    }
+
+    static func providerCanReconcile(_ local: FoodItem, scannedIdentity: String) -> Bool {
+        if let existingIdentity = BarcodeIdentity.normalized(local.providerProductIdentityRaw) {
+            return existingIdentity == scannedIdentity
+        }
+        // A migrated personal version without stable provider identity is
+        // intentionally preserved rather than attached by barcode alone.
+        return !local.isCustom
     }
 
     static func localFallback(

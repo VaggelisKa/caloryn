@@ -17,6 +17,7 @@ final class FoodSearchService {
     var errorMessage: String? { failure?.presentation.message }
 
     private var searchTask: Task<Void, Never>?
+    private var activeQuery: FoodSearchQuery?
     private let policy: FoodProviderPolicy
     private let session: URLSession
     private let countryCode: String?
@@ -61,7 +62,10 @@ final class FoodSearchService {
         #endif
     }
 
-    func search(query: String) {
+    func search(query typed: String) {
+        let query = FoodSearchQuery(typed)
+        if query == activeQuery, failure == nil { return }
+
         searchTask?.cancel()
 
         #if DEBUG
@@ -71,14 +75,15 @@ final class FoodSearchService {
         }
         #endif
 
-        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else {
+        guard query.meetsSearchMinimum else {
+            activeQuery = nil
             searchResults = []
             isSearching = false
             failure = nil
             return
         }
 
+        activeQuery = query
         isSearching = true
         failure = nil
 
@@ -86,21 +91,21 @@ final class FoodSearchService {
             do {
                 try await Task.sleep(for: .milliseconds(300))
                 try Task.checkCancellation()
-                await performSearch(query: trimmed)
+                await performSearch(query: query.text)
             } catch {
                 // Search cancellation is expected when the query changes or the view clears.
             }
         }
     }
 
-    func searchImmediately(query: String) async throws -> [FoodSearchResult] {
-        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { throw FoodLookupError.invalidRequest }
+    func searchImmediately(query typed: String) async throws -> [FoodSearchResult] {
+        let query = FoodSearchQuery(typed)
+        guard query.meetsSearchMinimum else { throw FoodLookupError.invalidRequest }
 
         let locale = SearchLocaleContext.current
         let attempt = try await executeWithFailover(operation: .search) { provider in
             try await self.fetchResults(
-                query: trimmed,
+                query: query,
                 locale: locale,
                 provider: provider
             )
@@ -124,6 +129,7 @@ final class FoodSearchService {
 
     func clearResults() {
         searchTask?.cancel()
+        activeQuery = nil
         searchResults = []
         isSearching = false
         failure = nil
@@ -280,7 +286,7 @@ final class FoodSearchService {
     }
 
     private func fetchResults(
-        query: String,
+        query: FoodSearchQuery,
         locale: SearchLocaleContext,
         provider: FoodSearchProvider
     ) async throws -> [OpenFoodFactsProduct] {
@@ -289,7 +295,7 @@ final class FoodSearchService {
         case .calorynAPI:
             var calorynComponents = URLComponents(string: "\(Self.calorynAPIBaseURL)/api/v1/search")
             var queryItems = [
-                URLQueryItem(name: "q", value: query),
+                URLQueryItem(name: "q", value: query.calorynAPIText),
                 URLQueryItem(name: "limit", value: String(Self.pageSize))
             ]
             if let countryCode {
@@ -301,7 +307,7 @@ final class FoodSearchService {
         case .openFoodFacts:
             var offComponents = URLComponents(string: "\(Self.openFoodFactsSearchBaseURL)/search")
             offComponents?.queryItems = [
-                URLQueryItem(name: "q", value: query),
+                URLQueryItem(name: "q", value: query.text),
                 URLQueryItem(name: "fields", value: Self.searchFields),
                 URLQueryItem(name: "page_size", value: String(Self.pageSize)),
                 URLQueryItem(name: "langs", value: locale.preferredLanguageCodes.joined(separator: ","))
@@ -334,7 +340,7 @@ final class FoodSearchService {
         case .calorynAPI:
             urlString = "\(Self.calorynAPIBaseURL)/api/v1/products/\(encodedCode)"
         case .openFoodFacts:
-            urlString = "\(Self.openFoodFactsBarcodeBaseURL)/api/v0/product/\(encodedCode).json"
+            urlString = "\(Self.openFoodFactsBarcodeBaseURL)/api/v0/product/\(encodedCode).json?fields=\(Self.searchFields)"
         }
 
         guard let url = URL(string: urlString) else { throw FoodLookupError.invalidRequest }

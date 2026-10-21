@@ -150,7 +150,7 @@ final class FoodSearchServiceTests: XCTestCase {
             }
             XCTAssertEqual(
                 request.url?.absoluteString,
-                "https://world.openfoodfacts.org/api/v0/product/5711953150388.json"
+                "https://world.openfoodfacts.org/api/v0/product/5711953150388.json?fields=code,product_name,brands,serving_size,serving_quantity,product_quantity,quantity,nutriments,nutrition_grades,categories_tags,lang,countries_tags"
             )
             return try response(
                 request,

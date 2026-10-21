@@ -95,10 +95,18 @@ struct FoodSearchListingTests {
         #expect(listing(searchText: " \t ").showingRecent)
     }
 
-    @Test("Any non-blank character leaves the resting state")
-    func nonBlankQueryLeavesRestingState() {
-        #expect(!listing(searchText: "a").showingRecent)
-        #expect(!listing(searchText: "  a  ").showingRecent)
+    @Test("A query too short to search stays on recents until it matches something saved")
+    func shortQueryRestsUntilItMatchesLocally() {
+        #expect(listing(searchText: "a").showingRecent)
+        #expect(listing(searchText: "  a  ").showingRecent)
+        #expect(listing(searchText: "!!").showingRecent)
+        #expect(!listing(searchText: "a", recentFoods: [manualEntry(name: "Apple Shake")]).showingRecent)
+    }
+
+    @Test("Two letters or digits in a row leave the resting state")
+    func searchableQueryLeavesRestingState() {
+        #expect(!listing(searchText: "ab").showingRecent)
+        #expect(!listing(searchText: "  12  ").showingRecent)
     }
 
     @Test("The query is trimmed and case-folded once")

@@ -29,6 +29,53 @@ struct BarcodeRecoveryCoverageTests {
         return food
     }
 
+    private static func providerBackedFood() throws -> FoodItem {
+        FoodSearchService().createFoodItem(from: try providerResult())
+    }
+
+    enum UnreconcilableFood: CaseIterable {
+        case personalWithoutProviderIdentity
+        case boundToAnotherProviderProduct
+
+        @MainActor
+        func make() throws -> FoodItem {
+            switch self {
+            case .personalWithoutProviderIdentity:
+                return BarcodeRecoveryCoverageTests.personalFood()
+            case .boundToAnotherProviderProduct:
+                let food = try BarcodeRecoveryCoverageTests.providerBackedFood()
+                food.providerProductIdentityRaw = "4000000000001"
+                return food
+            }
+        }
+    }
+
+    enum ReconcilableFood: CaseIterable {
+        case boundToTheScannedProduct
+        case legacyProviderCopyWithoutIdentity
+
+        @MainActor
+        func make() throws -> FoodItem {
+            switch self {
+            case .boundToTheScannedProduct:
+                return try BarcodeRecoveryCoverageTests.providerBackedFood()
+            case .legacyProviderCopyWithoutIdentity:
+                let food = makeTestFoodItem(
+                    name: "Provider Skyr",
+                    caloriesPer100g: 64,
+                    provenance: FoodProvenance(
+                        provider: .openFoodFacts,
+                        source: .openFoodFactsCommunity,
+                        completeness: .complete,
+                        recoveredByFallback: false
+                    )
+                )
+                food.barcode = BarcodeRecoveryCoverageTests.barcode
+                return food
+            }
+        }
+    }
+
     private struct UnrelatedFailure: Error {}
 
     @Test("An unreadable barcode fails before the provider is asked", arguments: ["12", "abc123456", "", "١٢٣٤٥٦٧٨"])
@@ -90,33 +137,105 @@ struct BarcodeRecoveryCoverageTests {
 
     @Test("A provider product for a different barcode falls back to the saved food untouched")
     func mismatchedProviderProductWithLocalFood() async throws {
-        let saved = Self.personalFood()
+        let saved = try Self.providerBackedFood()
         let wrongProduct = try Self.providerResult(code: "4000000000001", name: "Wrong Product")
+        var providerCalls = 0
 
         let outcome = await BarcodeLookupRecoveryCoordinator.resolve(
             barcode: Self.barcode,
             localFoods: [saved]
-        ) { _ in wrongProduct }
+        ) { _ in
+            providerCalls += 1
+            return wrongProduct
+        }
 
         guard case .local(let food, let changes) = outcome else {
             Issue.record("Expected the saved food, got \(outcome)")
             return
         }
+        #expect(providerCalls == 1)
         #expect(food === saved)
         #expect(changes == .none)
-        #expect(saved.name == "My Skyr")
-        #expect(saved.caloriesPer100g == 60)
-        #expect(saved.providerProductIdentityRaw == nil)
+        #expect(saved.name == "Provider Skyr")
+        #expect(saved.caloriesPer100g == 64)
+        #expect(saved.providerProductIdentityRaw == Self.barcode)
+    }
+
+    @Test(
+        "A saved food the provider can never refresh is used without asking the provider",
+        arguments: UnreconcilableFood.allCases
+    )
+    func unreconcilableLocalFoodSkipsTheProvider(_ kind: UnreconcilableFood) async throws {
+        let saved = try kind.make()
+        let savedName = saved.name
+        let savedCalories = saved.caloriesPer100g
+        let savedIdentity = saved.providerProductIdentityRaw
+        let matchingProduct = try Self.providerResult(
+            name: "Refreshed Skyr",
+            nutriments: #""energy-kcal_100g": 70, "proteins_100g": 12, "carbohydrates_100g": 5, "fat_100g": 2"#
+        )
+        var providerCalls = 0
+
+        let outcome = await BarcodeLookupRecoveryCoordinator.resolve(
+            barcode: Self.barcode,
+            localFoods: [saved]
+        ) { _ in
+            providerCalls += 1
+            return matchingProduct
+        }
+
+        guard case .local(let food, let changes) = outcome else {
+            Issue.record("Expected the saved food, got \(outcome)")
+            return
+        }
+        #expect(providerCalls == 0)
+        #expect(food === saved)
+        #expect(changes == .none)
+        #expect(saved.name == savedName)
+        #expect(saved.caloriesPer100g == savedCalories)
+        #expect(saved.providerProductIdentityRaw == savedIdentity)
+    }
+
+    @Test(
+        "A saved food the provider can refresh is still looked up first and refreshed",
+        arguments: ReconcilableFood.allCases
+    )
+    func reconcilableLocalFoodAsksTheProvider(_ kind: ReconcilableFood) async throws {
+        let saved = try kind.make()
+        let refreshedProduct = try Self.providerResult(
+            name: "Refreshed Skyr",
+            nutriments: #""energy-kcal_100g": 70, "proteins_100g": 12, "carbohydrates_100g": 5, "fat_100g": 2"#
+        )
+        var askedFor: [String] = []
+
+        let outcome = await BarcodeLookupRecoveryCoordinator.resolve(
+            barcode: Self.barcode,
+            localFoods: [saved]
+        ) { barcode in
+            askedFor.append(barcode)
+            return refreshedProduct
+        }
+
+        guard case .local(let food, let changes) = outcome else {
+            Issue.record("Expected the saved food, got \(outcome)")
+            return
+        }
+        #expect(askedFor == [Self.barcode])
+        #expect(food === saved)
+        #expect(changes.refreshedProviderFields)
+        #expect(saved.name == "Refreshed Skyr")
+        #expect(saved.caloriesPer100g == 70)
+        #expect(saved.providerProductIdentityRaw == Self.barcode)
     }
 
     @Test(
         "Cancellation and invalid requests are reported even when a saved food exists",
         arguments: [FoodLookupError.cancelled, .invalidRequest]
     )
-    func failuresThatSkipLocalFallback(_ failure: FoodLookupError) async {
+    func failuresThatSkipLocalFallback(_ failure: FoodLookupError) async throws {
         let outcome = await BarcodeLookupRecoveryCoordinator.resolve(
             barcode: Self.barcode,
-            localFoods: [Self.personalFood()]
+            localFoods: [try Self.providerBackedFood()]
         ) { _ in throw failure }
 
         guard case .failure(let error) = outcome else {
@@ -130,8 +249,8 @@ struct BarcodeRecoveryCoverageTests {
         "Provider outages fall back to the saved food",
         arguments: [FoodLookupError.offline, .unavailable, .notFound, .invalidData, .rateLimited, .unauthorized]
     )
-    func failuresThatUseLocalFallback(_ failure: FoodLookupError) async {
-        let saved = Self.personalFood()
+    func failuresThatUseLocalFallback(_ failure: FoodLookupError) async throws {
+        let saved = try Self.providerBackedFood()
 
         let outcome = await BarcodeLookupRecoveryCoordinator.resolve(
             barcode: Self.barcode,
@@ -147,8 +266,8 @@ struct BarcodeRecoveryCoverageTests {
     }
 
     @Test("An unrecognised provider error falls back to the saved food")
-    func unrecognisedErrorWithLocalFood() async {
-        let saved = Self.personalFood()
+    func unrecognisedErrorWithLocalFood() async throws {
+        let saved = try Self.providerBackedFood()
 
         let outcome = await BarcodeLookupRecoveryCoordinator.resolve(
             barcode: Self.barcode,

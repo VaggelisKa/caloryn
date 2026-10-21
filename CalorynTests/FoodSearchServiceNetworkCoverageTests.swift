@@ -10,6 +10,7 @@ struct FoodSearchServiceNetworkCoverageTests {
         case nonHTTP(String)
         case transport(URLError.Code)
         case foreignError
+        indirect case held(FoodSearchNetworkGate, Reply)
 
         var testDescription: String {
             switch self {
@@ -17,6 +18,7 @@ struct FoodSearchServiceNetworkCoverageTests {
             case .nonHTTP: "non-HTTP response"
             case .transport(let code): "URLError \(code.rawValue)"
             case .foreignError: "non-URL error"
+            case .held(_, let reply): "\(reply.testDescription) once released"
             }
         }
     }
@@ -25,6 +27,10 @@ struct FoodSearchServiceNetworkCoverageTests {
     nonisolated private static let calorynHost = "caloryn-api.vercel.app"
     nonisolated private static let openFoodFactsSearchHost = "search.openfoodfacts.org"
     nonisolated private static let openFoodFactsBarcodeHost = "world.openfoodfacts.org"
+    nonisolated private static let decodedProductFields = [
+        "code", "product_name", "brands", "serving_size", "serving_quantity", "product_quantity",
+        "quantity", "nutriments", "nutrition_grades", "categories_tags", "lang", "countries_tags",
+    ].joined(separator: ",")
 
     nonisolated private static let completeNutriments =
         #""energy-kcal_100g": 62, "proteins_100g": 11, "carbohydrates_100g": 4, "fat_100g": 0.2"#
@@ -268,9 +274,11 @@ struct FoodSearchServiceNetworkCoverageTests {
 
         let result = try await service.lookupBarcode(Self.barcode)
 
-        #expect(log.requests.compactMap(\.url?.absoluteString) == [
-            "https://world.openfoodfacts.org/api/v0/product/5711953150388.json",
-        ])
+        let request = try #require(log.requests.first)
+        #expect(log.requests.count == 1)
+        #expect(request.url?.host == Self.openFoodFactsBarcodeHost)
+        #expect(request.url?.path == "/api/v0/product/5711953150388.json")
+        #expect(Self.queryItems(request) == ["fields": Self.decodedProductFields])
         #expect(result.provenance == FoodProvenance(
             provider: .openFoodFacts,
             source: .openFoodFactsCommunity,
@@ -323,10 +331,7 @@ struct FoodSearchServiceNetworkCoverageTests {
         #expect(request.url?.path == "/search")
         #expect(items["q"] == "rolled oats")
         #expect(items["page_size"] == "30")
-        #expect(items["fields"] == [
-            "code", "product_name", "brands", "serving_size", "serving_quantity", "product_quantity",
-            "quantity", "nutriments", "nutrition_grades", "categories_tags", "lang", "countries_tags",
-        ].joined(separator: ","))
+        #expect(items["fields"] == Self.decodedProductFields)
         #expect(items["country"] == nil)
         #expect(items["limit"] == nil)
         #expect(languages.contains("en"))
@@ -334,6 +339,63 @@ struct FoodSearchServiceNetworkCoverageTests {
         #expect(languages.allSatisfy { $0 == $0.lowercased() && !$0.contains("-") && !$0.contains("_") })
         #expect(results.map(\.provenance.source) == [.openFoodFactsCommunity])
         #expect(results.map(\.provenance.recoveredByFallback) == [false])
+    }
+
+    @Test(
+        "The food API is sent one spelling of a query: single spaces, and lower case when it is plain ASCII",
+        arguments: [
+            ("greek yogurt", "greek yogurt"),
+            ("Greek   Yogurt", "greek yogurt"),
+            ("  GREEK\tyogurt\n", "greek yogurt"),
+            ("greek\u{00A0}\u{3000}yogurt", "greek yogurt"),
+            ("Skyr  Æble", "Skyr Æble"),
+            ("İSTANBUL  kebab", "İSTANBUL kebab"),
+        ] as [(String, String)]
+    )
+    func calorynAPIQuerySpelling(typed: String, sent: String) async throws {
+        let log = FoodSearchNetworkRequestLog()
+        let body = Self.searchBody(Self.hit(code: "111", name: "Greek Yogurt"))
+        FoodSearchNetworkCoverageStub.install { request in
+            log.append(request)
+            return .http(200, body)
+        }
+        let service = makeService(policy: .only(.calorynAPI))
+
+        _ = try await service.searchImmediately(query: typed)
+
+        #expect(log.requests.map { Self.queryItems($0)["q"] } == [sent])
+    }
+
+    @Test("A query over the food API's 100-character limit is sent as typed, so the API still rejects it")
+    func overlongQueryIsSentAsTyped() async {
+        let log = FoodSearchNetworkRequestLog()
+        FoodSearchNetworkCoverageStub.install { request in
+            log.append(request)
+            return .http(400, "{}")
+        }
+        let service = makeService(policy: .only(.calorynAPI))
+        let typed = "Greek  Yogurt " + String(repeating: "honey", count: 18)
+
+        let error = await searchError(service, query: typed)
+
+        #expect(error as? FoodLookupError == .invalidRequest)
+        #expect(log.requests.map { Self.queryItems($0)["q"] } == [typed])
+    }
+
+    @Test("The community fallback is sent the query as typed")
+    func communityFallbackQuerySpelling() async throws {
+        let log = FoodSearchNetworkRequestLog()
+        let body = Self.searchBody(Self.hit(code: "112", name: "Community Yogurt"))
+        FoodSearchNetworkCoverageStub.install { request in
+            log.append(request)
+            return request.url?.host == Self.calorynHost ? .http(404, "{}") : .http(200, body)
+        }
+        let service = makeService()
+
+        _ = try await service.searchImmediately(query: " Greek   Yogurt ")
+
+        #expect(log.requests.compactMap(\.url?.host) == [Self.calorynHost, Self.openFoodFactsSearchHost])
+        #expect(log.requests.map { Self.queryItems($0)["q"] } == ["greek yogurt", "Greek   Yogurt"])
     }
 
     @Test("A blank query is rejected before any provider is asked")
@@ -349,6 +411,42 @@ struct FoodSearchServiceNetworkCoverageTests {
         #expect(await searchError(service, query: " \n\t ") as? FoodLookupError == .invalidRequest)
         #expect(log.requests.isEmpty)
         #expect(telemetry.events.isEmpty)
+    }
+
+    @Test(
+        "A query the food API always rejects never reaches a provider",
+        arguments: ["c", " 7 ", "!!", "a b", "1-2", "\u{1F34E}\u{1F34E}", "\u{FB01}", "\u{338F}", "\u{0130}"]
+    )
+    func queryBelowTheSearchMinimumIsNotSent(_ typed: String) async {
+        let log = FoodSearchNetworkRequestLog()
+        let telemetry = FoodSearchNetworkTelemetryLog()
+        FoodSearchNetworkCoverageStub.install { request in
+            log.append(request)
+            return .http(400, "{}")
+        }
+        let service = makeService(telemetry: telemetry)
+
+        #expect(await searchError(service, query: typed) as? FoodLookupError == .invalidRequest)
+        #expect(log.requests.isEmpty)
+        #expect(telemetry.events.isEmpty)
+    }
+
+    @Test(
+        "Two letters or digits in a row are enough to search, as the food API counts them",
+        arguments: ["ab", "a 12", "\u{00C6}b", "\u{725B}\u{5976}", "e\u{0301}x", "\u{0130}.", "\u{FB01}!"]
+    )
+    func queryAtTheSearchMinimumIsSent(_ typed: String) async throws {
+        let log = FoodSearchNetworkRequestLog()
+        let body = Self.searchBody(Self.hit(code: "620", name: "Any Food"))
+        FoodSearchNetworkCoverageStub.install { request in
+            log.append(request)
+            return .http(200, body)
+        }
+        let service = makeService(policy: .only(.calorynAPI))
+
+        _ = try await service.searchImmediately(query: typed)
+
+        #expect(log.requests.count == 1)
     }
 
     @Test("A search response that is not JSON is invalid data")
@@ -553,10 +651,132 @@ struct FoodSearchServiceNetworkCoverageTests {
         #expect(service.errorMessage == "The lookup was cancelled.")
         #expect(service.searchResults.isEmpty)
     }
+
+    @Test("Typing a query too short to search clears the earlier results and shows no failure")
+    func queryBelowTheSearchMinimumRestsLikeAnEmptyQuery() async {
+        let log = FoodSearchNetworkRequestLog()
+        let body = Self.searchBody(Self.hit(code: "621", name: "Cheddar"))
+        FoodSearchNetworkCoverageStub.install { request in
+            log.append(request)
+            return (Self.queryItems(request)["q"] ?? "").count < 2 ? .http(400, "{}") : .http(200, body)
+        }
+        let service = makeService(policy: .only(.calorynAPI))
+
+        service.search(query: "ch")
+        #expect(await eventually { !service.isSearching })
+        #expect(service.searchResults.map(\.product.productName) == ["Cheddar"])
+
+        service.search(query: "c")
+        #expect(!service.isSearching)
+        try? await Task.sleep(for: .milliseconds(450))
+
+        #expect(log.requests.map { Self.queryItems($0)["q"] } == ["ch"])
+        #expect(service.searchResults.isEmpty)
+        #expect(service.failure == nil)
+        #expect(!service.isSearching)
+    }
+
+    @Test("Repeating the query already on screen sends nothing and keeps its results showing")
+    func repeatOfShownQuery() async {
+        let log = FoodSearchNetworkRequestLog()
+        let body = Self.searchBody(Self.hit(code: "611", name: "Greek Yogurt"))
+        FoodSearchNetworkCoverageStub.install { request in
+            log.append(request)
+            return .http(200, body)
+        }
+        let service = makeService(policy: .only(.calorynAPI))
+
+        service.search(query: "greek")
+        #expect(await eventually { !service.isSearching })
+
+        for repeated in ["greek ", "greek"] {
+            service.search(query: repeated)
+            #expect(!service.isSearching)
+            try? await Task.sleep(for: .milliseconds(450))
+        }
+
+        #expect(log.requests.count == 1)
+        #expect(service.searchResults.map(\.product.productName) == ["Greek Yogurt"])
+        #expect(service.failure == nil)
+    }
+
+    @Test("Submitting the query already in flight neither cancels it nor sends it again")
+    func repeatOfInFlightQuery() async {
+        let log = FoodSearchNetworkRequestLog()
+        let gate = FoodSearchNetworkGate()
+        let body = Self.searchBody(Self.hit(code: "612", name: "Greek Yogurt"))
+        FoodSearchNetworkCoverageStub.install { request in
+            log.append(request)
+            return .held(gate, .http(200, body))
+        }
+        let service = makeService(policy: .only(.calorynAPI))
+
+        service.search(query: "greek")
+        #expect(await eventually { log.requests.count == 1 })
+        service.search(query: "greek")
+        gate.open()
+
+        #expect(await eventually { !service.isSearching })
+        #expect(log.requests.count == 1)
+        #expect(service.searchResults.map(\.product.productName) == ["Greek Yogurt"])
+        #expect(service.failure == nil)
+    }
+
+    @Test("Retrying a failed query sends it again")
+    func retryOfFailedQuery() async {
+        let log = FoodSearchNetworkRequestLog()
+        let body = Self.searchBody(Self.hit(code: "613", name: "Greek Yogurt"))
+        FoodSearchNetworkCoverageStub.install { request in
+            log.append(request)
+            return log.requests.count == 1 ? .http(503, "{}") : .http(200, body)
+        }
+        let service = makeService(policy: .only(.calorynAPI))
+
+        service.search(query: "greek")
+        #expect(await eventually { !service.isSearching })
+        #expect(service.failure == .unavailable)
+
+        service.search(query: "greek")
+        #expect(service.isSearching)
+        #expect(service.failure == nil)
+        #expect(await eventually { !service.isSearching })
+
+        #expect(log.requests.count == 2)
+        #expect(service.searchResults.map(\.product.productName) == ["Greek Yogurt"])
+    }
+
+    @Test("Typing a query again after clearing the field searches again", arguments: [true, false])
+    func queryRetypedAfterClearing(clearsResults: Bool) async {
+        let log = FoodSearchNetworkRequestLog()
+        let body = Self.searchBody(Self.hit(code: "614", name: "Greek Yogurt"))
+        FoodSearchNetworkCoverageStub.install { request in
+            log.append(request)
+            return .http(200, body)
+        }
+        let service = makeService(policy: .only(.calorynAPI))
+
+        service.search(query: "greek")
+        #expect(await eventually { !service.isSearching })
+        if clearsResults {
+            service.clearResults()
+        } else {
+            service.search(query: "")
+        }
+        #expect(service.searchResults.isEmpty)
+
+        service.search(query: "greek")
+        #expect(service.isSearching)
+        #expect(await eventually { !service.isSearching })
+
+        #expect(log.requests.count == 2)
+        #expect(service.searchResults.map(\.product.productName) == ["Greek Yogurt"])
+    }
 }
 
 nonisolated private final class FoodSearchNetworkCoverageStub: URLProtocol {
     typealias Handler = @Sendable (URLRequest) -> FoodSearchServiceNetworkCoverageTests.Reply
+
+    private let stopped = FoodSearchNetworkFlag()
 
     nonisolated private static let lock = NSLock()
     nonisolated(unsafe) private static var handler: Handler?
@@ -583,7 +803,15 @@ nonisolated private final class FoodSearchNetworkCoverageStub: URLProtocol {
             return
         }
 
-        switch handler(request) {
+        respond(with: handler(request), for: url)
+    }
+
+    override func stopLoading() {
+        stopped.raise()
+    }
+
+    private func respond(with reply: FoodSearchServiceNetworkCoverageTests.Reply, for url: URL) {
+        switch reply {
         case .http(let status, let body):
             guard let response = HTTPURLResponse(
                 url: url,
@@ -610,10 +838,13 @@ nonisolated private final class FoodSearchNetworkCoverageStub: URLProtocol {
                 self,
                 didFailWithError: NSError(domain: "FoodSearchNetworkCoverageStub", code: 7)
             )
+        case .held(let gate, let heldReply):
+            gate.whenOpen { [weak self] in
+                guard let self, !self.stopped.isRaised else { return }
+                self.respond(with: heldReply, for: url)
+            }
         }
     }
-
-    override func stopLoading() {}
 
     private func deliver(_ response: URLResponse, body: String) {
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
@@ -636,6 +867,49 @@ nonisolated private final class FoodSearchNetworkRequestLog: @unchecked Sendable
         lock.lock()
         defer { lock.unlock() }
         return stored
+    }
+}
+
+nonisolated final class FoodSearchNetworkGate: @unchecked Sendable {
+    private let lock = NSLock()
+    private var isOpen = false
+    private var waiting: [() -> Void] = []
+
+    func whenOpen(_ action: @escaping () -> Void) {
+        lock.lock()
+        guard !isOpen else {
+            lock.unlock()
+            action()
+            return
+        }
+        waiting.append(action)
+        lock.unlock()
+    }
+
+    func open() {
+        lock.lock()
+        isOpen = true
+        let released = waiting
+        waiting = []
+        lock.unlock()
+        released.forEach { $0() }
+    }
+}
+
+nonisolated private final class FoodSearchNetworkFlag: @unchecked Sendable {
+    private let lock = NSLock()
+    private var raised = false
+
+    var isRaised: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return raised
+    }
+
+    func raise() {
+        lock.lock()
+        raised = true
+        lock.unlock()
     }
 }
 
