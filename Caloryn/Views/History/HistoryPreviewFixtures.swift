@@ -55,8 +55,11 @@ enum HistoryPreviewScenario: String, CaseIterable, Identifiable {
 enum HistoryPreviewFixtures {
     @MainActor
     static func preview(for scenario: HistoryPreviewScenario) -> some View {
-        HistoryView(initialRange: scenario.initialRange)
+        let router = AppRouter()
+        router.selectedTab = .history
+        return HistoryView(initialRange: scenario.initialRange)
             .modelContainer(try! container(for: scenario))
+            .environment(router)
     }
 
     @MainActor
