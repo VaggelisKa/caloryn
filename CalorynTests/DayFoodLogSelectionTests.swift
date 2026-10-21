@@ -122,6 +122,115 @@ final class DayFoodLogSelectionTests: XCTestCase {
         XCTAssertEqual(projection.today.map(\.name), ["today-after-fallback"])
     }
 
+    func testAnEntryLoggedForTomorrowIsNotPartOfTheSelectedDay() {
+        let calendar = makeCalendar("UTC")
+        let day = startOfDay(year: 2026, month: 3, day: 14, calendar: calendar)
+        let entries = [
+            makeEntry("yesterday", date: startOfDay(year: 2026, month: 3, day: 13, calendar: calendar)),
+            makeEntry("today", date: day),
+            makeEntry("tomorrow", date: startOfDay(year: 2026, month: 3, day: 15, calendar: calendar))
+        ]
+
+        let selected = DayFoodLogSelection.entries(entries, on: day, calendar: calendar, date: \.date)
+        let projection = makeProjection(entries, on: day, calendar: calendar)
+
+        XCTAssertEqual(selected.map(\.name), ["today"])
+        XCTAssertEqual(projection.today.map(\.name), ["today"])
+        XCTAssertEqual(projection.yesterday.map(\.name), ["yesterday"])
+    }
+
+    func testADayThatStartsLateForDaylightSavingLeavesTheNextMidnightToTheNextDay() {
+        let calendar = makeCalendar("America/Havana")
+        let shortDay = startOfDay(year: 2026, month: 3, day: 8, calendar: calendar)
+        let nextDay = startOfDay(year: 2026, month: 3, day: 9, calendar: calendar)
+        let entries = [
+            makeEntry("day-before", date: startOfDay(year: 2026, month: 3, day: 7, calendar: calendar)),
+            makeEntry("short-day", date: shortDay),
+            makeEntry("next-day", date: nextDay)
+        ]
+
+        let selected = DayFoodLogSelection.entries(entries, on: shortDay, calendar: calendar, date: \.date)
+        let onShortDay = makeProjection(entries, on: shortDay, calendar: calendar)
+        let onNextDay = makeProjection(entries, on: nextDay, calendar: calendar)
+
+        XCTAssertEqual(selected.map(\.name), ["short-day"])
+        XCTAssertEqual(onShortDay.today.map(\.name), ["short-day"])
+        XCTAssertEqual(onShortDay.yesterday.map(\.name), ["day-before"])
+        XCTAssertEqual(onNextDay.today.map(\.name), ["next-day"])
+        XCTAssertEqual(onNextDay.yesterday.map(\.name), ["short-day"])
+    }
+
+    func testEntriesAreFiledByTheClockOfTheCalendarTheyAreReadInAfterATimeZoneChange() {
+        let copenhagen = makeCalendar("Europe/Copenhagen")
+        let newYork = makeCalendar("America/New_York")
+        let entries = [
+            makeEntry("logged-24th", date: startOfDay(year: 2026, month: 7, day: 24, calendar: copenhagen)),
+            makeEntry("logged-25th", date: startOfDay(year: 2026, month: 7, day: 25, calendar: copenhagen)),
+            makeEntry("logged-26th", date: startOfDay(year: 2026, month: 7, day: 26, calendar: copenhagen))
+        ]
+        let day = startOfDay(year: 2026, month: 7, day: 25, calendar: newYork)
+
+        let selected = DayFoodLogSelection.entries(entries, on: day, calendar: newYork, date: \.date)
+        let projection = makeProjection(entries, on: day, calendar: newYork)
+
+        XCTAssertEqual(selected.map(\.name), ["logged-26th"])
+        XCTAssertEqual(projection.today.map(\.name), ["logged-26th"])
+        XCTAssertEqual(projection.yesterday.map(\.name), ["logged-25th"])
+    }
+
+    func testTheSelectedDayIsTheCalendarsDayAroundEveryDaylightSavingChange() throws {
+        let zones = [
+            "Europe/Copenhagen",
+            "America/Havana",
+            "America/Santiago",
+            "Africa/Cairo",
+            "Asia/Beirut",
+            "Australia/Lord_Howe"
+        ]
+        var checkedTransitions = 0
+
+        for zone in zones {
+            let calendar = makeCalendar(zone)
+            for transition in daylightSavingTransitions(in: 2026, calendar: calendar) {
+                checkedTransitions += 1
+                let days = try (-2...2).map { offset in
+                    calendar.startOfDay(for: try XCTUnwrap(calendar.date(byAdding: .day, value: offset, to: transition)))
+                }
+                let probes = [transition.addingTimeInterval(-1), transition, transition.addingTimeInterval(1)]
+                    + days.flatMap { start in
+                        [start.addingTimeInterval(-1), start, start.addingTimeInterval(1), start.addingTimeInterval(12 * 3_600)]
+                    }
+                let references = [transition] + days.dropFirst().dropLast().flatMap { start in
+                    [start, start.addingTimeInterval(1), start.addingTimeInterval(12 * 3_600)]
+                }
+
+                for reference in references {
+                    let previousDay = try XCTUnwrap(calendar.date(byAdding: .day, value: -1, to: reference))
+                    let expectedToday = probes.filter { calendar.isDate($0, inSameDayAs: reference) }
+                    let expectedYesterday = probes.filter {
+                        !calendar.isDate($0, inSameDayAs: reference) && calendar.isDate($0, inSameDayAs: previousDay)
+                    }
+
+                    let selected = DayFoodLogSelection.entries(probes, on: reference, calendar: calendar, date: { $0 })
+                    let projection = DayFoodLogProjection(
+                        probes,
+                        on: reference,
+                        calendar: calendar,
+                        date: { $0 },
+                        mealType: { _ in .breakfast },
+                        createdAt: { $0 }
+                    )
+
+                    XCTAssertEqual(selected, expectedToday, "\(zone) on \(reference)")
+                    XCTAssertEqual(projection.today, expectedToday, "\(zone) on \(reference)")
+                    XCTAssertEqual(projection.yesterday, expectedYesterday, "\(zone) on \(reference)")
+                }
+            }
+        }
+
+        XCTAssertGreaterThan(checkedTransitions, 0)
+    }
+
     func testAMealTakesOnlyItsOwnEntries() {
         let entries = [
             makeEntry("oats", mealType: .breakfast),
@@ -217,5 +326,43 @@ final class DayFoodLogSelectionTests: XCTestCase {
         calendar: Calendar = .current
     ) -> Date {
         calendar.date(from: DateComponents(year: year, month: month, day: day)) ?? .now
+    }
+
+    private func makeCalendar(_ zone: String) -> Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: zone) ?? .gmt
+        return calendar
+    }
+
+    private func startOfDay(year: Int, month: Int, day: Int, calendar: Calendar) -> Date {
+        let noon = calendar.date(from: DateComponents(year: year, month: month, day: day, hour: 12)) ?? .now
+        return calendar.startOfDay(for: noon)
+    }
+
+    private func makeProjection(
+        _ entries: [Entry],
+        on day: Date,
+        calendar: Calendar
+    ) -> DayFoodLogProjection<Entry> {
+        DayFoodLogProjection(
+            entries,
+            on: day,
+            calendar: calendar,
+            date: \.date,
+            mealType: \.mealType,
+            createdAt: \.createdAt
+        )
+    }
+
+    private func daylightSavingTransitions(in year: Int, calendar: Calendar) -> [Date] {
+        guard let start = calendar.date(from: DateComponents(year: year, month: 1, day: 1)),
+              let end = calendar.date(from: DateComponents(year: year + 1, month: 1, day: 1)) else {
+            return []
+        }
+        return Array(
+            sequence(first: start) { calendar.timeZone.nextDaylightSavingTimeTransition(after: $0) }
+                .dropFirst()
+                .prefix { $0 < end }
+        )
     }
 }

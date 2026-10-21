@@ -11,8 +11,7 @@ struct DailyReminderBridge: View {
 
     private var currentPlan: [PlannedReminder] {
         let target = profiles.first?.dailyCalorieTarget
-        let consumedToday = allEntries
-            .filter { $0.date.isToday }
+        let consumedToday = DayFoodLogSelection.entries(allEntries, on: .now, date: \.date)
             .reduce(0) { $0 + $1.calories }
 
         return DailyReminderPlanner.makePlan(
