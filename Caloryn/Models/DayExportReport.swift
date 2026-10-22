@@ -9,10 +9,10 @@ struct DayExportReport: Equatable {
 
         static func + (lhs: Macros, rhs: Macros) -> Macros {
             Macros(
-                calories: lhs.calories + rhs.calories,
-                proteinG: lhs.proteinG + rhs.proteinG,
-                carbsG: lhs.carbsG + rhs.carbsG,
-                fatG: lhs.fatG + rhs.fatG
+                calories: DayExportReport.finite(lhs.calories) + DayExportReport.finite(rhs.calories),
+                proteinG: DayExportReport.finite(lhs.proteinG) + DayExportReport.finite(rhs.proteinG),
+                carbsG: DayExportReport.finite(lhs.carbsG) + DayExportReport.finite(rhs.carbsG),
+                fatG: DayExportReport.finite(lhs.fatG) + DayExportReport.finite(rhs.fatG)
             )
         }
     }

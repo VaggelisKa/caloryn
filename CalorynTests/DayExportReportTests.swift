@@ -99,6 +99,18 @@ final class DayExportReportTests: XCTestCase {
         XCTAssertEqual(report.meals[0].foods[0].protein, "0 g")
     }
 
+    func testOneNonFiniteEntryDoesNotEraseTheOthersFromTheTotals() {
+        let report = makeReport([
+            entry(.lunch, "Rice", calories: 300, protein: 6, carbs: 60, fat: 1),
+            entry(.lunch, "Corrupt", calories: .infinity, protein: .nan, carbs: 1, fat: 1)
+        ])
+
+        XCTAssertEqual(report.meals[0].subtotal.calories, "300")
+        XCTAssertEqual(report.meals[0].subtotal.protein, "6 g")
+        XCTAssertEqual(report.total.calories, "300")
+        XCTAssertEqual(report.total.carbs, "61 g")
+    }
+
     func testTitleIncludesTheYearAndFileNameIsSortable() {
         let report = makeReport([entry(.breakfast, "Oats")])
 
