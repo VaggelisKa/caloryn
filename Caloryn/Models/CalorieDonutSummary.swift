@@ -97,10 +97,10 @@ struct CalorieDonutSummary: Equatable {
         self.overKcal = overKcal
     }
 
-    init(mealTotals: [MealType: Double], budget: ActivityCalorieBudget) {
+    init(mealTotals: [MealType: Double], budget: CalorieBudget) {
         self.init(
             mealTotals: mealTotals,
-            budget: Double(budget.adjustedTarget),
+            budget: Double(budget.target),
             isOver: budget.isOver,
             consumed: budget.consumed
         )

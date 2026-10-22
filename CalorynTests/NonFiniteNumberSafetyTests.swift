@@ -5,7 +5,7 @@ import XCTest
 final class NonFiniteNumberSafetyTests: XCTestCase {
     func testCalorieBudgetTreatsANonFiniteConsumedTotalAsNothingLogged() {
         for consumed in [Double.nan, .infinity, -.infinity] {
-            let budget = makeBudget(consumed: consumed, staticTarget: 2_000)
+            let budget = CalorieBudget(consumed: consumed, target: 2_000)
 
             XCTAssertEqual(budget.roundedConsumed, 0)
             XCTAssertEqual(budget.remaining, 2_000)
@@ -15,7 +15,7 @@ final class NonFiniteNumberSafetyTests: XCTestCase {
     }
 
     func testCalorieBudgetClampsAConsumedTotalPastTheIntegerRange() {
-        let budget = makeBudget(consumed: 1e30, staticTarget: 2_000)
+        let budget = CalorieBudget(consumed: 1e30, target: 2_000)
 
         XCTAssertEqual(budget.roundedConsumed, CalorieDomain.maximum)
         XCTAssertEqual(budget.remaining, 0)
@@ -23,22 +23,9 @@ final class NonFiniteNumberSafetyTests: XCTestCase {
         XCTAssertGreaterThan(budget.overAmount, 0)
     }
 
-    func testCalorieBudgetSurvivesANonFiniteActiveEnergyReading() {
-        let budget = makeBudget(
-            consumed: 1_800,
-            staticTarget: 2_000,
-            activeEnergyKcal: .infinity,
-            samples: baselineSamples(kcal: 300),
-            mode: .dynamicHealth
-        )
-
-        XCTAssertGreaterThan(budget.adjustedTarget, 0)
-        XCTAssertEqual(budget.roundedConsumed, 1_800)
-    }
-
     func testWidgetCalorieSummaryFloorsANonFiniteConsumedTotal() {
         for consumed in [Double.nan, .infinity, -.infinity, -5] {
-            let summary = WidgetCalorieSummary(consumed: consumed, baseTarget: 2_000, target: 2_000)
+            let summary = WidgetCalorieSummary(consumed: consumed, target: 2_000)
 
             XCTAssertEqual(summary.consumed, 0)
             XCTAssertEqual(summary.remaining, 2_000)
@@ -49,7 +36,6 @@ final class NonFiniteNumberSafetyTests: XCTestCase {
     func testWidgetCalorieSummaryFloorsANonFiniteMealTotal() {
         let summary = WidgetCalorieSummary(
             consumed: 500,
-            baseTarget: 2_000,
             target: 2_000,
             mealCalories: [.breakfast: .nan, .lunch: -.infinity, .dinner: 500, .snack: 1e30]
         )
@@ -61,7 +47,7 @@ final class NonFiniteNumberSafetyTests: XCTestCase {
     }
 
     func testWidgetCalorieSummaryClampsAConsumedTotalPastTheIntegerRange() {
-        let summary = WidgetCalorieSummary(consumed: 1e30, baseTarget: 2_000, target: 2_000)
+        let summary = WidgetCalorieSummary(consumed: 1e30, target: 2_000)
 
         XCTAssertEqual(summary.consumed, .max)
         XCTAssertEqual(summary.remaining, 0)
@@ -186,9 +172,7 @@ final class NonFiniteNumberSafetyTests: XCTestCase {
         let response = TodayCaloriesIntentResponse.make(
             snapshot: nil,
             currentConsumed: .nan,
-            expectedBaseTarget: 2_000,
-            expectedTarget: 2_000,
-            expectsDynamicTarget: false
+            expectedTarget: 2_000
         )
 
         XCTAssertEqual(response, .unavailable("Open Caloryn to refresh today’s calorie snapshot."))
@@ -198,41 +182,6 @@ final class NonFiniteNumberSafetyTests: XCTestCase {
         XCTAssertFalse(IntentNumberFormatting.calories(.nan).isEmpty)
         XCTAssertFalse(IntentNumberFormatting.calories(.infinity).isEmpty)
         XCTAssertFalse(IntentNumberFormatting.calories(1e30).isEmpty)
-    }
-
-    private func makeBudget(
-        consumed: Double = 1_800,
-        staticTarget: Int = 2_000,
-        activeEnergyKcal: Double = 0,
-        samples: [DailyActiveEnergySample] = [],
-        mode: EnergyCalculationMode = .lifestyleEstimate
-    ) -> ActivityCalorieBudget {
-        ActivityCalorieBudget(
-            consumed: consumed,
-            staticTarget: staticTarget,
-            bmr: 1_600,
-            calorieDeficit: 300,
-            activeEnergyKcal: activeEnergyKcal,
-            recentActiveEnergySamples: samples,
-            calculationMode: mode,
-            isManualOverride: false,
-            isActivityLoading: false,
-            activityMessage: nil,
-            date: .now
-        )
-    }
-
-    private func baselineSamples(kcal: Double, count: Int = 10) -> [DailyActiveEnergySample] {
-        (0 ..< count).compactMap { index in
-            guard let date = Calendar.current.date(
-                byAdding: .day,
-                value: -(index + 1),
-                to: Date.now.startOfDay
-            ) else {
-                return nil
-            }
-            return DailyActiveEnergySample(date: date, activeEnergyKcal: kcal)
-        }
     }
 
     private func makeProfile() -> UserProfile {

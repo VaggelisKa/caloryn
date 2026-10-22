@@ -55,7 +55,7 @@ final class NutritionDetailsSummaryTests: XCTestCase {
     }
 
     func testTheAccentFollowsTheBudgetsOwnRoundedDecision() {
-        let budget = makeBudget(consumed: 2_000.4, staticTarget: 2_000)
+        let budget = CalorieBudget(consumed: 2_000.4, target: 2_000)
 
         XCTAssertFalse(budget.isOver)
         XCTAssertEqual(NutritionDetailsSummary.calorieAccent(isOver: budget.isOver), .withinBudget)
@@ -77,108 +77,6 @@ final class NutritionDetailsSummaryTests: XCTestCase {
         XCTAssertEqual(NutritionDetailsSummary.progressFraction(current: 500, target: -2_000), 0)
     }
 
-    func testTheAutoAdjustCardIsHiddenOnAPlainDayWithNoActivity() {
-        XCTAssertFalse(
-            NutritionDetailsSummary.showsDynamicTDEE(
-                isDynamicModeRequested: false,
-                activeEnergyKcal: 0,
-                dynamicAdjustment: 0,
-                hasActivityMessage: false
-            )
-        )
-    }
-
-    func testTheAutoAdjustCardShowsWhileTheModeIsOn() {
-        XCTAssertTrue(
-            NutritionDetailsSummary.showsDynamicTDEE(
-                isDynamicModeRequested: true,
-                activeEnergyKcal: 0,
-                dynamicAdjustment: 0,
-                hasActivityMessage: false
-            )
-        )
-    }
-
-    func testTheAutoAdjustCardStillExplainsADayAfterTheModeIsSwitchedOff() {
-        XCTAssertTrue(
-            NutritionDetailsSummary.showsDynamicTDEE(
-                isDynamicModeRequested: false,
-                activeEnergyKcal: 420,
-                dynamicAdjustment: 0,
-                hasActivityMessage: false
-            )
-        )
-        XCTAssertTrue(
-            NutritionDetailsSummary.showsDynamicTDEE(
-                isDynamicModeRequested: false,
-                activeEnergyKcal: 0,
-                dynamicAdjustment: -90,
-                hasActivityMessage: false
-            )
-        )
-        XCTAssertTrue(
-            NutritionDetailsSummary.showsDynamicTDEE(
-                isDynamicModeRequested: false,
-                activeEnergyKcal: 0,
-                dynamicAdjustment: 0,
-                hasActivityMessage: true
-            )
-        )
-    }
-
-    func testTheBaselineIsADashUntilThereIsOne() {
-        XCTAssertEqual(NutritionDetailsSummary.baselineText(activityBaselineKcal: nil), "-")
-    }
-
-    func testTheBaselineIsRoundedToWholeCalories() {
-        XCTAssertEqual(NutritionDetailsSummary.baselineText(activityBaselineKcal: 284.6), "285 kcal")
-        XCTAssertEqual(NutritionDetailsSummary.activeEnergyText(activeEnergyKcal: 430.2), "430 kcal")
-    }
-
-    func testAnImpossibleHealthReadingIsRenderedRatherThanCrashing() {
-        XCTAssertEqual(NutritionDetailsSummary.baselineText(activityBaselineKcal: .nan), "0 kcal")
-        XCTAssertEqual(NutritionDetailsSummary.activeEnergyText(activeEnergyKcal: .nan), "0 kcal")
-        XCTAssertEqual(NutritionDetailsSummary.activeEnergyText(activeEnergyKcal: .infinity), "0 kcal")
-        XCTAssertEqual(
-            NutritionDetailsSummary.baselineText(activityBaselineKcal: 1e30),
-            "\(Int.max) kcal"
-        )
-    }
-
-    func testAnIncreaseIsSignedAndAReductionIsNegated() {
-        XCTAssertEqual(NutritionDetailsSummary.dynamicAdjustmentText(180), "+180 kcal")
-        XCTAssertEqual(NutritionDetailsSummary.dynamicAdjustmentText(-90), "-90 kcal")
-    }
-
-    func testNoAdjustmentIsWrittenWithoutASign() {
-        XCTAssertEqual(NutritionDetailsSummary.dynamicAdjustmentText(0), "0 kcal")
-    }
-
-    func testOnlyAReductionIsMuted() {
-        XCTAssertTrue(NutritionDetailsSummary.isDynamicAdjustmentMuted(-1))
-        XCTAssertFalse(NutritionDetailsSummary.isDynamicAdjustmentMuted(0))
-        XCTAssertFalse(NutritionDetailsSummary.isDynamicAdjustmentMuted(1))
-    }
-
-    func testAnUnavailableAutoAdjustReadsAsAWarning() {
-        XCTAssertEqual(
-            NutritionDetailsSummary.statusNoticeStyle(for: .unavailable("No Health access")),
-            .warning
-        )
-    }
-
-    func testStillLearningReadsAsInformation() {
-        XCTAssertEqual(
-            NutritionDetailsSummary.statusNoticeStyle(for: .learning(validDays: 3, requiredDays: 7)),
-            .informational
-        )
-    }
-
-    func testAWorkingOrUnusedAutoAdjustReadsPlainly() {
-        XCTAssertEqual(NutritionDetailsSummary.statusNoticeStyle(for: .ready), .neutral)
-        XCTAssertEqual(NutritionDetailsSummary.statusNoticeStyle(for: .staticEstimate), .neutral)
-    }
-
     private func makeEntry(
         calories: Double = 0,
         proteinG: Double = 0,
@@ -195,21 +93,5 @@ final class NutritionDetailsSummaryTests: XCTestCase {
         portionGrams: Double = 100
     ) -> NutritionDetailsSummary.Entry {
         NutritionDetailsSummary.Entry(nutrition: nutrition, portionGrams: portionGrams)
-    }
-
-    private func makeBudget(consumed: Double, staticTarget: Int) -> ActivityCalorieBudget {
-        ActivityCalorieBudget(
-            consumed: consumed,
-            staticTarget: staticTarget,
-            bmr: 1_600,
-            calorieDeficit: 0,
-            activeEnergyKcal: 0,
-            recentActiveEnergySamples: [],
-            calculationMode: .lifestyleEstimate,
-            isManualOverride: false,
-            isActivityLoading: false,
-            activityMessage: nil,
-            date: .now
-        )
     }
 }

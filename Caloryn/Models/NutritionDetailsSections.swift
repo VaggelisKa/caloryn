@@ -95,14 +95,14 @@ struct NutritionDetailsSections: Equatable {
     }
 
     static func calorieTargetText(
-        adjustedTarget: Int,
+        target: Int,
         isOver: Bool,
         overAmount: Int,
         locale: Locale = .current
     ) -> String {
-        let target = "of \(adjustedTarget.formatted(.number.locale(locale))) kcal"
-        guard isOver else { return target }
-        return "\(target), \(overAmount.formatted(.number.locale(locale))) over"
+        let targetText = "of \(target.formatted(.number.locale(locale))) kcal"
+        guard isOver else { return targetText }
+        return "\(targetText), \(overAmount.formatted(.number.locale(locale))) over"
     }
 
     static func overMaximumText(

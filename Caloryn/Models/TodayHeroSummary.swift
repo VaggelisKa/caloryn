@@ -11,7 +11,7 @@ struct TodayHeroSummary: Equatable {
         self.locale = locale
     }
 
-    init(mealTotals: [MealType: Double], budget: ActivityCalorieBudget, locale: Locale = .current) {
+    init(mealTotals: [MealType: Double], budget: CalorieBudget, locale: Locale = .current) {
         self.init(
             ring: CalorieRingSummary(budget: budget),
             donut: CalorieDonutSummary(mealTotals: mealTotals, budget: budget),
@@ -24,18 +24,13 @@ struct TodayHeroSummary: Equatable {
     }
 
     var unrevealed: TodayHeroSummary {
-        let target = ring.adjustedTarget
+        let target = ring.target
         let emptyRing = CalorieRingSummary(
             isOver: false,
             remaining: target,
             overAmount: 0,
             roundedConsumed: 0,
-            adjustedTarget: target,
-            dynamicIncrease: ring.dynamicIncrease,
-            dynamicAdjustment: ring.dynamicAdjustment,
-            hasDynamicIncrease: ring.hasDynamicIncrease,
-            hasDynamicReduction: ring.hasDynamicReduction,
-            isActivityLoading: ring.isActivityLoading
+            target: target
         )
         let loggedMeals = donut.legend.compactMap { $0.isLogged ? $0.meal : nil }
         let emptyDonut = CalorieDonutSummary(
@@ -55,11 +50,11 @@ struct TodayHeroSummary: Equatable {
     }
 
     var caption: String {
-        isOver ? "kcal over" : "kcal left of \(grouped(ring.adjustedTarget))"
+        isOver ? "kcal over" : "kcal left of \(grouped(ring.target))"
     }
 
     var eatenLine: String {
-        "\(grouped(ring.roundedConsumed)) of \(grouped(ring.adjustedTarget)) eaten"
+        "\(grouped(ring.roundedConsumed)) of \(grouped(ring.target)) eaten"
     }
 
     func legendValue(for entry: CalorieDonutSummary.LegendEntry) -> String {

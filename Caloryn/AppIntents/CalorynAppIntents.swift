@@ -72,7 +72,6 @@ struct CalorynIntentDataStore: Sendable {
 
         let currentConsumed = try entries(onSameDayAs: now, calendar: calendar, in: context)
             .reduce(0) { $0 + $1.calories }
-        let expectsDynamicTarget = profile.effectiveEnergyCalculationMode == .dynamicHealth
         let snapshot = try? widgetSnapshotStore.load()
         guard let snapshot,
               snapshot.state == .ready,
@@ -80,30 +79,10 @@ struct CalorynIntentDataStore: Sendable {
             return .unavailable("Open Caloryn to refresh today’s calorie snapshot.")
         }
 
-        let expectedBaseTarget: Int
-        let expectedTarget: Int
-        if expectsDynamicTarget {
-            guard let budget = await CurrentActivityCalorieBudget.load(
-                profile: profile,
-                consumed: currentConsumed,
-                now: now,
-                calendar: calendar
-            ) else {
-                return .unavailable("Open Caloryn to refresh today’s calorie snapshot.")
-            }
-            expectedBaseTarget = budget.baseTarget
-            expectedTarget = budget.adjustedTarget
-        } else {
-            expectedBaseTarget = profile.calorieBaseTarget(usesActiveEnergy: false)
-            expectedTarget = expectedBaseTarget
-        }
-
         return TodayCaloriesIntentResponse.make(
             snapshot: snapshot,
             currentConsumed: currentConsumed,
-            expectedBaseTarget: expectedBaseTarget,
-            expectedTarget: expectedTarget,
-            expectsDynamicTarget: expectsDynamicTarget,
+            expectedTarget: profile.calorieBudget(consumed: currentConsumed).target,
             now: now,
             calendar: calendar,
             locale: locale
@@ -139,13 +118,9 @@ struct CalorynIntentDataStore: Sendable {
                 state: .ready,
                 calories: WidgetCalorieSummary(
                     consumed: consumed,
-                    baseTarget: previous.calories.baseTarget,
                     target: previous.calories.target,
-                    dynamicAdjustment: previous.calories.dynamicAdjustment,
                     mealCalories: DailyWidgetSnapshotProjector.mealCalories(for: dayEntries)
-                ),
-                usesDynamicTarget: previous.usesDynamicTarget,
-                activityRefreshedAt: previous.activityRefreshedAt
+                )
             )
         } else {
             snapshot = DailyWidgetSnapshotProjector.makeSnapshot(

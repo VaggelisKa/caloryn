@@ -41,6 +41,12 @@ struct SettingsGoalSummary: Equatable {
         "\(dailyCalorieTarget.formatted(.number.locale(locale))) kcal a day"
     }
 
+    static func footerText(isManualOverride: Bool) -> String {
+        isManualOverride
+            ? "Manual calorie targets stay fixed until you turn the override off."
+            : "Your activity level sets the estimate."
+    }
+
     static func goalSubtitle(
         calorieDeficit: Double,
         isManualOverride: Bool,

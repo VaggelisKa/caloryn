@@ -38,7 +38,6 @@ private struct TodayDayView: View {
     @Namespace private var dayButtonGlass
 
     @AppStorage("showNutriscore") private var showNutriscore = true
-    @State private var activeEnergyTracker = ActiveEnergyDayTracker()
 
     init(day: Date, selectedDate: Binding<Date>) {
         _entriesAroundDay = Query(
@@ -48,36 +47,8 @@ private struct TodayDayView: View {
     }
 
     private var profile: UserProfile? { profiles.first }
-    private func calorieBudget(consumed: Double) -> ActivityCalorieBudget {
-        guard let profile else {
-            return ActivityCalorieBudget(
-                consumed: consumed,
-                staticTarget: 2_000,
-                bmr: 1_700,
-                calorieDeficit: 0,
-                activeEnergyKcal: 0,
-                recentActiveEnergySamples: [],
-                calculationMode: .lifestyleEstimate,
-                isManualOverride: false,
-                isActivityLoading: false,
-                activityMessage: nil,
-                date: selectedDate
-            )
-        }
-
-        return profile.activityBudget(
-            consumed: consumed,
-            activeEnergyKcal: activeEnergyTracker.activeEnergyKcal,
-            recentActiveEnergySamples: activeEnergyTracker.recentActiveEnergySamples,
-            isActivityLoading: activeEnergyTracker.isLoading(
-                whenEnabled: profile.effectiveEnergyCalculationMode == .dynamicHealth
-            ),
-            activityMessage: activeEnergyTracker.message,
-            date: selectedDate
-        )
-    }
-    private var healthRefreshKey: String {
-        "\(selectedDate.timeIntervalSinceReferenceDate)-\(profile?.effectiveEnergyCalculationMode.rawValue ?? EnergyCalculationMode.lifestyleEstimate.rawValue)"
+    private func calorieBudget(consumed: Double) -> CalorieBudget {
+        profile?.calorieBudget(consumed: consumed) ?? CalorieBudget(consumed: consumed, target: 2_000)
     }
 
     private var dayMeals: [MealType] {
@@ -203,29 +174,15 @@ private struct TodayDayView: View {
             }
         }
         .calorynPageCanvas()
-        .task(id: healthRefreshKey) {
-            await activeEnergyTracker.configure(
-                date: selectedDate,
-                isEnabled: profile?.effectiveEnergyCalculationMode == .dynamicHealth
-            )
-        }
         .task(id: router.pendingRoute) {
             handlePendingRoute()
         }
         .task(id: calorieBudget) {
             recordDailyGoalSnapshotIfNeeded(calorieBudget: calorieBudget)
         }
-        .onDisappear {
-            activeEnergyTracker.stopObserving()
-        }
-        .onChange(of: activeEnergyTracker.message) { _, message in
-            guard message != nil, profile?.energyCalculationMode == .dynamicHealth else { return }
-            profile?.energyCalculationMode = .lifestyleEstimate
-        }
         .onChange(of: scenePhase) { _, newPhase in
             guard newPhase == .active else { return }
             followCalendarRollover()
-            activeEnergyTracker.refreshWhenActive()
         }
         // Covers midnight passing while Today stays on screen, when no scene
         // transition ever happens.
@@ -304,7 +261,7 @@ private struct TodayDayView: View {
 
     private func dashboardSection(
         entries: [FoodLogEntry],
-        calorieBudget: ActivityCalorieBudget
+        calorieBudget: CalorieBudget
     ) -> some View {
         CalorieHeroView(
             summary: TodayHeroSummary(
@@ -326,13 +283,13 @@ private struct TodayDayView: View {
     @ViewBuilder
     private func nutritionDetailsSheet(
         entries: [FoodLogEntry],
-        calorieBudget: ActivityCalorieBudget
+        calorieBudget: CalorieBudget
     ) -> some View {
         let content = NutritionDetailsView(
             date: selectedDate,
             entries: entries,
             calorieBudget: calorieBudget,
-            nutrientTargets: profile?.nutrientTargets(forCalorieTarget: calorieBudget.adjustedTarget) ?? [:],
+            nutrientTargets: profile?.nutrientTargets(forCalorieTarget: calorieBudget.target) ?? [:],
             nutrientGoalKinds: profile?.nutrientGoalKinds ?? [:]
         )
 
@@ -433,11 +390,8 @@ private struct TodayDayView: View {
         lastKnownToday = Date.now.startOfDay
     }
 
-    private func recordDailyGoalSnapshotIfNeeded(calorieBudget: ActivityCalorieBudget) {
+    private func recordDailyGoalSnapshotIfNeeded(calorieBudget: CalorieBudget) {
         guard let profile else { return }
-        // Skip transient budgets while Health data is still loading so a
-        // dynamic day is not momentarily snapshotted without its adjustment.
-        guard !calorieBudget.isActivityLoading else { return }
 
         DailyGoalSnapshotStore.recordSnapshot(
             values: calorieBudget.goalSnapshotValues,

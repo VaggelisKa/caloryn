@@ -186,7 +186,6 @@ struct OnboardingGoalSummaryDraftTests {
             heightCm: 180,
             weightKg: 80,
             activityLevel: .moderatelyActive,
-            energyCalculationMode: .lifestyleEstimate,
             calorieDeficit: 500,
             calorieTarget: calorieTarget,
             isManualTarget: isManualTarget,

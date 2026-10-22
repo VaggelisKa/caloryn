@@ -5,7 +5,6 @@ final class WidgetPlateSummaryTests: XCTestCase {
     func testUnderBudgetDrawsEachMealThenTheRestOfTheBudget() {
         let calories = WidgetCalorieSummary(
             consumed: 963,
-            baseTarget: 2_000,
             target: 2_000,
             mealCalories: [.breakfast: 382, .lunch: 463, .snack: 118]
         )
@@ -20,7 +19,6 @@ final class WidgetPlateSummaryTests: XCTestCase {
     func testOverBudgetScalesTheMealsIntoTheBudgetAndAddsTheOvershoot() {
         let calories = WidgetCalorieSummary(
             consumed: 2_500,
-            baseTarget: 2_000,
             target: 2_000,
             mealCalories: [.breakfast: 500, .lunch: 1_000, .dinner: 1_000]
         )
@@ -34,7 +32,7 @@ final class WidgetPlateSummaryTests: XCTestCase {
     }
 
     func testATotalWithoutMealsDrawsAsOneNeutralSector() {
-        let calories = WidgetCalorieSummary(consumed: 800, baseTarget: 2_000, target: 2_000)
+        let calories = WidgetCalorieSummary(consumed: 800, target: 2_000)
 
         let plate = WidgetPlateSummary(calories: calories)
 
@@ -45,7 +43,6 @@ final class WidgetPlateSummaryTests: XCTestCase {
     func testMealsThatDoNotAddUpToTheTotalKeepTheDifferenceOnThePlate() {
         let calories = WidgetCalorieSummary(
             consumed: 1_000,
-            baseTarget: 2_000,
             target: 2_000,
             mealCalories: [.lunch: 600]
         )
@@ -59,7 +56,6 @@ final class WidgetPlateSummaryTests: XCTestCase {
     func testARoundingGapBetweenMealsAndTheTotalDrawsNoExtraSector() {
         let calories = WidgetCalorieSummary(
             consumed: 1_200.8,
-            baseTarget: 2_000,
             target: 2_000,
             mealCalories: [.breakfast: 600.4, .lunch: 600.4]
         )
@@ -75,7 +71,6 @@ final class WidgetPlateSummaryTests: XCTestCase {
     func testMealsRoundedPastTheTotalDoNotExceedIt() {
         let calories = WidgetCalorieSummary(
             consumed: 601,
-            baseTarget: 2_000,
             target: 2_000,
             mealCalories: [.breakfast: 300.5, .lunch: 300.5]
         )
@@ -88,7 +83,7 @@ final class WidgetPlateSummaryTests: XCTestCase {
     }
 
     func testNothingEatenIsABareTrack() {
-        let calories = WidgetCalorieSummary(consumed: 0, baseTarget: 2_000, target: 2_000)
+        let calories = WidgetCalorieSummary(consumed: 0, target: 2_000)
 
         let plate = WidgetPlateSummary(calories: calories)
 
@@ -99,7 +94,6 @@ final class WidgetPlateSummaryTests: XCTestCase {
     func testAMealLoggedAtZeroDrawsNoSector() {
         let calories = WidgetCalorieSummary(
             consumed: 300,
-            baseTarget: 2_000,
             target: 2_000,
             mealCalories: [.breakfast: 0, .lunch: 300]
         )

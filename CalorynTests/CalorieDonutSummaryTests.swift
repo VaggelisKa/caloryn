@@ -243,24 +243,12 @@ struct CalorieDonutSummaryTests {
 
     @Test("The budget's own target and over decision are taken as given")
     func readsTheBudget() {
-        let budget = ActivityCalorieBudget(
-            consumed: 2_130,
-            staticTarget: 2_000,
-            bmr: 1_700,
-            calorieDeficit: 500,
-            activeEnergyKcal: 0,
-            recentActiveEnergySamples: [],
-            calculationMode: .lifestyleEstimate,
-            isManualOverride: false,
-            isActivityLoading: false,
-            activityMessage: nil,
-            date: .now
-        )
+        let budget = CalorieBudget(consumed: 2_130, target: 2_000)
         let summary = CalorieDonutSummary(mealTotals: [.lunch: 1_000, .dinner: 1_130], budget: budget)
         let ring = CalorieRingSummary(budget: budget)
 
         #expect(summary.isOver == ring.isOver)
-        #expect(summary.budgetKcal == ring.adjustedTarget)
+        #expect(summary.budgetKcal == ring.target)
         #expect(summary.overKcal == ring.overAmount)
         #expect(summary.eatenKcal == ring.roundedConsumed)
     }

@@ -74,7 +74,6 @@ extension CalorynTheme {
     static let microCaption: Font = CalorynTypeface.text(.caption2, weight: .medium)
     static let microCaptionEmphasized: Font = CalorynTypeface.text(.caption2, weight: .semibold)
     static let numericMicroCaption: Font = CalorynTypeface.text(.caption2, weight: .medium).monospacedDigit()
-    static let numericMicroCaptionEmphasized: Font = CalorynTypeface.text(.caption2, weight: .semibold).monospacedDigit()
     static let chartAxisLabel: Font = CalorynTypeface.text(.caption2, weight: .medium)
     static let chartXAxisLabel: Font = CalorynTypeface.fixed(size: 10, weight: .medium)
     static let denseChartXAxisLabel: Font = CalorynTypeface.fixed(size: 8, weight: .medium)

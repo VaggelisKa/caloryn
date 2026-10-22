@@ -14,11 +14,12 @@ final class DailyGoalSnapshot {
 
     var baseCalorieTarget: Int = 0
 
-    var healthAdjustment: Int = 0
-
     var effectiveCalorieTarget: Int = 0
 
-    var calculationModeRaw: String = EnergyCalculationMode.lifestyleEstimate.rawValue
+    // Recorded the removed Apple Health auto-adjust. Kept so the CloudKit-backed store
+    // migrates without a schema change; snapshots from before the removal still carry them.
+    var healthAdjustment: Int = 0
+    var calculationModeRaw: String = "lifestyleEstimate"
 
     var isManualTarget: Bool = false
 
@@ -42,16 +43,9 @@ final class DailyGoalSnapshot {
         apply(values, profile: profile, recordedAt: recordedAt)
     }
 
-    var calculationMode: EnergyCalculationMode {
-        EnergyCalculationMode(rawValue: calculationModeRaw) ?? .lifestyleEstimate
-    }
-
     var values: DailyGoalSnapshotValues {
         DailyGoalSnapshotValues(
-            baseCalorieTarget: baseCalorieTarget,
-            healthAdjustment: healthAdjustment,
-            effectiveCalorieTarget: effectiveCalorieTarget,
-            calculationMode: calculationMode,
+            calorieTarget: effectiveCalorieTarget,
             isManualTarget: isManualTarget
         )
     }
@@ -67,10 +61,10 @@ final class DailyGoalSnapshot {
         profile: UserProfile?,
         recordedAt: Date = .now
     ) {
-        baseCalorieTarget = values.baseCalorieTarget
-        healthAdjustment = values.healthAdjustment
-        effectiveCalorieTarget = values.effectiveCalorieTarget
-        calculationModeRaw = values.calculationMode.rawValue
+        baseCalorieTarget = values.calorieTarget
+        healthAdjustment = 0
+        effectiveCalorieTarget = values.calorieTarget
+        calculationModeRaw = "lifestyleEstimate"
         isManualTarget = values.isManualTarget
         goalRevisionID = profile?.id
         goalRevisionUpdatedAt = profile?.updatedAt
@@ -89,20 +83,14 @@ final class DailyGoalSnapshot {
 }
 
 struct DailyGoalSnapshotValues: Equatable {
-    let baseCalorieTarget: Int
-    let healthAdjustment: Int
-    let effectiveCalorieTarget: Int
-    let calculationMode: EnergyCalculationMode
+    let calorieTarget: Int
     let isManualTarget: Bool
 }
 
-extension ActivityCalorieBudget {
+extension CalorieBudget {
     var goalSnapshotValues: DailyGoalSnapshotValues {
         DailyGoalSnapshotValues(
-            baseCalorieTarget: baseTarget,
-            healthAdjustment: adjustedTarget - baseTarget,
-            effectiveCalorieTarget: adjustedTarget,
-            calculationMode: calculationMode,
+            calorieTarget: target,
             isManualTarget: isManualOverride
         )
     }

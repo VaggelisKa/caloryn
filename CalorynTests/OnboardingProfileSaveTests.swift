@@ -26,22 +26,20 @@ final class OnboardingProfileSaveTests: XCTestCase {
 
     func testManualSelectionPersistsTargetAndManualMode() {
         let profile = OnboardingProfileSave.makeProfile(
-            from: makeSelections(calorieTarget: 1_800, isManualTarget: true, energyCalculationMode: .dynamicHealth)
+            from: makeSelections(calorieTarget: 1_800, isManualTarget: true)
         )
 
         XCTAssertEqual(profile.dailyCalorieTarget, 1_800)
         XCTAssertTrue(profile.manualOverride)
-        XCTAssertEqual(profile.energyCalculationMode, .lifestyleEstimate)
     }
 
     func testCalculatedSelectionPersistsCalculatedMode() {
         let profile = OnboardingProfileSave.makeProfile(
-            from: makeSelections(calorieTarget: 2_100, isManualTarget: false, energyCalculationMode: .dynamicHealth)
+            from: makeSelections(calorieTarget: 2_100, isManualTarget: false)
         )
 
         XCTAssertEqual(profile.dailyCalorieTarget, 2_100)
         XCTAssertFalse(profile.manualOverride)
-        XCTAssertEqual(profile.energyCalculationMode, .dynamicHealth)
     }
 
     func testApplyingSelectionsToExistingProfileMatchesNewProfileSave() {
@@ -50,8 +48,7 @@ final class OnboardingProfileSaveTests: XCTestCase {
             sex: .female,
             heightCm: 160,
             weightKg: 60,
-            activityLevel: .sedentary,
-            energyCalculationMode: .dynamicHealth
+            activityLevel: .sedentary
         )
         let selections = makeSelections(calorieTarget: 1_750, isManualTarget: true)
 
@@ -63,7 +60,6 @@ final class OnboardingProfileSaveTests: XCTestCase {
         XCTAssertEqual(existing.heightCm, fresh.heightCm)
         XCTAssertEqual(existing.weightKg, fresh.weightKg)
         XCTAssertEqual(existing.activityLevel, fresh.activityLevel)
-        XCTAssertEqual(existing.energyCalculationModeRaw, fresh.energyCalculationModeRaw)
         XCTAssertEqual(existing.manualOverride, fresh.manualOverride)
         XCTAssertEqual(existing.calorieDeficit, fresh.calorieDeficit)
         XCTAssertEqual(existing.bmr, fresh.bmr, accuracy: 0.001)
@@ -141,7 +137,6 @@ final class OnboardingProfileSaveTests: XCTestCase {
     private func makeSelections(
         calorieTarget: Int,
         isManualTarget: Bool,
-        energyCalculationMode: EnergyCalculationMode = .lifestyleEstimate,
         proteinGrams: Double? = nil,
         carbGrams: Double? = nil,
         fatGrams: Double? = nil
@@ -152,7 +147,6 @@ final class OnboardingProfileSaveTests: XCTestCase {
             heightCm: 178,
             weightKg: 78,
             activityLevel: .moderatelyActive,
-            energyCalculationMode: energyCalculationMode,
             calorieDeficit: 500,
             calorieTarget: calorieTarget,
             isManualTarget: isManualTarget,

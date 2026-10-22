@@ -97,6 +97,6 @@ struct HistoryDayTargetResolver {
         guard let values = valuesByDayKey[key] else {
             return HistoryDayTarget(calories: fallbackTarget, isEstimated: true)
         }
-        return HistoryDayTarget(calories: values.effectiveCalorieTarget, isEstimated: false)
+        return HistoryDayTarget(calories: values.calorieTarget, isEstimated: false)
     }
 }

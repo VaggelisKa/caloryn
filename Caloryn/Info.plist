@@ -20,10 +20,6 @@
 	<false/>
 	<key>NSCameraUsageDescription</key>
 	<string>Caloryn uses the camera to scan food barcodes and look up nutritional information.</string>
-	<key>NSHealthShareUsageDescription</key>
-	<string>Caloryn reads Active Energy from Apple Health to adjust your daily calorie budget on device.</string>
-	<key>NSHealthUpdateUsageDescription</key>
-	<string>Caloryn does not write data to Apple Health. It only reads Active Energy to adjust your calorie budget on device.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

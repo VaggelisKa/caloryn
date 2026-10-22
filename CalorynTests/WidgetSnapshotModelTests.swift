@@ -5,35 +5,28 @@ import Testing
 struct WidgetSnapshotModelTests {
     @Test("Given negative consumed calories, when building a summary, then consumed clamps to zero")
     func negativeConsumedClampsToZero() {
-        let summary = WidgetCalorieSummary(consumed: -50, baseTarget: 2_000, target: 2_000)
+        let summary = WidgetCalorieSummary(consumed: -50, target: 2_000)
 
         #expect(summary.consumed == 0)
     }
 
-    @Test("Given a zero base target, when building a summary, then baseTarget clamps to one")
-    func zeroBaseTargetClampsToOne() {
-        let summary = WidgetCalorieSummary(consumed: 0, baseTarget: 0, target: 2_000)
-
-        #expect(summary.baseTarget == 1)
-    }
-
     @Test("Given a negative target, when building a summary, then target clamps to one")
     func negativeTargetClampsToOne() {
-        let summary = WidgetCalorieSummary(consumed: 0, baseTarget: 2_000, target: -100)
+        let summary = WidgetCalorieSummary(consumed: 0, target: -100)
 
         #expect(summary.target == 1)
     }
 
     @Test("Given fractional consumed calories, when building a summary, then consumed rounds to the nearest integer")
     func fractionalConsumedRoundsToNearestInteger() {
-        let summary = WidgetCalorieSummary(consumed: 799.6, baseTarget: 2_000, target: 2_000)
+        let summary = WidgetCalorieSummary(consumed: 799.6, target: 2_000)
 
         #expect(summary.consumed == 800)
     }
 
     @Test("Given consumed calories exceeding the target, when reading remaining, then remaining floors at zero")
     func remainingFloorsAtZeroWhenOverTarget() {
-        let summary = WidgetCalorieSummary(consumed: 2_500, baseTarget: 2_000, target: 2_000)
+        let summary = WidgetCalorieSummary(consumed: 2_500, target: 2_000)
 
         #expect(summary.remaining == 0)
         #expect(summary.overAmount == 500)
@@ -42,7 +35,7 @@ struct WidgetSnapshotModelTests {
 
     @Test("Given consumed calories under the target, when reading overAmount, then overAmount is zero and isOver is false")
     func overAmountIsZeroWhenUnderTarget() {
-        let summary = WidgetCalorieSummary(consumed: 500, baseTarget: 2_000, target: 2_000)
+        let summary = WidgetCalorieSummary(consumed: 500, target: 2_000)
 
         #expect(summary.overAmount == 0)
         #expect(!summary.isOver)
@@ -51,21 +44,21 @@ struct WidgetSnapshotModelTests {
 
     @Test("Given consumed calories double the target, when reading progress, then progress clamps to one")
     func progressClampsToOneWhenFarOverTarget() {
-        let summary = WidgetCalorieSummary(consumed: 4_000, baseTarget: 2_000, target: 2_000)
+        let summary = WidgetCalorieSummary(consumed: 4_000, target: 2_000)
 
         #expect(summary.progress == 1)
     }
 
     @Test("Given zero consumed calories, when reading progress, then progress is zero")
     func progressIsZeroWhenNothingConsumed() {
-        let summary = WidgetCalorieSummary(consumed: 0, baseTarget: 2_000, target: 2_000)
+        let summary = WidgetCalorieSummary(consumed: 0, target: 2_000)
 
         #expect(summary.progress == 0)
     }
 
     @Test("Given a typical partial day, when reading progress, then progress reflects the consumed fraction")
     func progressReflectsPartialConsumption() {
-        let summary = WidgetCalorieSummary(consumed: 500, baseTarget: 2_000, target: 2_000)
+        let summary = WidgetCalorieSummary(consumed: 500, target: 2_000)
 
         #expect(summary.progress == 0.25)
     }
@@ -89,9 +82,7 @@ struct WidgetSnapshotModelTests {
             generatedAt: Date(timeIntervalSince1970: 1_700_000_000),
             dayStart: Date(timeIntervalSince1970: 1_700_000_000).startOfDay,
             state: .ready,
-            calories: WidgetCalorieSummary(consumed: 1_234, baseTarget: 1_900, target: 2_100, dynamicAdjustment: 200),
-            usesDynamicTarget: true,
-            activityRefreshedAt: Date(timeIntervalSince1970: 1_700_000_500)
+            calories: WidgetCalorieSummary(consumed: 1_234, target: 2_100)
         )
 
         let data = try Self.encoder.encode(snapshot)
@@ -100,32 +91,13 @@ struct WidgetSnapshotModelTests {
         #expect(decoded == snapshot)
     }
 
-    @Test("Given JSON missing the activityRefreshedAt key, when decoding, then it decodes to nil instead of failing")
-    func missingOptionalFieldDecodesToNil() throws {
-        let snapshot = DailyWidgetSnapshot(
-            generatedAt: Date(timeIntervalSince1970: 1_700_000_000),
-            dayStart: Date(timeIntervalSince1970: 1_700_000_000).startOfDay,
-            state: .ready,
-            calories: WidgetCalorieSummary(consumed: 500, baseTarget: 2_000, target: 2_000),
-            activityRefreshedAt: Date(timeIntervalSince1970: 1_700_000_500)
-        )
-        var data = try Self.encoder.encode(snapshot)
-        var json = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
-        json.removeValue(forKey: "activityRefreshedAt")
-        data = try JSONSerialization.data(withJSONObject: json)
-
-        let decoded = try Self.decoder.decode(DailyWidgetSnapshot.self, from: data)
-
-        #expect(decoded.activityRefreshedAt == nil)
-    }
-
     @Test("Given JSON with an unrecognized extra field, when decoding, then the known fields still decode successfully")
     func unknownExtraFieldIsIgnoredWhenDecoding() throws {
         let snapshot = DailyWidgetSnapshot(
             generatedAt: Date(timeIntervalSince1970: 1_700_000_000),
             dayStart: Date(timeIntervalSince1970: 1_700_000_000).startOfDay,
             state: .ready,
-            calories: WidgetCalorieSummary(consumed: 500, baseTarget: 2_000, target: 2_000)
+            calories: WidgetCalorieSummary(consumed: 500, target: 2_000)
         )
         var data = try Self.encoder.encode(snapshot)
         var json = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
@@ -153,7 +125,7 @@ struct WidgetSnapshotModelTests {
             generatedAt: Date(timeIntervalSince1970: 1_700_000_000),
             dayStart: Date(timeIntervalSince1970: 1_700_000_000).startOfDay,
             state: .ready,
-            calories: WidgetCalorieSummary(consumed: 500, baseTarget: 2_000, target: 2_000)
+            calories: WidgetCalorieSummary(consumed: 500, target: 2_000)
         )
         var data = try Self.encoder.encode(snapshot)
         var json = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
@@ -196,7 +168,7 @@ struct WidgetSnapshotModelTests {
             generatedAt: day,
             dayStart: calendar.startOfDay(for: day),
             state: .ready,
-            calories: WidgetCalorieSummary(consumed: 800, baseTarget: 2_000, target: 2_000)
+            calories: WidgetCalorieSummary(consumed: 800, target: 2_000)
         )
 
         let result = snapshot.displaySnapshot(at: laterSameDay, calendar: calendar)
@@ -225,7 +197,7 @@ struct WidgetSnapshotModelTests {
     @Test("Given two snapshots differing only by state, when comparing render identity, then they are not equal")
     func renderIdentityDiffersWhenStateDiffers() {
         let dayStart = Date(timeIntervalSince1970: 1_700_000_000).startOfDay
-        let calories = WidgetCalorieSummary(consumed: 500, baseTarget: 2_000, target: 2_000)
+        let calories = WidgetCalorieSummary(consumed: 500, target: 2_000)
         let ready = DailyWidgetSnapshot(generatedAt: dayStart, dayStart: dayStart, state: .ready, calories: calories)
         let unavailable = DailyWidgetSnapshot(generatedAt: dayStart, dayStart: dayStart, state: .unavailable, calories: calories)
 
