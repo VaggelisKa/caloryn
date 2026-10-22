@@ -34,6 +34,31 @@ final class DayExportPDFTests: XCTestCase {
         XCTAssertTrue(lastPage.contains("Total"))
     }
 
+    func testAnOverlongFoodNameIsCutShortInsteadOfRunningOffThePage() throws {
+        let longName = String(repeating: "Homemade granola with oats and honey ", count: 120)
+        let report = DayExportReport(
+            day: day,
+            entries: [
+                DayExportReport.Entry(
+                    mealType: .breakfast,
+                    foodName: longName,
+                    portionGrams: 50,
+                    macros: DayExportReport.Macros(calories: 220, proteinG: 5, carbsG: 30, fatG: 8),
+                    createdAt: day
+                )
+            ],
+            targets: DayExportReport.Targets(calories: 2_000),
+            locale: locale
+        )
+
+        let document = try XCTUnwrap(PDFDocument(data: DayExportPDF.data(for: report)))
+        let text = try XCTUnwrap(document.string)
+
+        XCTAssertEqual(document.pageCount, 1)
+        XCTAssertTrue(text.contains("Total"))
+        XCTAssertLessThan(text.count, longName.count)
+    }
+
     func testExportWritesAPDFNamedAfterTheDay() throws {
         let url = try XCTUnwrap(DayExportPDF.exportURL(for: makeReport(foodsPerMeal: 1), locale: locale))
 

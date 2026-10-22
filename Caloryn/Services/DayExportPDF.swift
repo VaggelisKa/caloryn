@@ -71,6 +71,7 @@ private struct DayExportPageLayout {
     private static let numericColumnWidth: CGFloat = 64
     private static let foodIndent: CGFloat = 10
     private static let cellPadding: CGFloat = 5
+    private static let maximumLabelLines: CGFloat = 4
 
     let context: UIGraphicsPDFRendererContext
     let pageSize: CGSize
@@ -134,8 +135,9 @@ private struct DayExportPageLayout {
 
         draw(
             row.label,
-            in: CGRect(x: Self.margin + indent + Self.cellPadding, y: textTop, width: labelWidth - indent - 2 * Self.cellPadding, height: rowHeight),
-            attributes: labelAttributes
+            in: CGRect(x: Self.margin + indent + Self.cellPadding, y: textTop, width: labelWidth - indent - 2 * Self.cellPadding, height: rowHeight - 2 * Self.cellPadding),
+            attributes: labelAttributes,
+            options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine]
         )
         for (index, cell) in row.numericCells.enumerated() {
             let x = Self.margin + labelWidth + CGFloat(index) * Self.numericColumnWidth
@@ -159,8 +161,9 @@ private struct DayExportPageLayout {
             width: labelWidth - indent - 2 * Self.cellPadding,
             attributes: Self.attributes(font: Self.labelFont(style), color: Self.ink)
         )
+        let maximumLabelHeight = ceil(Self.labelFont(style).lineHeight * Self.maximumLabelLines)
         let numberHeight = Self.numberFont(style).lineHeight
-        return ceil(max(labelHeight, numberHeight)) + 2 * Self.cellPadding
+        return ceil(max(min(labelHeight, maximumLabelHeight), numberHeight)) + 2 * Self.cellPadding
     }
 
     private func strokeLine(at lineY: CGFloat, width: CGFloat, color: UIColor) {
@@ -173,8 +176,13 @@ private struct DayExportPageLayout {
     }
 
     @discardableResult
-    private func draw(_ text: String, in rect: CGRect, attributes: [NSAttributedString.Key: Any]) -> CGFloat {
-        (text as NSString).draw(with: rect, options: .usesLineFragmentOrigin, attributes: attributes, context: nil)
+    private func draw(
+        _ text: String,
+        in rect: CGRect,
+        attributes: [NSAttributedString.Key: Any],
+        options: NSStringDrawingOptions = .usesLineFragmentOrigin
+    ) -> CGFloat {
+        (text as NSString).draw(with: rect, options: options, attributes: attributes, context: nil)
         return measure(text, width: rect.width, attributes: attributes)
     }
 
