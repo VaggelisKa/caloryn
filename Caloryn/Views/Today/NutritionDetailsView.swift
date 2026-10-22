@@ -10,6 +10,12 @@ struct NutritionDetailsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @AppStorage("showNutriscore") private var showNutriscore = true
+    @State private var exportedDay: ExportedDay?
+
+    private struct ExportedDay: Identifiable {
+        let url: URL
+        var id: URL { url }
+    }
 
     @ScaledMetric(relativeTo: .largeTitle) private var numberSize: CGFloat = 52
     @ScaledMetric(relativeTo: .subheadline) private var barHeight: CGFloat = 8
@@ -47,6 +53,32 @@ struct NutritionDetailsView: View {
 
     private var nutriscoreGrades: [String?] {
         entries.map(\.historicalNutriscoreGrade)
+    }
+
+    private var exportReport: DayExportReport {
+        DayExportReport(
+            day: date,
+            entries: entries.map {
+                DayExportReport.Entry(
+                    mealType: $0.mealType,
+                    foodName: $0.historicalFoodName,
+                    portionGrams: $0.portionGrams,
+                    macros: DayExportReport.Macros(
+                        calories: $0.calories,
+                        proteinG: $0.proteinG,
+                        carbsG: $0.carbsG,
+                        fatG: $0.fatG
+                    ),
+                    createdAt: $0.createdAt
+                )
+            },
+            targets: DayExportReport.Targets(
+                calories: calorieBudget.adjustedTarget,
+                proteinG: nutrientTargets[.protein],
+                carbsG: nutrientTargets[.carbs],
+                fatG: nutrientTargets[.fat]
+            )
+        )
     }
 
     var body: some View {
@@ -101,6 +133,21 @@ struct NutritionDetailsView: View {
                         .accessibilityIdentifier("nutritionDetails.title")
                 }
 
+                ToolbarItem(placement: .cancellationAction) {
+                    Button {
+                        if let url = DayExportPDF.exportURL(for: exportReport) {
+                            exportedDay = ExportedDay(url: url)
+                        }
+                    } label: {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(CalorynTheme.toolbarIcon)
+                            .foregroundStyle(entries.isEmpty ? CalorynTheme.textTertiary : CalorynTheme.accent)
+                    }
+                    .disabled(entries.isEmpty)
+                    .accessibilityLabel("Share day")
+                    .accessibilityIdentifier("nutritionDetails.exportDay")
+                }
+
                 ToolbarItem(placement: .confirmationAction) {
                     Button {
                         dismiss()
@@ -112,6 +159,9 @@ struct NutritionDetailsView: View {
                     .accessibilityLabel("Close")
                     .accessibilityIdentifier("nutritionDetails.close")
                 }
+            }
+            .sheet(item: $exportedDay) { exported in
+                ShareSheet(url: exported.url)
             }
         }
     }
