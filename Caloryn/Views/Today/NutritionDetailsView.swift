@@ -138,7 +138,7 @@ struct NutritionDetailsView: View {
                         .accessibilityIdentifier("nutritionDetails.title")
                 }
 
-                ToolbarItem(placement: .cancellationAction) {
+                ToolbarItem(placement: .primaryAction) {
                     Menu {
                         Button {
                             share(DayExportPDF.exportURL(for: exportReport))
@@ -163,7 +163,7 @@ struct NutritionDetailsView: View {
                     .accessibilityIdentifier("nutritionDetails.exportDay")
                 }
 
-                ToolbarItem(placement: .confirmationAction) {
+                ToolbarItem(placement: .cancellationAction) {
                     Button {
                         dismiss()
                     } label: {
