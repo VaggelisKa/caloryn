@@ -10,6 +10,7 @@ struct CalorynMealSectionHeader: View {
     let onAdd: () -> Void
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ScaledMetric(relativeTo: .headline) private var addButtonSize: CGFloat = 30
     @ScaledMetric(relativeTo: .headline) private var plusSize: CGFloat = 14
 
@@ -83,6 +84,8 @@ struct CalorynMealSectionHeader: View {
                 .font(CalorynTheme.sectionHeaderDetail)
                 .foregroundStyle(CalorynTheme.textSecondary)
                 .lineLimit(1)
+                .contentTransition(reduceMotion ? .identity : .numericText())
+                .animation(reduceMotion ? nil : .smooth(duration: 0.35), value: totalText)
         }
     }
 }

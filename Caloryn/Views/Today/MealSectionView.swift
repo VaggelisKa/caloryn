@@ -138,11 +138,14 @@ private struct SingleMealTransitionRow: View {
                     .opacity(isDeletingEntry ? 0 : 1)
                     .allowsHitTesting(!isDeletingEntry)
                     .accessibilityHidden(isDeletingEntry)
+                    .id(entry.id)
+                    .transition(.asymmetric(insertion: .opacity, removal: .identity))
             }
 
             EmptyMealRow(text: emptyText)
                 .opacity(showsEmptyState ? 1 : 0)
                 .accessibilityHidden(!showsEmptyState)
+                .animation(showsEmptyState ? .easeIn(duration: 0.16) : nil, value: showsEmptyState)
         }
         .animation(.easeIn(duration: 0.16), value: entry?.id)
         // A swipe action draws its label in white on the tint. Before iOS 26 the app-wide
