@@ -284,7 +284,7 @@ final class DayFoodLogSelectionTests: XCTestCase {
 
         XCTAssertEqual(
             ordered.map(\.name),
-            ["first-breakfast", "second-breakfast", "lunch", "dinner", "late-snack"]
+            ["first-breakfast", "second-breakfast", "lunch", "late-snack", "dinner"]
         )
     }
 
@@ -306,8 +306,8 @@ final class DayFoodLogSelectionTests: XCTestCase {
         )
     }
 
-    func testTheThreeCoreMealsAlwaysHaveASectionInDayOrder() {
-        XCTAssertEqual(DayFoodLogSelection.coreMeals, [.breakfast, .lunch, .dinner])
+    func testEveryMealHasASectionInDayOrderWithSnacksBeforeDinner() {
+        XCTAssertEqual(DayFoodLogSelection.dayMeals, [.breakfast, .lunch, .snack, .dinner])
     }
 
     private func makeEntry(

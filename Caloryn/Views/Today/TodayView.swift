@@ -80,8 +80,8 @@ private struct TodayDayView: View {
         "\(selectedDate.timeIntervalSinceReferenceDate)-\(profile?.effectiveEnergyCalculationMode.rawValue ?? EnergyCalculationMode.lifestyleEstimate.rawValue)"
     }
 
-    private var coreMeals: [MealType] {
-        DayFoodLogSelection.coreMeals
+    private var dayMeals: [MealType] {
+        DayFoodLogSelection.dayMeals
     }
 
     private var dayProjection: DayFoodLogProjection<FoodLogEntry> {
@@ -132,13 +132,16 @@ private struct TodayDayView: View {
                             .listRowSeparator(.hidden)
                     }
 
-                    ForEach(coreMeals) { meal in
+                    ForEach(dayMeals) { meal in
+                        let snackIndex = meal == .snack ? 1 : 0
                         MealSectionView(
                             mealType: meal,
                             entries: projection.entries(for: meal),
+                            snackIndex: snackIndex,
+                            titleOverride: meal == .snack ? "Snacks" : nil,
                             canCopyYesterday: canCopyYesterday,
                             onAdd: {
-                                presentFoodSearch(mealType: meal, snackIndex: 0)
+                                presentFoodSearch(mealType: meal, snackIndex: snackIndex)
                             },
                             onEdit: { entry in
                                 entryToEdit = entry
@@ -146,21 +149,6 @@ private struct TodayDayView: View {
                             onDelete: deleteEntry
                         )
                     }
-
-                    MealSectionView(
-                        mealType: .snack,
-                        entries: projection.entries(for: .snack),
-                        snackIndex: 1,
-                        titleOverride: "Snacks",
-                        canCopyYesterday: canCopyYesterday,
-                        onAdd: {
-                            presentFoodSearch(mealType: .snack, snackIndex: 1)
-                        },
-                        onEdit: { entry in
-                            entryToEdit = entry
-                        },
-                        onDelete: deleteEntry
-                    )
                 }
                 .calorynPlainListStyle()
                 .environment(\.defaultMinListRowHeight, 0)

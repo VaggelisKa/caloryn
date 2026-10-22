@@ -235,15 +235,15 @@ struct FavoriteFoodQuery: EntityStringQuery, EnumerableEntityQuery {
 enum CalorynIntentMeal: String, AppEnum {
     case breakfast
     case lunch
-    case dinner
     case snack
+    case dinner
 
     static let typeDisplayRepresentation: TypeDisplayRepresentation = "Meal"
     static let caseDisplayRepresentations: [CalorynIntentMeal: DisplayRepresentation] = [
         .breakfast: "Breakfast",
         .lunch: "Lunch",
-        .dinner: "Dinner",
         .snack: "Snack",
+        .dinner: "Dinner",
     ]
 
     var mealType: MealType {
