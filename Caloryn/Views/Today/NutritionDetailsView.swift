@@ -143,7 +143,7 @@ struct NutritionDetailsView: View {
                         Button {
                             share(DayExportPDF.exportURL(for: exportReport))
                         } label: {
-                            Label("PDF", systemImage: "doc.richtext")
+                            Label("PDF", systemImage: "doc.text")
                         }
                         .accessibilityIdentifier("nutritionDetails.exportDay.pdf")
 
