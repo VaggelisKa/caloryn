@@ -124,7 +124,7 @@ private struct TodayDayView: View {
                 .calorynPlainListStyle()
                 .environment(\.defaultMinListRowHeight, 0)
                 .contentMargins(.top, 0, for: .scrollContent)
-                .id(selectedDate)
+                .transaction(value: selectedDate) { $0.animation = nil }
                 .animation(.smooth(duration: 0.35), value: hasNutriscoreData)
                 .animation(reduceMotion ? nil : .smooth(duration: 0.3), value: projection.today.map(\.id))
             }
@@ -203,7 +203,10 @@ private struct TodayDayView: View {
                 .foregroundStyle(CalorynTheme.textPrimary)
                 .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 1)
                 .minimumScaleFactor(0.7)
-                .contentTransition(.numericText())
+                .contentTransition(
+                    reduceMotion ? .identity : .numericText(value: selectedDate.timeIntervalSinceReferenceDate)
+                )
+                .animation(reduceMotion ? nil : .smooth(duration: 0.35), value: selectedDate)
                 .accessibilityLabel(DayTitle.accessibilityLabel(for: selectedDate))
                 .accessibilityAddTraits(.isHeader)
 

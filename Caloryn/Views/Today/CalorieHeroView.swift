@@ -81,6 +81,7 @@ struct CalorieHeroView: View {
             legend
                 .padding(.top, 10)
         }
+        .animation(accessibilityReduceMotion ? nil : .smooth(duration: 0.35), value: displayed)
     }
 
     private var legend: some View {
