@@ -60,4 +60,34 @@ final class CSVExporterTests: XCTestCase {
         let csv = try String(contentsOf: url, encoding: .utf8)
         XCTAssertTrue(csv.contains("2026-03-04,Breakfast,Oats,100,100,10.0,20.0,5.0,0.0"))
     }
+
+    func testEntriesOnTheSameDayAreOrderedByMealThenByWhenTheyWereLogged() {
+        let day = makeTestDate(year: 2026, month: 5, day: 6)
+        let loggedAt = makeTestDate(year: 2026, month: 5, day: 6, hour: 8)
+        let snack = makeTestEntry(date: day, mealType: .snack, foodItem: makeTestFoodItem(name: "Apple"))
+        let lateDinner = makeTestEntry(date: day, mealType: .dinner, foodItem: makeTestFoodItem(name: "Dessert"))
+        let breakfast = makeTestEntry(date: day, mealType: .breakfast, foodItem: makeTestFoodItem(name: "Oats"))
+        let earlyDinner = makeTestEntry(date: day, mealType: .dinner, foodItem: makeTestFoodItem(name: "Soup"))
+        snack.createdAt = loggedAt
+        breakfast.createdAt = loggedAt.addingTimeInterval(60)
+        earlyDinner.createdAt = loggedAt.addingTimeInterval(120)
+        lateDinner.createdAt = loggedAt.addingTimeInterval(180)
+
+        let foods = CSVExporter.generateCSV(from: [snack, lateDinner, breakfast, earlyDinner])
+            .split(separator: "\n")
+            .dropFirst()
+            .map { $0.split(separator: ",")[2] }
+
+        XCTAssertEqual(foods, ["Oats", "Apple", "Soup", "Dessert"])
+    }
+
+    func testExportURLCanNameTheFileAfterTheExportedDay() throws {
+        let entry = makeTestEntry(foodItem: makeTestFoodItem(name: "Oats"))
+
+        let url = try XCTUnwrap(CSVExporter.exportURL(from: [entry], fileName: "Caloryn 2026-10-22"))
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        XCTAssertEqual(url.lastPathComponent, "Caloryn 2026-10-22.csv")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: url.path))
+    }
 }
