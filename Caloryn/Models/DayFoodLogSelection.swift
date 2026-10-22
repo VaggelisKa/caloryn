@@ -43,7 +43,7 @@ struct DayFoodLogProjection<Entry> {
 }
 
 enum DayFoodLogSelection {
-    static let coreMeals: [MealType] = [.breakfast, .lunch, .dinner]
+    static let dayMeals: [MealType] = [.breakfast, .lunch, .snack, .dinner]
 
     static func entries<Entry>(
         _ entries: [Entry],

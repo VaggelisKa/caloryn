@@ -3,8 +3,8 @@ import Foundation
 enum MealType: String, Codable, CaseIterable, Identifiable {
     case breakfast
     case lunch
-    case dinner
     case snack
+    case dinner
 
     var id: String { rawValue }
 
@@ -30,8 +30,8 @@ enum MealType: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .breakfast: 0
         case .lunch: 1
-        case .dinner: 2
-        case .snack: 3
+        case .snack: 2
+        case .dinner: 3
         }
     }
 

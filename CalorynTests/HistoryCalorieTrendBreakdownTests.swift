@@ -8,8 +8,8 @@ struct HistoryCalorieTrendBreakdownTests {
     func everyMealGetsARowInCanonicalOrder() {
         let breakdown = makeDay(mealCalories: [.breakfast: 400, .dinner: 700])
 
-        #expect(breakdown.mealRows.map(\.mealType) == [.breakfast, .lunch, .dinner, .snack])
-        #expect(breakdown.mealRows.map(\.calories) == [400, 0, 700, 0])
+        #expect(breakdown.mealRows.map(\.mealType) == [.breakfast, .lunch, .snack, .dinner])
+        #expect(breakdown.mealRows.map(\.calories) == [400, 0, 0, 700])
     }
 
     @Test("given a meal with no calories, when rendering its row, then it reads as absent rather than as zero")
@@ -34,7 +34,7 @@ struct HistoryCalorieTrendBreakdownTests {
     func theSnackRowReadsPlural() {
         let titles = makeDay(mealCalories: [:]).mealRows.map(\.title)
 
-        #expect(titles == ["Breakfast", "Lunch", "Dinner", "Snacks"])
+        #expect(titles == ["Breakfast", "Lunch", "Snacks", "Dinner"])
     }
 
     @Test("given a day over target, when titling the food list, then it reads as an explanation")
