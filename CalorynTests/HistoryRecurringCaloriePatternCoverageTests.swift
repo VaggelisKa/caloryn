@@ -330,10 +330,7 @@ struct HistoryRecurringCaloriePatternCoverageTests {
         var valuesByDayKey: [String: DailyGoalSnapshotValues] = [:]
         for date in dates {
             valuesByDayKey[DailyGoalSnapshot.dayKey(for: date, calendar: Self.newYork)] = DailyGoalSnapshotValues(
-                baseCalorieTarget: target,
-                healthAdjustment: 0,
-                effectiveCalorieTarget: target,
-                calculationMode: .lifestyleEstimate,
+                calorieTarget: target,
                 isManualTarget: false
             )
         }

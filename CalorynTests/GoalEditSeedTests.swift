@@ -79,7 +79,6 @@ final class GoalEditSeedTests: XCTestCase {
             heightCm: 178,
             weightKg: 78,
             activityLevel: .moderatelyActive,
-            energyCalculationMode: .lifestyleEstimate,
             calorieDeficit: 500,
             calorieTarget: calorieTarget,
             isManualTarget: isManualTarget,

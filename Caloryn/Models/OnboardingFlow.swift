@@ -4,7 +4,6 @@ enum OnboardingStep: Hashable {
     case welcome
     case personalInfo
     case activityLevel
-    case energyCalculationMode
     case goalSummary
     case macroRatios(calorieTarget: Int, usesDirectGrams: Bool)
     case nutrientSelection
@@ -22,8 +21,6 @@ enum OnboardingFlow {
         case .personalInfo:
             .activityLevel
         case .activityLevel:
-            .energyCalculationMode
-        case .energyCalculationMode:
             .goalSummary
         case .goalSummary:
             .macroRatios(calorieTarget: calorieTarget, usesDirectGrams: usesDirectGrams)
@@ -32,32 +29,6 @@ enum OnboardingFlow {
         case .nutrientSelection:
             nil
         }
-    }
-
-    enum EnergyModeContinuation: Equatable {
-        case ignore
-
-        case disableAppleHealthAndAdvance
-
-        case requestAppleHealthAuthorization
-    }
-
-    static func energyModeContinuation(
-        mode: EnergyCalculationMode,
-        isRequestingAuthorization: Bool
-    ) -> EnergyModeContinuation {
-        guard !isRequestingAuthorization else { return .ignore }
-        return mode == .dynamicHealth ? .requestAppleHealthAuthorization : .disableAppleHealthAndAdvance
-    }
-
-    enum AppleHealthAuthorizationOutcome: Equatable {
-        case advance
-
-        case fallBackToLifestyleEstimate(message: String?)
-    }
-
-    static func appleHealthOutcome(isEnabled: Bool, message: String?) -> AppleHealthAuthorizationOutcome {
-        isEnabled ? .advance : .fallBackToLifestyleEstimate(message: message)
     }
 
     static func shouldComplete(isCompleting: Bool) -> Bool {

@@ -12,10 +12,6 @@ struct ProfileEditView: View {
         _draft = State(initialValue: ProfileEditDraft(profile: profile))
     }
 
-    private var isActivityLevelLocked: Bool {
-        ProfileEditActivityLevelPolicy.isLocked(for: profile)
-    }
-
     var body: some View {
         Form {
             Section {
@@ -50,13 +46,8 @@ struct ProfileEditView: View {
                     }
                 }
                 .foregroundStyle(CalorynTheme.textPrimary)
-                .disabled(isActivityLevelLocked)
             } header: {
                 SettingsSectionTitle("Activity level")
-            } footer: {
-                if isActivityLevelLocked {
-                    SettingsSectionFooter(ProfileEditActivityLevelPolicy.lockedExplanation)
-                }
             }
             .listRowBackground(CalorynTheme.backgroundSecondary)
         }

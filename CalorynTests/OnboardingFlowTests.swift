@@ -17,7 +17,6 @@ struct OnboardingFlowTests {
             .welcome,
             .personalInfo,
             .activityLevel,
-            .energyCalculationMode,
             .goalSummary,
             .macroRatios(calorieTarget: 2_000, usesDirectGrams: false),
             .nutrientSelection
@@ -87,7 +86,7 @@ struct OnboardingFlowTests {
 
     @Test("No other step reads the calorie target")
     func otherStepsIgnoreTheTarget() {
-        for step in [OnboardingStep.welcome, .personalInfo, .activityLevel, .energyCalculationMode] {
+        for step in [OnboardingStep.welcome, .personalInfo, .activityLevel] {
             #expect(
                 OnboardingFlow.step(after: step, calorieTarget: 1_750)
                     == OnboardingFlow.step(after: step, calorieTarget: 9_999)
@@ -100,57 +99,6 @@ struct OnboardingFlowTests {
                 calorieTarget: 4_000
             ) == .nutrientSelection
         )
-    }
-
-    @Test("Choosing the lifestyle estimate switches Apple Health adjustment off and advances")
-    func lifestyleEstimateDisablesAppleHealth() {
-        #expect(
-            OnboardingFlow.energyModeContinuation(mode: .lifestyleEstimate, isRequestingAuthorization: false)
-                == .disableAppleHealthAndAdvance
-        )
-    }
-
-    @Test("Choosing Apple Health asks for authorization before advancing")
-    func appleHealthRequestsAuthorization() {
-        #expect(
-            OnboardingFlow.energyModeContinuation(mode: .dynamicHealth, isRequestingAuthorization: false)
-                == .requestAppleHealthAuthorization
-        )
-    }
-
-    @Test("A second tap while a request is in flight does nothing, whichever mode is chosen")
-    func inFlightRequestIgnoresTaps() {
-        for mode in EnergyCalculationMode.allCases {
-            #expect(
-                OnboardingFlow.energyModeContinuation(mode: mode, isRequestingAuthorization: true) == .ignore
-            )
-        }
-    }
-
-    @Test("Granted authorization advances the flow")
-    func grantedAuthorizationAdvances() {
-        #expect(OnboardingFlow.appleHealthOutcome(isEnabled: true, message: nil) == .advance)
-    }
-
-    @Test("Refused authorization stays on the step and reverts to the lifestyle estimate")
-    func refusedAuthorizationFallsBack() {
-        #expect(
-            OnboardingFlow.appleHealthOutcome(isEnabled: false, message: "Health is unavailable.")
-                == .fallBackToLifestyleEstimate(message: "Health is unavailable.")
-        )
-    }
-
-    @Test("A refusal with no explanation still falls back")
-    func silentRefusalFallsBack() {
-        #expect(
-            OnboardingFlow.appleHealthOutcome(isEnabled: false, message: nil)
-                == .fallBackToLifestyleEstimate(message: nil)
-        )
-    }
-
-    @Test("A granted request carries no message, so nothing is shown on the way out")
-    func grantedAuthorizationDropsAnyMessage() {
-        #expect(OnboardingFlow.appleHealthOutcome(isEnabled: true, message: "ignored") == .advance)
     }
 
     @Test("A double tap on Start Tracking cannot run the save twice")

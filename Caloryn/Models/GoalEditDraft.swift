@@ -185,7 +185,6 @@ struct GoalEditDraft: Equatable {
         if manualOverride {
             if let manualTarget {
                 profile.dailyCalorieTarget = manualTarget
-                profile.energyCalculationMode = .lifestyleEstimate
             }
             if let protein = resolvedMacroGrams(proteinGramsText, saved: profile.proteinTargetG),
                let carbs = resolvedMacroGrams(carbGramsText, saved: profile.carbTargetG),
@@ -217,9 +216,5 @@ struct GoalEditDraft: Equatable {
     private func isUnchangedGoal(for nutrient: TrackedNutrient, in profile: UserProfile) -> Bool {
         guard let saved = profile.target(for: nutrient) else { return false }
         return trimmedText(for: nutrient) == nutrient.unit.inputFormatted(saved)
-    }
-
-    var disablesAppleHealthAdjustment: Bool {
-        manualOverride && manualTarget != nil
     }
 }

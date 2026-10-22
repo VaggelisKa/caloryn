@@ -51,10 +51,7 @@ struct HistoryAnalyticsRefreshIDTests {
         DailyGoalSnapshot(
             dayKey: "2026-03-09",
             values: DailyGoalSnapshotValues(
-                baseCalorieTarget: 2_000,
-                healthAdjustment: 200,
-                effectiveCalorieTarget: 2_200,
-                calculationMode: .dynamicHealth,
+                calorieTarget: 2_200,
                 isManualTarget: false
             ),
             profile: nil,

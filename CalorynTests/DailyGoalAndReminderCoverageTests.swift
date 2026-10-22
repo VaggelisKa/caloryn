@@ -23,12 +23,9 @@ private func goalDate(
     ))!
 }
 
-private func goalValues(base: Int, adjustment: Int) -> DailyGoalSnapshotValues {
+private func goalValues(target: Int) -> DailyGoalSnapshotValues {
     DailyGoalSnapshotValues(
-        baseCalorieTarget: base,
-        healthAdjustment: adjustment,
-        effectiveCalorieTarget: base + adjustment,
-        calculationMode: adjustment == 0 ? .lifestyleEstimate : .dynamicHealth,
+        calorieTarget: target,
         isManualTarget: false
     )
 }
@@ -65,11 +62,11 @@ struct DailyGoalSnapshotStoreCoverageTests {
         context.insert(profile)
         let now = goalDate(utc, 2026, 3, 9, 20)
         let older = DailyGoalSnapshot(
-            dayKey: "2026-03-09", values: goalValues(base: 1_900, adjustment: 0),
+            dayKey: "2026-03-09", values: goalValues(target: 1_900),
             profile: profile, recordedAt: goalDate(utc, 2026, 3, 9, 8)
         )
         let newer = DailyGoalSnapshot(
-            dayKey: "2026-03-09", values: goalValues(base: 1_900, adjustment: 150),
+            dayKey: "2026-03-09", values: goalValues(target: 2_050),
             profile: profile, recordedAt: goalDate(utc, 2026, 3, 9, 18)
         )
         context.insert(older)
@@ -77,7 +74,7 @@ struct DailyGoalSnapshotStoreCoverageTests {
         try context.save()
 
         let didRecord = DailyGoalSnapshotStore.recordSnapshot(
-            values: goalValues(base: 1_900, adjustment: 150),
+            values: goalValues(target: 2_050),
             for: now, profile: profile, in: context, now: now, calendar: utc
         )
 
@@ -98,11 +95,11 @@ struct DailyGoalSnapshotStoreCoverageTests {
         let evening = goalDate(utc, 2026, 3, 9, 21)
 
         DailyGoalSnapshotStore.recordSnapshot(
-            values: goalValues(base: 1_900, adjustment: 0),
+            values: goalValues(target: 1_900),
             for: morning, profile: nil, in: context, now: morning, calendar: utc
         )
         let didUpdate = DailyGoalSnapshotStore.recordSnapshot(
-            values: goalValues(base: 1_900, adjustment: 0),
+            values: goalValues(target: 1_900),
             for: evening, profile: profile, in: context, now: evening, calendar: utc
         )
 
@@ -126,12 +123,12 @@ struct DailyGoalSnapshotStoreCoverageTests {
         profile.updatedAt = firstEdit
 
         DailyGoalSnapshotStore.recordSnapshot(
-            values: goalValues(base: 1_900, adjustment: 0),
+            values: goalValues(target: 1_900),
             for: morning, profile: profile, in: context, now: morning, calendar: utc
         )
         profile.updatedAt = secondEdit
         let didUpdate = DailyGoalSnapshotStore.recordSnapshot(
-            values: goalValues(base: 1_900, adjustment: 0),
+            values: goalValues(target: 1_900),
             for: evening, profile: profile, in: context, now: evening, calendar: utc
         )
 
@@ -148,11 +145,11 @@ struct DailyGoalSnapshotStoreCoverageTests {
         let date = goalDate(utc, 2026, 3, 9, 12)
 
         let recordedInAuckland = DailyGoalSnapshotStore.recordSnapshot(
-            values: goalValues(base: 2_000, adjustment: 0),
+            values: goalValues(target: 2_000),
             for: date, profile: nil, in: context, now: now, calendar: auckland
         )
         let recordedInUTC = DailyGoalSnapshotStore.recordSnapshot(
-            values: goalValues(base: 2_000, adjustment: 0),
+            values: goalValues(target: 2_000),
             for: date, profile: nil, in: context, now: now, calendar: utc
         )
 
@@ -169,15 +166,15 @@ struct DailyGoalSnapshotStoreCoverageTests {
         let justAfterMidnight = goalDate(auckland, 2026, 3, 10, 0, 0)
 
         DailyGoalSnapshotStore.recordSnapshot(
-            values: goalValues(base: 2_000, adjustment: 0),
+            values: goalValues(target: 2_000),
             for: lateEvening, profile: nil, in: context, now: lateEvening, calendar: auckland
         )
         DailyGoalSnapshotStore.recordSnapshot(
-            values: goalValues(base: 2_000, adjustment: 0),
+            values: goalValues(target: 2_000),
             for: justAfterMidnight, profile: nil, in: context, now: justAfterMidnight, calendar: auckland
         )
         let rewroteYesterday = DailyGoalSnapshotStore.recordSnapshot(
-            values: goalValues(base: 2_000, adjustment: 500),
+            values: goalValues(target: 2_500),
             for: lateEvening, profile: nil, in: context, now: justAfterMidnight, calendar: auckland
         )
 
@@ -190,39 +187,39 @@ struct DailyGoalSnapshotStoreCoverageTests {
     @Test("Collapsing keeps the newer snapshot even when the older one comes later in the list")
     func collapseIsOrderIndependent() {
         let older = DailyGoalSnapshot(
-            dayKey: "2026-03-09", values: goalValues(base: 2_000, adjustment: 0),
+            dayKey: "2026-03-09", values: goalValues(target: 2_000),
             profile: nil, recordedAt: goalDate(utc, 2026, 3, 9, 8)
         )
         let newer = DailyGoalSnapshot(
-            dayKey: "2026-03-09", values: goalValues(base: 2_000, adjustment: 300),
+            dayKey: "2026-03-09", values: goalValues(target: 2_300),
             profile: nil, recordedAt: goalDate(utc, 2026, 3, 9, 20)
         )
         let otherDay = DailyGoalSnapshot(
-            dayKey: "2026-03-10", values: goalValues(base: 1_800, adjustment: 0),
+            dayKey: "2026-03-10", values: goalValues(target: 1_800),
             profile: nil, recordedAt: goalDate(utc, 2026, 3, 10, 9)
         )
 
         let collapsed = DailyGoalSnapshotStore.latestValuesByDayKey([newer, otherDay, older])
 
         #expect(collapsed.count == 2)
-        #expect(collapsed["2026-03-09"]?.effectiveCalorieTarget == 2_300)
-        #expect(collapsed["2026-03-10"]?.effectiveCalorieTarget == 1_800)
+        #expect(collapsed["2026-03-09"]?.calorieTarget == 2_300)
+        #expect(collapsed["2026-03-10"]?.calorieTarget == 1_800)
     }
 
     @Test("When two duplicates share a timestamp the first one seen wins")
     func collapseTieKeepsFirst() {
         let stamp = goalDate(utc, 2026, 3, 9, 8)
         let first = DailyGoalSnapshot(
-            dayKey: "2026-03-09", values: goalValues(base: 2_000, adjustment: 100),
+            dayKey: "2026-03-09", values: goalValues(target: 2_100),
             profile: nil, recordedAt: stamp
         )
         let second = DailyGoalSnapshot(
-            dayKey: "2026-03-09", values: goalValues(base: 2_000, adjustment: 200),
+            dayKey: "2026-03-09", values: goalValues(target: 2_200),
             profile: nil, recordedAt: stamp
         )
 
-        #expect(DailyGoalSnapshotStore.latestValuesByDayKey([first, second])["2026-03-09"]?.healthAdjustment == 100)
-        #expect(DailyGoalSnapshotStore.latestValuesByDayKey([second, first])["2026-03-09"]?.healthAdjustment == 200)
+        #expect(DailyGoalSnapshotStore.latestValuesByDayKey([first, second])["2026-03-09"]?.calorieTarget == 2_100)
+        #expect(DailyGoalSnapshotStore.latestValuesByDayKey([second, first])["2026-03-09"]?.calorieTarget == 2_200)
     }
 
     @Test("No snapshots collapse to no values")
@@ -240,7 +237,7 @@ struct HistoryDayTargetResolverCoverageTests {
         let instant = goalDate(utc, 2026, 3, 9, 12)
         let resolver = HistoryDayTargetResolver(
             fallbackTarget: 1_800,
-            valuesByDayKey: ["2026-03-10": goalValues(base: 2_000, adjustment: 250)]
+            valuesByDayKey: ["2026-03-10": goalValues(target: 2_250)]
         )
 
         #expect(resolver.target(for: instant, calendar: auckland) == HistoryDayTarget(calories: 2_250, isEstimated: false))
@@ -251,8 +248,7 @@ struct HistoryDayTargetResolverCoverageTests {
     func manualSnapshot() {
         let utc = goalCalendar("UTC")
         let manual = DailyGoalSnapshotValues(
-            baseCalorieTarget: 1_500, healthAdjustment: 0, effectiveCalorieTarget: 1_500,
-            calculationMode: .lifestyleEstimate, isManualTarget: true
+            calorieTarget: 1_500, isManualTarget: true
         )
         let resolver = HistoryDayTargetResolver(fallbackTarget: 2_200, valuesByDayKey: ["2026-01-01": manual])
 
@@ -538,43 +534,5 @@ struct DailyReminderSchedulerCoverageTests {
         #expect(center.authorizationQueries == 2)
         #expect(center.addedRequests.count == reminders.count * 2)
         #expect(center.pending.count == reminders.count)
-    }
-}
-
-@Suite("Settings Health authorization refresh truth table")
-struct SettingsHealthAuthorizationRefreshCoverageTests {
-    @Test(
-        "Every combination of inputs maps to the documented action",
-        arguments: [false, true], [false, true]
-    )
-    func truthTable(isManualOverride: Bool, isDynamic: Bool) {
-        for isRequested in [false, true] {
-            for isAvailable in [false, true] {
-                for isInFlight in [false, true] {
-                    let action = SettingsHealthAuthorizationRefresh.action(
-                        isManualOverride: isManualOverride,
-                        energyCalculationMode: isDynamic ? .dynamicHealth : .lifestyleEstimate,
-                        isAuthorizationRequested: isRequested,
-                        isHealthAvailable: isAvailable,
-                        isRequestingAuthorization: isInFlight
-                    )
-
-                    let expected: SettingsHealthAuthorizationRefresh.Action
-                    if isManualOverride {
-                        expected = .none
-                    } else if isDynamic {
-                        expected = .refreshTracker
-                    } else if isRequested && isAvailable && !isInFlight {
-                        expected = .requestAuthorization
-                    } else {
-                        expected = .none
-                    }
-                    #expect(
-                        action == expected,
-                        "manual=\(isManualOverride) dynamic=\(isDynamic) requested=\(isRequested) available=\(isAvailable) inFlight=\(isInFlight)"
-                    )
-                }
-            }
-        }
     }
 }

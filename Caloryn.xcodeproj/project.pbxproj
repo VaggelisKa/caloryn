@@ -527,8 +527,6 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Caloryn/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Caloryn;
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "Caloryn reads Active Energy from Apple Health to adjust your daily calorie budget on device.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Caloryn does not write data to Apple Health. It only reads Active Energy to adjust your calorie budget on device.";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Caloryn uses the camera to scan food barcodes and look up nutritional information.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -568,8 +566,6 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Caloryn/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Caloryn;
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "Caloryn reads Active Energy from Apple Health to adjust your daily calorie budget on device.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Caloryn does not write data to Apple Health. It only reads Active Energy to adjust your calorie budget on device.";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Caloryn uses the camera to scan food barcodes and look up nutritional information.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

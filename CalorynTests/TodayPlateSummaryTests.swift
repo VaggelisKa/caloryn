@@ -229,11 +229,11 @@ struct TodayPlateSummaryTests {
     @Test("The line beside the big number names the target, and the overshoot once past it")
     func detailsCalorieTargetText() {
         #expect(
-            NutritionDetailsSections.calorieTargetText(adjustedTarget: 2_000, isOver: false, overAmount: 0, locale: us)
+            NutritionDetailsSections.calorieTargetText(target: 2_000, isOver: false, overAmount: 0, locale: us)
                 == "of 2,000 kcal"
         )
         #expect(
-            NutritionDetailsSections.calorieTargetText(adjustedTarget: 2_000, isOver: true, overAmount: 337, locale: danish)
+            NutritionDetailsSections.calorieTargetText(target: 2_000, isOver: true, overAmount: 337, locale: danish)
                 == "of 2.000 kcal, 337 over"
         )
     }
@@ -298,7 +298,7 @@ struct TodayPlateSummaryTests {
                 remaining: remaining,
                 overAmount: overAmount,
                 roundedConsumed: consumed,
-                adjustedTarget: 2_000
+                target: 2_000
             ),
             donut: CalorieDonutSummary(mealTotals: mealTotals, budget: 2_000, isOver: isOver),
             locale: locale ?? us

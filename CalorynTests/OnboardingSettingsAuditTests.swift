@@ -162,7 +162,7 @@ struct AuditOnboardingGoalCalculationTests {
                             }
                             let context = "\(sex) \(age)y \(height)cm \(weight)kg \(activity)"
 
-                            #expect(targets.allSatisfy { $0 >= ActivityCalorieBudget.minimumTarget }, "\(context)")
+                            #expect(targets.allSatisfy { $0 >= 1_200 }, "\(context)")
                             #expect(zip(targets, targets.dropFirst()).allSatisfy { $0 >= $1 }, "\(context)")
                             if let previousActivityTargets {
                                 #expect(zip(previousActivityTargets, targets).allSatisfy { $0 <= $1 }, "\(context)")
@@ -212,19 +212,12 @@ struct AuditOnboardingGoalCalculationTests {
                 )
                 let profile = OnboardingProfileSave.makeProfile(from: .init(
                     age: basis.age, sex: basis.sex, heightCm: basis.heightCm, weightKg: basis.weightKg,
-                    activityLevel: basis.activityLevel, energyCalculationMode: .dynamicHealth,
+                    activityLevel: basis.activityLevel,
                     calorieDeficit: basis.calorieDeficit, calorieTarget: target,
                     isManualTarget: draft.appliesManualTarget,
                     proteinRatio: selection.protein, carbRatio: selection.carbs, fatRatio: selection.fat
                 ))
-                let budget = profile.activityBudget(
-                    consumed: 0,
-                    activeEnergyKcal: 0,
-                    recentActiveEnergySamples: [],
-                    isActivityLoading: false,
-                    activityMessage: nil,
-                    date: makeTestDate(year: 2020, month: 6, day: 15)
-                )
+                let budget = profile.calorieBudget(consumed: 0)
                 let hero = TodayHeroSummary(mealTotals: [:], budget: budget, locale: auditUS)
                 let context = "manual \(isManual), deficit \(deficit), \(basis)"
 
@@ -243,7 +236,6 @@ struct AuditOnboardingGoalCalculationTests {
                 #expect(profile.carbTargetG == selection.grams(for: .carbs), "\(context)")
                 #expect(profile.fatTargetG == selection.grams(for: .fat), "\(context)")
                 #expect(profile.manualOverride == isManual, "\(context)")
-                #expect(profile.energyCalculationMode == (isManual ? .lifestyleEstimate : .dynamicHealth), "\(context)")
 
                 if !isManual {
                     #expect(
@@ -253,7 +245,7 @@ struct AuditOnboardingGoalCalculationTests {
                     )
                 }
 
-                #expect(budget.adjustedTarget == plate.targetKcal, "\(context)")
+                #expect(budget.target == plate.targetKcal, "\(context)")
                 #expect(hero.headline == plate.targetKcal, "\(context)")
                 #expect(hero.caption == "kcal left of \(plate.targetKcal.formatted(.number.locale(auditUS)))", "\(context)")
                 #expect(
@@ -335,149 +327,15 @@ struct AuditOnboardingNutrientSelectionTests {
 }
 
 @MainActor
-@Suite("Settings calorie estimate audit")
-struct AuditSettingsCalorieEstimateTests {
-    @Test("Every combination of the four facts gives one consistent toggle, icon, subtitle and footer")
-    func everyCombinationIsConsistent() {
-        for isManual in [false, true] {
-            for mode in EnergyCalculationMode.allCases {
-                for isHealthAvailable in [false, true] {
-                    for isRequesting in [false, true] {
-                        let estimate = SettingsCalorieEstimate(
-                            isManualOverride: isManual,
-                            energyCalculationMode: mode,
-                            isHealthAvailable: isHealthAvailable,
-                            isRequestingAuthorization: isRequesting
-                        )
-                        let isOn = !isManual && mode == .dynamicHealth
-                        let context = "manual \(isManual), \(mode), health \(isHealthAvailable), requesting \(isRequesting)"
-
-                        #expect(estimate.effectiveEnergyCalculationMode == (isManual ? .lifestyleEstimate : mode), "\(context)")
-                        #expect(estimate.isToggleBound == !isManual, "\(context)")
-                        #expect(estimate.isToggleOn == isOn, "\(context)")
-                        #expect(estimate.showsDynamicMetrics == isOn, "\(context)")
-                        #expect(estimate.isActiveEnergyTrackingEnabled == isOn, "\(context)")
-                        #expect(estimate.modeIconName == (isOn ? "heart.text.square.fill" : "figure.walk"), "\(context)")
-                        #expect(estimate.modeSubtitle.hasPrefix("On") == isOn, "\(context)")
-                        #expect(estimate.isToggleDisabled == (isManual || isRequesting || (!isOn && !isHealthAvailable)), "\(context)")
-                        #expect(estimate.isDynamicStatusInformational == (mode == .dynamicHealth), "\(context)")
-
-                        let footer = estimate.footerText
-                        if isManual {
-                            #expect(footer == "Manual calorie targets stay fixed until you turn the override off.", "\(context)")
-                        } else if !isHealthAvailable {
-                            #expect(footer == AppleHealthAdjustmentSettings.unavailableMessage, "\(context)")
-                        } else if isOn {
-                            #expect(footer.hasPrefix("Auto-adjust uses Apple Health activity"), "\(context)")
-                        } else {
-                            #expect(footer.hasPrefix("Your activity level sets the estimate."), "\(context)")
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    @Test(
-        "Settings, the activity lock and the budget agree on whether Apple Health drives the target",
-        arguments: [false, true], EnergyCalculationMode.allCases
-    )
-    func settingsAgreeWithTheProfile(isManual: Bool, mode: EnergyCalculationMode) {
-        let profile = UserProfile(
-            age: 30, sex: .male, heightCm: 180, weightKg: 80, activityLevel: .moderatelyActive,
-            manualOverride: isManual, energyCalculationMode: mode
-        )
-        let estimate = SettingsCalorieEstimate(
-            isManualOverride: profile.manualOverride,
-            energyCalculationMode: profile.energyCalculationMode,
-            isHealthAvailable: true,
-            isRequestingAuthorization: false
-        )
-        let budget = profile.activityBudget(
-            consumed: 0,
-            activeEnergyKcal: 0,
-            recentActiveEnergySamples: [],
-            isActivityLoading: false,
-            activityMessage: nil,
-            date: makeTestDate(year: 2020, month: 6, day: 15)
-        )
-
-        #expect(estimate.effectiveEnergyCalculationMode == profile.effectiveEnergyCalculationMode)
-        #expect(ProfileEditActivityLevelPolicy.isLocked(for: profile) == estimate.isToggleOn)
-        #expect(budget.isDynamicModeRequested == estimate.isActiveEnergyTrackingEnabled)
-    }
-
-    @Test(
-        "Any tracker message, even an empty one, drops auto-adjust back to the lifestyle estimate",
-        arguments: [nil, "", "Health access denied."], EnergyCalculationMode.allCases
-    )
-    func trackerMessageFallback(message: String?, mode: EnergyCalculationMode) {
+@Suite("Settings goal footer audit")
+struct AuditSettingsGoalFooterTests {
+    @Test("The goal footer says a manual target stays fixed, and otherwise that activity sets the estimate")
+    func footerFollowsTheManualOverride() {
         #expect(
-            SettingsCalorieEstimate.fallsBackToLifestyle(energyCalculationMode: mode, trackerMessage: message)
-                == (message != nil && mode == .dynamicHealth)
+            SettingsGoalSummary.footerText(isManualOverride: true)
+                == "Manual calorie targets stay fixed until you turn the override off."
         )
-    }
-
-    @Test(
-        "Settings and Nutrition Details render the same Apple Health figures the same way",
-        arguments: [0.0, 0.4, 0.5, 49.5, 299.5, 300.49, -0.5, 1e30, .nan, .infinity, -.infinity]
-    )
-    func healthFiguresMatchNutritionDetails(kcal: Double) {
-        #expect(
-            SettingsCalorieEstimate.todayText(activeEnergyKcal: kcal)
-                == NutritionDetailsSummary.activeEnergyText(activeEnergyKcal: kcal)
-        )
-        #expect(
-            SettingsCalorieEstimate.baselineText(activityBaselineKcal: kcal)
-                == NutritionDetailsSummary.baselineText(activityBaselineKcal: kcal)
-        )
-    }
-
-    @Test(
-        "Health figures round half away from zero to whole kilocalories",
-        arguments: [
-            (0.4, "0 kcal"),
-            (0.5, "1 kcal"),
-            (49.5, "50 kcal"),
-            (299.5, "300 kcal"),
-            (300.49, "300 kcal"),
-            (Double.nan, "0 kcal"),
-            (Double.infinity, "0 kcal"),
-        ]
-    )
-    func healthFiguresRound(kcal: Double, expected: String) {
-        #expect(SettingsCalorieEstimate.todayText(activeEnergyKcal: kcal) == expected)
-        #expect(SettingsCalorieEstimate.baselineText(activityBaselineKcal: kcal) == expected)
-    }
-
-    @Test("No baseline reads as a dash on both surfaces")
-    func missingBaselineIsADash() {
-        #expect(SettingsCalorieEstimate.baselineText(activityBaselineKcal: nil) == "-")
-        #expect(NutritionDetailsSummary.baselineText(activityBaselineKcal: nil) == "-")
-    }
-
-    @Test("The valid-days row reads the budget's own count against the required seven", arguments: [0, 1, 6, 7, 14, 21])
-    func validDaysReadAgainstTheRequiredCount(days: Int) {
-        let reference = makeTestDate(year: 2020, month: 6, day: 15)
-        let budget = ActivityCalorieBudget(
-            consumed: 0,
-            staticTarget: 2_000,
-            bmr: 1_600,
-            calorieDeficit: 300,
-            activeEnergyKcal: 0,
-            recentActiveEnergySamples: (0 ..< days).map {
-                DailyActiveEnergySample(date: reference.addingTimeInterval(-86_400 * Double($0 + 1)), activeEnergyKcal: 300)
-            },
-            calculationMode: .dynamicHealth,
-            isManualOverride: false,
-            isActivityLoading: false,
-            activityMessage: nil,
-            date: reference
-        )
-
-        #expect(SettingsCalorieEstimate.validActivityDaysText(validActivityDays: budget.validActivityDays) == "\(days)/7")
-        #expect(SettingsCalorieEstimate.validActivityDaysDescription.contains("7 days are needed"))
-        #expect((budget.dynamicStatus == .ready) == (days >= 7))
+        #expect(SettingsGoalSummary.footerText(isManualOverride: false) == "Your activity level sets the estimate.")
     }
 }
 

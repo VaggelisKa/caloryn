@@ -54,7 +54,7 @@ custom_rules:
   trapping_int_conversion:
     name: "Trapping Int conversion"
     regex: '\bInt\((?:[^()]|\([^()]*\))*\.rounded\(\)\)'
-    message: "Use Double.truncatedSafely. Int(_:) is a trap, not a conversion — NaN, an infinity or anything past Int64 terminates the process, and these numbers reach it from user input, HealthKit and the food API."
+    message: "Use Double.truncatedSafely. Int(_:) is a trap, not a conversion — NaN, an infinity or anything past Int64 terminates the process, and these numbers reach it from user input and the food API."
     severity: error
 
   raw_color_literal:

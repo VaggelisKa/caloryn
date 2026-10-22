@@ -7,7 +7,6 @@ enum OnboardingProfileSave {
         var heightCm: Double
         var weightKg: Double
         var activityLevel: ActivityLevel
-        var energyCalculationMode: EnergyCalculationMode
         var calorieDeficit: Double
         var calorieTarget: Int
         var isManualTarget: Bool
@@ -37,7 +36,6 @@ enum OnboardingProfileSave {
         profile.heightCm = selections.heightCm
         profile.weightKg = selections.weightKg
         profile.activityLevel = selections.activityLevel
-        profile.energyCalculationMode = selections.isManualTarget ? .lifestyleEstimate : selections.energyCalculationMode
         profile.manualOverride = selections.isManualTarget
         profile.calorieDeficit = selections.calorieDeficit
         profile.bmr = NutritionCalculator.bmr(

@@ -42,7 +42,6 @@ struct OnboardingScreen: Screen {
         Step(name: "welcome", advanceIdentifier: "onboarding.getStarted"),
         Step(name: "personal-info", advanceIdentifier: "onboarding.personalInfo.continue"),
         Step(name: "activity-level", advanceIdentifier: "onboarding.activityLevel.continue"),
-        Step(name: "energy-mode", advanceIdentifier: "onboarding.energyMode.continue"),
         Step(name: "goal-summary", advanceIdentifier: "onboarding.goalSummary.continue"),
         Step(name: "macro-ratios", advanceIdentifier: "onboarding.macroRatios.continue"),
         Step(name: "nutrients", advanceIdentifier: "onboarding.startTracking")

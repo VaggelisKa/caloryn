@@ -716,10 +716,7 @@ struct HistoryAnalyticsCoverageTests {
         var valuesByDayKey: [String: DailyGoalSnapshotValues] = [:]
         for (date, target) in snapshotTargets {
             valuesByDayKey[DailyGoalSnapshot.dayKey(for: date, calendar: calendar)] = DailyGoalSnapshotValues(
-                baseCalorieTarget: target,
-                healthAdjustment: 0,
-                effectiveCalorieTarget: target,
-                calculationMode: .lifestyleEstimate,
+                calorieTarget: target,
                 isManualTarget: false
             )
         }

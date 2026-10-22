@@ -20,7 +20,6 @@ struct WidgetProjectionCoverageTests {
     func sectorIdentityIsItsKind() {
         let summary = WidgetPlateSummary(calories: WidgetCalorieSummary(
             consumed: 900,
-            baseTarget: 2_000,
             target: 2_000,
             mealCalories: [.breakfast: 300, .lunch: 400]
         ))

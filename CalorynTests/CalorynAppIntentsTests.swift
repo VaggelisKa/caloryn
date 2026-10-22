@@ -371,9 +371,7 @@ final class CalorynAppIntentsTests: XCTestCase {
             TodayCaloriesIntentResponse.make(
                 snapshot: nil,
                 currentConsumed: 0,
-                expectedBaseTarget: 1_700,
                 expectedTarget: 1_700,
-                expectsDynamicTarget: false,
                 now: now
             ),
             .unavailable("Open Caloryn to refresh today’s calorie snapshot.")
@@ -382,9 +380,7 @@ final class CalorynAppIntentsTests: XCTestCase {
             TodayCaloriesIntentResponse.make(
                 snapshot: stale,
                 currentConsumed: 1_200,
-                expectedBaseTarget: 1_700,
                 expectedTarget: 1_700,
-                expectsDynamicTarget: false,
                 now: now
             ),
             .unavailable("Open Caloryn to refresh today’s calorie snapshot.")
@@ -403,85 +399,11 @@ final class CalorynAppIntentsTests: XCTestCase {
             TodayCaloriesIntentResponse.make(
                 snapshot: snapshot,
                 currentConsumed: 1_350,
-                expectedBaseTarget: 1_700,
                 expectedTarget: 1_700,
-                expectsDynamicTarget: false,
                 now: now
             ),
             .unavailable("Open Caloryn to refresh today’s calorie snapshot.")
         )
-    }
-
-    func testCalorieResponseRejectsDynamicSnapshotWhenCurrentHealthTargetDiffers() {
-        let now = makeTestDate(year: 2026, month: 7, day: 25)
-        let snapshot = DailyWidgetSnapshot(
-            generatedAt: now,
-            dayStart: Calendar.current.startOfDay(for: now),
-            state: .ready,
-            calories: WidgetCalorieSummary(
-                consumed: 1_200,
-                baseTarget: 1_700,
-                target: 1_900,
-                dynamicAdjustment: 200
-            ),
-            usesDynamicTarget: true,
-            activityRefreshedAt: now
-        )
-
-        XCTAssertEqual(
-            TodayCaloriesIntentResponse.make(
-                snapshot: snapshot,
-                currentConsumed: 1_200,
-                expectedBaseTarget: 1_700,
-                expectedTarget: 2_000,
-                expectsDynamicTarget: true,
-                now: now
-            ),
-            .unavailable("Open Caloryn to refresh today’s calorie snapshot.")
-        )
-    }
-
-    func testCurrentDynamicBudgetUsesLocalHealthData() async {
-        let now = makeTestDate(year: 2026, month: 7, day: 25)
-        let profile = UserProfile(
-            age: 30,
-            sex: .male,
-            heightCm: 180,
-            weightKg: 75,
-            activityLevel: .moderatelyActive,
-            dailyCalorieTarget: 1_700,
-            manualOverride: false,
-            calorieDeficit: 0,
-            energyCalculationMode: .dynamicHealth
-        )
-        let samples = (1...7).map { offset in
-            DailyActiveEnergySample(
-                date: Calendar.current.date(
-                    byAdding: .day,
-                    value: -offset,
-                    to: now
-                )!,
-                activeEnergyKcal: 300
-            )
-        }
-        let reader = StubActiveEnergyReader(
-            isHealthAvailable: { true },
-            activeEnergyBurnedKcal: { _ in 500 },
-            dailyActiveEnergyBurnedKcal: { _, _ in samples },
-            observeActiveEnergyChanges: { _ in nil }
-        )
-
-        let budget = await CurrentActivityCalorieBudget.load(
-            profile: profile,
-            consumed: 1_200,
-            now: now,
-            calendar: .current,
-            reader: reader
-        )
-
-        XCTAssertEqual(budget?.activeEnergyKcal, 500)
-        XCTAssertEqual(budget?.recentActiveEnergySamples, samples)
-        XCTAssertEqual(budget?.adjustedTarget, (budget?.baseTarget ?? 0) + 200)
     }
 
     func testCalorieCheckUsesCurrentLocalSnapshotWithoutNetwork() async throws {
@@ -615,7 +537,6 @@ final class CalorynAppIntentsTests: XCTestCase {
             state: .ready,
             calories: WidgetCalorieSummary(
                 consumed: consumed,
-                baseTarget: target,
                 target: target
             )
         )

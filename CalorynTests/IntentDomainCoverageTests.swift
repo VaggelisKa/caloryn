@@ -78,11 +78,7 @@ private func makeTemporarySnapshotStore() -> (WidgetSnapshotStore, URL) {
 
 private func readySnapshot(
     consumed: Double,
-    baseTarget: Int,
     target: Int,
-    dynamicAdjustment: Int = 0,
-    usesDynamicTarget: Bool = false,
-    activityRefreshedAt: Date? = nil,
     state: DailyWidgetState = .ready,
     on date: Date
 ) -> DailyWidgetSnapshot {
@@ -92,12 +88,8 @@ private func readySnapshot(
         state: state,
         calories: WidgetCalorieSummary(
             consumed: consumed,
-            baseTarget: baseTarget,
-            target: target,
-            dynamicAdjustment: dynamicAdjustment
-        ),
-        usesDynamicTarget: usesDynamicTarget,
-        activityRefreshedAt: activityRefreshedAt
+            target: target
+        )
     )
 }
 
@@ -494,27 +486,22 @@ struct TodayCaloriesResponseCoverageTests {
     }
 
     @Test("A matching same-day snapshot is reported; a mismatched one is not", arguments: [
-        (1_200.4, 1_700, 1_700, false, true),
-        (1_200.6, 1_700, 1_700, false, false),
-        (1_200.0, 1_800, 1_700, false, false),
-        (1_200.0, 1_700, 1_700, true, false),
+        (1_200.4, 1_700, true),
+        (1_200.6, 1_700, false),
+        (1_200.0, 1_800, false),
     ])
     func snapshotMustMatchLocalState(
         currentConsumed: Double,
-        expectedBase: Int,
         expectedTarget: Int,
-        expectsDynamic: Bool,
         expectedAvailable: Bool
     ) {
         let now = localDate(2026, 7, 25, 18)
-        let snapshot = readySnapshot(consumed: 1_200, baseTarget: 1_700, target: 1_700, on: now)
+        let snapshot = readySnapshot(consumed: 1_200, target: 1_700, on: now)
 
         let response = TodayCaloriesIntentResponse.make(
             snapshot: snapshot,
             currentConsumed: currentConsumed,
-            expectedBaseTarget: expectedBase,
             expectedTarget: expectedTarget,
-            expectsDynamicTarget: expectsDynamic,
             now: now,
             calendar: deviceDayCalendar,
             locale: englishLocale
@@ -530,15 +517,13 @@ struct TodayCaloriesResponseCoverageTests {
     ])
     func nonReadySnapshotIsUnavailable(state: DailyWidgetState) {
         let now = localDate(2026, 7, 25)
-        let snapshot = readySnapshot(consumed: 0, baseTarget: 1_700, target: 1_700, state: state, on: now)
+        let snapshot = readySnapshot(consumed: 0, target: 1_700, state: state, on: now)
 
         #expect(
             TodayCaloriesIntentResponse.make(
                 snapshot: snapshot,
                 currentConsumed: 0,
-                expectedBaseTarget: 1_700,
                 expectedTarget: 1_700,
-                expectsDynamicTarget: false,
                 now: now,
                 calendar: deviceDayCalendar,
                 locale: englishLocale
@@ -549,15 +534,13 @@ struct TodayCaloriesResponseCoverageTests {
     @Test("Expected targets below one are compared as one, like the snapshot stores them")
     func expectedTargetsFloorAtOne() {
         let now = localDate(2026, 7, 25)
-        let snapshot = readySnapshot(consumed: 10, baseTarget: 0, target: 0, on: now)
+        let snapshot = readySnapshot(consumed: 10, target: 0, on: now)
 
         #expect(
             TodayCaloriesIntentResponse.make(
                 snapshot: snapshot,
                 currentConsumed: 10,
-                expectedBaseTarget: -5,
                 expectedTarget: 0,
-                expectsDynamicTarget: false,
                 now: now,
                 calendar: deviceDayCalendar,
                 locale: englishLocale
@@ -650,9 +633,7 @@ struct CalorynIntentDataStoreCoverageTests {
         #expect(snapshot.generatedAt == now)
         #expect(snapshot.dayStart == deviceDayCalendar.startOfDay(for: now))
         #expect(snapshot.calories.consumed == 550)
-        #expect(snapshot.calories.baseTarget == 1_700)
         #expect(snapshot.calories.target == 1_700)
-        #expect(snapshot.usesDynamicTarget == false)
         #expect(mealSummary(snapshot) == ["lunch=350", "dinner=200"])
     }
 
@@ -664,16 +645,11 @@ struct CalorynIntentDataStoreCoverageTests {
         let favorite = try insertFavoriteFood(name: "Yogurt", portion: 200, favoritedAt: localDate(2026, 7, 1), in: context)
         try context.save()
         let now = localDate(2026, 7, 25, 15)
-        let refreshedAt = localDate(2026, 7, 25, 14)
         let (snapshotStore, directory) = makeTemporarySnapshotStore()
         defer { try? FileManager.default.removeItem(at: directory) }
         try snapshotStore.save(readySnapshot(
             consumed: 0,
-            baseTarget: 2_100,
             target: 2_350,
-            dynamicAdjustment: 250,
-            usesDynamicTarget: true,
-            activityRefreshedAt: refreshedAt,
             on: localDate(2026, 7, 25, 8)
         ))
         let store = CalorynIntentDataStore(modelContainer: container, widgetSnapshotStore: snapshotStore)
@@ -683,11 +659,7 @@ struct CalorynIntentDataStoreCoverageTests {
         let snapshot = try #require(try snapshotStore.load())
         #expect(snapshot.generatedAt == now)
         #expect(snapshot.calories.consumed == 200)
-        #expect(snapshot.calories.baseTarget == 2_100)
         #expect(snapshot.calories.target == 2_350)
-        #expect(snapshot.calories.dynamicAdjustment == 250)
-        #expect(snapshot.usesDynamicTarget)
-        #expect(snapshot.activityRefreshedAt == refreshedAt)
         #expect(mealSummary(snapshot) == ["breakfast=200"])
     }
 
@@ -707,10 +679,7 @@ struct CalorynIntentDataStoreCoverageTests {
         defer { try? FileManager.default.removeItem(at: directory) }
         try snapshotStore.save(readySnapshot(
             consumed: 900,
-            baseTarget: 2_500,
             target: 2_800,
-            dynamicAdjustment: 300,
-            usesDynamicTarget: true,
             state: previousState,
             on: previousDate
         ))
@@ -722,9 +691,7 @@ struct CalorynIntentDataStoreCoverageTests {
         #expect(snapshot.state == .ready)
         #expect(snapshot.dayStart == deviceDayCalendar.startOfDay(for: now))
         #expect(snapshot.calories.consumed == 120)
-        #expect(snapshot.calories.baseTarget == 1_900)
         #expect(snapshot.calories.target == 1_900)
-        #expect(snapshot.usesDynamicTarget == false)
         #expect(mealSummary(snapshot) == ["snack=120"])
     }
 
@@ -746,7 +713,6 @@ struct CalorynIntentDataStoreCoverageTests {
         _ = try store.logFavorite(id: favorite.id.uuidString, meal: .lunch, now: localDate(2026, 7, 25, 15), calendar: deviceDayCalendar)
 
         let snapshot = try #require(try snapshotStore.load())
-        #expect(snapshot.calories.baseTarget == 2_300)
         #expect(snapshot.calories.target == 2_300)
         #expect(snapshot.calories.consumed == 150)
     }
@@ -775,7 +741,7 @@ struct CalorynIntentDataStoreCoverageTests {
         let (snapshotStore, directory) = makeTemporarySnapshotStore()
         defer { try? FileManager.default.removeItem(at: directory) }
         if hasSameDaySnapshot {
-            try snapshotStore.save(readySnapshot(consumed: 0, baseTarget: 1_700, target: 1_700, on: localDate(2026, 7, 25, 8)))
+            try snapshotStore.save(readySnapshot(consumed: 0, target: 1_700, on: localDate(2026, 7, 25, 8)))
         }
         let store = CalorynIntentDataStore(modelContainer: container, widgetSnapshotStore: snapshotStore)
 
@@ -831,7 +797,7 @@ struct CalorynIntentDataStoreCoverageTests {
         try container.mainContext.save()
         let (snapshotStore, directory) = makeTemporarySnapshotStore()
         defer { try? FileManager.default.removeItem(at: directory) }
-        try snapshotStore.save(readySnapshot(consumed: 0, baseTarget: 1_700, target: 1_700, state: state, on: snapshotDate))
+        try snapshotStore.save(readySnapshot(consumed: 0, target: 1_700, state: state, on: snapshotDate))
         let store = CalorynIntentDataStore(modelContainer: container, widgetSnapshotStore: snapshotStore)
 
         let response = try await store.todayCaloriesResponse(
@@ -857,7 +823,7 @@ struct CalorynIntentDataStoreCoverageTests {
         let now = localDate(2026, 7, 25, 18)
         let (snapshotStore, directory) = makeTemporarySnapshotStore()
         defer { try? FileManager.default.removeItem(at: directory) }
-        try snapshotStore.save(readySnapshot(consumed: 300, baseTarget: 1_700, target: 1_700, on: now))
+        try snapshotStore.save(readySnapshot(consumed: 300, target: 1_700, on: now))
         let store = CalorynIntentDataStore(modelContainer: container, widgetSnapshotStore: snapshotStore)
 
         let response = try await store.todayCaloriesResponse(now: now, calendar: deviceDayCalendar, locale: englishLocale)
@@ -895,9 +861,7 @@ struct CalorynIntentDataStoreCoverageTests {
             generatedAt: now,
             dayStart: santiago.startOfDay(for: now),
             state: .ready,
-            calories: WidgetCalorieSummary(consumed: 300, baseTarget: 1_700, target: 1_700, dynamicAdjustment: 0),
-            usesDynamicTarget: false,
-            activityRefreshedAt: nil
+            calories: WidgetCalorieSummary(consumed: 300, target: 1_700)
         ))
         let store = CalorynIntentDataStore(modelContainer: container, widgetSnapshotStore: snapshotStore)
 
@@ -923,7 +887,7 @@ struct CalorynIntentDataStoreCoverageTests {
         let now = localDate(2026, 7, 25, 18)
         let (snapshotStore, directory) = makeTemporarySnapshotStore()
         defer { try? FileManager.default.removeItem(at: directory) }
-        try snapshotStore.save(readySnapshot(consumed: 0, baseTarget: snapshotTarget, target: snapshotTarget, on: now))
+        try snapshotStore.save(readySnapshot(consumed: 0, target: snapshotTarget, on: now))
         let store = CalorynIntentDataStore(modelContainer: container, widgetSnapshotStore: snapshotStore)
 
         let response = try await store.todayCaloriesResponse(now: now, calendar: deviceDayCalendar, locale: englishLocale)

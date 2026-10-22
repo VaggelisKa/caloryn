@@ -382,10 +382,7 @@ struct HistoryCalendarInjectionTests {
         for offset in 1...31 {
             guard let day = calendar.date(byAdding: .day, value: -offset, to: now) else { continue }
             values[DailyGoalSnapshot.dayKey(for: day, calendar: calendar)] = DailyGoalSnapshotValues(
-                baseCalorieTarget: 2_000,
-                healthAdjustment: 0,
-                effectiveCalorieTarget: 2_000,
-                calculationMode: .lifestyleEstimate,
+                calorieTarget: 2_000,
                 isManualTarget: false
             )
         }

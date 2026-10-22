@@ -19,7 +19,7 @@ struct WidgetSnapshotBridgeTests {
             generatedAt: generatedAt,
             dayStart: Self.fixedDayStart,
             state: .ready,
-            calories: WidgetCalorieSummary(consumed: consumed, baseTarget: target, target: target)
+            calories: WidgetCalorieSummary(consumed: consumed, target: target)
         )
     }
 
@@ -111,7 +111,7 @@ struct WidgetSnapshotBridgeTests {
             generatedAt: .now,
             dayStart: .now.startOfDay,
             state: .ready,
-            calories: WidgetCalorieSummary(consumed: 500, baseTarget: 2_000, target: 2_000),
+            calories: WidgetCalorieSummary(consumed: 500, target: 2_000),
             schemaVersion: WidgetConstants.currentSchemaVersion + 1
         )
 
@@ -129,7 +129,7 @@ struct WidgetSnapshotBridgeTests {
             generatedAt: .now,
             dayStart: .now.startOfDay,
             state: .ready,
-            calories: WidgetCalorieSummary(consumed: 500, baseTarget: 2_000, target: 2_000),
+            calories: WidgetCalorieSummary(consumed: 500, target: 2_000),
             schemaVersion: WidgetConstants.currentSchemaVersion + 1
         )
         coordinator.publish(invalid)

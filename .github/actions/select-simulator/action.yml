@@ -9,8 +9,8 @@ inputs:
   preferred-device:
     description: >
       Device model to prefer. Coverage of code that merely runs during app
-      start-up (HealthKit, for example) varies between simulator models, so
-      pinning one keeps the coverage ratchet comparing like with like.
+      start-up varies between simulator models, so pinning one keeps the
+      coverage ratchet comparing like with like.
     required: false
     default: "iPhone 17"
 

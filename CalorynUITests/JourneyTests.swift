@@ -520,7 +520,6 @@ final class JourneyTests: UITestCase {
             onboarding.tap(onboarding.getStarted)
             onboarding.tap(onboarding.element("onboarding.personalInfo.continue"))
             onboarding.tap(onboarding.element("onboarding.activityLevel.continue"))
-            onboarding.tap(onboarding.element("onboarding.energyMode.continue"))
             onboarding.tap(onboarding.setManually)
             onboarding.awaitTappable(onboarding.manualCalorieTarget).replaceText("1800")
             if app.keyboards.firstMatch.exists {

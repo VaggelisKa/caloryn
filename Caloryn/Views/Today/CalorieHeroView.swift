@@ -71,8 +71,6 @@ struct CalorieHeroView: View {
                 .minimumScaleFactor(0.8)
                 .contentTransition(textTransition)
 
-            dynamicTargetCue
-
             Text(displayed.eatenLine)
                 .font(CalorynTheme.legendText)
                 .foregroundStyle(CalorynTheme.textSecondary)
@@ -137,44 +135,6 @@ struct CalorieHeroView: View {
         }
     }
 
-    @ViewBuilder
-    private var dynamicTargetCue: some View {
-        switch summary.ring.cue {
-        case .none:
-            EmptyView()
-        case .updating:
-            HStack(spacing: 5) {
-                ProgressView()
-                    .controlSize(.mini)
-
-                Text(summary.ring.cue.text ?? "")
-                    .lineLimit(1)
-            }
-            .font(CalorynTheme.microCaption)
-            .foregroundStyle(CalorynTheme.textSecondary)
-            .padding(.top, 2)
-        case .increase:
-            cueLabel(iconName: "flame.fill", color: CalorynTheme.textPrimary)
-        case .reduction:
-            cueLabel(iconName: "arrow.down.circle.fill", color: CalorynTheme.textSecondary)
-        }
-    }
-
-    private func cueLabel(iconName: String, color: Color) -> some View {
-        HStack(spacing: 4) {
-            Image(systemName: iconName)
-                .font(CalorynTheme.compactIcon)
-
-            Text(summary.ring.cue.text ?? "")
-                .lineLimit(1)
-                .minimumScaleFactor(0.78)
-        }
-        .font(CalorynTheme.numericMicroCaptionEmphasized)
-        .foregroundStyle(color)
-        .padding(.top, 2)
-        .accessibilityLabel(summary.ring.cue.accessibilityLabel ?? "")
-    }
-
     private func numberTransition(for value: Int) -> ContentTransition {
         accessibilityReduceMotion ? .identity : .numericText(value: Double(value))
     }
@@ -224,37 +184,6 @@ private struct CalorieRingButtonStyle: ButtonStyle {
     .background(CalorynTheme.backgroundPrimary)
 }
 
-#Preview("Hero - dynamic increase") {
-    CalorieHeroView(
-        summary: TodayHeroSummary(
-            mealTotals: [.breakfast: 600, .lunch: 700],
-            budget: previewBudget(consumed: 1_300, mode: .dynamicHealth, activeEnergy: 500)
-        ),
-        onDetailsRequested: {}
-    )
-    .padding(20)
-    .background(CalorynTheme.backgroundPrimary)
-}
-
-private func previewBudget(
-    consumed: Double,
-    mode: EnergyCalculationMode = .lifestyleEstimate,
-    activeEnergy: Double = 0
-) -> ActivityCalorieBudget {
-    ActivityCalorieBudget(
-        consumed: consumed,
-        staticTarget: 2_000,
-        bmr: 1_700,
-        calorieDeficit: 300,
-        activeEnergyKcal: activeEnergy,
-        recentActiveEnergySamples: (1...10).compactMap { offset in
-            Calendar.current.date(byAdding: .day, value: -offset, to: Date.now.startOfDay)
-                .map { DailyActiveEnergySample(date: $0, activeEnergyKcal: 300) }
-        },
-        calculationMode: mode,
-        isManualOverride: false,
-        isActivityLoading: false,
-        activityMessage: nil,
-        date: .now
-    )
+private func previewBudget(consumed: Double) -> CalorieBudget {
+    CalorieBudget(consumed: consumed, target: 2_000)
 }
