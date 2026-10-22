@@ -12,7 +12,13 @@ enum CSVExporter {
     static func generateCSV(from entries: [FoodLogEntry]) -> String {
         var csv = "Date,Meal,Food,Portion (g),Calories,Protein (g),Carbs (g),Fat (g),Fiber (g)\n"
 
-        let sorted = entries.sorted { $0.date < $1.date }
+        let sorted = entries.sorted { lhs, rhs in
+            if lhs.date != rhs.date { return lhs.date < rhs.date }
+            if lhs.mealType.sortOrder != rhs.mealType.sortOrder {
+                return lhs.mealType.sortOrder < rhs.mealType.sortOrder
+            }
+            return lhs.createdAt < rhs.createdAt
+        }
 
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
