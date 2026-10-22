@@ -143,14 +143,14 @@ struct NutritionDetailsView: View {
                         Button {
                             share(DayExportPDF.exportURL(for: exportReport))
                         } label: {
-                            Label("PDF (for printing)", systemImage: "doc.richtext")
+                            Label("PDF", systemImage: "doc.richtext")
                         }
                         .accessibilityIdentifier("nutritionDetails.exportDay.pdf")
 
                         Button {
                             share(CSVExporter.exportURL(from: entries, fileName: exportReport.fileName))
                         } label: {
-                            Label("CSV (for spreadsheets)", systemImage: "tablecells")
+                            Label("CSV", systemImage: "tablecells")
                         }
                         .accessibilityIdentifier("nutritionDetails.exportDay.csv")
                     } label: {
