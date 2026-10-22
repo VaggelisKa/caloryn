@@ -3,8 +3,8 @@ import Foundation
 enum WidgetMeal: String, CaseIterable, Codable, Hashable, Identifiable, Sendable {
     case breakfast
     case lunch
-    case dinner
     case snack
+    case dinner
 
     var id: String { rawValue }
 

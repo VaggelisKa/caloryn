@@ -35,8 +35,8 @@ struct CalorieDonutSummaryTests {
         #expect(summary.legend == [
             .init(meal: .breakfast, kcal: 382, isLogged: true),
             .init(meal: .lunch, kcal: 463, isLogged: true),
-            .init(meal: .dinner, kcal: 0, isLogged: false),
             .init(meal: .snack, kcal: 118, isLogged: true),
+            .init(meal: .dinner, kcal: 0, isLogged: false),
         ])
     }
 
@@ -83,7 +83,7 @@ struct CalorieDonutSummaryTests {
         )
 
         #expect(summary.sectors.map(\.kind) == [
-            .meal(.breakfast), .meal(.lunch), .meal(.dinner), .meal(.snack), .over,
+            .meal(.breakfast), .meal(.lunch), .meal(.snack), .meal(.dinner), .over,
         ])
 
         let total = summary.sectors.map(\.kcal).reduce(0, +)
@@ -122,7 +122,7 @@ struct CalorieDonutSummaryTests {
             isOver: true
         )
 
-        #expect(summary.legend.prefix(4).map(\.kcal) == [382, 463, 1_377, 118])
+        #expect(summary.legend.prefix(4).map(\.kcal) == [382, 463, 118, 1_377])
     }
 
     @Test("Over budget, the legend ends with an Over row carrying the overshoot")
@@ -134,7 +134,7 @@ struct CalorieDonutSummaryTests {
         )
 
         #expect(summary.legend.map(\.key) == [
-            .meal(.breakfast), .meal(.lunch), .meal(.dinner), .meal(.snack), .over,
+            .meal(.breakfast), .meal(.lunch), .meal(.snack), .meal(.dinner), .over,
         ])
         #expect(summary.legend.last == .over(kcal: 340))
         #expect(summary.legend.last?.meal == nil)
@@ -164,7 +164,7 @@ struct CalorieDonutSummaryTests {
 
         #expect(summary.sectors == [.init(kind: .remaining, kcal: 2_000)])
         #expect(summary.legend.map(\.isLogged) == [false, false, false, false])
-        #expect(summary.legend.map(\.meal) == [.breakfast, .lunch, .dinner, .snack])
+        #expect(summary.legend.map(\.meal) == [.breakfast, .lunch, .snack, .dinner])
         #expect(summary.remainingKcal == 2_000)
         #expect(summary.eatenKcal == 0)
     }

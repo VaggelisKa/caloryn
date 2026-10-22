@@ -160,7 +160,7 @@ struct HistoryOverviewSummaryCoverageTests {
         #expect(row?.id == id)
         #expect(row?.iconName == iconName)
         #expect(row?.caloriesText == "420 kcal")
-        #expect(breakdown.mealRows.map(\.id) == ["breakfast", "lunch", "dinner", "snack"])
+        #expect(breakdown.mealRows.map(\.id) == ["breakfast", "lunch", "snack", "dinner"])
     }
 
     private func makeSummary(
