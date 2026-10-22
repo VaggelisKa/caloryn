@@ -233,6 +233,7 @@ final class FeatureJourneyTests: UITestCase {
         }
 
         then("a different time chosen on the wheel is the one the row reports") {
+            scroll(to: reminder.time, in: app)
             let before = reminder.time.label
             reminder.tap(reminder.time)
             let picker = reminder.awaitTappable(reminder.timePicker)

@@ -7,20 +7,8 @@ struct TodayHeroBudgetCoverageTests {
     private let us = Locale(identifier: "en_US")
     private let danish = Locale(identifier: "da_DK")
 
-    private func budget(consumed: Double, target: Int = 2_000) -> ActivityCalorieBudget {
-        ActivityCalorieBudget(
-            consumed: consumed,
-            staticTarget: target,
-            bmr: 1_700,
-            calorieDeficit: 500,
-            activeEnergyKcal: 0,
-            recentActiveEnergySamples: [],
-            calculationMode: .lifestyleEstimate,
-            isManualOverride: false,
-            isActivityLoading: false,
-            activityMessage: nil,
-            date: Date(timeIntervalSince1970: 1_760_000_000)
-        )
+    private func budget(consumed: Double, target: Int = 2_000) -> CalorieBudget {
+        CalorieBudget(consumed: consumed, target: target)
     }
 
     private func hero(_ meals: [MealType: Double], target: Int = 2_000, locale: Locale? = nil) -> TodayHeroSummary {

@@ -320,10 +320,9 @@ struct GoalEditDraftTests {
         #expect(profile.target(for: .fiber) == nil)
     }
 
-    @Test("Saving a manual target stores it and drops the profile out of dynamic energy")
+    @Test("Saving a manual target stores it and pins the profile to it")
     func savingAManualTargetPinsTheProfile() {
         let profile = makeProfile()
-        profile.energyCalculationMode = .dynamicHealth
 
         var draft = GoalEditDraft(profile: profile)
         draft.manualOverride = true
@@ -332,21 +331,6 @@ struct GoalEditDraftTests {
 
         #expect(profile.dailyCalorieTarget == 1_750)
         #expect(profile.manualOverride)
-        #expect(profile.energyCalculationMode == .lifestyleEstimate)
-        #expect(draft.disablesAppleHealthAdjustment)
-    }
-
-    @Test("Saving without a manual override leaves the energy mode alone")
-    func savingCalculatedLeavesTheModeAlone() {
-        let profile = makeProfile()
-        profile.energyCalculationMode = .dynamicHealth
-
-        var draft = GoalEditDraft(profile: profile)
-        draft.manualOverride = false
-        draft.apply(to: profile)
-
-        #expect(profile.energyCalculationMode == .dynamicHealth)
-        #expect(!draft.disablesAppleHealthAdjustment)
     }
 
     @Test("Turning the manual toggle on pre-fills the field with the current calculation")

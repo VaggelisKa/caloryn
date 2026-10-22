@@ -272,7 +272,7 @@ the expected colour instead.
 ./scripts/theme-screenshots.sh [output-dir]     # default /tmp/caloryn-theme-shots
 ```
 
-Captures 25 surfaces in both appearances — all seven onboarding steps, Today, the food
+Captures 24 surfaces in both appearances — all six onboarding steps, Today, the food
 search sheet, its results, those results *while the search is still running*, and the
 portion picker, History with both drill-downs, Settings with both editors, My Foods,
 multi-add review and its portion editor, the three creation sheets, and the ingredient

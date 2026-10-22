@@ -391,10 +391,7 @@ private extension HistoryPreviewFixtures {
 
     static var exactTargetValues: DailyGoalSnapshotValues {
         DailyGoalSnapshotValues(
-            baseCalorieTarget: 2_000,
-            healthAdjustment: 0,
-            effectiveCalorieTarget: 2_000,
-            calculationMode: .lifestyleEstimate,
+            calorieTarget: 2_000,
             isManualTarget: true
         )
     }

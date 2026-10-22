@@ -57,9 +57,6 @@ bundles it reported less view coverage than the UI bundle alone.
 
 ## Not counted, or not countable
 
-- `HealthKitService`'s `HKHealthStore` calls: only the code around them (error
-  descriptions, the timeout gate) is unit-testable. Which start-up lines run also
-  varies by simulator model, hence the device in the baseline cache keys.
 - The widget extension's views: the unit test bundle is hosted in the app and
   cannot import the extension, and the UI plan does not drive SpringBoard. The
   shared projection logic in `CalorynShared/` is covered.

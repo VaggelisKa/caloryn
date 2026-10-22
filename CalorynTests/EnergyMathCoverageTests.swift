@@ -124,33 +124,6 @@ struct EnergyMathHandComputedTests {
     }
 }
 
-@Suite("Energy calculation mode copy")
-struct EnergyCalculationModeCopyTests {
-    @Test(
-        "Each mode names itself in the words Settings shows",
-        arguments: [
-            (EnergyCalculationMode.lifestyleEstimate, "lifestyleEstimate", "Activity Level Estimate"),
-            (.dynamicHealth, "dynamicHealth", "Auto-adjust Calories"),
-        ]
-    )
-    func copy(mode: EnergyCalculationMode, raw: String, name: String) {
-        #expect(mode.id == raw)
-        #expect(mode.rawValue == raw)
-        #expect(mode.displayName == name)
-    }
-
-    @Test("The persisted raw values decode back to their modes")
-    func rawValuesDecode() throws {
-        let decoded = try JSONDecoder().decode(
-            [EnergyCalculationMode].self,
-            from: Data(#"["lifestyleEstimate","dynamicHealth"]"#.utf8)
-        )
-
-        #expect(decoded == [.lifestyleEstimate, .dynamicHealth])
-        #expect(EnergyCalculationMode(rawValue: "legacy") == nil)
-    }
-}
-
 @Suite("Activity level table")
 struct ActivityLevelTableTests {
     @Test(

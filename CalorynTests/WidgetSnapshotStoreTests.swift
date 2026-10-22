@@ -33,7 +33,6 @@ final class WidgetSnapshotStoreTests: XCTestCase {
             state: .ready,
             calories: WidgetCalorieSummary(
                 consumed: 963,
-                baseTarget: 2_000,
                 target: 2_000,
                 mealCalories: [.snack: 118, .breakfast: 382, .lunch: 463]
             )
@@ -68,6 +67,24 @@ final class WidgetSnapshotStoreTests: XCTestCase {
 
         XCTAssertEqual(loaded.calories.consumed, 800)
         XCTAssertEqual(loaded.calories.meals, [])
+        XCTAssertEqual(loaded.state, .ready)
+    }
+
+    func testASnapshotSavedWithAnAutoAdjustedTargetLoadsAsUnavailable() throws {
+        let json = """
+        {"activityRefreshedAt":null,"calories":{"baseTarget":2000,"consumed":800,"dynamicAdjustment":200,"target":2200},\
+        "dayStart":"2023-11-14T00:00:00Z","generatedAt":"2023-11-14T22:13:20Z","schemaVersion":1,"state":"ready",\
+        "usesDynamicTarget":true}
+        """
+        try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true)
+        try Data(json.utf8).write(to: directoryURL.appendingPathComponent(WidgetConstants.snapshotFileName))
+        let store = WidgetSnapshotStore(directoryURL: directoryURL)
+
+        let loaded = try XCTUnwrap(try store.load())
+        let nextDay = try XCTUnwrap(ISO8601DateFormatter().date(from: "2023-11-15T12:00:00Z"))
+
+        XCTAssertEqual(loaded.state, .unavailable)
+        XCTAssertEqual(loaded.displaySnapshot(at: nextDay).snapshot.state, .unavailable)
     }
 
     func testMissingSnapshotReturnsNil() throws {
@@ -82,7 +99,7 @@ final class WidgetSnapshotStoreTests: XCTestCase {
             generatedAt: .now,
             dayStart: .now.startOfDay,
             state: .ready,
-            calories: WidgetCalorieSummary(consumed: 800, baseTarget: 2_000, target: 2_000),
+            calories: WidgetCalorieSummary(consumed: 800, target: 2_000),
             schemaVersion: WidgetConstants.currentSchemaVersion + 1
         )
 
@@ -104,12 +121,9 @@ final class WidgetSnapshotStoreTests: XCTestCase {
             state: .ready,
             calories: WidgetCalorieSummary(
                 consumed: 1_200,
-                baseTarget: 1_900,
                 target: 2_100,
-                dynamicAdjustment: 200,
                 mealCalories: [.breakfast: 1_200]
-            ),
-            usesDynamicTarget: true
+            )
         )
 
         let result = snapshot.displaySnapshot(at: nextDay, calendar: calendar)
@@ -117,13 +131,12 @@ final class WidgetSnapshotStoreTests: XCTestCase {
         XCTAssertTrue(result.isStale)
         XCTAssertEqual(result.snapshot.calories.consumed, 0)
         XCTAssertEqual(result.snapshot.calories.meals, [])
-        XCTAssertEqual(result.snapshot.calories.target, 1_900)
-        XCTAssertEqual(result.snapshot.calories.dynamicAdjustment, 0)
+        XCTAssertEqual(result.snapshot.calories.target, 2_100)
     }
 
     func testRenderIdentityIgnoresGeneratedAtButTracksCalorieChanges() {
         let dayStart = Date(timeIntervalSince1970: 1_700_000_000).startOfDay
-        let calories = WidgetCalorieSummary(consumed: 800, baseTarget: 2_000, target: 2_000)
+        let calories = WidgetCalorieSummary(consumed: 800, target: 2_000)
         let snapshot = DailyWidgetSnapshot(
             generatedAt: dayStart,
             dayStart: dayStart,
@@ -140,7 +153,7 @@ final class WidgetSnapshotStoreTests: XCTestCase {
             generatedAt: dayStart,
             dayStart: dayStart,
             state: .ready,
-            calories: WidgetCalorieSummary(consumed: 900, baseTarget: 2_000, target: 2_000)
+            calories: WidgetCalorieSummary(consumed: 900, target: 2_000)
         )
 
         XCTAssertEqual(snapshot.renderIdentity, regenerated.renderIdentity)
@@ -155,13 +168,13 @@ final class WidgetSnapshotStoreTests: XCTestCase {
             generatedAt: dayStart,
             dayStart: dayStart,
             state: .ready,
-            calories: WidgetCalorieSummary(consumed: 800, baseTarget: 2_000, target: 2_000, mealCalories: [.breakfast: 800])
+            calories: WidgetCalorieSummary(consumed: 800, target: 2_000, mealCalories: [.breakfast: 800])
         )
         let lunch = DailyWidgetSnapshot(
             generatedAt: dayStart,
             dayStart: dayStart,
             state: .ready,
-            calories: WidgetCalorieSummary(consumed: 800, baseTarget: 2_000, target: 2_000, mealCalories: [.lunch: 800])
+            calories: WidgetCalorieSummary(consumed: 800, target: 2_000, mealCalories: [.lunch: 800])
         )
 
         XCTAssertFalse(breakfast.hasSameRenderableContent(as: lunch))

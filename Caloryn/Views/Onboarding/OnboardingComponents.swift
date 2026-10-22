@@ -112,7 +112,6 @@ struct OnboardingChoiceRow: View {
     let title: String
     let detail: String
     let isSelected: Bool
-    var isDisabled = false
     var accessibilityIdentifier: String?
     let action: () -> Void
 
@@ -139,8 +138,6 @@ struct OnboardingChoiceRow: View {
             .contentShape([.interaction, .accessibility], Rectangle())
         }
         .buttonStyle(.plain)
-        .disabled(isDisabled)
-        .opacity(isDisabled ? 0.45 : 1)
         .accessibilityElement(children: .ignore)
         .accessibilityIdentifier(accessibilityIdentifier ?? "")
         .accessibilityLabel("\(title), \(detail)")

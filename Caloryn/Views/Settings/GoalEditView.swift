@@ -190,9 +190,6 @@ struct GoalEditView: View {
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button {
-                    if draft.disablesAppleHealthAdjustment {
-                        AppleHealthAdjustmentSettings.disable()
-                    }
                     draft.apply(to: profile)
                     dismiss()
                 } label: {

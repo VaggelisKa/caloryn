@@ -29,40 +29,53 @@ final class DailyGoalSnapshotTests: XCTestCase {
     }
 
     func testSnapshotValuesMatchTheBudgetTodayDisplays() {
-        let budget = makeBudget(staticTarget: 2_000, mode: .lifestyleEstimate)
-        let values = budget.goalSnapshotValues
+        let values = CalorieBudget(consumed: 0, target: 2_000).goalSnapshotValues
 
-        XCTAssertEqual(values.effectiveCalorieTarget, budget.adjustedTarget)
-        XCTAssertEqual(values.baseCalorieTarget, budget.baseTarget)
-        XCTAssertEqual(values.healthAdjustment, 0)
+        XCTAssertEqual(values.calorieTarget, 2_000)
         XCTAssertFalse(values.isManualTarget)
     }
 
-    func testHealthAdjustedSnapshotAlwaysReconstructsTheEffectiveTarget() {
-        let budget = makeBudget(
-            staticTarget: 2_000,
-            mode: .dynamicHealth,
-            activeEnergyKcal: 700,
-            samples: makeReadySamples(baseline: 400)
-        )
-        let values = budget.goalSnapshotValues
-
-        XCTAssertEqual(values.effectiveCalorieTarget, budget.adjustedTarget)
-        XCTAssertEqual(
-            values.baseCalorieTarget + values.healthAdjustment,
-            values.effectiveCalorieTarget
-        )
-        XCTAssertNotEqual(values.healthAdjustment, 0, "A ready dynamic day should carry an adjustment")
-    }
-
     func testManualBudgetSnapshotPreservesManualSemantics() {
-        let budget = makeBudget(staticTarget: 1_800, mode: .lifestyleEstimate, isManualOverride: true)
-        let values = budget.goalSnapshotValues
+        let values = CalorieBudget(consumed: 0, target: 1_800, isManualOverride: true).goalSnapshotValues
 
         XCTAssertTrue(values.isManualTarget)
-        XCTAssertEqual(values.baseCalorieTarget, 1_800)
-        XCTAssertEqual(values.effectiveCalorieTarget, 1_800)
-        XCTAssertEqual(values.healthAdjustment, 0, "Manual days never take a Health adjustment")
+        XCTAssertEqual(values.calorieTarget, 1_800)
+    }
+
+    func testRecordingWritesTheTargetAsBothBaseAndEffectiveWithNoHealthAdjustment() throws {
+        let context = try makeContext()
+        let profile = makeProfile()
+        context.insert(profile)
+        let today = makeTestDate(year: 2026, month: 3, day: 9)
+
+        DailyGoalSnapshotStore.recordSnapshot(
+            values: makeValues(target: 1_950),
+            for: today,
+            profile: profile,
+            in: context,
+            now: today
+        )
+
+        let stored = try XCTUnwrap(try context.fetch(FetchDescriptor<DailyGoalSnapshot>()).first)
+        XCTAssertEqual(stored.baseCalorieTarget, 1_950)
+        XCTAssertEqual(stored.effectiveCalorieTarget, 1_950)
+        XCTAssertEqual(stored.healthAdjustment, 0)
+        XCTAssertEqual(stored.calculationModeRaw, "lifestyleEstimate")
+    }
+
+    func testASnapshotRecordedWithAHealthAdjustmentStillReadsItsEffectiveTarget() throws {
+        let context = try makeContext()
+        let snapshot = DailyGoalSnapshot(
+            dayKey: "2026-03-09",
+            values: makeValues(target: 2_000),
+            profile: nil
+        )
+        snapshot.healthAdjustment = 250
+        snapshot.effectiveCalorieTarget = 2_250
+        snapshot.calculationModeRaw = "dynamicHealth"
+        context.insert(snapshot)
+
+        XCTAssertEqual(snapshot.values.calorieTarget, 2_250)
     }
 
     func testRecordingCreatesOneSnapshotForTheCurrentDay() throws {
@@ -72,7 +85,7 @@ final class DailyGoalSnapshotTests: XCTestCase {
         let today = makeTestDate(year: 2026, month: 3, day: 9)
 
         let didRecord = DailyGoalSnapshotStore.recordSnapshot(
-            values: makeValues(base: 2_000, adjustment: 0),
+            values: makeValues(target: 2_000),
             for: today,
             profile: profile,
             in: context,
@@ -93,14 +106,14 @@ final class DailyGoalSnapshotTests: XCTestCase {
         let today = makeTestDate(year: 2026, month: 3, day: 9)
 
         DailyGoalSnapshotStore.recordSnapshot(
-            values: makeValues(base: 2_000, adjustment: 0),
+            values: makeValues(target: 2_000),
             for: today,
             profile: profile,
             in: context,
             now: today
         )
         DailyGoalSnapshotStore.recordSnapshot(
-            values: makeValues(base: 2_000, adjustment: 250),
+            values: makeValues(target: 2_250),
             for: today,
             profile: profile,
             in: context,
@@ -110,7 +123,6 @@ final class DailyGoalSnapshotTests: XCTestCase {
         let stored = try context.fetch(FetchDescriptor<DailyGoalSnapshot>())
         XCTAssertEqual(stored.count, 1, "One canonical snapshot per calendar day")
         XCTAssertEqual(stored.first?.effectiveCalorieTarget, 2_250)
-        XCTAssertEqual(stored.first?.healthAdjustment, 250)
     }
 
     func testRecordingUnchangedValuesDoesNotRewriteTheSnapshot() throws {
@@ -118,7 +130,7 @@ final class DailyGoalSnapshotTests: XCTestCase {
         let profile = makeProfile()
         context.insert(profile)
         let today = makeTestDate(year: 2026, month: 3, day: 9)
-        let values = makeValues(base: 2_000, adjustment: 0)
+        let values = makeValues(target: 2_000)
 
         DailyGoalSnapshotStore.recordSnapshot(
             values: values, for: today, profile: profile, in: context, now: today
@@ -139,11 +151,11 @@ final class DailyGoalSnapshotTests: XCTestCase {
         let tomorrow = makeTestDate(year: 2026, month: 3, day: 10)
 
         let recordedPast = DailyGoalSnapshotStore.recordSnapshot(
-            values: makeValues(base: 2_000, adjustment: 0),
+            values: makeValues(target: 2_000),
             for: yesterday, profile: profile, in: context, now: today
         )
         let recordedFuture = DailyGoalSnapshotStore.recordSnapshot(
-            values: makeValues(base: 2_000, adjustment: 0),
+            values: makeValues(target: 2_000),
             for: tomorrow, profile: profile, in: context, now: today
         )
 
@@ -156,13 +168,13 @@ final class DailyGoalSnapshotTests: XCTestCase {
         let profile = makeProfile()
         let older = DailyGoalSnapshot(
             dayKey: "2026-03-09",
-            values: makeValues(base: 2_000, adjustment: 0),
+            values: makeValues(target: 2_000),
             profile: profile,
             recordedAt: makeTestDate(year: 2026, month: 3, day: 9, hour: 8)
         )
         let newer = DailyGoalSnapshot(
             dayKey: "2026-03-09",
-            values: makeValues(base: 2_000, adjustment: 300),
+            values: makeValues(target: 2_300),
             profile: profile,
             recordedAt: makeTestDate(year: 2026, month: 3, day: 9, hour: 20)
         )
@@ -170,14 +182,14 @@ final class DailyGoalSnapshotTests: XCTestCase {
         let collapsed = DailyGoalSnapshotStore.latestValuesByDayKey([older, newer])
 
         XCTAssertEqual(collapsed.count, 1)
-        XCTAssertEqual(collapsed["2026-03-09"]?.effectiveCalorieTarget, 2_300)
+        XCTAssertEqual(collapsed["2026-03-09"]?.calorieTarget, 2_300)
     }
 
     func testResolverUsesTheSnapshotWhenOneExists() {
         let date = makeTestDate(year: 2026, month: 3, day: 9)
         let resolver = HistoryDayTargetResolver(
             fallbackTarget: 2_000,
-            valuesByDayKey: ["2026-03-09": makeValues(base: 2_000, adjustment: 400)]
+            valuesByDayKey: ["2026-03-09": makeValues(target: 2_400)]
         )
 
         let target = resolver.target(for: date)
@@ -201,8 +213,8 @@ final class DailyGoalSnapshotTests: XCTestCase {
             makeEntry(date: makeTestDate(year: 2026, month: 3, day: 8), calories: 2_000)
         ]
         let snapshots = [
-            "2026-03-09": makeValues(base: 2_000, adjustment: 0),
-            "2026-03-08": makeValues(base: 2_000, adjustment: 0)
+            "2026-03-09": makeValues(target: 2_000),
+            "2026-03-08": makeValues(target: 2_000)
         ]
 
         let beforeChange = HistoryAnalytics(
@@ -251,7 +263,7 @@ final class DailyGoalSnapshotTests: XCTestCase {
         let entries = [makeEntry(date: day, calories: 2_450)]
         let resolver = HistoryDayTargetResolver(
             fallbackTarget: 2_000,
-            valuesByDayKey: ["2026-03-09": makeValues(base: 2_000, adjustment: 500)]
+            valuesByDayKey: ["2026-03-09": makeValues(target: 2_500)]
         )
 
         let analytics = HistoryAnalytics(
@@ -281,7 +293,7 @@ final class DailyGoalSnapshotTests: XCTestCase {
             endDate: snapshotted,
             targetResolver: HistoryDayTargetResolver(
                 fallbackTarget: 2_000,
-                valuesByDayKey: ["2026-03-09": makeValues(base: 2_200, adjustment: 0)]
+                valuesByDayKey: ["2026-03-09": makeValues(target: 2_200)]
             )
         )
 
@@ -301,10 +313,7 @@ final class DailyGoalSnapshotTests: XCTestCase {
     func testManualDaySnapshotKeepsManualSemanticsThroughHistory() {
         let day = makeTestDate(year: 2026, month: 3, day: 9)
         let manualValues = DailyGoalSnapshotValues(
-            baseCalorieTarget: 1_800,
-            healthAdjustment: 0,
-            effectiveCalorieTarget: 1_800,
-            calculationMode: .lifestyleEstimate,
+            calorieTarget: 1_800,
             isManualTarget: true
         )
         let snapshot = DailyGoalSnapshot(
@@ -340,7 +349,7 @@ final class DailyGoalSnapshotTests: XCTestCase {
             endDate: day,
             targetResolver: HistoryDayTargetResolver(
                 fallbackTarget: 2_000,
-                valuesByDayKey: ["2026-03-09": makeValues(base: 2_000, adjustment: 0)]
+                valuesByDayKey: ["2026-03-09": makeValues(target: 2_000)]
             )
         )
 
@@ -357,7 +366,7 @@ final class DailyGoalSnapshotTests: XCTestCase {
         var entries: [FoodLogEntry] = []
         for offset in 0..<7 {
             let date = Calendar.current.date(byAdding: .day, value: -offset, to: end)!
-            valuesByDayKey[DailyGoalSnapshot.dayKey(for: date)] = makeValues(base: 2_000, adjustment: 200)
+            valuesByDayKey[DailyGoalSnapshot.dayKey(for: date)] = makeValues(target: 2_200)
             entries.append(makeEntry(date: date, calories: 2_200))
         }
 
@@ -383,44 +392,10 @@ final class DailyGoalSnapshotTests: XCTestCase {
         return ModelContext(container)
     }
 
-    private func makeValues(base: Int, adjustment: Int) -> DailyGoalSnapshotValues {
+    private func makeValues(target: Int) -> DailyGoalSnapshotValues {
         DailyGoalSnapshotValues(
-            baseCalorieTarget: base,
-            healthAdjustment: adjustment,
-            effectiveCalorieTarget: base + adjustment,
-            calculationMode: adjustment == 0 ? .lifestyleEstimate : .dynamicHealth,
+            calorieTarget: target,
             isManualTarget: false
-        )
-    }
-
-    private func makeReadySamples(baseline: Double) -> [DailyActiveEnergySample] {
-        (1...ActivityCalorieBudget.requiredDynamicActivityDays).map { offset in
-            DailyActiveEnergySample(
-                date: makeTestDate(year: 2026, month: 3, day: 9 - offset),
-                activeEnergyKcal: baseline
-            )
-        }
-    }
-
-    private func makeBudget(
-        staticTarget: Int,
-        mode: EnergyCalculationMode,
-        isManualOverride: Bool = false,
-        activeEnergyKcal: Double = 0,
-        samples: [DailyActiveEnergySample] = []
-    ) -> ActivityCalorieBudget {
-        ActivityCalorieBudget(
-            consumed: 0,
-            staticTarget: staticTarget,
-            bmr: 1_700,
-            calorieDeficit: 500,
-            activeEnergyKcal: activeEnergyKcal,
-            recentActiveEnergySamples: samples,
-            calculationMode: mode,
-            isManualOverride: isManualOverride,
-            isActivityLoading: false,
-            activityMessage: nil,
-            date: makeTestDate(year: 2026, month: 3, day: 9)
         )
     }
 

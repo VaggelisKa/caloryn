@@ -78,7 +78,6 @@ struct AuditGoalManualTargetTests {
 
         #expect(draft.manualTarget == nil)
         #expect(draft.isManualTargetValid == false)
-        #expect(draft.disablesAppleHealthAdjustment == false)
         #expect(draft.effectiveCalorieTarget(tdee: 2_500) == draft.calculatedTarget(tdee: 2_500))
     }
 
@@ -139,18 +138,11 @@ struct AuditGoalManualTargetTests {
         #expect(draft.canSave)
 
         draft.apply(to: profile)
-        let budget = profile.activityBudget(
-            consumed: 0,
-            activeEnergyKcal: 0,
-            recentActiveEnergySamples: [],
-            isActivityLoading: false,
-            activityMessage: nil,
-            date: makeTestDate(year: 2020, month: 6, day: 15)
-        )
+        let budget = profile.calorieBudget(consumed: 0)
         let hero = TodayHeroSummary(mealTotals: [:], budget: budget, locale: Locale(identifier: "en_US"))
 
         #expect(profile.dailyCalorieTarget == 1_050)
-        #expect(budget.adjustedTarget == 1_050)
+        #expect(budget.target == 1_050)
         #expect(hero.caption == "kcal left of 1,050")
         #expect(SettingsGoalSummary.dailyTargetText(profile.dailyCalorieTarget, locale: Locale(identifier: "en_US")) == "1,050 kcal a day")
     }
@@ -308,7 +300,7 @@ struct AuditGoalProfileRoundTripTests {
             for split in validSplits {
                 let profile = OnboardingProfileSave.makeProfile(from: .init(
                     age: 30, sex: .female, heightCm: 165, weightKg: 62, activityLevel: .lightlyActive,
-                    energyCalculationMode: .lifestyleEstimate, calorieDeficit: 500,
+                    calorieDeficit: 500,
                     calorieTarget: target, isManualTarget: true,
                     proteinRatio: split.protein, carbRatio: split.carbs, fatRatio: split.fat
                 ))
@@ -344,7 +336,7 @@ struct AuditGoalProfileRoundTripTests {
         for split in auditReachableSplits().filter({ $0.percentTotal == 100 }) {
             let profile = OnboardingProfileSave.makeProfile(from: .init(
                 age: 41, sex: .male, heightCm: 182, weightKg: 88, activityLevel: .veryActive,
-                energyCalculationMode: .lifestyleEstimate, calorieDeficit: 250,
+                calorieDeficit: 250,
                 calorieTarget: 2_537, isManualTarget: true,
                 proteinRatio: split.protein, carbRatio: split.carbs, fatRatio: split.fat
             ))

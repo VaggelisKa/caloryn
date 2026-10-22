@@ -3,8 +3,6 @@ import Testing
 @testable import Caloryn
 
 nonisolated private let auditUS = Locale(identifier: "en_US")
-nonisolated private let auditPast = makeTestDate(year: 2020, month: 6, day: 15)
-nonisolated private let auditFuture = makeTestDate(year: 2099, month: 6, day: 15)
 
 nonisolated private let auditDayOffsets: [Double] = [-1, -0.6, -0.5, -0.4, 0, 0.4, 0.5, 0.6, 1]
 
@@ -13,52 +11,19 @@ private enum AuditBudgetKind: CaseIterable {
     case staticRound
     case staticOdd
     case manualOverride
-    case dynamicIncrease
-    case dynamicReduction
 }
 
 @MainActor
-private func auditBudget(_ kind: AuditBudgetKind, consumed: Double) -> ActivityCalorieBudget {
-    let samples: (Date) -> [DailyActiveEnergySample] = { date in
-        (0 ..< 9).map { index in
-            DailyActiveEnergySample(date: date.addingTimeInterval(-86_400 * Double(index + 1)), activeEnergyKcal: 300)
-        }
-    }
-    func make(
-        staticTarget: Int,
-        activeEnergy: Double = 0,
-        mode: EnergyCalculationMode = .lifestyleEstimate,
-        manual: Bool = false,
-        date: Date = auditPast
-    ) -> ActivityCalorieBudget {
-        ActivityCalorieBudget(
-            consumed: consumed,
-            staticTarget: staticTarget,
-            bmr: 1_600,
-            calorieDeficit: 300,
-            activeEnergyKcal: activeEnergy,
-            recentActiveEnergySamples: mode == .dynamicHealth ? samples(date) : [],
-            calculationMode: mode,
-            isManualOverride: manual,
-            isActivityLoading: false,
-            activityMessage: nil,
-            date: date
-        )
-    }
-
+private func auditBudget(_ kind: AuditBudgetKind, consumed: Double) -> CalorieBudget {
     switch kind {
     case .staticFloor:
-        return make(staticTarget: 1_200)
+        CalorieBudget(consumed: consumed, target: 1_200)
     case .staticRound:
-        return make(staticTarget: 2_000)
+        CalorieBudget(consumed: consumed, target: 2_000)
     case .staticOdd:
-        return make(staticTarget: 2_537)
+        CalorieBudget(consumed: consumed, target: 2_537)
     case .manualOverride:
-        return make(staticTarget: 1_850, activeEnergy: 900, mode: .dynamicHealth, manual: true)
-    case .dynamicIncrease:
-        return make(staticTarget: 2_000, activeEnergy: 800, mode: .dynamicHealth, date: auditFuture)
-    case .dynamicReduction:
-        return make(staticTarget: 2_000, activeEnergy: 100, mode: .dynamicHealth, date: auditPast)
+        CalorieBudget(consumed: consumed, target: 1_850, isManualOverride: true)
     }
 }
 
@@ -87,7 +52,7 @@ struct AuditCalorieSurfaceConsistencyTests {
         arguments: AuditBudgetKind.allCases
     )
     private func everySurfaceReportsTheSameDay(kind: AuditBudgetKind) {
-        let target = auditBudget(kind, consumed: 0).adjustedTarget
+        let target = auditBudget(kind, consumed: 0).target
 
         for total in auditTotals(around: target) {
             let entries = auditEntries(total: total)
@@ -98,7 +63,7 @@ struct AuditCalorieSurfaceConsistencyTests {
             let settingsPlate = CalorieDonutSummary(mealTotals: SettingsGoalPlate.mealTotals(entries), budget: budget)
             let donut = hero.donut
 
-            #expect(budget.adjustedTarget == target, "total \(total)")
+            #expect(budget.target == target, "total \(total)")
 
             #expect(ring.isOver == budget.isOver, "total \(total)")
             #expect(hero.isOver == budget.isOver, "total \(total)")
@@ -111,16 +76,16 @@ struct AuditCalorieSurfaceConsistencyTests {
             #expect(donut.remainingKcal == budget.remaining, "total \(total)")
             #expect(donut.overKcal == budget.overAmount, "total \(total)")
             #expect(donut.eatenKcal == budget.roundedConsumed, "total \(total)")
-            #expect(donut.budgetKcal == budget.adjustedTarget, "total \(total)")
+            #expect(donut.budgetKcal == budget.target, "total \(total)")
 
             let overRows = donut.legend.filter { $0.key == .over }
             #expect(overRows == (budget.isOver ? [.over(kcal: budget.overAmount)] : []), "total \(total)")
 
             let ringTotal = donut.sectors.reduce(0) { $0 + $1.kcal }
-            let expectedWhole = max(Double(budget.adjustedTarget), budget.consumed)
+            let expectedWhole = max(Double(budget.target), budget.consumed)
             #expect(abs(ringTotal - expectedWhole) < 1e-6, "total \(total)")
 
-            let targetText = budget.adjustedTarget.formatted(.number.locale(auditUS))
+            let targetText = budget.target.formatted(.number.locale(auditUS))
             #expect(hero.caption == (budget.isOver ? "kcal over" : "kcal left of \(targetText)"), "total \(total)")
             #expect(
                 hero.eatenLine == "\(budget.roundedConsumed.formatted(.number.locale(auditUS))) of \(targetText) eaten",
@@ -128,7 +93,7 @@ struct AuditCalorieSurfaceConsistencyTests {
             )
             #expect(
                 NutritionDetailsSections.calorieTargetText(
-                    adjustedTarget: budget.adjustedTarget,
+                    target: budget.target,
                     isOver: budget.isOver,
                     overAmount: budget.overAmount,
                     locale: auditUS
@@ -169,8 +134,8 @@ struct AuditCalorieSurfaceConsistencyTests {
             let budget = auditBudget(kind, consumed: SettingsGoalPlate.eaten([]))
             let hero = TodayHeroSummary(mealTotals: SettingsGoalPlate.mealTotals([]), budget: budget, locale: auditUS)
 
-            #expect(hero.headline == budget.adjustedTarget)
-            #expect(hero.donut.sectors == [.init(kind: .remaining, kcal: Double(budget.adjustedTarget))])
+            #expect(hero.headline == budget.target)
+            #expect(hero.donut.sectors == [.init(kind: .remaining, kcal: Double(budget.target))])
             #expect(hero.donut.legend.allSatisfy { !$0.isLogged })
             #expect(hero.donut.legend.map { hero.legendValue(for: $0) } == ["not yet", "not yet", "not yet", "not yet"])
         }
@@ -195,19 +160,7 @@ struct AuditCalorieSurfaceConsistencyTests {
             .init(meal: .lunch, calories: 0.05),
             .init(meal: .breakfast, calories: 1_999.35),
         ]
-        let budget = ActivityCalorieBudget(
-            consumed: SettingsGoalPlate.eaten(entries),
-            staticTarget: 1_999,
-            bmr: 1_600,
-            calorieDeficit: 300,
-            activeEnergyKcal: 0,
-            recentActiveEnergySamples: [],
-            calculationMode: .lifestyleEstimate,
-            isManualOverride: false,
-            isActivityLoading: false,
-            activityMessage: nil,
-            date: auditPast
-        )
+        let budget = CalorieBudget(consumed: SettingsGoalPlate.eaten(entries), target: 1_999)
         let hero = TodayHeroSummary(
             mealTotals: SettingsGoalPlate.mealTotals(entries),
             budget: budget,
@@ -222,76 +175,6 @@ struct AuditCalorieSurfaceConsistencyTests {
         #expect(hero.donut.eatenKcal == 2_000)
         #expect(hero.donut.overKcal == 1)
         #expect(hero.donut.legend.last == .over(kcal: 1))
-    }
-}
-
-@MainActor
-@Suite("Calorie ring arc audit")
-struct AuditCalorieRingArcTests {
-    private func drawnLength(_ progress: CalorieRingProgress) -> Double {
-        [progress.baseArc, progress.dynamicArc]
-            .filter(\.isVisible)
-            .reduce(0) { $0 + ($1.end - $1.start) }
-    }
-
-    @Test(
-        "The arcs draw exactly the fill, never past a full turn, and meet at the seam",
-        arguments: [-0.25, 0, 0.0099, 0.01, 0.3, 0.5, 0.779_999, 0.78, 0.780_001, 0.95, 1]
-    )
-    func arcsDrawTheFill(fill: Double) {
-        for seam in [0.5, 0.78, 1.0] {
-            for hasIncrease in [false, true] {
-                let ring = CalorieRingProgress(animatedProgress: fill, baseProgressEnd: seam, hasDynamicIncrease: hasIncrease)
-                let expected = fill < CalorieRingProgress.minimumVisibleProgress ? 0 : min(fill, 1)
-                let context = "fill \(fill), seam \(seam), increase \(hasIncrease)"
-
-                #expect(abs(drawnLength(ring) - expected) < 1e-12, "\(context)")
-                #expect(ring.baseArc.start == 0, "\(context)")
-                #expect(ring.baseArc.isVisible == (fill >= CalorieRingProgress.minimumVisibleProgress), "\(context)")
-                for arc in [ring.baseArc, ring.dynamicArc, ring.dynamicTrack] where arc.isVisible {
-                    #expect(arc.end >= arc.start, "\(context)")
-                    #expect(arc.end <= 1, "\(context)")
-                }
-                #expect(ring.dynamicTrack.isVisible == hasIncrease, "\(context)")
-                #expect(ring.dynamicTrack.start == seam, "\(context)")
-                #expect(ring.dynamicTrack.end == (hasIncrease ? 1 : seam), "\(context)")
-                #expect(ring.dynamicArc.isVisible == (hasIncrease && fill > seam), "\(context)")
-                if ring.dynamicArc.isVisible {
-                    #expect(ring.baseArc.end == ring.dynamicArc.start, "\(context)")
-                }
-                if hasIncrease {
-                    #expect(ring.baseArc.end <= seam, "\(context)")
-                }
-            }
-        }
-    }
-
-    @Test("Fed from a budget, the ring draws what the budget's progress says, for every kind of day")
-    func budgetFedRingDrawsTheBudgetsProgress() {
-        for kind in AuditBudgetKind.allCases {
-            let target = auditBudget(kind, consumed: 0).adjustedTarget
-            for total in auditTotals(around: target) + [-500] {
-                let budget = auditBudget(kind, consumed: total)
-                let ring = CalorieRingProgress(budget: budget, animatedProgress: budget.displayedRingProgress)
-                let fill = budget.displayedRingProgress
-                let expected = fill < CalorieRingProgress.minimumVisibleProgress ? 0 : fill
-
-                #expect(abs(drawnLength(ring) - expected) < 1e-12, "\(kind) total \(total)")
-                #expect(ring.dynamicTrack.isVisible == budget.hasDynamicIncrease, "\(kind) total \(total)")
-                #expect(ring.baseArc.end <= 1, "\(kind) total \(total)")
-            }
-        }
-    }
-
-    @Test("A negative total, which the budget does not floor, leaves the ring undrawn")
-    func negativeTotalLeavesTheRingEmpty() {
-        let budget = auditBudget(.staticRound, consumed: -500)
-        let ring = CalorieRingProgress(budget: budget, animatedProgress: budget.displayedRingProgress)
-
-        #expect(budget.displayedRingProgress < 0)
-        #expect(ring.baseArc.isVisible == false)
-        #expect(ring.dynamicArc.isVisible == false)
-        #expect(drawnLength(ring) == 0)
     }
 }
 

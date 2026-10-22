@@ -21,22 +21,16 @@ struct WidgetMealCalories: Codable, Hashable, Sendable {
 
 struct WidgetCalorieSummary: Codable, Hashable, Sendable {
     let consumed: Int
-    let baseTarget: Int
     let target: Int
-    let dynamicAdjustment: Int
     let meals: [WidgetMealCalories]
 
     init(
         consumed: Double,
-        baseTarget: Int,
         target: Int,
-        dynamicAdjustment: Int = 0,
         mealCalories: [WidgetMeal: Double] = [:]
     ) {
         self.consumed = Self.clamped(consumed)
-        self.baseTarget = max(1, baseTarget)
         self.target = max(1, target)
-        self.dynamicAdjustment = dynamicAdjustment
         self.meals = WidgetMeal.allCases.compactMap { meal in
             guard let kcal = mealCalories[meal] else { return nil }
             return WidgetMealCalories(meal: meal, kcal: Self.clamped(kcal))
@@ -75,24 +69,20 @@ struct WidgetCalorieSummary: Codable, Hashable, Sendable {
     // reads it until the app next publishes, and a decode failure would show "Open
     // Caloryn" in its place.
     private enum CodingKeys: String, CodingKey {
-        case consumed, baseTarget, target, dynamicAdjustment, meals
+        case consumed, target, meals
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         consumed = try container.decode(Int.self, forKey: .consumed)
-        baseTarget = try container.decode(Int.self, forKey: .baseTarget)
         target = try container.decode(Int.self, forKey: .target)
-        dynamicAdjustment = try container.decode(Int.self, forKey: .dynamicAdjustment)
         meals = try container.decodeIfPresent([WidgetMealCalories].self, forKey: .meals) ?? []
     }
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(consumed, forKey: .consumed)
-        try container.encode(baseTarget, forKey: .baseTarget)
         try container.encode(target, forKey: .target)
-        try container.encode(dynamicAdjustment, forKey: .dynamicAdjustment)
         try container.encode(meals, forKey: .meals)
     }
 }
@@ -103,16 +93,12 @@ struct DailyWidgetSnapshot: Codable, Hashable, Sendable {
     let dayStart: Date
     let state: DailyWidgetState
     let calories: WidgetCalorieSummary
-    let usesDynamicTarget: Bool
-    let activityRefreshedAt: Date?
 
     init(
         generatedAt: Date,
         dayStart: Date,
         state: DailyWidgetState,
         calories: WidgetCalorieSummary,
-        usesDynamicTarget: Bool = false,
-        activityRefreshedAt: Date? = nil,
         schemaVersion: Int = WidgetConstants.currentSchemaVersion
     ) {
         self.schemaVersion = schemaVersion
@@ -120,8 +106,33 @@ struct DailyWidgetSnapshot: Codable, Hashable, Sendable {
         self.dayStart = dayStart
         self.state = state
         self.calories = calories
-        self.usesDynamicTarget = usesDynamicTarget
-        self.activityRefreshedAt = activityRefreshedAt
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion, generatedAt, dayStart, state, calories, usesDynamicTarget
+    }
+
+    // Builds before the Apple Health auto-adjust was removed wrote `usesDynamicTarget`.
+    // Such a snapshot's target carries an activity adjustment that no longer applies,
+    // so it reads as unavailable until the app publishes a fresh one.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try container.decode(Int.self, forKey: .schemaVersion)
+        generatedAt = try container.decode(Date.self, forKey: .generatedAt)
+        dayStart = try container.decode(Date.self, forKey: .dayStart)
+        calories = try container.decode(WidgetCalorieSummary.self, forKey: .calories)
+        let decodedState = try container.decode(DailyWidgetState.self, forKey: .state)
+        let usedDynamicTarget = try container.decodeIfPresent(Bool.self, forKey: .usesDynamicTarget) ?? false
+        state = usedDynamicTarget ? .unavailable : decodedState
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(schemaVersion, forKey: .schemaVersion)
+        try container.encode(generatedAt, forKey: .generatedAt)
+        try container.encode(dayStart, forKey: .dayStart)
+        try container.encode(state, forKey: .state)
+        try container.encode(calories, forKey: .calories)
     }
 
     static func needsOnboarding(at date: Date, calendar: Calendar = .current) -> DailyWidgetSnapshot {
@@ -155,7 +166,6 @@ struct DailyWidgetSnapshot: Codable, Hashable, Sendable {
             state: state,
             calories: WidgetCalorieSummary(
                 consumed: consumed,
-                baseTarget: 2_000,
                 target: 2_000,
                 mealCalories: mealCalories
             )
@@ -167,8 +177,6 @@ struct DailyWidgetSnapshot: Codable, Hashable, Sendable {
         let dayStart: Date
         let state: DailyWidgetState
         let calories: WidgetCalorieSummary
-        let usesDynamicTarget: Bool
-        let activityRefreshedAt: Date?
     }
 
     var renderIdentity: RenderIdentity {
@@ -176,9 +184,7 @@ struct DailyWidgetSnapshot: Codable, Hashable, Sendable {
             schemaVersion: schemaVersion,
             dayStart: dayStart,
             state: state,
-            calories: calories,
-            usesDynamicTarget: usesDynamicTarget,
-            activityRefreshedAt: activityRefreshedAt
+            calories: calories
         )
     }
 
@@ -201,11 +207,8 @@ struct DailyWidgetSnapshot: Codable, Hashable, Sendable {
                 state: .ready,
                 calories: WidgetCalorieSummary(
                     consumed: 0,
-                    baseTarget: calories.baseTarget,
-                    target: calories.baseTarget
-                ),
-                usesDynamicTarget: usesDynamicTarget,
-                activityRefreshedAt: activityRefreshedAt
+                    target: calories.target
+                )
             ),
             true
         )

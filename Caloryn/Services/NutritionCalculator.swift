@@ -1,21 +1,5 @@
 import Foundation
 
-enum EnergyCalculationMode: String, Codable, CaseIterable, Identifiable {
-    case lifestyleEstimate
-    case dynamicHealth
-
-    var id: String { rawValue }
-
-    var displayName: String {
-        switch self {
-        case .lifestyleEstimate:
-            "Activity Level Estimate"
-        case .dynamicHealth:
-            "Auto-adjust Calories"
-        }
-    }
-}
-
 enum NutritionCalculator {
     static func bmr(sex: Sex, weightKg: Double, heightCm: Double, age: Int) -> Double {
         let base = 10 * weightKg + 6.25 * heightCm - 5 * Double(age)

@@ -3,7 +3,7 @@ import SwiftUI
 struct NutritionDetailsView: View {
     let date: Date
     let entries: [FoodLogEntry]
-    let calorieBudget: ActivityCalorieBudget
+    let calorieBudget: CalorieBudget
     let nutrientTargets: [TrackedNutrient: Double]
     let nutrientGoalKinds: [TrackedNutrient: NutrientGoalKind]
 
@@ -29,15 +29,6 @@ struct NutritionDetailsView: View {
                     portionGrams: $0.portionGrams
                 )
             }
-        )
-    }
-
-    private var shouldShowDynamicTDEE: Bool {
-        NutritionDetailsSummary.showsDynamicTDEE(
-            isDynamicModeRequested: calorieBudget.isDynamicModeRequested,
-            activeEnergyKcal: calorieBudget.activeEnergyKcal,
-            dynamicAdjustment: calorieBudget.dynamicAdjustment,
-            hasActivityMessage: calorieBudget.activityMessage != nil
         )
     }
 
@@ -73,7 +64,7 @@ struct NutritionDetailsView: View {
                 )
             },
             targets: DayExportReport.Targets(
-                calories: calorieBudget.adjustedTarget,
+                calories: calorieBudget.target,
                 proteinG: nutrientTargets[.protein],
                 carbsG: nutrientTargets[.carbs],
                 fatG: nutrientTargets[.fat]
@@ -97,7 +88,6 @@ struct NutritionDetailsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
                     calorieSummary(summary)
-                    dynamicTDEESummary
 
                     if !sections.targets.isEmpty {
                         targetsSection(sections.targets)
@@ -201,7 +191,7 @@ struct NutritionDetailsView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(
                     NutritionDetailsSections.calorieTargetText(
-                        adjustedTarget: calorieBudget.adjustedTarget,
+                        target: calorieBudget.target,
                         isOver: calorieBudget.isOver,
                         overAmount: calorieBudget.overAmount
                     )
@@ -217,88 +207,6 @@ struct NutritionDetailsView: View {
             .fixedSize(horizontal: false, vertical: isStacked)
             .padding(.bottom, isStacked ? 0 : 4)
         }
-    }
-
-    @ViewBuilder
-    private var dynamicTDEESummary: some View {
-        if shouldShowDynamicTDEE {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    sectionTitle("Auto-adjusted calories")
-
-                    Spacer(minLength: 8)
-
-                    if calorieBudget.isActivityLoading {
-                        ProgressView()
-                            .controlSize(.small)
-                    }
-
-                    Text(dynamicAdjustmentText)
-                        .font(TodayPlateFont.detailsRowValue)
-                        .foregroundStyle(
-                            NutritionDetailsSummary.isDynamicAdjustmentMuted(calorieBudget.dynamicAdjustment)
-                                ? CalorynTheme.textSecondary
-                                : CalorynTheme.textPrimary
-                        )
-                        .contentTransition(.numericText())
-                }
-
-                Text(ActivityCalorieBudget.dynamicEnergyPolicyText)
-                    .font(TodayPlateFont.detailsNote)
-                    .foregroundStyle(CalorynTheme.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                if let dynamicMessage = calorieBudget.dynamicStatusText {
-                    dynamicStatusNotice(dynamicMessage)
-                }
-
-                VStack(spacing: 0) {
-                    amountRow(label: "Baseline", value: baselineText)
-                    amountRow(
-                        label: "Today",
-                        value: NutritionDetailsSummary.activeEnergyText(
-                            activeEnergyKcal: calorieBudget.activeEnergyKcal
-                        )
-                    )
-                    amountRow(label: "Target", value: calorieBudget.baseTarget.kcalFormatted)
-                }
-                .padding(.top, 4)
-            }
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel("Auto-adjusted calories, \(baselineText) baseline, \(calorieBudget.activeEnergyKcal.kcalFormatted) today, \(dynamicAdjustmentText) adjustment, \(calorieBudget.adjustedTarget.kcalFormatted) target")
-        }
-    }
-
-    private var baselineText: String {
-        NutritionDetailsSummary.baselineText(
-            activityBaselineKcal: calorieBudget.activityBaselineKcal
-        )
-    }
-
-    private var dynamicAdjustmentText: String {
-        NutritionDetailsSummary.dynamicAdjustmentText(calorieBudget.dynamicAdjustment)
-    }
-
-    private var dynamicStatusNoticeColor: Color {
-        switch NutritionDetailsSummary.statusNoticeStyle(for: calorieBudget.dynamicStatus) {
-        case .warning:
-            CalorynTheme.textPrimary
-        case .informational, .neutral:
-            CalorynTheme.textSecondary
-        }
-    }
-
-    private func dynamicStatusNotice(_ message: String) -> some View {
-        Text(message)
-            .font(TodayPlateFont.detailsNote)
-            .foregroundStyle(dynamicStatusNoticeColor)
-            .fixedSize(horizontal: false, vertical: true)
-            .padding(10)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                CalorynTheme.backgroundTertiary,
-                in: RoundedRectangle(cornerRadius: CalorynTheme.smallCornerRadius, style: .continuous)
-            )
     }
 
     private func targetsSection(_ rows: [NutritionDetailsSections.TargetRow]) -> some View {
@@ -493,7 +401,7 @@ struct NutritionDetailsView: View {
     }
 }
 
-#Preview("Nutrition Details - Auto-adjust") {
+#Preview("Nutrition Details") {
     let oatmeal = FoodItem(
         name: "Oatmeal",
         caloriesPer100g: 389,
@@ -527,19 +435,7 @@ struct NutritionDetailsView: View {
             FoodLogEntry(date: .now, mealType: .breakfast, foodItem: oatmeal, portionGrams: 80),
             FoodLogEntry(date: .now, mealType: .snack, foodItem: apple, portionGrams: 120)
         ],
-        calorieBudget: ActivityCalorieBudget(
-            consumed: 374,
-            staticTarget: 1900,
-            bmr: 1_600,
-            calorieDeficit: 300,
-            activeEnergyKcal: 430,
-            recentActiveEnergySamples: previewNutritionActivitySamples,
-            calculationMode: .dynamicHealth,
-            isManualOverride: false,
-            isActivityLoading: false,
-            activityMessage: nil,
-            date: .now
-        ),
+        calorieBudget: CalorieBudget(consumed: 374, target: 1_900),
         nutrientTargets: [
             .protein: 120,
             .carbs: 200,
@@ -553,12 +449,4 @@ struct NutritionDetailsView: View {
             .fiber: .minimum
         ]
     )
-}
-
-private let previewNutritionActivitySamples: [DailyActiveEnergySample] = (1...10).compactMap { offset in
-    guard let date = Calendar.current.date(byAdding: .day, value: -offset, to: Date.now.startOfDay) else {
-        return nil
-    }
-
-    return DailyActiveEnergySample(date: date, activeEnergyKcal: 280)
 }

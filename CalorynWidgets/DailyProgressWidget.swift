@@ -309,7 +309,6 @@ private struct WidgetMessageView: View {
             state: .ready,
             calories: WidgetCalorieSummary(
                 consumed: 2_450,
-                baseTarget: 2_000,
                 target: 2_000,
                 mealCalories: [.breakfast: 382, .lunch: 463, .dinner: 1_377, .snack: 228]
             )
@@ -353,7 +352,6 @@ private struct WidgetMessageView: View {
             state: .ready,
             calories: WidgetCalorieSummary(
                 consumed: 2_450,
-                baseTarget: 2_000,
                 target: 2_000,
                 mealCalories: [.breakfast: 382, .lunch: 463, .dinner: 1_377, .snack: 228]
             )

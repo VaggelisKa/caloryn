@@ -271,7 +271,6 @@ struct UserProfileNutrientTargetCoverageTests {
         #expect(isNear(profile.proteinTargetG, 90))
         #expect(isNear(profile.carbTargetG, 120))
         #expect(isNear(profile.fatTargetG, 40))
-        #expect(profile.calorieBaseTarget(usesActiveEnergy: true) == 1_200)
     }
 
     @Test("An absurd body clamps the target to the calorie ceiling and derives macros from that")
@@ -300,72 +299,27 @@ struct UserProfileNutrientTargetCoverageTests {
         #expect(isNear(profile.proteinTargetG, 149.8125))
         #expect(isNear(profile.carbTargetG, 269.6625))
         #expect(isNear(profile.fatTargetG, 79.9))
-        #expect(profile.calorieBaseTarget(usesActiveEnergy: true) == 1_284)
-        #expect(profile.calorieBaseTarget(usesActiveEnergy: false) == 2_397)
     }
 
-    @Test("A manual target forces the activity-level estimate even when auto-adjust is chosen")
-    func manualTargetForcesTheEstimate() {
-        let profile = UserProfile(
-            age: 30, sex: .male, heightCm: 180, weightKg: 80, activityLevel: .sedentary,
-            dailyCalorieTarget: 2_000, manualOverride: true, energyCalculationMode: .dynamicHealth
-        )
-        #expect(profile.energyCalculationMode == .dynamicHealth)
-        #expect(profile.effectiveEnergyCalculationMode == .lifestyleEstimate)
-
-        profile.manualOverride = false
-        #expect(profile.effectiveEnergyCalculationMode == .dynamicHealth)
-    }
-
-    @Test("An unreadable stored mode reads as the activity-level estimate, and setting it stores the raw value")
-    func unreadableModeFallsBack() {
-        let profile = manualProfile(target: 2_000)
-        profile.energyCalculationModeRaw = "legacy"
-        #expect(profile.energyCalculationMode == .lifestyleEstimate)
-
-        profile.energyCalculationMode = .dynamicHealth
-        #expect(profile.energyCalculationModeRaw == "dynamicHealth")
-    }
-
-    @Test("The budget a manual profile hands Today is the static target, whatever mode was chosen")
+    @Test("The budget a manual profile hands Today is its own target")
     func manualProfileBudgetIsStatic() {
         let profile = UserProfile(
             age: 30, sex: .male, heightCm: 180, weightKg: 80, activityLevel: .sedentary,
-            dailyCalorieTarget: 2_150, manualOverride: true, energyCalculationMode: .dynamicHealth
+            dailyCalorieTarget: 2_150, manualOverride: true
         )
 
-        let budget = profile.activityBudget(
-            consumed: 1_000.4,
-            activeEnergyKcal: 600,
-            recentActiveEnergySamples: [],
-            isActivityLoading: false,
-            activityMessage: nil,
-            date: Date(timeIntervalSince1970: 1_760_000_000)
-        )
+        let budget = profile.calorieBudget(consumed: 1_000.4)
 
-        #expect(budget.dynamicStatus == .staticEstimate)
-        #expect(budget.adjustedTarget == 2_150)
+        #expect(budget.target == 2_150)
         #expect(budget.remaining == 1_150)
     }
 
-    @Test("An auto-adjust profile without activity history hands Today a learning budget on its own target")
-    func autoAdjustProfileWithoutHistoryIsLearning() {
-        let profile = UserProfile(
-            age: 30, sex: .male, heightCm: 180, weightKg: 80, activityLevel: .sedentary,
-            energyCalculationMode: .dynamicHealth
-        )
+    @Test("A profile last saved with auto-adjust on hands Today its saved daily target")
+    func formerAutoAdjustProfileUsesItsSavedTarget() {
+        let profile = UserProfile(age: 30, sex: .male, heightCm: 180, weightKg: 80, activityLevel: .sedentary)
+        profile.energyCalculationModeRaw = "dynamicHealth"
         #expect(profile.dailyCalorieTarget == 1_636)
 
-        let budget = profile.activityBudget(
-            consumed: 0,
-            activeEnergyKcal: 0,
-            recentActiveEnergySamples: [],
-            isActivityLoading: false,
-            activityMessage: nil,
-            date: Date(timeIntervalSince1970: 1_760_000_000)
-        )
-
-        #expect(budget.dynamicStatus == .learning(validDays: 0, requiredDays: 7))
-        #expect(budget.adjustedTarget == 1_636)
+        #expect(profile.calorieBudget(consumed: 0).target == 1_636)
     }
 }
