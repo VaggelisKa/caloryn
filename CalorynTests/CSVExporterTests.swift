@@ -78,7 +78,7 @@ final class CSVExporterTests: XCTestCase {
             .dropFirst()
             .map { $0.split(separator: ",")[2] }
 
-        XCTAssertEqual(foods, ["Oats", "Soup", "Dessert", "Apple"])
+        XCTAssertEqual(foods, ["Oats", "Apple", "Soup", "Dessert"])
     }
 
     func testExportURLCanNameTheFileAfterTheExportedDay() throws {

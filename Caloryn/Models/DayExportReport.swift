@@ -63,7 +63,7 @@ struct DayExportReport: Equatable {
         fat: "Fat"
     )
 
-    static let mealOrder: [MealType] = [.breakfast, .lunch, .dinner, .snack]
+    static let mealOrder: [MealType] = DayFoodLogSelection.dayMeals
     static let missingValue = "–"
 
     let title: String

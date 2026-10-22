@@ -6,14 +6,14 @@ final class DayExportReportTests: XCTestCase {
     private let locale = Locale(identifier: "en_US")
     private let day = makeTestDate(year: 2026, month: 10, day: 22, hour: 0)
 
-    func testMealsFollowTheDayOrderAndSkipMealsWithNothingLogged() {
+    func testMealsFollowTheTodayScreenOrderAndSkipMealsWithNothingLogged() {
         let report = makeReport([
             entry(.snack, "Apple", minute: 1),
             entry(.dinner, "Pasta", minute: 2),
             entry(.breakfast, "Oats", minute: 3)
         ])
 
-        XCTAssertEqual(report.meals.map(\.subtotal.label), ["Breakfast", "Dinner", "Snacks"])
+        XCTAssertEqual(report.meals.map(\.subtotal.label), ["Breakfast", "Snacks", "Dinner"])
     }
 
     func testSnacksFromEverySnackSlotShareOneSectionInLoggingOrder() {
