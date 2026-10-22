@@ -81,6 +81,11 @@ struct NutritionDetailsView: View {
         )
     }
 
+    private func share(_ url: URL?) {
+        guard let url else { return }
+        exportedDay = ExportedDay(url: url)
+    }
+
     var body: some View {
         let summary = summary
         let sections = NutritionDetailsSections(
@@ -134,10 +139,20 @@ struct NutritionDetailsView: View {
                 }
 
                 ToolbarItem(placement: .cancellationAction) {
-                    Button {
-                        if let url = DayExportPDF.exportURL(for: exportReport) {
-                            exportedDay = ExportedDay(url: url)
+                    Menu {
+                        Button {
+                            share(DayExportPDF.exportURL(for: exportReport))
+                        } label: {
+                            Label("PDF (for printing)", systemImage: "doc.richtext")
                         }
+                        .accessibilityIdentifier("nutritionDetails.exportDay.pdf")
+
+                        Button {
+                            share(CSVExporter.exportURL(from: entries, fileName: exportReport.fileName))
+                        } label: {
+                            Label("CSV (for spreadsheets)", systemImage: "tablecells")
+                        }
+                        .accessibilityIdentifier("nutritionDetails.exportDay.csv")
                     } label: {
                         Image(systemName: "square.and.arrow.up")
                             .font(CalorynTheme.toolbarIcon)

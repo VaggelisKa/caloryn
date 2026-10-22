@@ -42,10 +42,10 @@ enum CSVExporter {
         return csv
     }
 
-    static func exportURL(from entries: [FoodLogEntry]) -> URL? {
+    static func exportURL(from entries: [FoodLogEntry], fileName: String = "Caloryn_Export") -> URL? {
         let csv = generateCSV(from: entries)
         let tempDir = FileManager.default.temporaryDirectory
-        let fileURL = tempDir.appendingPathComponent("Caloryn_Export.csv")
+        let fileURL = tempDir.appendingPathComponent(fileName).appendingPathExtension("csv")
 
         do {
             try csv.write(to: fileURL, atomically: true, encoding: .utf8)

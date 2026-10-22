@@ -80,4 +80,14 @@ final class CSVExporterTests: XCTestCase {
 
         XCTAssertEqual(foods, ["Oats", "Soup", "Dessert", "Apple"])
     }
+
+    func testExportURLCanNameTheFileAfterTheExportedDay() throws {
+        let entry = makeTestEntry(foodItem: makeTestFoodItem(name: "Oats"))
+
+        let url = try XCTUnwrap(CSVExporter.exportURL(from: [entry], fileName: "Caloryn 2026-10-22"))
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        XCTAssertEqual(url.lastPathComponent, "Caloryn 2026-10-22.csv")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: url.path))
+    }
 }
