@@ -67,6 +67,24 @@ final class WidgetSnapshotStoreTests: XCTestCase {
 
         XCTAssertEqual(loaded.calories.consumed, 800)
         XCTAssertEqual(loaded.calories.meals, [])
+        XCTAssertEqual(loaded.state, .ready)
+    }
+
+    func testASnapshotSavedWithAnAutoAdjustedTargetLoadsAsUnavailable() throws {
+        let json = """
+        {"activityRefreshedAt":null,"calories":{"baseTarget":2000,"consumed":800,"dynamicAdjustment":200,"target":2200},\
+        "dayStart":"2023-11-14T00:00:00Z","generatedAt":"2023-11-14T22:13:20Z","schemaVersion":1,"state":"ready",\
+        "usesDynamicTarget":true}
+        """
+        try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true)
+        try Data(json.utf8).write(to: directoryURL.appendingPathComponent(WidgetConstants.snapshotFileName))
+        let store = WidgetSnapshotStore(directoryURL: directoryURL)
+
+        let loaded = try XCTUnwrap(try store.load())
+        let nextDay = try XCTUnwrap(ISO8601DateFormatter().date(from: "2023-11-15T12:00:00Z"))
+
+        XCTAssertEqual(loaded.state, .unavailable)
+        XCTAssertEqual(loaded.displaySnapshot(at: nextDay).snapshot.state, .unavailable)
     }
 
     func testMissingSnapshotReturnsNil() throws {

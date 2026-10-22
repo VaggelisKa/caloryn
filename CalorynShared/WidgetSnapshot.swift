@@ -108,6 +108,33 @@ struct DailyWidgetSnapshot: Codable, Hashable, Sendable {
         self.calories = calories
     }
 
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion, generatedAt, dayStart, state, calories, usesDynamicTarget
+    }
+
+    // Builds before the Apple Health auto-adjust was removed wrote `usesDynamicTarget`.
+    // Such a snapshot's target carries an activity adjustment that no longer applies,
+    // so it reads as unavailable until the app publishes a fresh one.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try container.decode(Int.self, forKey: .schemaVersion)
+        generatedAt = try container.decode(Date.self, forKey: .generatedAt)
+        dayStart = try container.decode(Date.self, forKey: .dayStart)
+        calories = try container.decode(WidgetCalorieSummary.self, forKey: .calories)
+        let decodedState = try container.decode(DailyWidgetState.self, forKey: .state)
+        let usedDynamicTarget = try container.decodeIfPresent(Bool.self, forKey: .usesDynamicTarget) ?? false
+        state = usedDynamicTarget ? .unavailable : decodedState
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(schemaVersion, forKey: .schemaVersion)
+        try container.encode(generatedAt, forKey: .generatedAt)
+        try container.encode(dayStart, forKey: .dayStart)
+        try container.encode(state, forKey: .state)
+        try container.encode(calories, forKey: .calories)
+    }
+
     static func needsOnboarding(at date: Date, calendar: Calendar = .current) -> DailyWidgetSnapshot {
         fixed(state: .needsOnboarding, consumed: 0, at: date, calendar: calendar)
     }
