@@ -88,6 +88,24 @@ class CombineTests(unittest.TestCase):
         self.assertEqual(overall, 50.0)
         self.assertIn("| CalorynWidgets | 0.0% | 2 |", summary)
 
+    def test_inputs_sharing_a_name_merge_into_one_plan(self):
+        with tempfile.TemporaryDirectory() as directory:
+            shards = {
+                "unit": {"Caloryn/A.swift": {"executable": [1, 2, 3, 4], "covered": [1]}},
+                "ui-1": {"Caloryn/A.swift": {"executable": [1, 2, 3, 4], "covered": [4]}},
+                "ui-2": {"Caloryn/A.swift": {"executable": [1, 2, 3, 4], "covered": [2, 3]}},
+            }
+            paths = {}
+            for shard, files in shards.items():
+                paths[shard] = Path(directory) / f"{shard}.json"
+                paths[shard].write_text(json.dumps({"files": files}))
+            summary, overall = line_coverage.combine(
+                [("unit", paths["unit"]), ("ui", paths["ui-1"]), ("ui", paths["ui-2"])]
+            )
+        self.assertEqual(overall, 100.0)
+        self.assertIn("| ui alone | 75.0% |", summary)
+        self.assertEqual(summary.count(" alone |"), 2)
+
     def test_a_covered_line_that_is_not_executable_is_ignored(self):
         _, overall = self.combine(
             unit={"Caloryn/A.swift": {"executable": [1, 2], "covered": [1, 9]}},
