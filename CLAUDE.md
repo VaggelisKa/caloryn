@@ -8,7 +8,7 @@ them as dead code.
 
 `xcodebuild test -project Caloryn.xcodeproj -scheme Caloryn -testPlan <plan> -destination "platform=iOS Simulator,name=iPhone 17" CODE_SIGNING_ALLOWED=NO`
 
-Plans: `Caloryn-Unit` (~1.4s) · `Caloryn-UI` (15 journeys, ~170s) · `Caloryn-All`. Measure the
+Plans: `Caloryn-Unit` (~1.4s) · `Caloryn-UI` (41 tests, 19–28 min serial on CI) · `Caloryn-All`. Measure the
 unit count yourself before quoting one — every wave moves it, so a number written here is
 wrong by the next PR.
 
@@ -94,7 +94,9 @@ because start-up coverage varies by device. Two coverage gates: the unit plan is
 unit + UI figure must also stay **≥ 70%** and not regress. The two use different
 counting and are not comparable — xccov's report counts SwiftUI lines once per closure;
 the combined one counts each line once (`docs/testing/coverage.md`). UI plan retries
-3×; a retry is a bug, not noise.
+3×; a retry is a bug, not noise. CI shards the UI plan by class across three runners
+(`ui-tests` matrix). The catch-all shard lists the others under `-skip-testing`, so a new
+class runs there; moving one into a named shard means adding it to both lists.
 
 ## Gotchas
 

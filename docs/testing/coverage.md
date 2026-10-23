@@ -52,6 +52,10 @@ python3 .github/scripts/line_coverage.py combine --input unit=unit.json --input 
   --output summary.md --percent-file percent.txt
 ```
 
+On CI the UI plan runs as three class shards on separate runners. Each exports
+its own JSON, and `combine` merges inputs that share a name, so every shard is
+passed as `--input ui=…` and the summary still shows a single "ui" row.
+
 `xcrun xcresulttool merge` looks like a shortcut but is not one: on the same two
 bundles it reported less view coverage than the UI bundle alone.
 

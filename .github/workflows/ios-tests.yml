@@ -154,9 +154,25 @@ jobs:
           if-no-files-found: ignore
 
   ui-tests:
-    name: UI tests
+    name: UI tests (${{ matrix.shard }})
     runs-on: macos-26
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: journeys
+            selection: >-
+              -only-testing:CalorynUITests/JourneyTests
+          - shard: features
+            selection: >-
+              -only-testing:CalorynUITests/FeatureJourneyTests
+              -only-testing:CalorynUITests/BarcodeLookupUITests
+          - shard: rest
+            selection: >-
+              -skip-testing:CalorynUITests/JourneyTests
+              -skip-testing:CalorynUITests/FeatureJourneyTests
+              -skip-testing:CalorynUITests/BarcodeLookupUITests
     outputs:
       device: ${{ steps.simulator.outputs.device }}
 
@@ -177,14 +193,18 @@ jobs:
         uses: ./.github/actions/select-simulator
 
       - name: Run UI tests
+        env:
+          SELECTION: ${{ matrix.selection }}
         run: |
           set -euo pipefail
 
+          read -ra selection <<< "$SELECTION"
           mkdir -p TestResults
           xcodebuild test \
             -project Caloryn.xcodeproj \
             -scheme Caloryn \
             -testPlan Caloryn-UI \
+            "${selection[@]}" \
             -configuration Debug \
             -destination "platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}" \
             -resultBundlePath TestResults/UI.xcresult \
@@ -199,20 +219,20 @@ jobs:
           set -euo pipefail
           mkdir -p LineCoverage
           python3 .github/scripts/line_coverage.py export TestResults/UI.xcresult \
-            --root "$GITHUB_WORKSPACE" --output LineCoverage/ui-lines.json
+            --root "$GITHUB_WORKSPACE" --output "LineCoverage/ui-${{ matrix.shard }}-lines.json"
 
       - name: Upload line coverage
         uses: actions/upload-artifact@v4
         with:
-          name: ui-line-coverage
-          path: LineCoverage/ui-lines.json
+          name: ui-${{ matrix.shard }}-line-coverage
+          path: LineCoverage/ui-${{ matrix.shard }}-lines.json
           if-no-files-found: error
 
       - name: Upload results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ui-test-results
+          name: ui-${{ matrix.shard }}-test-results
           path: TestResults
           if-no-files-found: ignore
 
@@ -243,9 +263,13 @@ jobs:
         run: |
           set -euo pipefail
 
+          inputs=(--input unit=LineCoverage/unit-lines.json)
+          for shard in LineCoverage/ui-*-lines.json; do
+            inputs+=(--input "ui=$shard")
+          done
+
           python3 .github/scripts/line_coverage.py combine \
-            --input unit=LineCoverage/unit-lines.json \
-            --input ui=LineCoverage/ui-lines.json \
+            "${inputs[@]}" \
             --output LineCoverage/combined-summary.md \
             --percent-file LineCoverage/combined-percent.txt
 
