@@ -575,12 +575,24 @@ final class FoodSearchService {
                     recoveredByFallback: false
                 )
             )
-        case "barcode-lookup-unavailable":
+        case "barcode-lookup-pending":
+            try await holdUntilCancelled()
+        case "barcode-lookup-unavailable-then-pending":
+            debugBarcodeLookupCount += 1
+            guard debugBarcodeLookupCount == 1 else { try await holdUntilCancelled() }
             try await Task.sleep(for: .milliseconds(2500))
             try Task.checkCancellation()
             throw FoodLookupError.unavailable
         default:
             return nil
+        }
+    }
+
+    private static var debugBarcodeLookupCount = 0
+
+    private static func holdUntilCancelled() async throws -> Never {
+        while true {
+            try await Task.sleep(for: .seconds(60))
         }
     }
 

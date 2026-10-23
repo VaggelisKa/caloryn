@@ -23,7 +23,7 @@ final class BarcodeLookupUITests: UITestCase {
     }
 
     func testGivenASlowLookupWhenTheScannerIsCancelledThenSearchReturnsWithoutAFailure() {
-        let app = launchLookup(barcode: "3017620422003", fixture: "barcode-lookup-unavailable")
+        let app = launchLookup(barcode: "3017620422003", fixture: "barcode-lookup-pending")
         let today = TodayScreen(app: app)
         let search = FoodSearchScreen(app: app)
 
@@ -45,7 +45,7 @@ final class BarcodeLookupUITests: UITestCase {
     }
 
     func testGivenAFailedLookupWhenTheRetryIsCancelledThenSearchReturns() {
-        let app = launchLookup(barcode: "3017620422003", fixture: "barcode-lookup-unavailable")
+        let app = launchLookup(barcode: "3017620422003", fixture: "barcode-lookup-unavailable-then-pending")
         let today = TodayScreen(app: app)
         let search = FoodSearchScreen(app: app)
         let failure = app.staticTexts["Food search unavailable"]
