@@ -1,0 +1,57 @@
+name: Compilation cache
+description: >
+  Turns on Xcode's compilation cache for every later xcodebuild in the job and
+  restores its content-addressed store from earlier runs. Saving is left to the
+  caller, so only main pushes write a cache.
+
+inputs:
+  scope:
+    description: >
+      Names the store. Jobs that build different targets keep separate stores
+      so one cannot evict the other's objects.
+    required: true
+
+outputs:
+  path:
+    description: Directory holding the store; pass to actions/cache/save.
+    value: ${{ steps.configure.outputs.path }}
+  key:
+    description: Key to save the store under.
+    value: ${{ steps.configure.outputs.key }}
+
+runs:
+  using: composite
+  steps:
+    - name: Configure compilation cache
+      id: configure
+      shell: bash
+      env:
+        SCOPE: ${{ inputs.scope }}
+        PACKAGES_HASH: ${{ hashFiles('Caloryn.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+      run: |
+        set -euo pipefail
+
+        store="$RUNNER_TEMP/compilation-cache"
+        xcconfig="$RUNNER_TEMP/compilation-cache.xcconfig"
+        xcode_build="$(xcodebuild -version | awk '/Build version/ { print $3 }')"
+        prefix="compilation-cache-${SCOPE}-${RUNNER_OS}-${RUNNER_ARCH}-xcode-${xcode_build}-"
+
+        {
+          echo "COMPILATION_CACHE_ENABLE_CACHING = YES"
+          echo "COMPILATION_CACHE_CAS_PATH = $store"
+          echo "COMPILATION_CACHE_LIMIT_SIZE = 3G"
+        } > "$xcconfig"
+
+        echo "XCODE_XCCONFIG_FILE=$xcconfig" >> "$GITHUB_ENV"
+        echo "path=$store" >> "$GITHUB_OUTPUT"
+        echo "prefix=$prefix" >> "$GITHUB_OUTPUT"
+        echo "packages-prefix=${prefix}${PACKAGES_HASH}-" >> "$GITHUB_OUTPUT"
+        echo "key=${prefix}${PACKAGES_HASH}-${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
+    - name: Restore compilation cache
+      uses: actions/cache/restore@v4
+      with:
+        path: ${{ steps.configure.outputs.path }}
+        key: ${{ steps.configure.outputs.key }}
+        restore-keys: |
+          ${{ steps.configure.outputs.packages-prefix }}

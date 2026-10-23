@@ -54,6 +54,12 @@ jobs:
           restore-keys: |
             spm-${{ runner.os }}-
 
+      - name: Compilation cache
+        id: compilation-cache
+        uses: ./.github/actions/compilation-cache
+        with:
+          scope: unit
+
       - name: Select simulator
         id: simulator
         uses: ./.github/actions/select-simulator
@@ -75,6 +81,13 @@ jobs:
             -disableAutomaticPackageResolution \
             -enableCodeCoverage YES \
             CODE_SIGNING_ALLOWED=NO
+
+      - name: Save compilation cache
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.compilation-cache.outputs.path }}
+          key: ${{ steps.compilation-cache.outputs.key }}
 
       - name: Summarize coverage
         id: coverage
@@ -188,6 +201,12 @@ jobs:
           restore-keys: |
             spm-${{ runner.os }}-
 
+      - name: Compilation cache
+        id: compilation-cache
+        uses: ./.github/actions/compilation-cache
+        with:
+          scope: ui
+
       - name: Select simulator
         id: simulator
         uses: ./.github/actions/select-simulator
@@ -213,6 +232,13 @@ jobs:
             -disableAutomaticPackageResolution \
             -enableCodeCoverage YES \
             CODE_SIGNING_ALLOWED=NO
+
+      - name: Save compilation cache
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.compilation-cache.outputs.path }}
+          key: ${{ steps.compilation-cache.outputs.key }}
 
       - name: Export line coverage
         run: |
