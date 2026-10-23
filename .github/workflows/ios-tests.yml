@@ -16,7 +16,8 @@ concurrency:
 jobs:
   lint:
     name: SwiftLint
-    runs-on: macos-26
+    runs-on: ubuntu-latest
+    container: ghcr.io/realm/swiftlint:0.65.1
     timeout-minutes: 5
 
     steps:
@@ -25,10 +26,7 @@ jobs:
 
       - name: Lint
         run: |
-          set -euo pipefail
-          if ! command -v swiftlint >/dev/null 2>&1; then
-            brew install swiftlint
-          fi
+          set -eu
           swiftlint --version
           swiftlint lint --strict --reporter github-actions-logging
 
