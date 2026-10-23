@@ -236,7 +236,9 @@ final class FeatureJourneyTests: UITestCase {
             scroll(to: reminder.time, in: app)
             let before = reminder.time.label
             reminder.tap(reminder.time)
-            let picker = reminder.awaitTappable(reminder.timePicker)
+            let picker = reminder.timePicker
+            XCTAssertTrue(picker.awaitExistence(), "Tapping the row should open the wheel")
+            scroll(to: picker, in: app)
             picker.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.5))
                 .press(
                     forDuration: 0.05,
@@ -266,8 +268,9 @@ final class FeatureJourneyTests: UITestCase {
 
     private func scroll(to element: XCUIElement, in app: XCUIApplication, maxDrags: Int = 10) {
         let window = app.windows.firstMatch
+        let tabBar = app.tabBars.firstMatch
         var drags = 0
-        while !element.isHittable, drags < maxDrags {
+        while !isClear(element, of: tabBar), drags < maxDrags {
             window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6))
                 .press(
                     forDuration: 0.05,
@@ -275,7 +278,11 @@ final class FeatureJourneyTests: UITestCase {
                 )
             drags += 1
         }
-        XCTAssertTrue(element.isHittable, "Never scrolled to \(element)")
+        XCTAssertTrue(isClear(element, of: tabBar), "Never scrolled \(element) clear of the tab bar")
+    }
+
+    private func isClear(_ element: XCUIElement, of tabBar: XCUIElement) -> Bool {
+        element.isHittable && element.frame.maxY <= tabBar.frame.minY
     }
 
     private func retype(_ text: String, into field: XCUIElement, atTrailingOffset offset: CGFloat = 0.97) {
