@@ -65,8 +65,15 @@ jobs:
         uses: ./.github/actions/select-simulator
 
       - name: Run unit tests
+        env:
+          NSUnbufferedIO: "YES"
         run: |
           set -euo pipefail
+
+          date -u +"XCODEBUILD_STEP_START %T"
+          ( for i in $(seq 40); do sleep 10; echo "SAMPLE $(date -u +%T)"; ps -Ao pcpu=,rss=,etime=,comm= -r | head -6 || true; done ) &
+          sampler=$!
+          trap 'kill "$sampler" 2>/dev/null || true' EXIT
 
           mkdir -p TestResults
           xcodebuild test \
@@ -83,11 +90,13 @@ jobs:
             CODE_SIGNING_ALLOWED=NO
 
       - name: Save compilation cache
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/cache/save@v4
         with:
           path: ${{ steps.compilation-cache.outputs.path }}
           key: ${{ steps.compilation-cache.outputs.key }}
+
+      - name: Measure compilation cache
+        run: du -sh "${{ steps.compilation-cache.outputs.path }}"
 
       - name: Summarize coverage
         id: coverage
@@ -217,6 +226,11 @@ jobs:
         run: |
           set -euo pipefail
 
+          date -u +"XCODEBUILD_STEP_START %T"
+          ( for i in $(seq 40); do sleep 10; echo "SAMPLE $(date -u +%T)"; ps -Ao pcpu=,rss=,etime=,comm= -r | head -6 || true; done ) &
+          sampler=$!
+          trap 'kill "$sampler" 2>/dev/null || true' EXIT
+
           read -ra selection <<< "$SELECTION"
           mkdir -p TestResults
           xcodebuild test \
@@ -234,11 +248,13 @@ jobs:
             CODE_SIGNING_ALLOWED=NO
 
       - name: Save compilation cache
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/cache/save@v4
         with:
           path: ${{ steps.compilation-cache.outputs.path }}
           key: ${{ steps.compilation-cache.outputs.key }}
+
+      - name: Measure compilation cache
+        run: du -sh "${{ steps.compilation-cache.outputs.path }}"
 
       - name: Export line coverage
         run: |

@@ -218,3 +218,4 @@ struct GoalEditDraft: Equatable {
         return trimmedText(for: nutrient) == nutrient.unit.inputFormatted(saved)
     }
 }
+
