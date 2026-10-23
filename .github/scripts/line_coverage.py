@@ -51,11 +51,11 @@ def percent(covered: int, executable: int) -> float:
 
 
 def combine(inputs: list[tuple[str, Path]]) -> tuple[str, float]:
-    plans = {name: json.loads(path.read_text(encoding="utf-8"))["files"] for name, path in inputs}
-
     executable: dict[str, set[int]] = defaultdict(set)
-    covered_by: dict[str, dict[str, set[int]]] = {name: defaultdict(set) for name in plans}
-    for name, files in plans.items():
+    covered_by: dict[str, dict[str, set[int]]] = {}
+    for name, source in inputs:
+        files = json.loads(source.read_text(encoding="utf-8"))["files"]
+        covered_by.setdefault(name, defaultdict(set))
         for path, lines in files.items():
             executable[path].update(lines["executable"])
             covered_by[name][path].update(lines["covered"])
@@ -66,7 +66,7 @@ def combine(inputs: list[tuple[str, Path]]) -> tuple[str, float]:
             lines |= covered_by[name].get(path, set())
         return len(lines & executable[path])
 
-    names = list(plans)
+    names = list(covered_by)
     total = sum(len(lines) for lines in executable.values())
     combined = sum(covered_in(path, names) for path in executable)
     overall = percent(combined, total)
