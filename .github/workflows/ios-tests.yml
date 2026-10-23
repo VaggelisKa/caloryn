@@ -10,8 +10,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: ios-tests-${{ github.ref }}
-  cancel-in-progress: true
+  group: ios-tests-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   lint:
@@ -108,7 +108,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: coverage-baseline.txt
-          key: coverage-baseline-main-${{ steps.simulator.outputs.device }}-${{ github.sha }}
+          key: coverage-baseline-main-${{ steps.simulator.outputs.device }}-${{ github.event.pull_request.base.sha }}
           restore-keys: |
             coverage-baseline-main-${{ steps.simulator.outputs.device }}-
 
@@ -293,7 +293,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: combined-coverage-baseline.txt
-          key: combined-coverage-baseline-main-${{ needs.unit-tests.outputs.device }}-${{ needs.ui-tests.outputs.device }}-${{ github.sha }}
+          key: combined-coverage-baseline-main-${{ needs.unit-tests.outputs.device }}-${{ needs.ui-tests.outputs.device }}-${{ github.event.pull_request.base.sha }}
           restore-keys: |
             combined-coverage-baseline-main-${{ needs.unit-tests.outputs.device }}-${{ needs.ui-tests.outputs.device }}-
 
