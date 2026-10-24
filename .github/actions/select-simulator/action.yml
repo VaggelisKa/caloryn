@@ -135,7 +135,7 @@ runs:
       run: |
         set -euo pipefail
         xcrun simctl boot "$SIMULATOR_ID"
-        xcrun simctl bootstatus "$SIMULATOR_ID" -b
+        "$GITHUB_ACTION_PATH/quiet_services.sh" "$SIMULATOR_ID"
         "$GITHUB_ACTION_PATH/wait_for_idle.sh"
         xcrun simctl shutdown "$SIMULATOR_ID"
         mv "$DATA_PATH" "$HOME/simulator-data"
@@ -159,3 +159,4 @@ runs:
           mv "$HOME/simulator-data" "$DATA_PATH"
         fi
         xcrun simctl boot "$SIMULATOR_ID" || true
+        nohup "$GITHUB_ACTION_PATH/quiet_services.sh" "$SIMULATOR_ID" > "$RUNNER_TEMP/quiet-services.log" 2>&1 &
