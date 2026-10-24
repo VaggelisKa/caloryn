@@ -33,7 +33,7 @@ jobs:
   unit-tests:
     name: Unit tests
     runs-on: macos-26
-    timeout-minutes: 30
+    timeout-minutes: 45
     outputs:
       device: ${{ steps.simulator.outputs.device }}
 
@@ -55,6 +55,8 @@ jobs:
       - name: Select simulator
         id: simulator
         uses: ./.github/actions/select-simulator
+        with:
+          warm-cache: "true"
 
       - name: Run unit tests
         run: |
