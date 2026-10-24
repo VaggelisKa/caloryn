@@ -108,6 +108,14 @@ extension Screen {
 }
 
 extension XCUIElement {
+    var hasKeyboardFocus: Bool {
+        (value(forKey: "hasKeyboardFocus") as? Bool) ?? false
+    }
+
+    var lastSeenLabel: String {
+        exists ? "\"\(label)\"" : "gone from the screen"
+    }
+
     @discardableResult
     func awaitLabel(
         containing substring: String,
@@ -120,8 +128,8 @@ extension XCUIElement {
         let result = XCTWaiter().wait(for: [expectation], timeout: timeout)
         if result != .completed {
             XCTFail(
-                "Timed out waiting for a label containing \"\(substring)\"; last label was "
-                    + "\"\(label)\"",
+                "Timed out waiting for a label containing \"\(substring)\"; the element was "
+                    + lastSeenLabel,
                 file: file,
                 line: line
             )
@@ -129,12 +137,66 @@ extension XCUIElement {
         return result == .completed
     }
 
-    func replaceText(_ text: String) {
-        tap()
-        if let existing = value as? String, !existing.isEmpty {
-            typeKey("a", modifierFlags: .command)
-            typeKey(XCUIKeyboardKey.delete, modifierFlags: [])
+    @discardableResult
+    func awaitKeyboardFocus(
+        timeout: TimeInterval = UITestCase.defaultTimeout,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        let focused = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "hasKeyboardFocus == true"),
+            object: self
+        )
+        if XCTWaiter().wait(for: [focused], timeout: timeout) != .completed {
+            XCTFail("\(self) never took keyboard focus", file: file, line: line)
         }
-        typeText(text)
+        return self
+    }
+
+    @discardableResult
+    func focusForTyping(
+        tappingInsetFromTrailingEdge inset: CGFloat = 16,
+        timeout: TimeInterval = UITestCase.defaultTimeout,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        if exists, hasKeyboardFocus { return self }
+
+        let hittable = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "isHittable == true"),
+            object: self
+        )
+        guard XCTWaiter().wait(for: [hittable], timeout: timeout) == .completed else {
+            XCTFail("\(self) never became tappable to type into", file: file, line: line)
+            return self
+        }
+        coordinate(withNormalizedOffset: CGVector(dx: 1, dy: 0.5))
+            .withOffset(CGVector(dx: -inset, dy: 0))
+            .tap()
+        return awaitKeyboardFocus(timeout: timeout, file: file, line: line)
+    }
+
+    func replaceText(
+        _ text: String,
+        tappingInsetFromTrailingEdge inset: CGFloat = 16,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        focusForTyping(tappingInsetFromTrailingEdge: inset, file: file, line: line)
+        let existing = (value as? String)?.count ?? 0
+        typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: existing + 2) + text)
+
+        guard value as? String != text else { return }
+        let replaced = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value == %@", text),
+            object: self
+        )
+        if XCTWaiter().wait(for: [replaced], timeout: UITestCase.defaultTimeout) != .completed {
+            XCTFail(
+                "\(self) holds \"\(value as? String ?? "")\" instead of \"\(text)\"",
+                file: file,
+                line: line
+            )
+        }
     }
 }

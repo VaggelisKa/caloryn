@@ -66,8 +66,7 @@ final class SwipeBackTests: UITestCase {
         given("a food has been picked from the search sheet") {
             XCTAssertTrue(today.isVisible)
             today.tap(today.mealHeader("breakfast"))
-            search.awaitTappable(search.searchField)
-            search.searchField.typeText("Smoothie")
+            search.searchField.awaitKeyboardFocus().typeText("Smoothie")
             search.tap(search.result(named: "Morning Smoothie"))
             XCTAssertTrue(portion.save.awaitExistence())
         }
