@@ -273,10 +273,10 @@ the expected colour instead.
 ```
 
 Captures 24 surfaces in both appearances — all six onboarding steps, Today, the food
-search sheet, its results, those results *while the search is still running*, and the
-portion picker, History with both drill-downs, Settings with both editors, My Foods,
-multi-add review and its portion editor, the three creation sheets, and the ingredient
-amount picker — then prints how much of each screen is `backgroundPrimary`,
+search sheet, its results, those results *while the search is still running*, the
+portion picker, the pasted-food confirmation, History with both drill-downs, Settings with
+both editors, My Foods, multi-add review and its portion editor, the three creation sheets,
+and the ingredient amount picker — then prints how much of each screen is `backgroundPrimary`,
 `backgroundSecondary`, retired sage, and a system grey (`#F2F2F7` in light; `#1C1C1E`, `#000000`
 or `#2C2C2E` in dark). The token values in the script must move with the Color Sets: after
 the palette change they still held the old ones, and every capture read 0.0% page.

@@ -1,3 +1,4 @@
+import UIKit
 import XCTest
 
 final class ThemeScreenshotTests: UITestCase {
@@ -18,6 +19,7 @@ final class ThemeScreenshotTests: UITestCase {
         captureLookupFailure(appearance, fixture: "search-offline", named: "03e-food-search-offline")
         captureLookupFailure(appearance, fixture: "barcode-not-found", named: "03f-barcode-not-found")
         capturePortionPicker(appearance)
+        capturePastedFoodConfirmation(appearance)
         captureMultiAddReview(appearance)
         captureHistoryDrillDown(appearance)
         captureCalorieTrendDrillDown(appearance)
@@ -206,6 +208,32 @@ final class ThemeScreenshotTests: UITestCase {
         XCTAssertTrue(calories.awaitExistence(), "Portion picker did not open")
         sleep(1)
         attach(app, "03b-portion-picker", appearance)
+    }
+
+    private func capturePastedFoodConfirmation(_ appearance: Appearance) {
+        let app = launch(fixture: .loggedDay, appearance: appearance)
+        let today = TodayScreen(app: app)
+        let pasted = PastedFoodScreen(app: app)
+
+        XCTAssertTrue(today.isVisible, "Today should render")
+        UIPasteboard.general.string = "caloryn://log?v=1"
+            + "&name=Chicken%20Caesar%20salad%20with%20croutons%2C%20parmesan%20and%20extra%20dressing"
+            + "&kcal=640&protein=38.5&fat=42"
+        let addBreakfast = today.mealHeader("breakfast")
+        XCTAssertTrue(addBreakfast.awaitExistence(), "Breakfast add button missing")
+        addBreakfast.tap()
+
+        XCTAssertTrue(pasted.paste.awaitExistence(), "The paste panel is missing from the food search sheet")
+        sleep(1)
+        attach(app, "03h-paste-panel", appearance)
+        pasted.paste.tap()
+        XCTAssertTrue(
+            pasted.addBlockedReason.awaitExistence(),
+            "The pasted food confirmation did not open on a link without grams"
+        )
+        sleep(1)
+        attach(app, "03h-pasted-food-confirmation", appearance)
+        UIPasteboard.general.string = ""
     }
 
     private func captureHistoryDrillDown(_ appearance: Appearance) {
