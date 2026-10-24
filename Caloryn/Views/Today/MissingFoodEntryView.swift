@@ -30,7 +30,7 @@ struct MissingFoodEntryView: View {
         NavigationStack {
             Form {
                 Section {
-                    Text("The original saved food is missing. Editing uses the nutrition and quality values recorded in this log entry.")
+                    Text(SnapshotEntryNotice.message(for: entry.historicalProvenance.source))
                         .font(TodayPlateFont.detailsNote)
                         .foregroundStyle(CalorynTheme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
