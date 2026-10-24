@@ -160,7 +160,6 @@ struct PastedFoodScreen: Screen {
     let app: XCUIApplication
 
     var paste: XCUIElement { element("foodSearch.pasteLink") }
-    var copyInstructions: XCUIElement { element("foodSearch.copyChatbotInstructions") }
 
     var name: XCUIElement { element("pastedFood.name") }
     var calories: XCUIElement { element("pastedFood.calories") }
@@ -296,6 +295,31 @@ struct SettingsScreen: Screen {
     var macroAccount: XCUIElement { element("goalEdit.macroAccount") }
 
     var export: XCUIElement { element("settings.export") }
+    var copyChatbotInstructions: XCUIElement { element("settings.copyChatbotInstructions") }
+
+    @discardableResult
+    func revealClearOfTabBar(
+        _ element: XCUIElement,
+        maximumDrags: Int = 10,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        let window = app.windows.firstMatch
+        let tabBar = app.tabBars.firstMatch
+        var drags = 0
+        while !(element.isHittable && element.frame.maxY <= tabBar.frame.minY), drags < maximumDrags {
+            window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6))
+                .press(
+                    forDuration: 0.05,
+                    thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4))
+                )
+            drags += 1
+        }
+        if !(element.isHittable && element.frame.maxY <= tabBar.frame.minY) {
+            XCTFail("Never scrolled \(element) clear of the tab bar", file: file, line: line)
+        }
+        return element
+    }
 
     @discardableResult
     func revealExport(
