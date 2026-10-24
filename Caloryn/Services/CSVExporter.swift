@@ -1,7 +1,15 @@
 import Foundation
 
 enum CSVExporter {
+    private static let formulaTriggers: Set<Unicode.Scalar> = ["=", "+", "-", "@", "\t", "\r"]
+
+    private static func neutralised(_ field: String) -> String {
+        guard let first = field.unicodeScalars.first, formulaTriggers.contains(first) else { return field }
+        return "'" + field
+    }
+
     private static func escaped(_ field: String) -> String {
+        let field = neutralised(field)
         // `isNewline`, not `== "\n" || == "\r"`: "\r\n" is one Character and equals neither.
         guard field.contains(where: { $0 == "," || $0 == "\"" || $0.isNewline }) else {
             return field
