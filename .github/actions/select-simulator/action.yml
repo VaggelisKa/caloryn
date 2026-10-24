@@ -152,6 +152,7 @@ runs:
       env:
         SIMULATOR_ID: ${{ steps.pick.outputs.id }}
         DATA_PATH: ${{ steps.pick.outputs.data-path }}
+        QUIET_SERVICES: com.apple.apsd
       run: |
         set -euo pipefail
         if [ -d "$HOME/simulator-data" ]; then
@@ -159,3 +160,8 @@ runs:
           mv "$HOME/simulator-data" "$DATA_PATH"
         fi
         xcrun simctl boot "$SIMULATOR_ID" || true
+        xcrun simctl bootstatus "$SIMULATOR_ID" -b
+        for service in $QUIET_SERVICES; do
+          xcrun simctl spawn "$SIMULATOR_ID" launchctl disable "user/foreground/$service"
+          xcrun simctl spawn "$SIMULATOR_ID" launchctl bootout "user/foreground/$service" || true
+        done
