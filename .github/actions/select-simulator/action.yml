@@ -1,5 +1,8 @@
 name: Select simulator
-description: Boots an available iPhone simulator whose runtime satisfies the app's deployment target.
+description: >
+  Boots an available iPhone simulator whose runtime satisfies the app's
+  deployment target, from a cached post-first-boot data directory when one
+  exists.
 
 inputs:
   minimum-ios:
@@ -13,6 +16,15 @@ inputs:
       coverage ratchet comparing like with like.
     required: false
     default: "iPhone 17"
+  warm-cache:
+    description: >
+      On a cache miss, let the simulator's first boot settle, then save its
+      data directory for later runs. The first boot of a fresh device spends
+      over ten minutes generating posters, widget snapshots, assets and a
+      deferred photo analysis, which starves a three-core runner; only a job
+      off the critical path should pay for warming.
+    required: false
+    default: "false"
 
 outputs:
   id:
@@ -28,7 +40,7 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Pick and boot simulator
+    - name: Pick simulator
       id: pick
       shell: bash
       env:
@@ -38,16 +50,19 @@ runs:
         set -euo pipefail
 
         xcrun simctl list devices available -j > "$RUNNER_TEMP/simulators.json"
+        xcrun simctl list runtimes -j > "$RUNNER_TEMP/runtimes.json"
 
         selection="$(
-          python3 - "$RUNNER_TEMP/simulators.json" "$MINIMUM_IOS" "$PREFERRED_DEVICE" <<'PY'
+          python3 - "$RUNNER_TEMP/simulators.json" "$RUNNER_TEMP/runtimes.json" "$MINIMUM_IOS" "$PREFERRED_DEVICE" <<'PY'
         import json
         import sys
 
-        path, minimum, preferred = sys.argv[1], int(sys.argv[2]), sys.argv[3]
+        path, runtimes_path, minimum, preferred = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4]
 
         with open(path, encoding="utf-8") as file:
             payload = json.load(file)
+        with open(runtimes_path, encoding="utf-8") as file:
+            builds = {r["identifier"]: r["buildversion"] for r in json.load(file)["runtimes"]}
 
         candidates = []
         for runtime, devices in payload["devices"].items():
@@ -64,7 +79,7 @@ runs:
                 continue
             for device in devices:
                 if device.get("isAvailable") and device.get("name", "").startswith("iPhone"):
-                    candidates.append(((major, minor), device))
+                    candidates.append(((major, minor), dict(device, runtime=runtime)))
 
         if not candidates:
             sys.exit("No available iPhone simulator with iOS >= %d." % minimum)
@@ -84,14 +99,64 @@ runs:
             )
         print(selected["udid"])
         print(selected.get("name", "unknown"))
+        print(selected["dataPath"])
+        print(selected["deviceTypeIdentifier"])
+        print(builds[selected["runtime"]])
         PY
         )"
 
         simulator_id="$(echo "$selection" | sed -n 1p)"
         simulator_name="$(echo "$selection" | sed -n 2p)"
+        data_path="$(echo "$selection" | sed -n 3p)"
+        device_type="$(echo "$selection" | sed -n 4p)"
         device_slug="$(echo "$simulator_name" | tr ' ' '-' | tr -cd '[:alnum:]-')"
+        runtime_build="$(echo "$selection" | sed -n 5p)"
+        xcode_build="$(xcodebuild -version | sed -n 's/^Build version //p')"
 
-        echo "Selected simulator $simulator_name ($simulator_id)"
+        echo "Selected simulator $simulator_name ($simulator_id), runtime $runtime_build, Xcode $xcode_build"
         echo "id=$simulator_id" >> "$GITHUB_OUTPUT"
         echo "device=$device_slug" >> "$GITHUB_OUTPUT"
-        xcrun simctl boot "$simulator_id" || true
+        echo "data-path=$data_path" >> "$GITHUB_OUTPUT"
+        echo "cache-key=simulator-data-v2-${device_type##*.}-${runtime_build}-xcode-${xcode_build}" >> "$GITHUB_OUTPUT"
+
+    - name: Restore settled simulator
+      id: restore
+      uses: actions/cache/restore@v4
+      with:
+        path: ~/simulator-data
+        key: ${{ steps.pick.outputs.cache-key }}
+
+    - name: Settle first boot
+      if: steps.restore.outputs.cache-hit != 'true' && inputs.warm-cache == 'true'
+      shell: bash
+      env:
+        SIMULATOR_ID: ${{ steps.pick.outputs.id }}
+        DATA_PATH: ${{ steps.pick.outputs.data-path }}
+      run: |
+        set -euo pipefail
+        xcrun simctl boot "$SIMULATOR_ID"
+        "$GITHUB_ACTION_PATH/quiet_services.sh" "$SIMULATOR_ID"
+        "$GITHUB_ACTION_PATH/wait_for_idle.sh"
+        xcrun simctl shutdown "$SIMULATOR_ID"
+        mv "$DATA_PATH" "$HOME/simulator-data"
+
+    - name: Save settled simulator
+      if: steps.restore.outputs.cache-hit != 'true' && inputs.warm-cache == 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ~/simulator-data
+        key: ${{ steps.pick.outputs.cache-key }}
+
+    - name: Boot simulator
+      shell: bash
+      env:
+        SIMULATOR_ID: ${{ steps.pick.outputs.id }}
+        DATA_PATH: ${{ steps.pick.outputs.data-path }}
+      run: |
+        set -euo pipefail
+        if [ -d "$HOME/simulator-data" ]; then
+          rm -rf "$DATA_PATH"
+          mv "$HOME/simulator-data" "$DATA_PATH"
+        fi
+        xcrun simctl boot "$SIMULATOR_ID" || true
+        nohup "$GITHUB_ACTION_PATH/quiet_services.sh" "$SIMULATOR_ID" > "$RUNNER_TEMP/quiet-services.log" 2>&1 &
