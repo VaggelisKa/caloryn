@@ -56,12 +56,31 @@ jobs:
         id: simulator
         uses: ./.github/actions/select-simulator
 
+      - name: Build unit tests
+        run: |
+          set -euo pipefail
+
+          xcodebuild build-for-testing \
+            -project Caloryn.xcodeproj \
+            -scheme Caloryn \
+            -testPlan Caloryn-Unit \
+            -configuration Debug \
+            -destination "platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}" \
+            -clonedSourcePackagesDirPath .spm-cache \
+            -onlyUsePackageVersionsFromResolvedFile \
+            -disableAutomaticPackageResolution \
+            -enableCodeCoverage YES \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Boot simulator
+        run: xcrun simctl bootstatus "${{ steps.simulator.outputs.id }}" -b
+
       - name: Run unit tests
         run: |
           set -euo pipefail
 
           mkdir -p TestResults
-          xcodebuild test \
+          xcodebuild test-without-building \
             -project Caloryn.xcodeproj \
             -scheme Caloryn \
             -testPlan Caloryn-Unit \
@@ -190,6 +209,25 @@ jobs:
         id: simulator
         uses: ./.github/actions/select-simulator
 
+      - name: Build UI tests
+        run: |
+          set -euo pipefail
+
+          xcodebuild build-for-testing \
+            -project Caloryn.xcodeproj \
+            -scheme Caloryn \
+            -testPlan Caloryn-UI \
+            -configuration Debug \
+            -destination "platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}" \
+            -clonedSourcePackagesDirPath .spm-cache \
+            -onlyUsePackageVersionsFromResolvedFile \
+            -disableAutomaticPackageResolution \
+            -enableCodeCoverage YES \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Boot simulator
+        run: xcrun simctl bootstatus "${{ steps.simulator.outputs.id }}" -b
+
       - name: Run UI tests
         env:
           SELECTION: ${{ matrix.selection }}
@@ -198,7 +236,7 @@ jobs:
 
           read -ra selection <<< "$SELECTION"
           mkdir -p TestResults
-          xcodebuild test \
+          xcodebuild test-without-building \
             -project Caloryn.xcodeproj \
             -scheme Caloryn \
             -testPlan Caloryn-UI \

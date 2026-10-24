@@ -1,5 +1,8 @@
 name: Select simulator
-description: Boots an available iPhone simulator whose runtime satisfies the app's deployment target.
+description: >
+  Picks an available iPhone simulator whose runtime satisfies the app's
+  deployment target, without booting it. A first boot starves the runner, so
+  callers boot it once the build is done.
 
 inputs:
   minimum-ios:
@@ -16,7 +19,7 @@ inputs:
 
 outputs:
   id:
-    description: UDID of the booted simulator.
+    description: UDID of the selected simulator.
     value: ${{ steps.pick.outputs.id }}
   device:
     description: >
@@ -28,7 +31,7 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Pick and boot simulator
+    - name: Pick simulator
       id: pick
       shell: bash
       env:
@@ -94,4 +97,3 @@ runs:
         echo "Selected simulator $simulator_name ($simulator_id)"
         echo "id=$simulator_id" >> "$GITHUB_OUTPUT"
         echo "device=$device_slug" >> "$GITHUB_OUTPUT"
-        xcrun simctl boot "$simulator_id" || true
