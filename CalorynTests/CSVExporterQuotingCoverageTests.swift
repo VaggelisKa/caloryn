@@ -73,6 +73,59 @@ struct CSVExporterQuotingCoverageTests {
         #expect(Array(fields.dropFirst(3)) == ["150", "94", "16.5", "6.0", "0.3", "0.0"])
     }
 
+    @Test(
+        "A name a spreadsheet would run as a formula is exported as text behind a leading apostrophe",
+        arguments: [
+            "=1+1",
+            "+1 Protein Shake",
+            "-5% Fat Yogurt",
+            "@SUM(A1)",
+            "\tTabbed",
+            "\rReturn",
+            "\r\nLine",
+        ]
+    )
+    func formulaTriggerNamesAreNeutralised(name: String) throws {
+        let csv = CSVExporter.generateCSV(from: [makeTestEntry(foodItem: makeTestFoodItem(name: name))])
+        let records = parsedRecords(csv)
+
+        #expect(records.count == 2)
+        let fields = try #require(records.last)
+        #expect(fields.count == 9)
+        #expect(fields[2] == "'" + name)
+    }
+
+    @Test(
+        "A formula character anywhere but the start leaves the name untouched",
+        arguments: ["Salt = Sodium", "Half-and-half", "Vitamin C+", "Coffee @ Work"]
+    )
+    func formulaCharacterAfterTheStartIsUnchanged(name: String) {
+        let csv = CSVExporter.generateCSV(from: [makeTestEntry(foodItem: makeTestFoodItem(name: name))])
+        #expect(csv.contains(",\(name),"))
+        #expect(csv.contains("'") == false)
+    }
+
+    @Test("A formula name that also needs quoting is neutralised inside the quotes")
+    func formulaNameThatNeedsQuotingIsNeutralisedThenQuoted() throws {
+        let name = "=HYPERLINK(\"https://evil.example\",\"x\")"
+        let csv = CSVExporter.generateCSV(from: [makeTestEntry(foodItem: makeTestFoodItem(name: name))])
+        let fields = try #require(parsedRecords(csv).last)
+
+        #expect(csv.contains(",\"'=HYPERLINK(\"\"https://evil.example\"\",\"\"x\"\")\","))
+        #expect(fields.count == 9)
+        #expect(fields[2] == "'" + name)
+    }
+
+    @Test("Neutralising a formula name leaves the header, the meal and every numeric column as they were")
+    func formulaNameLeavesOtherColumnsUnchanged() {
+        let food = makeTestFoodItem(name: "-1", fatPer100g: -2)
+        let csv = CSVExporter.generateCSV(from: [
+            makeTestEntry(date: makeTestDate(year: 2026, month: 7, day: 1), mealType: .snack, foodItem: food, snackIndex: 2),
+        ])
+
+        #expect(csv == "Date,Meal,Food,Portion (g),Calories,Protein (g),Carbs (g),Fat (g),Fiber (g)\n2026-07-01,Snack 2,'-1,100,100,10.0,20.0,-2.0,0.0\n")
+    }
+
     private func parsedRecords(_ csv: String) -> [[String]] {
         var records: [[String]] = []
         var fields: [String] = []
