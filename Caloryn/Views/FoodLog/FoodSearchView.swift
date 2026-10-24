@@ -8,6 +8,11 @@ struct FoodSearchView: View {
         let groups: [MultiAddSelectionGroup]
     }
 
+    struct PastedFoodPresentation: Identifiable {
+        let id = UUID()
+        let confirmation: PastedFoodConfirmation
+    }
+
     struct PortionDestination: Identifiable, Hashable {
         let food: FoodItem
         var suggestedPortionGrams: Double?
@@ -25,6 +30,8 @@ struct FoodSearchView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.locale) private var locale
     @Query(sort: \FoodItem.lastUsed, order: .reverse) private var recentFoods: [FoodItem]
     @Query(sort: \MealTemplate.updatedAt, order: .reverse) private var mealTemplates: [MealTemplate]
 
@@ -46,6 +53,11 @@ struct FoodSearchView: View {
     @State private var suggestionSnapshot: [ContextualFoodSuggestion] = []
     @State private var hasCapturedSuggestions = false
     @State var multiAddPresentation: MultiAddPresentation?
+    @State private var pastedFoodPresentation: PastedFoodPresentation?
+    @State private var pasteOffer = ChatbotPasteOffer()
+    @State private var pasteRejectionMessage: String?
+    @AppStorage("chatbotPasteboardGeneration") private var pasteboardGeneration = 0
+    @AppStorage("chatbotPasteRejectedGeneration") private var rejectedPasteGeneration: Int?
     @ScaledMetric(relativeTo: .body)
     var selectionIndicatorWidth: CGFloat = 22
     @ScaledMetric(relativeTo: .body)
@@ -90,6 +102,15 @@ struct FoodSearchView: View {
             VStack(spacing: 0) {
                 if showsSearchBar(for: resolvedScreenContent) {
                     searchBar
+                }
+
+                if pasteOffer.showsPasteRow(
+                    in: mode,
+                    on: resolvedScreenContent,
+                    isSelectingMultiple: isSelectingMultiple,
+                    rejectedGeneration: rejectedPasteGeneration
+                ) {
+                    ChatbotPasteRow(onPaste: receivePaste)
                 }
 
                 switch resolvedScreenContent {
@@ -143,6 +164,7 @@ struct FoodSearchView: View {
                             .foregroundStyle(CalorynTheme.accent)
                     }
                     .accessibilityLabel("Close")
+                    .accessibilityIdentifier("foodSearch.close")
                 }
                 if mode.supportsMultiSelection {
                     ToolbarItem(placement: .primaryAction) {
@@ -258,6 +280,16 @@ struct FoodSearchView: View {
                 )
                 .presentationDragIndicator(.visible)
             }
+            .sheet(item: $pastedFoodPresentation) { presentation in
+                PastedFoodConfirmationView(
+                    confirmation: presentation.confirmation,
+                    mealType: mealType,
+                    snackIndex: snackIndex,
+                    logDate: logDate,
+                    onAdded: dismiss.callAsFunction
+                )
+                .presentationDragIndicator(.visible)
+            }
             .fullScreenCover(isPresented: $showingScanner, onDismiss: {
                 barcodeFlow.scannerDismissed()
                 if revealFoodAfterScannerDismiss {
@@ -273,6 +305,12 @@ struct FoodSearchView: View {
                 }
             } message: {
                 Text(mealErrorMessage ?? "Please try again.")
+            }
+            .alert("Couldn’t Read Link", isPresented: pasteRejectionIsPresented) {
+                Button("OK", role: .cancel) { pasteRejectionMessage = nil }
+                    .accessibilityIdentifier("foodSearch.pasteRejection.ok")
+            } message: {
+                Text(verbatim: pasteRejectionMessage ?? "")
             }
             .onAppear {
                 #if DEBUG
@@ -291,7 +329,40 @@ struct FoodSearchView: View {
                 guard let pendingBarcode = barcodeFlow.pendingBarcode else { return }
                 await performBarcodeLookup(pendingBarcode)
             }
+            .task(id: scenePhase) {
+                guard scenePhase == .active else { return }
+                await checkPasteboardForLink()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIPasteboard.changedNotification)) { _ in
+                Task { await checkPasteboardForLink() }
+            }
         }
+    }
+
+    private func checkPasteboardForLink() async {
+        let changeCount = UIPasteboard.general.changeCount
+        guard pasteOffer.beginCheck(changeCount: changeCount, generation: pasteboardGeneration) else { return }
+        let patterns = try? await UIPasteboard.general.detectedPatterns(for: [\.probableWebURL, \.links])
+        pasteOffer.finishCheck(changeCount: changeCount, foundLink: !(patterns ?? []).isEmpty)
+    }
+
+    private func receivePaste(_ strings: [String]) {
+        switch PastedFoodConfirmation.opening(pasted: strings, locale: locale) {
+        case .success(let confirmation):
+            isSearchFocused = false
+            pastedFoodPresentation = PastedFoodPresentation(confirmation: confirmation)
+        case .failure(let rejection):
+            CalorynHaptics.warning()
+            rejectedPasteGeneration = pasteOffer.generation
+            pasteRejectionMessage = rejection.localizedDescription
+        }
+    }
+
+    private var pasteRejectionIsPresented: Binding<Bool> {
+        Binding(
+            get: { pasteRejectionMessage != nil },
+            set: { if !$0 { pasteRejectionMessage = nil } }
+        )
     }
 
     private func showsSearchBar(for screenContent: FoodSearchScreenContent) -> Bool {

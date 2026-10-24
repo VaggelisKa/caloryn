@@ -365,6 +365,27 @@ final class ComponentSnapshotTests: XCTestCase {
         assertAppearances(of: badges, layout: .fixed(width: 390, height: 72))
     }
 
+    func testPastedFoodConfirmationAcrossAppearances() {
+        let confirmation = PastedFoodConfirmation(
+            draft: LogLinkDraft(
+                name: "Chicken Caesar salad with croutons, parmesan and extra dressing",
+                kcal: 640.5,
+                grams: nil,
+                proteinG: 38.5,
+                carbsG: nil,
+                fatG: 42,
+                meal: nil
+            ),
+            locale: Locale(identifier: "en_US")
+        )
+        let form = PastedFoodConfirmationForm(confirmation: .constant(confirmation), mealType: .lunch)
+            .environment(\.locale, Locale(identifier: "en_US"))
+            .frame(width: 390, height: 660, alignment: .top)
+            .background(CalorynTheme.backgroundSecondary)
+
+        assertAppearances(of: form, layout: .fixed(width: 390, height: 660))
+    }
+
     func testFoodRowAtLargestAccessibilitySize() {
         assertSnapshot(
             of: FoodRowView(

@@ -58,6 +58,14 @@ enum FoodSearchMode {
             && (isSelectingMultiple || selectableOptionCount > 0)
     }
 
+    func offersChatbotPaste(
+        on screenContent: FoodSearchScreenContent,
+        isSelectingMultiple: Bool
+    ) -> Bool {
+        guard case .logging = self else { return false }
+        return screenContent == .recent && !isSelectingMultiple
+    }
+
     var isIngredientSelection: Bool {
         switch self {
         case .ingredientSelection: true

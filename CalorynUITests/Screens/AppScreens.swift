@@ -149,9 +149,41 @@ struct FoodSearchScreen: Screen {
 
     var searchField: XCUIElement { element("foodSearch.searchField") }
     var scan: XCUIElement { element("foodSearch.scanBarcode") }
+    var close: XCUIElement { element("foodSearch.close") }
 
     func result(named name: String) -> XCUIElement {
         element("foodSearch.result.\(name)")
+    }
+}
+
+struct PastedFoodScreen: Screen {
+    let app: XCUIApplication
+
+    var paste: XCUIElement { element("foodSearch.pasteLink") }
+
+    var name: XCUIElement { element("pastedFood.name") }
+    var calories: XCUIElement { element("pastedFood.calories") }
+    var protein: XCUIElement { element("pastedFood.protein") }
+    var carbs: XCUIElement { element("pastedFood.carbs") }
+    var fat: XCUIElement { element("pastedFood.fat") }
+    var meal: XCUIElement { element("pastedFood.meal") }
+    var grams: XCUIElement { element("pastedFood.grams") }
+    var addBlockedReason: XCUIElement { element("pastedFood.addBlockedReason") }
+    var add: XCUIElement { element("pastedFood.add") }
+    var disabledAdd: XCUIElement {
+        app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier == %@ AND isEnabled == false", "pastedFood.add"))
+            .firstMatch
+    }
+    var cancel: XCUIElement { element("pastedFood.cancel") }
+    var addAgain: XCUIElement { element("pastedFood.alreadyLogged.addAgain") }
+    var keepSingle: XCUIElement { element("pastedFood.alreadyLogged.cancel") }
+    var dismissRejection: XCUIElement { element("foodSearch.pasteRejection.ok") }
+
+    func text(containing substring: String) -> XCUIElement {
+        app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label CONTAINS %@", substring))
+            .firstMatch
     }
 }
 
@@ -263,6 +295,31 @@ struct SettingsScreen: Screen {
     var macroAccount: XCUIElement { element("goalEdit.macroAccount") }
 
     var export: XCUIElement { element("settings.export") }
+    var copyChatbotInstructions: XCUIElement { element("settings.copyChatbotInstructions") }
+
+    @discardableResult
+    func revealClearOfTabBar(
+        _ element: XCUIElement,
+        maximumDrags: Int = 10,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        let window = app.windows.firstMatch
+        let tabBar = app.tabBars.firstMatch
+        var drags = 0
+        while !(element.isHittable && element.frame.maxY <= tabBar.frame.minY), drags < maximumDrags {
+            window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6))
+                .press(
+                    forDuration: 0.05,
+                    thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4))
+                )
+            drags += 1
+        }
+        if !(element.isHittable && element.frame.maxY <= tabBar.frame.minY) {
+            XCTFail("Never scrolled \(element) clear of the tab bar", file: file, line: line)
+        }
+        return element
+    }
 
     @discardableResult
     func revealExport(

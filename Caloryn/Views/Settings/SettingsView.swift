@@ -36,6 +36,8 @@ struct SettingsView: View {
                     .listRowBackground(CalorynTheme.backgroundSecondary)
                 DailyReminderSettingsSection()
                     .listRowBackground(CalorynTheme.backgroundSecondary)
+                ChatbotLogSettingsSection()
+                    .listRowBackground(CalorynTheme.backgroundSecondary)
                 dataSection
                     .listRowBackground(CalorynTheme.backgroundSecondary)
                 aboutSection
