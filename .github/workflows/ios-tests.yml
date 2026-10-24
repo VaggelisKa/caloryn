@@ -41,6 +41,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Start CPU sampler
+        run: nohup .github/scripts/cpu_sampler.sh > "$RUNNER_TEMP/cpu.log" 2>&1 &
+
       - name: Show Xcode version
         run: xcodebuild -version
 
@@ -162,6 +165,10 @@ jobs:
           path: coverage-baseline.txt
           key: coverage-baseline-main-${{ steps.simulator.outputs.device }}-${{ github.sha }}
 
+      - name: Show CPU samples
+        if: always()
+        run: cat "$RUNNER_TEMP/cpu.log"
+
       - name: Upload results
         if: always()
         uses: actions/upload-artifact@v4
@@ -196,6 +203,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Start CPU sampler
+        run: nohup .github/scripts/cpu_sampler.sh > "$RUNNER_TEMP/cpu.log" 2>&1 &
 
       - name: Cache Swift packages
         uses: actions/cache@v4
@@ -263,6 +273,10 @@ jobs:
           name: ui-${{ matrix.shard }}-line-coverage
           path: LineCoverage/ui-${{ matrix.shard }}-lines.json
           if-no-files-found: error
+
+      - name: Show CPU samples
+        if: always()
+        run: cat "$RUNNER_TEMP/cpu.log"
 
       - name: Upload results
         if: always()
