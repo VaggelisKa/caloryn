@@ -5,14 +5,19 @@ import SwiftData
 enum DailyFoodLogCommands {
     enum CommandError: LocalizedError, Equatable {
         case missingEntry
+        case invalidImportedEntry
 
         var errorDescription: String? {
             switch self {
             case .missingEntry:
                 "This log entry is no longer available."
+            case .invalidImportedEntry:
+                "This food can’t be logged because its name, portion or nutrition values aren’t valid."
             }
         }
     }
+
+    private static let importedCalorieRange = 0.0...20_000
 
     @discardableResult
     static func logFood(
@@ -45,6 +50,65 @@ enum DailyFoodLogCommands {
         if foodItem.isFavorite {
             CalorynAppShortcutRefresh.favoritesChanged()
         }
+        return entry
+    }
+
+    @discardableResult
+    static func logImported(
+        name: String,
+        calories: Double,
+        portionGrams: Double,
+        proteinG: Double?,
+        carbsG: Double?,
+        fatG: Double?,
+        mealType: MealType,
+        snackIndex: Int?,
+        logDate: Date,
+        modelContext: ModelContext
+    ) throws -> FoodLogEntry {
+        let foodName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !foodName.isEmpty,
+              importedCalorieRange.contains(calories),
+              FavoriteFoodLogging.isSafePortion(portionGrams),
+              [proteinG, carbsG, fatG].allSatisfy({
+                  isValidImportedMacro($0, portionGrams: portionGrams)
+              }) else {
+            throw CommandError.invalidImportedEntry
+        }
+
+        let snapshot = FoodLogEntrySnapshot(
+            foodName: foodName,
+            portionGrams: portionGrams,
+            nutrition: NutritionValues(
+                calories: calories,
+                proteinG: proteinG ?? 0,
+                carbsG: carbsG ?? 0,
+                fatG: fatG ?? 0
+            ),
+            provenance: FoodProvenance(
+                provider: nil,
+                source: .linkImport,
+                completeness: .assessingCoreNutrition(
+                    protein: proteinG,
+                    carbohydrates: carbsG,
+                    fat: fatG
+                ),
+                recoveredByFallback: false
+            ),
+            mealType: mealType,
+            snackIndex: normalizedSnackIndex(
+                for: mealType,
+                requestedSnackIndex: snackIndex
+            )
+        )
+        let entry = FoodLogEntry(
+            date: logDate,
+            mealType: mealType,
+            foodItem: nil,
+            snapshot: snapshot,
+            snackIndex: snapshot.snackIndex
+        )
+        modelContext.insert(entry)
         return entry
     }
 
@@ -180,6 +244,11 @@ enum DailyFoodLogCommands {
     ) -> Int {
         guard mealType == .snack else { return 0 }
         return max(1, requestedSnackIndex ?? 1)
+    }
+
+    private static func isValidImportedMacro(_ grams: Double?, portionGrams: Double) -> Bool {
+        guard let grams else { return true }
+        return grams >= 0 && grams <= portionGrams
     }
 
     private static func makeTransactionContext(from sourceContext: ModelContext) -> ModelContext {

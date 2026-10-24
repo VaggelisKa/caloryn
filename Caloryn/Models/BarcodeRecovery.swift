@@ -186,7 +186,7 @@ extension FoodItem {
         switch provenance.source {
         case .calorynCatalog, .openFoodFactsCommunity:
             return .provider
-        case .userEntered, .mixed, .unknown:
+        case .userEntered, .linkImport, .mixed, .unknown:
             return .user
         }
     }
