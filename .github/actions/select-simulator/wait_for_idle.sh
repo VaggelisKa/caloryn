@@ -3,7 +3,8 @@ set -euo pipefail
 
 busy_percent="${BUSY_PERCENT:-25}"
 quiet_samples="${QUIET_SAMPLES:-6}"
-limit_seconds="${LIMIT_SECONDS:-720}"
+minimum_seconds="${MINIMUM_SECONDS:-600}"
+limit_seconds="${LIMIT_SECONDS:-900}"
 interval=10
 
 quiet=0
@@ -16,7 +17,7 @@ while (( SECONDS - start < limit_seconds )); do
   else
     quiet=0
   fi
-  if (( quiet >= quiet_samples )); then
+  if (( quiet >= quiet_samples && SECONDS - start >= minimum_seconds )); then
     echo "Simulator idle after $(( SECONDS - start ))s."
     exit 0
   fi

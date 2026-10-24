@@ -20,9 +20,9 @@ inputs:
     description: >
       On a cache miss, let the simulator's first boot settle, then save its
       data directory for later runs. The first boot of a fresh device spends
-      several minutes generating posters, widget snapshots and assets, which
-      starves a three-core runner; only a job off the critical path should
-      pay for warming.
+      over ten minutes generating posters, widget snapshots, assets and a
+      deferred photo analysis, which starves a three-core runner; only a job
+      off the critical path should pay for warming.
     required: false
     default: "false"
 
@@ -117,7 +117,7 @@ runs:
         echo "id=$simulator_id" >> "$GITHUB_OUTPUT"
         echo "device=$device_slug" >> "$GITHUB_OUTPUT"
         echo "data-path=$data_path" >> "$GITHUB_OUTPUT"
-        echo "cache-key=simulator-data-v1-${device_type##*.}-${runtime_build}-xcode-${xcode_build}" >> "$GITHUB_OUTPUT"
+        echo "cache-key=simulator-data-v2-${device_type##*.}-${runtime_build}-xcode-${xcode_build}" >> "$GITHUB_OUTPUT"
 
     - name: Restore settled simulator
       id: restore
@@ -135,7 +135,7 @@ runs:
       run: |
         set -euo pipefail
         xcrun simctl boot "$SIMULATOR_ID"
-        xcrun simctl bootstatus "$SIMULATOR_ID" -b
+        "$GITHUB_ACTION_PATH/quiet_services.sh" "$SIMULATOR_ID"
         "$GITHUB_ACTION_PATH/wait_for_idle.sh"
         xcrun simctl shutdown "$SIMULATOR_ID"
         mv "$DATA_PATH" "$HOME/simulator-data"
@@ -152,7 +152,6 @@ runs:
       env:
         SIMULATOR_ID: ${{ steps.pick.outputs.id }}
         DATA_PATH: ${{ steps.pick.outputs.data-path }}
-        QUIET_SERVICES: com.apple.apsd
       run: |
         set -euo pipefail
         if [ -d "$HOME/simulator-data" ]; then
@@ -160,8 +159,4 @@ runs:
           mv "$HOME/simulator-data" "$DATA_PATH"
         fi
         xcrun simctl boot "$SIMULATOR_ID" || true
-        xcrun simctl bootstatus "$SIMULATOR_ID" -b
-        for service in $QUIET_SERVICES; do
-          xcrun simctl spawn "$SIMULATOR_ID" launchctl disable "user/foreground/$service"
-          xcrun simctl spawn "$SIMULATOR_ID" launchctl bootout "user/foreground/$service" || true
-        done
+        nohup "$GITHUB_ACTION_PATH/quiet_services.sh" "$SIMULATOR_ID" > "$RUNNER_TEMP/quiet-services.log" 2>&1 &

@@ -11,7 +11,7 @@ while true; do
       echo "  ## lsof $pid"
       sudo lsof -nP -p "$pid" 2>/dev/null | grep -viE ' (txt|cwd|rtd) |\.dylib|/dev/' | head -40 | sed 's/^/  ##   /'
     done
-    sudo log config --status 2>&1 | sed 's/^/  ## host /'
+
   fi
   i=$(( i + 1 ))
   sleep 10

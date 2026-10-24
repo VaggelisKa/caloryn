@@ -150,7 +150,9 @@ jobs:
 
       - name: Show CPU samples
         if: always()
-        run: cat "$RUNNER_TEMP/cpu.log"
+        run: |
+          cat "$RUNNER_TEMP/quiet-services.log" || true
+          cat "$RUNNER_TEMP/cpu.log"
 
       - name: Upload results
         if: always()
@@ -240,7 +242,9 @@ jobs:
 
       - name: Show CPU samples
         if: always()
-        run: cat "$RUNNER_TEMP/cpu.log"
+        run: |
+          cat "$RUNNER_TEMP/quiet-services.log" || true
+          cat "$RUNNER_TEMP/cpu.log"
 
       - name: Upload results
         if: always()
