@@ -8,6 +8,11 @@ struct FoodSearchView: View {
         let groups: [MultiAddSelectionGroup]
     }
 
+    struct PastedFoodPresentation: Identifiable {
+        let id = UUID()
+        let confirmation: PastedFoodConfirmation
+    }
+
     struct PortionDestination: Identifiable, Hashable {
         let food: FoodItem
         var suggestedPortionGrams: Double?
@@ -46,6 +51,7 @@ struct FoodSearchView: View {
     @State private var suggestionSnapshot: [ContextualFoodSuggestion] = []
     @State private var hasCapturedSuggestions = false
     @State var multiAddPresentation: MultiAddPresentation?
+    @State private var pastedFoodPresentation: PastedFoodPresentation?
     @ScaledMetric(relativeTo: .body)
     var selectionIndicatorWidth: CGFloat = 22
     @ScaledMetric(relativeTo: .body)
@@ -90,6 +96,13 @@ struct FoodSearchView: View {
             VStack(spacing: 0) {
                 if showsSearchBar(for: resolvedScreenContent) {
                     searchBar
+                }
+
+                if mode.offersChatbotPaste(on: resolvedScreenContent, isSelectingMultiple: isSelectingMultiple) {
+                    ChatbotPastePanel { confirmation in
+                        isSearchFocused = false
+                        pastedFoodPresentation = PastedFoodPresentation(confirmation: confirmation)
+                    }
                 }
 
                 switch resolvedScreenContent {
@@ -255,6 +268,16 @@ struct FoodSearchView: View {
                     initialMeal: mealType,
                     initialSnackIndex: snackIndex,
                     onLogged: dismiss.callAsFunction
+                )
+                .presentationDragIndicator(.visible)
+            }
+            .sheet(item: $pastedFoodPresentation) { presentation in
+                PastedFoodConfirmationView(
+                    confirmation: presentation.confirmation,
+                    mealType: mealType,
+                    snackIndex: snackIndex,
+                    logDate: logDate,
+                    onAdded: dismiss.callAsFunction
                 )
                 .presentationDragIndicator(.visible)
             }

@@ -63,6 +63,20 @@ struct FoodSearchModeTests {
         #expect(Self.mealComponent.isIngredientSelection == false)
     }
 
+    @Test("Paste from a chatbot is offered only while logging with the search idle and nothing being selected")
+    func offersChatbotPaste() {
+        #expect(Self.logging.offersChatbotPaste(on: .recent, isSelectingMultiple: false))
+        #expect(Self.logging.offersChatbotPaste(on: .recent, isSelectingMultiple: true) == false)
+        #expect(Self.ingredient.offersChatbotPaste(on: .recent, isSelectingMultiple: false) == false)
+        #expect(Self.mealComponent.offersChatbotPaste(on: .recent, isSelectingMultiple: false) == false)
+        for content in FoodSearchScreenContent.allCases where content != .recent {
+            #expect(
+                Self.logging.offersChatbotPaste(on: content, isSelectingMultiple: false) == false,
+                "Paste should give way to \(content)"
+            )
+        }
+    }
+
     @Test("The manual-entry control and the Select control are never both shown")
     func manualEntryAndMultiSelectionAreMutuallyExclusive() {
         for (name, mode) in Self.allModes {
