@@ -9,8 +9,7 @@ final class FeatureJourneyTests: UITestCase {
 
         given("Add Food in selection mode with two foods ticked") {
             today.tap(today.mealHeader("breakfast"))
-            search.awaitTappable(search.searchField)
-            search.searchField.typeText("Salad")
+            search.searchField.awaitKeyboardFocus().typeText("Salad")
             search.awaitTappable(search.result(named: "House Salad"))
             multiAdd.tap(multiAdd.selectMultiple)
             search.tap(search.result(named: "House Salad"))
@@ -81,15 +80,14 @@ final class FeatureJourneyTests: UITestCase {
             tabs.go(to: .myFoods)
             myFoods.tap(myFoods.createMenu)
             myFoods.tap(forms.createRecipe)
-            forms.awaitTappable(forms.recipeName).typeText("Salad Bowl")
+            forms.recipeName.awaitKeyboardFocus().typeText("Salad Bowl")
         }
 
         when("200g of a saved food is added as its one ingredient and the recipe is saved") {
             forms.tap(forms.addIngredient)
-            search.awaitTappable(search.searchField)
-            search.searchField.typeText("Salad")
+            search.searchField.awaitKeyboardFocus().typeText("Salad")
             search.tap(search.result(named: "House Salad"))
-            retype("200", into: forms.amountGrams)
+            forms.amountGrams.replaceText("200")
             awaitLabel(of: forms.amountCalories, equalTo: "90")
             forms.tap(forms.saveAmount)
             forms.tap(forms.saveRecipe)
@@ -105,8 +103,7 @@ final class FeatureJourneyTests: UITestCase {
         then("logging it defaults to the whole recipe") {
             tabs.go(to: .today)
             today.tap(today.mealHeader("lunch"))
-            search.awaitTappable(search.searchField)
-            search.searchField.typeText("Bowl")
+            search.searchField.awaitKeyboardFocus().typeText("Bowl")
             search.tap(search.result(named: "Salad Bowl"))
             portion.awaitCalories(90)
             portion.tap(portion.save)
@@ -129,10 +126,9 @@ final class FeatureJourneyTests: UITestCase {
             tabs.go(to: .myFoods)
             myFoods.tap(myFoods.createMenu)
             myFoods.tap(forms.createMeal)
-            forms.awaitTappable(forms.mealName).typeText("Desk Lunch")
+            forms.mealName.awaitKeyboardFocus().typeText("Desk Lunch")
             forms.tap(forms.addMealItem)
-            search.awaitTappable(search.searchField)
-            search.searchField.typeText("Smoothie")
+            search.searchField.awaitKeyboardFocus().typeText("Smoothie")
             search.tap(search.result(named: "Morning Smoothie"))
             awaitLabel(of: forms.amountCalories, equalTo: "150")
             forms.tap(forms.saveAmount)
@@ -147,8 +143,7 @@ final class FeatureJourneyTests: UITestCase {
         when("the meal is chosen from lunch's Add Food") {
             tabs.go(to: .today)
             today.tap(today.mealHeader("lunch"))
-            search.awaitTappable(search.searchField)
-            search.searchField.typeText("Desk")
+            search.searchField.awaitKeyboardFocus().typeText("Desk")
             search.tap(forms.firstMealResult)
         }
 
@@ -172,7 +167,7 @@ final class FeatureJourneyTests: UITestCase {
 
         when("the user opens it and changes the portion to 100g") {
             today.tap(wine)
-            retype("100", into: editor.portion, atTrailingOffset: 0.88)
+            editor.portion.replaceText("100", tappingInsetFromTrailingEdge: 40)
             editor.tap(editor.save)
         }
 
@@ -285,14 +280,6 @@ final class FeatureJourneyTests: UITestCase {
         element.isHittable && element.frame.maxY <= tabBar.frame.minY
     }
 
-    private func retype(_ text: String, into field: XCUIElement, atTrailingOffset offset: CGFloat = 0.97) {
-        let hittable = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isHittable == true"), object: field)
-        XCTAssertEqual(XCTWaiter().wait(for: [hittable], timeout: UITestCase.defaultTimeout), .completed, "\(field) never became tappable")
-        field.coordinate(withNormalizedOffset: CGVector(dx: offset, dy: 0.5)).tap()
-        let existing = (field.value as? String)?.count ?? 0
-        field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: existing + 2))
-        field.typeText(text)
-    }
 
     private func awaitLabel(
         of element: XCUIElement,
@@ -305,7 +292,7 @@ final class FeatureJourneyTests: UITestCase {
             object: element
         )
         if XCTWaiter().wait(for: [matches], timeout: UITestCase.defaultTimeout) != .completed {
-            XCTFail("\(element) read \"\(element.label)\" rather than \"\(expected)\"", file: file, line: line)
+            XCTFail("\(element) was \(element.lastSeenLabel) rather than \"\(expected)\"", file: file, line: line)
         }
     }
 

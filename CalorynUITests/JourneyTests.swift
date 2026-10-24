@@ -117,8 +117,7 @@ final class JourneyTests: UITestCase {
 
         when("the user searches breakfast for a saved food and accepts the portion") {
             today.tap(today.mealHeader("breakfast"))
-            search.awaitTappable(search.searchField)
-            search.searchField.typeText("Smoothie")
+            search.searchField.awaitKeyboardFocus().typeText("Smoothie")
             search.tap(search.result(named: "Morning Smoothie"))
             portion.tap(portion.save)
         }
@@ -164,8 +163,7 @@ final class JourneyTests: UITestCase {
 
         given("the portion screen for a food measured in grams") {
             today.tap(today.mealHeader("lunch"))
-            search.awaitTappable(search.searchField)
-            search.searchField.typeText("Salad")
+            search.searchField.awaitKeyboardFocus().typeText("Salad")
             search.tap(search.result(named: "House Salad"))
             portion.awaitCalories(81)
         }
@@ -200,8 +198,7 @@ final class JourneyTests: UITestCase {
 
         given("the keypad is open over the portion screen") {
             today.tap(today.mealHeader("lunch"))
-            search.awaitTappable(search.searchField)
-            search.searchField.typeText("Salad")
+            search.searchField.awaitKeyboardFocus().typeText("Salad")
             search.tap(search.result(named: "House Salad"))
             portion.tap(portion.amountBox)
             XCTAssertTrue(
@@ -238,8 +235,7 @@ final class JourneyTests: UITestCase {
 
         given("the portion screen for a food measured in grams") {
             today.tap(today.mealHeader("lunch"))
-            search.awaitTappable(search.searchField)
-            search.searchField.typeText("Salad")
+            search.searchField.awaitKeyboardFocus().typeText("Salad")
             search.tap(search.result(named: "House Salad"))
             portion.awaitCalories(81)
         }
@@ -298,10 +294,8 @@ final class JourneyTests: UITestCase {
         when("the user creates a manual entry") {
             myFoods.tap(myFoods.createMenu)
             myFoods.tap(myFoods.createManualEntry)
-            form.tap(form.name)
-            form.name.typeText("Desk Almonds")
-            form.tap(form.revealed(form.calories))
-            form.calories.typeText("180")
+            form.name.focusForTyping().typeText("Desk Almonds")
+            form.revealed(form.calories).focusForTyping().typeText("180")
             form.tap(form.save)
         }
 
@@ -315,8 +309,7 @@ final class JourneyTests: UITestCase {
         then("it can be logged from search like any other food") {
             tabs.go(to: .today)
             today.tap(today.mealHeader("snack"))
-            search.awaitTappable(search.searchField)
-            search.searchField.typeText("Almonds")
+            search.searchField.awaitKeyboardFocus().typeText("Almonds")
             search.tap(search.result(named: "Desk Almonds"))
             portion.tap(portion.save)
 
@@ -474,7 +467,7 @@ final class JourneyTests: UITestCase {
         when("the user overrides the target by hand and saves") {
             settings.tap(settings.editGoal)
             settings.tap(settings.manualOverride)
-            settings.awaitTappable(settings.goalTargetField).replaceText("2400")
+            settings.goalTargetField.replaceText("2400")
             settings.tap(settings.saveGoal)
         }
 
@@ -521,7 +514,7 @@ final class JourneyTests: UITestCase {
             onboarding.tap(onboarding.element("onboarding.personalInfo.continue"))
             onboarding.tap(onboarding.element("onboarding.activityLevel.continue"))
             onboarding.tap(onboarding.setManually)
-            onboarding.awaitTappable(onboarding.manualCalorieTarget).replaceText("1800")
+            onboarding.manualCalorieTarget.awaitKeyboardFocus().replaceText("1800")
             if app.keyboards.firstMatch.exists {
                 app.staticTexts["Your daily plate"].firstMatch.tap()
             }
