@@ -149,9 +149,42 @@ struct FoodSearchScreen: Screen {
 
     var searchField: XCUIElement { element("foodSearch.searchField") }
     var scan: XCUIElement { element("foodSearch.scanBarcode") }
+    var close: XCUIElement { element("foodSearch.close") }
 
     func result(named name: String) -> XCUIElement {
         element("foodSearch.result.\(name)")
+    }
+}
+
+struct PastedFoodScreen: Screen {
+    let app: XCUIApplication
+
+    var paste: XCUIElement { element("foodSearch.pasteLink") }
+    var copyInstructions: XCUIElement { element("foodSearch.copyChatbotInstructions") }
+
+    var name: XCUIElement { element("pastedFood.name") }
+    var calories: XCUIElement { element("pastedFood.calories") }
+    var protein: XCUIElement { element("pastedFood.protein") }
+    var carbs: XCUIElement { element("pastedFood.carbs") }
+    var fat: XCUIElement { element("pastedFood.fat") }
+    var meal: XCUIElement { element("pastedFood.meal") }
+    var grams: XCUIElement { element("pastedFood.grams") }
+    var addBlockedReason: XCUIElement { element("pastedFood.addBlockedReason") }
+    var add: XCUIElement { element("pastedFood.add") }
+    var disabledAdd: XCUIElement {
+        app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier == %@ AND isEnabled == false", "pastedFood.add"))
+            .firstMatch
+    }
+    var cancel: XCUIElement { element("pastedFood.cancel") }
+    var addAgain: XCUIElement { element("pastedFood.alreadyLogged.addAgain") }
+    var keepSingle: XCUIElement { element("pastedFood.alreadyLogged.cancel") }
+    var dismissRejection: XCUIElement { element("foodSearch.pasteRejection.ok") }
+
+    func text(containing substring: String) -> XCUIElement {
+        app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label CONTAINS %@", substring))
+            .firstMatch
     }
 }
 

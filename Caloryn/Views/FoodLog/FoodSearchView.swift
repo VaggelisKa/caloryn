@@ -156,6 +156,7 @@ struct FoodSearchView: View {
                             .foregroundStyle(CalorynTheme.accent)
                     }
                     .accessibilityLabel("Close")
+                    .accessibilityIdentifier("foodSearch.close")
                 }
                 if mode.supportsMultiSelection {
                     ToolbarItem(placement: .primaryAction) {
