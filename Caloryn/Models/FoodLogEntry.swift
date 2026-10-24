@@ -81,6 +81,32 @@ struct FoodLogEntrySnapshot: Codable, Equatable {
         }
     }
 
+    init(
+        foodName: String,
+        portionGrams: Double,
+        nutrition: NutritionValues,
+        provenance: FoodProvenance,
+        mealType: MealType,
+        snackIndex: Int
+    ) {
+        sourceFoodID = nil
+        self.mealType = mealType
+        self.snackIndex = DailyFoodLogCommands.normalizedSnackIndex(
+            for: mealType,
+            requestedSnackIndex: snackIndex
+        )
+        self.foodName = foodName
+        self.portionGrams = portionGrams
+        self.nutrition = nutrition
+        nutriscoreGradeSnapshot = nil
+        produceKindSnapshotRaw = ProduceKind.unclassified.rawValue
+        produceItemsSnapshot = nil
+        lookupProviderSnapshotRaw = provenance.provider?.rawValue
+        dataSourceSnapshotRaw = provenance.source.rawValue
+        nutritionCompletenessSnapshotRaw = provenance.completeness.rawValue
+        recoveredByFallbackSnapshotRaw = provenance.recoveredByFallback
+    }
+
     func scaled(toPortionGrams newPortionGrams: Double) -> FoodLogEntrySnapshot {
         guard portionGrams > 0 else { return self }
         var copy = self

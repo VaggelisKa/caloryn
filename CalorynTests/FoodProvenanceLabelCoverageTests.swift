@@ -23,6 +23,7 @@ struct FoodProvenanceLabelCoverageTests {
             (FoodDataSource.calorynCatalog, "Caloryn data"),
             (.openFoodFactsCommunity, "Community data"),
             (.userEntered, "Your data"),
+            (.linkImport, "Imported data"),
             (.mixed, "Mixed sources"),
             (.unknown, "Source unknown"),
         ] as [(FoodDataSource, String)]
@@ -36,6 +37,7 @@ struct FoodProvenanceLabelCoverageTests {
         #expect(FoodDataSource(rawValue: "caloryn_catalog") == .calorynCatalog)
         #expect(FoodDataSource(rawValue: "open_food_facts_community") == .openFoodFactsCommunity)
         #expect(FoodDataSource(rawValue: "user_entered") == .userEntered)
+        #expect(FoodDataSource(rawValue: "link_import") == .linkImport)
         #expect(FoodDataSource(rawValue: "mixed") == .mixed)
         #expect(FoodDataSource(rawValue: "unknown") == .unknown)
     }

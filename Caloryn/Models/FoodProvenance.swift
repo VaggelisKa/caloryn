@@ -16,6 +16,7 @@ enum FoodDataSource: String, Codable, Sendable {
     case calorynCatalog = "caloryn_catalog"
     case openFoodFactsCommunity = "open_food_facts_community"
     case userEntered = "user_entered"
+    case linkImport = "link_import"
     case mixed
     case unknown
 
@@ -24,6 +25,7 @@ enum FoodDataSource: String, Codable, Sendable {
         case .calorynCatalog: "Caloryn data"
         case .openFoodFactsCommunity: "Community data"
         case .userEntered: "Your data"
+        case .linkImport: "Imported data"
         case .mixed: "Mixed sources"
         case .unknown: "Source unknown"
         }
