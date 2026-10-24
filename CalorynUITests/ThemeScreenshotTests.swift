@@ -223,9 +223,12 @@ final class ThemeScreenshotTests: UITestCase {
         XCTAssertTrue(addBreakfast.awaitExistence(), "Breakfast add button missing")
         addBreakfast.tap()
 
-        XCTAssertTrue(pasted.paste.awaitExistence(), "The paste panel is missing from the food search sheet")
+        XCTAssertTrue(
+            pasted.paste.awaitExistence(),
+            "The paste row did not appear with a link on the pasteboard"
+        )
         sleep(1)
-        attach(app, "03h-paste-panel", appearance)
+        attach(app, "03h-paste-row", appearance)
         pasted.paste.tap()
         XCTAssertTrue(
             pasted.addBlockedReason.awaitExistence(),
