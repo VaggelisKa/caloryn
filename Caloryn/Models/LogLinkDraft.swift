@@ -152,7 +152,7 @@ struct LogLinkDraft: Equatable, Sendable {
     private static func cleanedName(_ raw: String) throws(LogLinkRejection) -> String {
         let cleaned = normalizedName(raw)
         guard !cleaned.isEmpty else { throw .emptyName }
-        guard cleaned.count <= maximumNameLength else { throw .nameTooLong }
+        guard cleaned.unicodeScalars.count <= maximumNameLength else { throw .nameTooLong }
         return cleaned
     }
 

@@ -78,7 +78,7 @@ struct PastedFoodConfirmation: Equatable {
 
     var nameBlocker: NameBlocker? {
         if name.isEmpty { return .missing }
-        if name.count > LogLinkDraft.maximumNameLength { return .tooLong }
+        if name.unicodeScalars.count > LogLinkDraft.maximumNameLength { return .tooLong }
         return nil
     }
 

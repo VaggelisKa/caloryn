@@ -335,6 +335,15 @@ struct PastedFoodConfirmationTests {
         #expect(tooLong.nameBlockedReason == "The name can’t be longer than 100 characters.")
     }
 
+    @Test("Combining marks count toward the name limit, as they do in a pasted link")
+    func combiningMarksCountTowardTheLimit() {
+        let stacked = Self.withName("a" + String(repeating: "\u{0301}", count: LogLinkDraft.maximumNameLength), from: Self.confirmation())
+        let accented = Self.withName("Cre\u{0300}me bru\u{0302}le\u{0301}e", from: Self.confirmation())
+
+        #expect(stacked.nameBlocker == .tooLong)
+        #expect(accented.canAdd)
+    }
+
     @Test("A blank name and a missing portion are each reported, so both can be fixed at once")
     func nameAndPortionBlockersAreIndependent() {
         let confirmation = Self.withName("", from: Self.confirmation(grams: nil))
