@@ -272,12 +272,12 @@ final class PasteFromChatbotJourneyTests: UITestCase {
         }
 
         when("the user types a new name and adds it") {
-            pasted.name.typeText("Skyr with honey")
+            pasted.name.typeText("Yogurt with honey")
             pasted.tap(pasted.add)
         }
 
         then("the food is logged under the new name") {
-            XCTAssertTrue(today.entry(named: "Skyr with honey").awaitExistence())
+            XCTAssertTrue(today.entry(named: "Yogurt with honey").awaitExistence())
             XCTAssertFalse(today.entry(named: "Greek yogurt").exists, "The pasted name must not be logged once edited")
         }
     }

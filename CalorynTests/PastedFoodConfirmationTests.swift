@@ -299,19 +299,20 @@ struct PastedFoodConfirmationTests {
     }
 
     @Test(
-        "An edited name is saved trimmed, with each run of spaces or line breaks read as one space",
+        "An edited name is cleaned like a pasted one: trimmed, invisible characters dropped, each run of spaces or line breaks read as one space",
         arguments: [
             ("  Skyr  ", "Skyr"),
             ("Skyr   with honey", "Skyr with honey"),
             ("Skyr\nwith\thoney", "Skyr with honey"),
             ("\n Skyr \n", "Skyr"),
+            ("Sk\u{200B}yr", "Skyr"),
         ]
     )
     func editedNameWhitespace(input: String, expected: String) {
         #expect(Self.withName(input, from: Self.confirmation()).name == expected)
     }
 
-    @Test("A blank name blocks adding and says why", arguments: ["", " ", "\n\t "])
+    @Test("A blank name blocks adding and says why", arguments: ["", " ", "\n\t ", "\u{200B}", " \u{200B} \u{FEFF}"])
     func blankName(input: String) {
         let confirmation = Self.withName(input, from: Self.confirmation())
 

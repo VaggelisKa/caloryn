@@ -150,6 +150,13 @@ struct LogLinkDraft: Equatable, Sendable {
     }
 
     private static func cleanedName(_ raw: String) throws(LogLinkRejection) -> String {
+        let cleaned = normalizedName(raw)
+        guard !cleaned.isEmpty else { throw .emptyName }
+        guard cleaned.count <= maximumNameLength else { throw .nameTooLong }
+        return cleaned
+    }
+
+    static func normalizedName(_ raw: String) -> String {
         var cleaned = String.UnicodeScalarView()
         var pendingSpace = false
         for scalar in raw.unicodeScalars {
@@ -168,9 +175,6 @@ struct LogLinkDraft: Equatable, Sendable {
                 cleaned.append(scalar)
             }
         }
-
-        guard !cleaned.isEmpty else { throw .emptyName }
-        guard cleaned.count <= maximumNameLength else { throw .nameTooLong }
         return String(cleaned)
     }
 

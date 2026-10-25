@@ -73,7 +73,7 @@ struct PastedFoodConfirmation: Equatable {
     }
 
     var name: String {
-        nameInput.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        LogLinkDraft.normalizedName(nameInput)
     }
 
     var nameBlocker: NameBlocker? {
