@@ -168,6 +168,7 @@ struct PastedFoodScreen: Screen {
     var fat: XCUIElement { element("pastedFood.fat") }
     var meal: XCUIElement { element("pastedFood.meal") }
     var grams: XCUIElement { element("pastedFood.grams") }
+    var nameBlockedReason: XCUIElement { element("pastedFood.nameBlockedReason") }
     var addBlockedReason: XCUIElement { element("pastedFood.addBlockedReason") }
     var add: XCUIElement { element("pastedFood.add") }
     var disabledAdd: XCUIElement {
