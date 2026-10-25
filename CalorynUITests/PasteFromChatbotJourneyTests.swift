@@ -31,7 +31,7 @@ final class PasteFromChatbotJourneyTests: UITestCase {
         }
 
         then("the confirmation shows exactly what will be saved") {
-            XCTAssertTrue(pasted.name.awaitLabel(containing: "Greek yogurt"))
+            XCTAssertTrue(pasted.name.awaitValue(containing: "Greek yogurt"))
             XCTAssertTrue(pasted.calories.label.contains("150 kcal"), pasted.calories.label)
             XCTAssertTrue(pasted.protein.label.contains("15 g"), pasted.protein.label)
             XCTAssertTrue(pasted.carbs.label.contains("Not provided"), pasted.carbs.label)
@@ -64,7 +64,7 @@ final class PasteFromChatbotJourneyTests: UITestCase {
             UIPasteboard.general.string = Self.chatbotReply
             today.tap(today.mealHeader("lunch"))
             pasted.tap(pasted.paste)
-            XCTAssertTrue(pasted.name.awaitLabel(containing: "Greek yogurt"))
+            XCTAssertTrue(pasted.name.awaitValue(containing: "Greek yogurt"))
         }
 
         when("the user cancels and closes the add-food sheet") {
@@ -249,6 +249,39 @@ final class PasteFromChatbotJourneyTests: UITestCase {
         }
     }
 
+    func testGivenAPastedLinkWhenTheNameIsEditedThenTheFoodIsLoggedUnderTheNewName() {
+        let app = launch(fixture: .profileOnly)
+        let today = TodayScreen(app: app)
+        let pasted = PastedFoodScreen(app: app)
+
+        given("the confirmation for a pasted link") {
+            UIPasteboard.general.string = Self.chatbotReply
+            today.tap(today.mealHeader("lunch"))
+            pasted.tap(pasted.paste)
+            XCTAssertTrue(pasted.name.awaitValue(containing: "Greek yogurt"))
+        }
+
+        when("the user clears the name") {
+            pasted.name.focusForTyping()
+                .typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: "Greek yogurt".count + 2))
+        }
+
+        then("Add is unavailable and says why") {
+            XCTAssertTrue(pasted.nameBlockedReason.awaitLabel(containing: "Enter a name"))
+            XCTAssertTrue(pasted.disabledAdd.exists, "Add must stay disabled without a name")
+        }
+
+        when("the user types a new name and adds it") {
+            pasted.name.typeText("Yogurt with honey")
+            pasted.tap(pasted.add)
+        }
+
+        then("the food is logged under the new name") {
+            XCTAssertTrue(today.entry(named: "Yogurt with honey").awaitExistence())
+            XCTAssertFalse(today.entry(named: "Greek yogurt").exists, "The pasted name must not be logged once edited")
+        }
+    }
+
     func testGivenTheSameFoodAlreadyLoggedWhenItIsAddedThenTheUserIsAskedFirst() {
         let app = launch(fixture: .loggedDay)
         let today = TodayScreen(app: app)
@@ -260,7 +293,7 @@ final class PasteFromChatbotJourneyTests: UITestCase {
             UIPasteboard.general.string = "caloryn://log?v=1&name=rolled%20oats&kcal=380&grams=100"
             today.tap(today.mealHeader("lunch"))
             pasted.tap(pasted.paste)
-            XCTAssertTrue(pasted.name.awaitLabel(containing: "rolled oats"))
+            XCTAssertTrue(pasted.name.awaitValue(containing: "rolled oats"))
         }
 
         when("the user adds it and then declines the prompt") {

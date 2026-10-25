@@ -137,12 +137,20 @@ struct PastedFoodConfirmationForm: View {
     let mealType: MealType
 
     @Environment(\.locale) private var locale
+    @FocusState private var isNameFocused: Bool
     @FocusState private var isGramsFocused: Bool
-    @ScaledMetric(relativeTo: .title) private var nameSize: CGFloat = 26
 
     var body: some View {
         VStack(alignment: .leading, spacing: 28) {
-            header
+            Text("Nothing is saved until you tap Add.")
+                .font(CalorynTypeface.text(.subheadline))
+                .foregroundStyle(CalorynTheme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            CreationFormSection("Name") {
+                nameField
+            }
 
             CreationFormSection(
                 "Nutrition",
@@ -169,22 +177,21 @@ struct PastedFoodConfirmationForm: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var header: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(verbatim: confirmation.name)
-                .font(CalorynTypeface.fixed(size: nameSize, weight: .heavy))
-                .tracking(-nameSize * 0.005)
-                .foregroundStyle(CalorynTheme.textPrimary)
-                .fixedSize(horizontal: false, vertical: true)
-                .accessibilityAddTraits(.isHeader)
+    private var nameField: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            TextField("Food name", text: $confirmation.nameInput, axis: .vertical)
+                .font(CalorynTheme.bodyText)
+                .textInputAutocapitalization(.words)
+                .lineLimit(1...4)
+                .focused($isNameFocused)
+                .calorynInputField(isFocused: isNameFocused)
+                .accessibilityLabel("Food name")
                 .accessibilityIdentifier("pastedFood.name")
 
-            Text("Nothing is saved until you tap Add.")
-                .font(CalorynTypeface.text(.subheadline))
-                .foregroundStyle(CalorynTheme.textSecondary)
-                .fixedSize(horizontal: false, vertical: true)
+            if let reason = confirmation.nameBlockedReason {
+                blockedReason(reason, identifier: "pastedFood.nameBlockedReason")
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func valueRow(_ label: String, value: String, identifier: String) -> some View {
@@ -238,20 +245,24 @@ struct PastedFoodConfirmationForm: View {
                         .accessibilityHidden(true)
                 }
 
-                if let reason = confirmation.addBlockedReason(locale: locale) {
-                    Label {
-                        Text(verbatim: reason)
-                            .fixedSize(horizontal: false, vertical: true)
-                    } icon: {
-                        Image(systemName: "exclamationmark.circle")
-                    }
-                    .font(CreationFormTypography.detail)
-                    .foregroundStyle(CalorynTheme.textSecondary)
-                    .accessibilityElement(children: .combine)
-                    .accessibilityIdentifier("pastedFood.addBlockedReason")
+                if let reason = confirmation.portionBlockedReason(locale: locale) {
+                    blockedReason(reason, identifier: "pastedFood.addBlockedReason")
                 }
             }
         }
+    }
+
+    private func blockedReason(_ reason: String, identifier: String) -> some View {
+        Label {
+            Text(verbatim: reason)
+                .fixedSize(horizontal: false, vertical: true)
+        } icon: {
+            Image(systemName: "exclamationmark.circle")
+        }
+        .font(CreationFormTypography.detail)
+        .foregroundStyle(CalorynTheme.textSecondary)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier(identifier)
     }
 
     private var mealRow: some View {

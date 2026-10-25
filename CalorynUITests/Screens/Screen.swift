@@ -138,6 +138,27 @@ extension XCUIElement {
     }
 
     @discardableResult
+    func awaitValue(
+        containing substring: String,
+        timeout: TimeInterval = UITestCase.defaultTimeout,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> Bool {
+        let predicate = NSPredicate(format: "value CONTAINS %@", substring)
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: self)
+        let result = XCTWaiter().wait(for: [expectation], timeout: timeout)
+        if result != .completed {
+            XCTFail(
+                "Timed out waiting for a value containing \"\(substring)\"; the element was "
+                    + (exists ? "\"\(value ?? "")\"" : "gone from the screen"),
+                file: file,
+                line: line
+            )
+        }
+        return result == .completed
+    }
+
+    @discardableResult
     func awaitKeyboardFocus(
         timeout: TimeInterval = UITestCase.defaultTimeout,
         file: StaticString = #filePath,

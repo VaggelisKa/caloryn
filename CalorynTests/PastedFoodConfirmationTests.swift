@@ -37,6 +37,12 @@ struct PastedFoodConfirmationTests {
         return edited
     }
 
+    private static func withName(_ input: String, from confirmation: PastedFoodConfirmation) -> PastedFoodConfirmation {
+        var edited = confirmation
+        edited.nameInput = input
+        return edited
+    }
+
     @Test("A pasted link opens with every value it carries and can be added as it is")
     func pastedLinkOpens() throws {
         let result = PastedFoodConfirmation.opening(
@@ -53,7 +59,7 @@ struct PastedFoodConfirmationTests {
         #expect(confirmation.gramsInput == "170")
         #expect(confirmation.canAdd)
         #expect(confirmation.portionGrams == 170)
-        #expect(confirmation.addBlockedReason(locale: Self.english) == nil)
+        #expect(confirmation.portionBlockedReason(locale: Self.english) == nil)
     }
 
     @Test("A paste the parser rejects is reported with the parser's reason")
@@ -122,11 +128,11 @@ struct PastedFoodConfirmationTests {
         let confirmation = Self.confirmation(grams: nil)
 
         #expect(confirmation.gramsInput.isEmpty)
-        #expect(confirmation.addBlocker == .gramsMissing)
+        #expect(confirmation.portionBlocker == .gramsMissing)
         #expect(!confirmation.canAdd)
         #expect(confirmation.portionGrams == nil)
         #expect(
-            confirmation.addBlockedReason(locale: Self.english)
+            confirmation.portionBlockedReason(locale: Self.english)
                 == "Enter the portion weight in grams to add this food."
         )
 
@@ -150,17 +156,17 @@ struct PastedFoodConfirmationTests {
     func blankGrams(input: String) {
         let confirmation = Self.withGrams(input, from: Self.confirmation())
 
-        #expect(confirmation.addBlocker == .gramsMissing)
+        #expect(confirmation.portionBlocker == .gramsMissing)
     }
 
     @Test("Grams that are not a number block adding", arguments: ["abc", "1.2.3", "12 g", "1e3", "--4"])
     func gramsNotANumber(input: String) {
         let confirmation = Self.withGrams(input, from: Self.confirmation())
 
-        #expect(confirmation.addBlocker == .gramsNotANumber)
+        #expect(confirmation.portionBlocker == .gramsNotANumber)
         #expect(!confirmation.canAdd)
         #expect(
-            confirmation.addBlockedReason(locale: Self.english)
+            confirmation.portionBlockedReason(locale: Self.english)
                 == "Enter the portion weight as a number, such as 150 or 12.5."
         )
     }
@@ -172,10 +178,10 @@ struct PastedFoodConfirmationTests {
     func gramsOutOfRange(input: String) {
         let confirmation = Self.withGrams(input, from: Self.confirmation(proteinG: nil, carbsG: nil, fatG: nil))
 
-        #expect(confirmation.addBlocker == .gramsOutOfRange)
+        #expect(confirmation.portionBlocker == .gramsOutOfRange)
         #expect(confirmation.portionGrams == nil)
         #expect(
-            confirmation.addBlockedReason(locale: Self.english)
+            confirmation.portionBlockedReason(locale: Self.english)
                 == "The portion must be more than 0 g and no more than 100,000 g."
         )
     }
@@ -187,10 +193,10 @@ struct PastedFoodConfirmationTests {
             from: Self.confirmation(grams: nil, proteinG: 22.5, carbsG: 30, fatG: 4)
         )
 
-        #expect(confirmation.addBlocker == .portionLighterThan(.carbs, grams: 30))
+        #expect(confirmation.portionBlocker == .portionLighterThan(.carbs, grams: 30))
         #expect(!confirmation.canAdd)
         #expect(
-            confirmation.addBlockedReason(locale: Self.english)
+            confirmation.portionBlockedReason(locale: Self.english)
                 == "The portion can’t weigh less than its 30 g of carbs."
         )
     }
@@ -214,8 +220,8 @@ struct PastedFoodConfirmationTests {
             )
         )
 
-        #expect(confirmation.addBlocker == .portionLighterThan(macro, grams: grams))
-        #expect(confirmation.addBlockedReason(locale: Self.english) == reason)
+        #expect(confirmation.portionBlocker == .portionLighterThan(macro, grams: grams))
+        #expect(confirmation.portionBlockedReason(locale: Self.english) == reason)
     }
 
     @Test("A portion exactly as heavy as its heaviest macro can be added")
@@ -278,5 +284,81 @@ struct PastedFoodConfirmationTests {
             Self.confirmation().alreadyLoggedMessage(locale: Self.english)
                 == "Greek yogurt with 150 kcal is already in your log for this day."
         )
+    }
+
+    @Test("The name field opens with the link's name, and an edited name is the one saved")
+    func editedName() {
+        let confirmation = Self.confirmation()
+        #expect(confirmation.nameInput == "Greek yogurt")
+
+        let renamed = Self.withName("Skyr with honey", from: confirmation)
+
+        #expect(renamed.name == "Skyr with honey")
+        #expect(renamed.canAdd)
+        #expect(renamed.nameBlockedReason == nil)
+    }
+
+    @Test(
+        "An edited name is cleaned like a pasted one: trimmed, invisible characters dropped, each run of spaces or line breaks read as one space",
+        arguments: [
+            ("  Skyr  ", "Skyr"),
+            ("Skyr   with honey", "Skyr with honey"),
+            ("Skyr\nwith\thoney", "Skyr with honey"),
+            ("\n Skyr \n", "Skyr"),
+            ("Sk\u{200B}yr", "Skyr"),
+        ]
+    )
+    func editedNameWhitespace(input: String, expected: String) {
+        #expect(Self.withName(input, from: Self.confirmation()).name == expected)
+    }
+
+    @Test("A blank name blocks adding and says why", arguments: ["", " ", "\n\t ", "\u{200B}", " \u{200B} \u{FEFF}"])
+    func blankName(input: String) {
+        let confirmation = Self.withName(input, from: Self.confirmation())
+
+        #expect(confirmation.nameBlocker == .missing)
+        #expect(!confirmation.canAdd)
+        #expect(confirmation.portionGrams == nil)
+        #expect(confirmation.nameBlockedReason == "Enter a name to add this food.")
+    }
+
+    @Test("A name may be as long as a link's name, and no longer")
+    func nameLength() {
+        let longest = Self.withName(String(repeating: "a", count: LogLinkDraft.maximumNameLength), from: Self.confirmation())
+        let tooLong = Self.withName(String(repeating: "a", count: LogLinkDraft.maximumNameLength + 1), from: Self.confirmation())
+        let paddedLongest = Self.withName("  " + longest.nameInput + "  ", from: Self.confirmation())
+
+        #expect(longest.canAdd)
+        #expect(paddedLongest.canAdd)
+        #expect(tooLong.nameBlocker == .tooLong)
+        #expect(!tooLong.canAdd)
+        #expect(tooLong.nameBlockedReason == "The name can’t be longer than 100 characters.")
+    }
+
+    @Test("Combining marks count toward the name limit, as they do in a pasted link")
+    func combiningMarksCountTowardTheLimit() {
+        let stacked = Self.withName("a" + String(repeating: "\u{0301}", count: LogLinkDraft.maximumNameLength), from: Self.confirmation())
+        let accented = Self.withName("Cre\u{0300}me bru\u{0302}le\u{0301}e", from: Self.confirmation())
+
+        #expect(stacked.nameBlocker == .tooLong)
+        #expect(accented.canAdd)
+    }
+
+    @Test("A blank name and a missing portion are each reported, so both can be fixed at once")
+    func nameAndPortionBlockersAreIndependent() {
+        let confirmation = Self.withName("", from: Self.confirmation(grams: nil))
+
+        #expect(confirmation.nameBlocker == .missing)
+        #expect(confirmation.portionBlocker == .gramsMissing)
+        #expect(!confirmation.canAdd)
+    }
+
+    @Test("The duplicate check and its prompt use the edited name")
+    func duplicateUsesEditedName() {
+        let renamed = Self.withName("  Skyr ", from: Self.confirmation())
+
+        #expect(renamed.matchesLoggedFood(named: "skyr", calories: 150))
+        #expect(!renamed.matchesLoggedFood(named: "Greek yogurt", calories: 150))
+        #expect(renamed.alreadyLoggedMessage(locale: Self.english) == "Skyr with 150 kcal is already in your log for this day.")
     }
 }

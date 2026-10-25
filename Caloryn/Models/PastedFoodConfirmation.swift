@@ -15,7 +15,12 @@ struct PastedFoodConfirmation: Equatable {
         }
     }
 
-    enum AddBlocker: Equatable {
+    enum NameBlocker: Equatable {
+        case missing
+        case tooLong
+    }
+
+    enum PortionBlocker: Equatable {
         case gramsMissing
         case gramsNotANumber
         case gramsOutOfRange
@@ -24,7 +29,7 @@ struct PastedFoodConfirmation: Equatable {
 
     static let notProvided = "Not provided"
 
-    let name: String
+    var nameInput: String
     let kcal: Double
     let proteinG: Double?
     let carbsG: Double?
@@ -32,7 +37,7 @@ struct PastedFoodConfirmation: Equatable {
     var gramsInput: String
 
     init(draft: LogLinkDraft, locale: Locale = .current) {
-        name = draft.name
+        nameInput = draft.name
         kcal = draft.kcal
         proteinG = draft.proteinG
         carbsG = draft.carbsG
@@ -56,7 +61,7 @@ struct PastedFoodConfirmation: Equatable {
         }
     }
 
-    var addBlocker: AddBlocker? {
+    var portionBlocker: PortionBlocker? {
         let typed = gramsInput.trimmingCharacters(in: .whitespaces)
         guard !typed.isEmpty else { return .gramsMissing }
         guard let grams = typed.decimalInputValue else { return .gramsNotANumber }
@@ -67,15 +72,36 @@ struct PastedFoodConfirmation: Equatable {
         return nil
     }
 
-    var canAdd: Bool { addBlocker == nil }
+    var name: String {
+        LogLinkDraft.normalizedName(nameInput)
+    }
+
+    var nameBlocker: NameBlocker? {
+        if name.isEmpty { return .missing }
+        if name.unicodeScalars.count > LogLinkDraft.maximumNameLength { return .tooLong }
+        return nil
+    }
+
+    var nameBlockedReason: String? {
+        switch nameBlocker {
+        case nil:
+            nil
+        case .missing:
+            "Enter a name to add this food."
+        case .tooLong:
+            "The name can’t be longer than \(LogLinkDraft.maximumNameLength) characters."
+        }
+    }
+
+    var canAdd: Bool { nameBlocker == nil && portionBlocker == nil }
 
     var portionGrams: Double? {
         guard canAdd else { return nil }
         return gramsInput.decimalInputValue
     }
 
-    func addBlockedReason(locale: Locale = .current) -> String? {
-        switch addBlocker {
+    func portionBlockedReason(locale: Locale = .current) -> String? {
+        switch portionBlocker {
         case nil:
             nil
         case .gramsMissing:
@@ -101,7 +127,7 @@ struct PastedFoodConfirmation: Equatable {
     func matchesLoggedFood(named loggedName: String, calories loggedCalories: Double) -> Bool {
         loggedCalories.rounded() == kcal.rounded()
             && loggedName.trimmingCharacters(in: .whitespacesAndNewlines)
-                .compare(name.trimmingCharacters(in: .whitespacesAndNewlines), options: .caseInsensitive)
+                .compare(name, options: .caseInsensitive)
                 == .orderedSame
     }
 
