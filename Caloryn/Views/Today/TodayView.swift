@@ -248,11 +248,13 @@ private struct TodayDayView: View {
     /// their own.
     ///
     /// The arrangement view is iOS 27.1; before it the same two regions sit in an `HStack`.
+    /// The SDK has to know it too: Swift 6.4 is Xcode 27.1, and CI builds with Xcode 26.6.
     @ViewBuilder
     private func dashboardAndMeals(
         _ dashboard: DashboardContent,
         projection: DayFoodLogProjection<FoodLogEntry>
     ) -> some View {
+        #if compiler(>=6.4)
         if #available(iOS 27.1, *) {
             ArrangementView {
                 dashboardColumn(dashboard)
@@ -270,12 +272,23 @@ private struct TodayDayView: View {
             }
             .arrangementViewStyle(.split)
         } else {
-            HStack(alignment: .top, spacing: 0) {
-                dashboardColumn(dashboard)
-                    .containerRelativeFrame(.horizontal) { width, _ in width * 0.4 }
+            dashboardBesideMeals(dashboard, projection: projection)
+        }
+        #else
+        dashboardBesideMeals(dashboard, projection: projection)
+        #endif
+    }
 
-                mealsList(projection: projection, canCopyYesterday: dashboard.canCopyYesterday)
-            }
+    /// The split without the arrangement view: a fixed 40/60 `HStack`.
+    private func dashboardBesideMeals(
+        _ dashboard: DashboardContent,
+        projection: DayFoodLogProjection<FoodLogEntry>
+    ) -> some View {
+        HStack(alignment: .top, spacing: 0) {
+            dashboardColumn(dashboard)
+                .containerRelativeFrame(.horizontal) { width, _ in width * 0.4 }
+
+            mealsList(projection: projection, canCopyYesterday: dashboard.canCopyYesterday)
         }
     }
 
