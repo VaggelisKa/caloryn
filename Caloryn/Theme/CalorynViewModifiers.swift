@@ -96,9 +96,10 @@ extension ToolbarItemPlacement {
     /// Where a sheet's or edit screen's Save goes. Pinned trailing on iOS 27, which Apple
     /// names for a Done or Save: the item never moves into the overflow menu when iPhone
     /// Duo's vertical bar runs out of room. The ordinary confirmation slot before that, and
-    /// also when built with an SDK older than iOS 27 (CI's Xcode 26.6; Swift 6.3 is Xcode 27).
+    /// also when built with an SDK older than iOS 27: CI's Xcode 26.6 is Swift 6.3, so the
+    /// guard is the Xcode 27.1 compiler, the only iOS 27 toolchain in use.
     static var calorynConfirmation: ToolbarItemPlacement {
-        #if compiler(>=6.3)
+        #if compiler(>=6.4)
         if #available(iOS 27.0, *) {
             return .topBarPinnedTrailing
         }

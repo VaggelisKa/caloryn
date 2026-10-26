@@ -59,9 +59,10 @@ app roughly half of 951 pt, which is compact width again.
   (`today-inner-portrait-before-after.png`). Comparison captures are in `iphone-duo/`.
 - **The hero's number column is capped** at regular width, so legend values stay next to
   their labels instead of 400 pt away.
-- **The iOS 27 APIs are guarded at compile time too** (`#if compiler(>=6.4)` for the
-  arrangement view, `>=6.3` for `.topBarPinnedTrailing`): CI builds with Xcode 26.6, whose
-  SDK has neither, and `#available` alone does not get past the type checker there.
+- **The iOS 27 APIs are guarded at compile time too** (`#if compiler(>=6.4)`, the Xcode 27.1
+  compiler, around both the arrangement view and `.topBarPinnedTrailing`): CI builds with
+  Xcode 26.6, which is Swift 6.3 and whose SDK has neither, and `#available` alone does not
+  get past the type checker there.
 - **Toolbar items carry a title with their symbol** (`Label`, still drawn symbol-only), so
   the vertical bar and the overflow menu have something to show; the custom back button
   uses the `.cancellationAction` placement Apple names for it.
