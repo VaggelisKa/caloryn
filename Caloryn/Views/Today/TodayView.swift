@@ -18,6 +18,7 @@ private struct TodayDayView: View {
     @Environment(AppRouter.self) private var router
     @Query(sort: \UserProfile.updatedAt, order: .reverse) private var profiles: [UserProfile]
     @Query private var entriesAroundDay: [FoodLogEntry]
+    @Query private var goalSnapshots: [DailyGoalSnapshot]
     @Binding private var selectedDate: Date
 
     private static let minimumHitTarget: CGFloat = 44
@@ -48,7 +49,17 @@ private struct TodayDayView: View {
 
     private var profile: UserProfile? { profiles.first }
     private func calorieBudget(consumed: Double) -> CalorieBudget {
-        profile?.calorieBudget(consumed: consumed) ?? CalorieBudget(consumed: consumed, target: 2_000)
+        let current = profile?.calorieBudget(consumed: consumed) ?? CalorieBudget(consumed: consumed, target: 2_000)
+        let target = DayCalorieTarget.calories(
+            for: selectedDate,
+            today: .now,
+            currentTarget: current.target,
+            savedTargets: HistoryDayTargetResolver(
+                fallbackTarget: current.target,
+                valuesByDayKey: DailyGoalSnapshotStore.latestValuesByDayKey(goalSnapshots)
+            )
+        )
+        return CalorieBudget(consumed: consumed, target: target, isManualOverride: current.isManualOverride)
     }
 
     private var dayMeals: [MealType] {
