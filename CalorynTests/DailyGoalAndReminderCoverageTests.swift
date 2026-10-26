@@ -241,7 +241,7 @@ struct HistoryDayTargetResolverCoverageTests {
         )
 
         #expect(resolver.target(for: instant, calendar: auckland) == HistoryDayTarget(calories: 2_250, isEstimated: false))
-        #expect(resolver.target(for: instant, calendar: utc) == HistoryDayTarget(calories: 1_800, isEstimated: true))
+        #expect(resolver.target(for: instant, calendar: utc) == HistoryDayTarget(calories: 2_250, isEstimated: true))
     }
 
     @Test("A manual snapshot resolves to its effective target, not the fallback")

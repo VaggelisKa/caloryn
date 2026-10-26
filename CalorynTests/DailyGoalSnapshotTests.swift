@@ -258,6 +258,68 @@ final class DailyGoalSnapshotTests: XCTestCase {
         XCTAssertTrue(strictAnalytics.current.hasEstimatedTargets)
     }
 
+    func testResolverCarriesTheLastSavedGoalForwardOverDaysWithoutASnapshot() {
+        let resolver = HistoryDayTargetResolver(
+            fallbackTarget: 1_500,
+            valuesByDayKey: [
+                "2026-03-01": makeValues(target: 2_000),
+                "2026-03-05": makeValues(target: 1_900),
+                "2026-03-09": makeValues(target: 1_800)
+            ]
+        )
+
+        let target = { (day: Int) in resolver.target(for: makeTestDate(year: 2026, month: 3, day: day)) }
+
+        XCTAssertEqual(target(3), HistoryDayTarget(calories: 2_000, isEstimated: true))
+        XCTAssertEqual(target(5), HistoryDayTarget(calories: 1_900, isEstimated: false))
+        XCTAssertEqual(target(7), HistoryDayTarget(calories: 1_900, isEstimated: true))
+        XCTAssertEqual(target(12), HistoryDayTarget(calories: 1_800, isEstimated: true))
+    }
+
+    func testDaysBeforeTheFirstSavedGoalUseTheEarliestGoalRatherThanTheCurrentOne() {
+        let resolver = HistoryDayTargetResolver(
+            fallbackTarget: 1_500,
+            valuesByDayKey: [
+                "2026-03-05": makeValues(target: 2_000),
+                "2026-03-09": makeValues(target: 1_800)
+            ]
+        )
+
+        let target = resolver.target(for: makeTestDate(year: 2026, month: 2, day: 20))
+
+        XCTAssertEqual(target, HistoryDayTarget(calories: 2_000, isEstimated: true))
+    }
+
+    func testAStepwiseDietScoresEveryDayAgainstTheGoalInEffectThatDay() {
+        let end = makeTestDate(year: 2026, month: 3, day: 14)
+        let loggedCalories = [2_000, 2_000, 2_000, 1_900, 1_900, 1_900, 1_800, 1_800, 1_800, 1_700]
+        let entries = loggedCalories.enumerated().map { offset, calories in
+            makeEntry(date: makeTestDate(year: 2026, month: 3, day: 5 + offset), calories: Double(calories))
+        }
+        let resolver = HistoryDayTargetResolver(
+            fallbackTarget: 1_700,
+            valuesByDayKey: [
+                "2026-03-05": makeValues(target: 2_000),
+                "2026-03-08": makeValues(target: 1_900),
+                "2026-03-11": makeValues(target: 1_800),
+                "2026-03-14": makeValues(target: 1_700)
+            ]
+        )
+
+        let analytics = HistoryAnalytics(
+            entries: entries,
+            profile: makeProfile(dailyCalorieTarget: 1_700),
+            range: .twoWeeks,
+            endDate: end,
+            targetResolver: resolver
+        )
+        let logged = analytics.current.days.filter(\.isLogged)
+
+        XCTAssertEqual(logged.map(\.dailyCalorieTarget), loggedCalories)
+        XCTAssertEqual(analytics.current.count(for: .onTrack), loggedCalories.count)
+        XCTAssertEqual(analytics.current.count(for: .over), 0)
+    }
+
     func testHealthAdjustedDayIsScoredAgainstTheTargetThatApplied() {
         let day = makeTestDate(year: 2026, month: 3, day: 9)
         let entries = [makeEntry(date: day, calories: 2_450)]
@@ -305,7 +367,7 @@ final class DailyGoalSnapshotTests: XCTestCase {
 
         XCTAssertEqual(days["2026-03-09"]?.dailyCalorieTarget, 2_200)
         XCTAssertEqual(days["2026-03-09"]?.isTargetEstimated, false)
-        XCTAssertEqual(days["2026-03-08"]?.dailyCalorieTarget, 2_000)
+        XCTAssertEqual(days["2026-03-08"]?.dailyCalorieTarget, 2_200)
         XCTAssertEqual(days["2026-03-08"]?.isTargetEstimated, true)
         XCTAssertTrue(analytics.current.hasEstimatedTargets)
     }

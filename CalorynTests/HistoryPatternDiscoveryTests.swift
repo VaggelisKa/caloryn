@@ -458,7 +458,7 @@ struct HistoryPatternDiscoveryTests {
         #expect(projection.hasEstimatedTargets)
         #expect(
             projection.estimatedTargetNoteText
-                == "Days without a saved daily goal are compared with your current target."
+                == "Days without a saved daily goal are compared with the goal in effect around then."
         )
     }
 

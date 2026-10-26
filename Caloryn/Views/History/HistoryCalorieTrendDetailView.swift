@@ -483,7 +483,7 @@ private struct HistoryCalorieTrendSelectedDay: View {
             }
 
             if detail.isTargetEstimated {
-                Text("Compared with your current target — no saved goal for this day.")
+                Text("Compared with the goal in effect around this day — none was saved for it.")
                     .font(CalorynTheme.caption)
                     .foregroundStyle(CalorynTheme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)

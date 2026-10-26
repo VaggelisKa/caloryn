@@ -171,7 +171,7 @@ struct HistoryAnalyticsCoverageTests {
         )
 
         let week = try #require(summary.weeklyRollups.first)
-        #expect(week.targetPerLoggedDay == 1_943)
+        #expect(week.targetPerLoggedDay == 1_801)
         #expect(week.loggedDays == 0)
         #expect(week.onTrackRatio == 0)
     }
@@ -201,7 +201,7 @@ struct HistoryAnalyticsCoverageTests {
         #expect(summary.loggedDayTargetTotal == 4_001)
         #expect(summary.averageTargetPerLoggedDay == 2_001)
         #expect(summary.averageCaloriesPerLoggedDay == 1_000.5)
-        #expect(summary.dailyCalorieTarget == 2_000)
+        #expect(summary.dailyCalorieTarget == 2_001)
     }
 
     @Test("given logged and unlogged days, when averaging calories, then only the logged days are divided by")
