@@ -1,9 +1,6 @@
 import Foundation
+import SwiftData
 
-/// The privacy-minimized input used by contextual suggestion ranking.
-///
-/// Names, barcodes, nutrition, health data, and search traffic never enter the
-/// ranker. The adapter below creates this snapshot entirely from local models.
 struct ContextualSuggestionCandidate: Equatable {
     let foodID: UUID
     let isAvailable: Bool
@@ -245,6 +242,42 @@ enum ContextualFoodSuggestionRanker {
 enum ContextualFoodSuggestionAdapter {
     static func rank(
         foods: [FoodItem],
+        modelContext: ModelContext,
+        destinationDate: Date,
+        destinationMeal: MealType,
+        destinationSnackIndex: Int = 0,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> [ContextualFoodSuggestion] {
+        guard let window = historyWindow(
+            destinationDate: destinationDate,
+            now: now,
+            calendar: calendar
+        ) else {
+            return []
+        }
+        let start = window.lowerBound
+        let end = window.upperBound
+        let entries = (try? modelContext.fetch(
+            FetchDescriptor<FoodLogEntry>(
+                predicate: #Predicate { entry in
+                    entry.date >= start && entry.date < end
+                }
+            )
+        )) ?? []
+        return rank(
+            foods: foods,
+            entries: entries,
+            destinationDate: destinationDate,
+            destinationMeal: destinationMeal,
+            destinationSnackIndex: destinationSnackIndex,
+            now: now,
+            calendar: calendar
+        )
+    }
+
+    static func rank(
+        foods: [FoodItem],
         entries: [FoodLogEntry],
         destinationDate: Date,
         destinationMeal: MealType,
@@ -252,8 +285,41 @@ enum ContextualFoodSuggestionAdapter {
         now: Date = Date(),
         calendar: Calendar = .current
     ) -> [ContextualFoodSuggestion] {
-        let candidates = foods.map { food in
-            ContextualSuggestionCandidate(
+        guard let window = historyWindow(
+            destinationDate: destinationDate,
+            now: now,
+            calendar: calendar
+        ) else {
+            return []
+        }
+        var observations: [ContextualSuggestionObservation] = []
+        var windowEntriesByFood: [UUID: [FoodLogEntry]] = [:]
+        for entry in entries where window.contains(entry.date) {
+            // A missing relationship means the source was deleted. Never fall
+            // back to names: duplicate names remain distinct and deletions do
+            // not leak stale candidates back into suggestions.
+            guard let foodID = entry.foodItem?.id else { continue }
+            observations.append(
+                ContextualSuggestionObservation(
+                    entryID: entry.id,
+                    foodID: foodID,
+                    logDate: entry.date,
+                    createdAt: entry.createdAt,
+                    meal: entry.mealType
+                )
+            )
+            windowEntriesByFood[foodID, default: []].append(entry)
+        }
+        let lastPortionCutoff = FavoriteFoodLogging.lastPortionCutoff(
+            onOrBefore: destinationDate,
+            calendar: calendar
+        )
+        let candidates = foods.compactMap { food -> ContextualSuggestionCandidate? in
+            guard let windowEntries = windowEntriesByFood[food.id] else { return nil }
+            let windowHoldsLastPortion = lastPortionCutoff.map { cutoff in
+                windowEntries.contains { $0.date < cutoff }
+            } ?? false
+            return ContextualSuggestionCandidate(
                 foodID: food.id,
                 isAvailable: FavoriteFoodLogging.isAvailableForLogging(food),
                 resolvedPortionGrams: resolvedPortion(
@@ -261,21 +327,9 @@ enum ContextualFoodSuggestionAdapter {
                     destinationDate: destinationDate,
                     destinationMeal: destinationMeal,
                     destinationSnackIndex: destinationSnackIndex,
+                    history: windowHoldsLastPortion ? windowEntries : nil,
                     calendar: calendar
                 )
-            )
-        }
-        let observations = entries.compactMap { entry -> ContextualSuggestionObservation? in
-            // A missing relationship means the source was deleted. Never fall
-            // back to names: duplicate names remain distinct and deletions do
-            // not leak stale candidates back into suggestions.
-            guard let foodID = entry.foodItem?.id else { return nil }
-            return ContextualSuggestionObservation(
-                entryID: entry.id,
-                foodID: foodID,
-                logDate: entry.date,
-                createdAt: entry.createdAt,
-                meal: entry.mealType
             )
         }
         return ContextualFoodSuggestionRanker.rank(
@@ -293,6 +347,7 @@ enum ContextualFoodSuggestionAdapter {
         destinationDate: Date,
         destinationMeal: MealType,
         destinationSnackIndex: Int = 0,
+        history: [FoodLogEntry]? = nil,
         calendar: Calendar = .current
     ) -> Double {
         let plan = FavoriteFoodLogging.plan(
@@ -300,6 +355,7 @@ enum ContextualFoodSuggestionAdapter {
             destinationMeal: destinationMeal,
             destinationDate: destinationDate,
             destinationSnackIndex: destinationSnackIndex,
+            history: history,
             calendar: calendar
         )
         if case .log(let portionGrams) = plan.action {
@@ -314,5 +370,25 @@ enum ContextualFoodSuggestionAdapter {
             return serving
         }
         return 100
+    }
+
+    private static func historyWindow(
+        destinationDate: Date,
+        now: Date,
+        calendar: Calendar
+    ) -> Range<Date>? {
+        let today = calendar.startOfDay(for: now)
+        guard let start = calendar.date(
+            byAdding: .day,
+            value: -(ContextualFoodSuggestionRanker.historyDayCount - 1),
+            to: today
+        ), let tomorrow = calendar.date(byAdding: .day, value: 1, to: today) else {
+            return nil
+        }
+        let lastPortionCutoff = FavoriteFoodLogging.lastPortionCutoff(
+            onOrBefore: destinationDate,
+            calendar: calendar
+        ) ?? tomorrow
+        return start..<max(tomorrow, lastPortionCutoff)
     }
 }

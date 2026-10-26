@@ -20,8 +20,12 @@ struct CalorynIntentDataStore: Sendable {
         guard try FavoriteIntentLogging.hasAuthenticatedUser(in: context) else {
             return []
         }
-        let foods = try context.fetch(FetchDescriptor<FoodItem>())
-        return FavoriteIntentCatalog.candidates(from: foods)
+        let pinnedFoods = try context.fetch(
+            FetchDescriptor<FoodItem>(
+                predicate: #Predicate { $0.isPinnedRaw == true }
+            )
+        )
+        return FavoriteIntentCatalog.candidates(from: pinnedFoods)
     }
 
     @MainActor
@@ -66,11 +70,8 @@ struct CalorynIntentDataStore: Sendable {
             )
         }
 
-        let entries = try context.fetch(FetchDescriptor<FoodLogEntry>())
-        let currentConsumed = entries
-            .filter { calendar.isDate($0.date, inSameDayAs: now) }
+        let currentConsumed = try entries(onSameDayAs: now, calendar: calendar, in: context)
             .reduce(0) { $0 + $1.calories }
-        let expectsDynamicTarget = profile.effectiveEnergyCalculationMode == .dynamicHealth
         let snapshot = try? widgetSnapshotStore.load()
         guard let snapshot,
               snapshot.state == .ready,
@@ -78,30 +79,10 @@ struct CalorynIntentDataStore: Sendable {
             return .unavailable("Open Caloryn to refresh today’s calorie snapshot.")
         }
 
-        let expectedBaseTarget: Int
-        let expectedTarget: Int
-        if expectsDynamicTarget {
-            guard let budget = await CurrentActivityCalorieBudget.load(
-                profile: profile,
-                consumed: currentConsumed,
-                now: now,
-                calendar: calendar
-            ) else {
-                return .unavailable("Open Caloryn to refresh today’s calorie snapshot.")
-            }
-            expectedBaseTarget = budget.baseTarget
-            expectedTarget = budget.adjustedTarget
-        } else {
-            expectedBaseTarget = profile.calorieBaseTarget(usesActiveEnergy: false)
-            expectedTarget = expectedBaseTarget
-        }
-
         return TodayCaloriesIntentResponse.make(
             snapshot: snapshot,
             currentConsumed: currentConsumed,
-            expectedBaseTarget: expectedBaseTarget,
-            expectedTarget: expectedTarget,
-            expectsDynamicTarget: expectsDynamicTarget,
+            expectedTarget: profile.calorieBudget(consumed: currentConsumed).target,
             now: now,
             calendar: calendar,
             locale: locale
@@ -114,7 +95,7 @@ struct CalorynIntentDataStore: Sendable {
         now: Date,
         calendar: Calendar
     ) {
-        guard let entries = try? context.fetch(FetchDescriptor<FoodLogEntry>()),
+        guard let dayEntries = try? entries(onSameDayAs: now, calendar: calendar, in: context),
               let profiles = try? context.fetch(
                 FetchDescriptor<UserProfile>(
                     sortBy: [SortDescriptor(\.updatedAt, order: .reverse)]
@@ -124,9 +105,7 @@ struct CalorynIntentDataStore: Sendable {
             return
         }
 
-        let consumed = entries
-            .filter { calendar.isDate($0.date, inSameDayAs: now) }
-            .reduce(0) { $0 + $1.calories }
+        let consumed = dayEntries.reduce(0) { $0 + $1.calories }
         let previous = try? widgetSnapshotStore.load()
 
         let snapshot: DailyWidgetSnapshot
@@ -139,23 +118,39 @@ struct CalorynIntentDataStore: Sendable {
                 state: .ready,
                 calories: WidgetCalorieSummary(
                     consumed: consumed,
-                    baseTarget: previous.calories.baseTarget,
                     target: previous.calories.target,
-                    dynamicAdjustment: previous.calories.dynamicAdjustment
-                ),
-                usesDynamicTarget: previous.usesDynamicTarget,
-                activityRefreshedAt: previous.activityRefreshedAt
+                    mealCalories: DailyWidgetSnapshotProjector.mealCalories(for: dayEntries)
+                )
             )
         } else {
             snapshot = DailyWidgetSnapshotProjector.makeSnapshot(
                 profile: profile,
-                entries: entries,
+                entries: dayEntries,
                 now: now,
                 calendar: calendar
             )
         }
 
         WidgetSyncCoordinator(store: widgetSnapshotStore).publish(snapshot)
+    }
+
+    @MainActor
+    private func entries(
+        onSameDayAs day: Date,
+        calendar: Calendar,
+        in context: ModelContext
+    ) throws -> [FoodLogEntry] {
+        guard let interval = calendar.dateInterval(of: .day, for: day) else {
+            return try context.fetch(FetchDescriptor<FoodLogEntry>())
+                .filter { calendar.isDate($0.date, inSameDayAs: day) }
+        }
+        let start = interval.start
+        let end = interval.end
+        return try context.fetch(
+            FetchDescriptor<FoodLogEntry>(
+                predicate: #Predicate { $0.date >= start && $0.date < end }
+            )
+        )
     }
 }
 
@@ -215,15 +210,15 @@ struct FavoriteFoodQuery: EntityStringQuery, EnumerableEntityQuery {
 enum CalorynIntentMeal: String, AppEnum {
     case breakfast
     case lunch
-    case dinner
     case snack
+    case dinner
 
     static let typeDisplayRepresentation: TypeDisplayRepresentation = "Meal"
     static let caseDisplayRepresentations: [CalorynIntentMeal: DisplayRepresentation] = [
         .breakfast: "Breakfast",
         .lunch: "Lunch",
-        .dinner: "Dinner",
         .snack: "Snack",
+        .dinner: "Dinner",
     ]
 
     var mealType: MealType {

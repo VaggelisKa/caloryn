@@ -181,17 +181,11 @@ final class FoodItem {
     var isCustom: Bool = false
     var isRecipe: Bool = false
 
-    // Optional raw fields provide a lightweight SwiftData migration path.
-    // Existing foods retain nil (unknown) rather than being assigned a source
-    // or completeness level that was never recorded.
     var lookupProviderRaw: String?
     var dataSourceRaw: String?
     var nutritionCompletenessRaw: String?
     var recoveredByFallbackRaw: Bool?
 
-    // Optional scalar metadata keeps barcode overlays compatible with
-    // SwiftData lightweight migration and CloudKit. Legacy rows leave both
-    // values nil and are interpreted conservatively by computed accessors.
     var providerProductIdentityRaw: String?
     var fieldOriginsRaw: String?
 
@@ -525,7 +519,7 @@ final class FoodItem {
             "l", "liter", "liters", "litre", "litres",
             "oz", "ounce", "ounces", "fl",
             "lb", "pound", "pounds",
-            "cl", "dl", "serving", "portion"
+            "cl", "dl", "serving", "servings", "portion", "portions"
         ]
 
         guard let match = description.wholeMatch(
@@ -544,7 +538,10 @@ final class FoodItem {
         let singular: String
         let plural: String
         if unit.hasSuffix("ies") {
-            singular = String(unit.dropLast(3)) + "y"
+            let ieSingular = String(unit.dropLast())
+            singular = Self.servingUnitsEndingInIE.contains(where: { ieSingular.hasSuffix($0) })
+                ? ieSingular
+                : String(unit.dropLast(3)) + "y"
             plural = unit
         } else if unit.hasSuffix("ches") || unit.hasSuffix("shes")
                     || unit.hasSuffix("ses") || unit.hasSuffix("xes")
@@ -556,10 +553,22 @@ final class FoodItem {
             plural = unit
         } else {
             singular = unit
-            plural = unit + "s"
+            plural = Self.pluralized(unit)
         }
 
         return ServingInfo(unitName: singular, gramsPerUnit: gramsPerUnit, pluralName: plural)
+    }
+
+    private static let servingUnitsEndingInIE = ["cookie", "pie", "brownie", "smoothie", "veggie", "hoagie"]
+
+    private static func pluralized(_ unit: String) -> String {
+        if ["s", "x", "z", "ch", "sh"].contains(where: { unit.hasSuffix($0) }) {
+            return unit + "es"
+        }
+        if unit.hasSuffix("y"), let beforeY = unit.dropLast().last, !"aeiou".contains(beforeY) {
+            return String(unit.dropLast()) + "ies"
+        }
+        return unit + "s"
     }
 }
 

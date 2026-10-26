@@ -3,10 +3,10 @@ import SwiftUI
 import SwiftData
 
 struct HistoryView: View {
+    @Environment(AppRouter.self) private var router
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    // Keep newest-first ordering in sync with relevantEntries(startingAt:);
-    // that helper early-exits when it reaches entries older than its window.
     @Query(sort: \FoodLogEntry.date, order: .reverse) private var allEntries: [FoodLogEntry]
     @Query(sort: \UserProfile.updatedAt, order: .reverse) private var profiles: [UserProfile]
     @Query private var goalSnapshots: [DailyGoalSnapshot]
@@ -14,6 +14,8 @@ struct HistoryView: View {
     @State private var historyState: HistoryViewState
     @State private var navigationPath: [HistoryDrillDownRoute] = []
     @State private var analyticsDayStart = Calendar.current.startOfDay(for: .now)
+    @State private var hasLoadedAnalytics = false
+    @State private var isContentVisible = false
 
     #if DEBUG
     @State private var debugLaunch = HistoryDebugLaunch.current
@@ -34,6 +36,8 @@ struct HistoryView: View {
     }
 
     private var profile: UserProfile? { profiles.first }
+
+    private var isSelectedTab: Bool { router.selectedTab == .history }
 
     private func relevantEntries(for range: HistoryRange) -> [FoodLogEntry] {
         relevantEntries(
@@ -92,62 +96,74 @@ struct HistoryView: View {
                 )
 
                 VStack(alignment: .leading, spacing: 26) {
-                    VStack(alignment: .leading, spacing: 22) {
-                        rangePicker
+                    if hasLoadedAnalytics {
+                        VStack(alignment: .leading, spacing: 22) {
+                            rangePicker
 
-                        HistoryOverviewSection(
-                            range: state.range,
-                            summary: history.current,
-                            overview: overview,
-                            today: analyticsDayStart
-                        )
-                    }
+                            crossfading(on: state.range) {
+                                VStack(alignment: .leading, spacing: 26) {
+                                    HistoryOverviewSection(
+                                        range: state.range,
+                                        summary: history.current,
+                                        overview: overview,
+                                        today: analyticsDayStart
+                                    )
 
-                    if let recurringPattern = state.recurringPattern {
-                        HistoryRecurringCaloriePatternCard(
-                            pattern: recurringPattern,
-                            action: { openPatternDetails(recurringPattern) }
-                        )
-                    }
+                                    if let recurringPattern = state.recurringPattern {
+                                        HistoryRecurringCaloriePatternCard(
+                                            pattern: recurringPattern,
+                                            action: { openPatternDetails(recurringPattern) }
+                                        )
+                                    }
 
-                    if overview.hasLoggedDays {
-                        HistoryOnTrackSection(overview: overview)
-                    }
+                                    if overview.hasLoggedDays {
+                                        HistoryOnTrackSection(overview: overview)
+                                    }
 
-                    if state.range.days >= HistoryRange.month.days {
-                        HistoryWeeklyRollupSection(projection: patternDiscovery.weeklyConsistency)
-                    }
+                                    if state.range.days >= HistoryRange.month.days {
+                                        HistoryWeeklyRollupSection(projection: patternDiscovery.weeklyConsistency)
+                                    }
 
-                    HistoryCalorieTrendSection(
-                        projection: patternDiscovery.calorieTrend,
-                        drillDownAction: patternDiscovery.calorieTrend.canDrillDown
-                            ? { openCalorieTrendDetail(range: state.range, summary: history.current) }
-                            : nil
-                    )
+                                    HistoryCalorieTrendSection(
+                                        projection: patternDiscovery.calorieTrend,
+                                        drillDownAction: patternDiscovery.calorieTrend.canDrillDown
+                                            ? { openCalorieTrendDetail(range: state.range, summary: history.current) }
+                                            : nil
+                                    )
 
-                    if history.macroPatterns.contains(where: { $0.current.loggedDays > 0 }) {
-                        HistoryMacroPatternsSection(
-                            range: state.range,
-                            projection: patternDiscovery.macroPatterns
-                        )
+                                    if history.macroPatterns.contains(where: { $0.current.loggedDays > 0 }) {
+                                        HistoryMacroPatternsSection(
+                                            range: state.range,
+                                            projection: patternDiscovery.macroPatterns
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
+                .opacity(isContentVisible ? 1 : 0)
                 .padding(.horizontal, CalorynTheme.pagePadding)
                 .padding(.top, 4)
                 .padding(.bottom, 28)
             }
             .historyDebugScrollAnchor()
             .calorynPageCanvas()
-            .navigationTitle("History")
+            .calorynLargeTitle("History")
             .navigationDestination(for: HistoryDrillDownRoute.self) { route in
                 destination(for: route)
             }
         }
         .calorynPageCanvas()
-        .task(id: analyticsRefreshID) {
-            // Range changes refresh synchronously through selectRange; data/profile
-            // changes should recalculate for the range current when this task runs.
+        .task(id: isSelectedTab ? analyticsRefreshID : nil) {
+            guard isSelectedTab else { return }
             refreshAnalytics(for: historyState.range)
+            if !hasLoadedAnalytics {
+                hasLoadedAnalytics = true
+                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.25)) {
+                    isContentVisible = true
+                }
+            }
             #if DEBUG
             openDebugDrillDownIfRequested()
             #endif
@@ -156,8 +172,6 @@ struct HistoryView: View {
             guard newPhase == .active else { return }
             followCalendarRollover()
         }
-        // Covers local midnight passing while History remains visible and the
-        // app stays active, so the fixed evidence window advances immediately.
         .onReceive(
             NotificationCenter.default
                 .publisher(for: .NSCalendarDayChanged)
@@ -190,9 +204,27 @@ struct HistoryView: View {
         )
     }
 
+    private var changeAnimation: Animation? {
+        reduceMotion ? nil : .easeInOut(duration: 0.2)
+    }
+
+    private func crossfading(
+        on range: HistoryRange,
+        @ViewBuilder content: () -> some View
+    ) -> some View {
+        ZStack(alignment: .topLeading) {
+            content()
+                .id(range)
+                .transition(.opacity)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
     private func selectRange(_ range: HistoryRange) {
         guard range != historyState.range else { return }
-        refreshAnalytics(for: range)
+        withAnimation(changeAnimation) {
+            refreshAnalytics(for: range)
+        }
     }
 
     private func openCalorieTrendDetail(range: HistoryRange, summary: HistoryPeriodSummary) {
@@ -212,8 +244,6 @@ struct HistoryView: View {
     }
 
     #if DEBUG
-    /// Pushes the drill-down named by `-CalorynHistoryDrillDown` once, after the first
-    /// analytics refresh, so a simulator capture can reach it without a tap.
     private func openDebugDrillDownIfRequested() {
         guard let drillDown = debugLaunch.drillDown else { return }
         debugLaunch.drillDown = nil
@@ -261,12 +291,6 @@ struct HistoryView: View {
         }
     }
 
-    /// The range as ink chips. One container carries `history.rangePicker`; each chip is
-    /// a button labelled with the full range name ("14 Days") and marked selected, which is
-    /// what VoiceOver and the UI journeys read.
-    ///
-    /// One row while it fits; at accessibility sizes the four overflow it and the selected
-    /// chip read "7…", so they wrap to two rows, or one a row. A chip never truncates.
     private var rangePicker: some View {
         let ranges = HistoryRange.allCases
         let half = (ranges.count + 1) / 2
@@ -354,18 +378,6 @@ private struct HistoryRecurringCaloriePatternSnapshot: Hashable {
 }
 
 #if DEBUG
-/// Simulator-only launch arguments for reaching History's screens without taps, since
-/// `xcrun simctl` can capture but cannot tap. Pair them with `-CalorynHistoryFixture
-/// recurringInsight` (or `noRecurringInsight`), which seeds History and opens its tab:
-///
-/// - `-CalorynHistoryRange week|twoWeeks|month|quarter` opens on that range.
-/// - `-CalorynHistoryDrillDown calorieTrend|calorieTrendSelected|recurringPattern|recurringPatternExpanded`
-///   pushes that drill-down after the first refresh; the `Selected` form selects the last
-///   logged bar, the `Expanded` form opens the first supporting day.
-/// - `-CalorynHistoryScrolledToBottom` opens History's scroll views at their bottom, to
-///   capture what sits below the fold.
-///
-/// Compiled out of release builds, and inert unless the argument is passed.
 struct HistoryDebugLaunch {
     enum DrillDown: String {
         case calorieTrend
@@ -398,7 +410,6 @@ struct HistoryDebugLaunch {
 #endif
 
 extension View {
-    /// `-CalorynHistoryScrolledToBottom` in DEBUG (see `HistoryDebugLaunch`); nothing otherwise.
     @ViewBuilder
     func historyDebugScrollAnchor() -> some View {
         #if DEBUG

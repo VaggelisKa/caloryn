@@ -2,13 +2,8 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// The wording and drawing of the onboarding goal step ("Your daily plate"), which until
-/// the Plate / Market restyle was three stat pills and a signed deficit label.
 @Suite("Onboarding goal plate")
 struct OnboardingGoalPlateTests {
-
-    // MARK: - Rows
-
     @Test("The rows show the resting and daily burn truncated, like the target itself")
     func rowsTruncateTheBurn() {
         let plate = OnboardingGoalPlate(bmr: 1_700.9, tdee: 2_500.9, target: 2_000, calorieDeficit: 500)
@@ -30,8 +25,6 @@ struct OnboardingGoalPlateTests {
 
     @Test("The adjustment is the real gap to the target, not the slider, once the floor applies")
     func adjustmentFollowsTheFlooredTarget() {
-        // A burn under 1,000 less a 1,000 deficit is far below the 1,200 floor, so the
-        // plate is bigger than the burn even though the slider says "lose".
         let basis = OnboardingGoalSummaryDraft.Basis(
             age: 80,
             sex: .female,
@@ -54,8 +47,6 @@ struct OnboardingGoalPlateTests {
         #expect(plate.adjustmentText == "100 more")
         #expect(plate.explanation.contains("100 bigger"))
     }
-
-    // MARK: - Captions
 
     @Test("The explanation names the burn and how the plate compares to it")
     func explanationComparesThePlate() {
@@ -86,8 +77,6 @@ struct OnboardingGoalPlateTests {
         #expect(!plate.paceCaption.isEmpty)
         #expect(plate.plateDiameterRatio.isFinite)
     }
-
-    // MARK: - Drawing
 
     @Test("Under the burn the dotted ring fills the drawing and the plate sits inside it")
     func plateSitsInsideTheRing() {

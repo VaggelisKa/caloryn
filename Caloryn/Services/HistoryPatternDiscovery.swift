@@ -180,11 +180,9 @@ struct HistoryCalorieTrendProjection {
         totalCalories.roundedCalories - loggedDayTargetTotal
     }
 
-    /// Shown when some days in range use the documented fallback target
-    /// instead of a persisted daily goal snapshot.
     var estimatedTargetNoteText: String? {
         guard hasEstimatedTargets else { return nil }
-        return "Days without a saved daily goal are compared with your current target."
+        return "Days without a saved daily goal are compared with the goal in effect around then."
     }
 
     var totalTargetDeltaText: String {
@@ -192,10 +190,6 @@ struct HistoryCalorieTrendProjection {
         return "\(Self.deltaText(totalTargetDelta, unit: "kcal")) target total"
     }
 
-    /// Day and week labels for the detail screen. They exist here, not in the
-    /// view, so that a label cannot be produced without the calendar its date
-    /// was bucketed in; both still route through the single `Date+Helpers`
-    /// rule.
     func dayText(for date: Date) -> String {
         date.shortFormatted(in: calendar)
     }
@@ -204,8 +198,6 @@ struct HistoryCalorieTrendProjection {
         date.dayMonthFormatted(in: calendar)
     }
 
-    /// The point a chart-space x value falls on, or `nil` outside the series.
-    ///
     /// Non-finite indices are rejected rather than truncated: `truncatedSafely`
     /// answers 0 for NaN and the infinities, which would silently select the
     /// first day for a gesture value that means nothing. The equivalent
@@ -339,7 +331,6 @@ struct HistoryCalorieTrendProjection {
             "90-day"
         }
     }
-
 }
 
 struct HistoryCalorieTrendPoint: Identifiable {

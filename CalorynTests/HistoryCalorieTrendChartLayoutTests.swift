@@ -3,14 +3,8 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// The positional axis every History bar chart plots against, and the two
-/// surfaces the calorie-trend chart is drawn on. Nothing here needs a store,
-/// a clock or a rendered chart.
 @Suite("History chart axis and calorie trend layout")
 struct HistoryCalorieTrendChartLayoutTests {
-
-    // MARK: - Axis: domain
-
     @Test("given no slots, when scaling the axis, then a unit domain keeps the chart drawable")
     func emptyAxisFallsBackToAUnitDomain() {
         #expect(HistoryChartIndexAxis(slotCount: 0).domain == 0 ... 1)
@@ -37,8 +31,6 @@ struct HistoryCalorieTrendChartLayoutTests {
         #expect(axis.domain == -0.5 ... 6.5)
         #expect(axis.indices == [0, 1, 2, 3, 4, 5, 6])
     }
-
-    // MARK: - Axis: which slot was touched
 
     @Test(
         "given a chart-space x value, when resolving a slot, then it rounds to the nearest bar",
@@ -77,8 +69,6 @@ struct HistoryCalorieTrendChartLayoutTests {
         #expect(HistoryChartIndexAxis(slotCount: 0).slot(for: 0) == nil)
     }
 
-    // MARK: - Axis: hit targets
-
     @Test("given a wide plot, when sizing tap targets, then each bar gets an equal share")
     func hitTargetsSplitThePlotEvenly() {
         let axis = HistoryChartIndexAxis(slotCount: 7)
@@ -100,8 +90,6 @@ struct HistoryCalorieTrendChartLayoutTests {
         #expect(width == 300)
     }
 
-    // MARK: - Axis: taps outside the plot
-
     @Test("given a touch inside the plot, when locating it, then the offset is relative to the plot's leading edge")
     func touchInsideThePlotIsMadeRelative() {
         let axis = HistoryChartIndexAxis(slotCount: 7)
@@ -118,8 +106,6 @@ struct HistoryCalorieTrendChartLayoutTests {
         #expect(axis.plotLocalX(for: CGPoint(x: 10, y: 100), in: plot) == nil)
         #expect(axis.plotLocalX(for: CGPoint(x: 140, y: 900), in: plot) == nil)
     }
-
-    // MARK: - Bar and chart sizing
 
     @Test(
         "given a range and a surface, when sizing bars, then only the 7-day range gets wide ones",
@@ -170,8 +156,6 @@ struct HistoryCalorieTrendChartLayoutTests {
         #expect(layout.hitTargetWidth(plotWidth: 300) == HistoryChartIndexAxis.minimumHitTargetWidth)
     }
 
-    // MARK: - Selection
-
     @Test("given a tap that resolved to no chart value, when selecting, then nothing is selected")
     func aTapWithNoChartValueSelectsNothing() {
         let layout = HistoryCalorieTrendChartLayout(range: .week, surface: .detail, pointCount: 7)
@@ -186,8 +170,6 @@ struct HistoryCalorieTrendChartLayoutTests {
         #expect(layout.selectedSlot(chartValue: 3.4) == 3)
         #expect(layout.selectedSlot(chartValue: 3.6) == 4)
     }
-
-    // MARK: - Emphasis
 
     @Test("given no selection, when drawing a bar, then every bar reads at full strength")
     func noSelectionLeavesEveryBarNormal() {

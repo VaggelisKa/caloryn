@@ -43,8 +43,7 @@ struct RecipeFormView: View {
             }
             .scrollDismissesKeyboard(.interactively)
             .calorynSheetCanvas()
-            .navigationTitle(isEditing ? "Edit recipe" : "Create recipe")
-            .navigationBarTitleDisplayMode(.inline)
+            .calorynInlineTitle(isEditing ? "Edit recipe" : "Create recipe")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     CreationFormCloseButton {
@@ -79,6 +78,7 @@ struct RecipeFormView: View {
                     }
                     .accessibilityLabel("Save")
                     .disabled(!draft.canSave)
+                    .accessibilityIdentifier("recipe.save")
                 }
             }
             .onAppear(perform: seedFromExisting)
@@ -125,6 +125,7 @@ struct RecipeFormView: View {
                 .textInputAutocapitalization(.words)
                 .focused($isNameFocused)
                 .calorynInputField(isFocused: isNameFocused)
+                .accessibilityIdentifier("recipe.name")
         }
     }
 
@@ -267,8 +268,8 @@ struct RecipeFormView: View {
                     isFavorite: recipe.isFavorite
                 )
             }
+            CalorynHaptics.success()
         } catch {
-            // Keep the existing silent save behavior.
         }
         onSaved?(recipe)
         dismiss()
@@ -281,7 +282,6 @@ struct RecipeFormView: View {
                 try modelContext.save()
                 CalorynAppShortcutRefresh.favoritesChanged()
             } catch {
-                // Keep the existing silent deletion behavior.
             }
         }
         dismiss()

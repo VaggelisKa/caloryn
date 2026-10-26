@@ -1,13 +1,5 @@
 import SwiftUI
 
-/// One line of placeholder text: a bar the height of the glyphs, centred in the height
-/// of the line it stands in for, so a placeholder row is exactly as tall as the row it
-/// replaces.
-///
-/// `maxWidth` rather than `width`: the bar gives its width back under pressure,
-/// which is what keeps a large Dynamic Type calorie block from being squeezed
-/// out by a placeholder. Squared off with a small corner, like the badges, rather than
-/// a capsule.
 struct SkeletonBar: View {
     @Environment(\.skeletonDrawsOpaqueMask) private var drawsOpaqueMask
 
@@ -20,30 +12,18 @@ struct SkeletonBar: View {
             // Inside the shimmer's mask the bar must be opaque: a mask multiplies by
             // alpha, and the faint on-screen fill would reduce the highlight to under
             // one percent, which is invisible. The colour of a mask is never painted.
-            .fill(drawsOpaqueMask ? Color.black : CalorynTheme.skeletonBase)
+            .fill(drawsOpaqueMask ? Color.black : CalorynTheme.fillLoading)
             .frame(maxWidth: width)
             .frame(height: height)
             .frame(height: max(lineHeight ?? height, height))
     }
 }
 
-/// Sweeps a highlight across its content, masked to the content's own shape so
-/// only the placeholder bars light up and the gaps between them stay empty.
-///
-/// `TimelineView(.animation)` rather than a `repeatForever` animation: an
-/// animation that never ends is the classic way to hang XCUITest, which waits
-/// for the app to stop animating before it will interact with it, and this
-/// sheet is on the path of most of the E2E journeys.
-///
-/// Wrap a whole group of rows in one of these, not each row — a band per row
-/// reads as a stack of unrelated spinners.
 struct ShimmeringPlaceholder<Content: View>: View {
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
 
     @ViewBuilder var content: Content
 
-    /// The band crosses in the first `sweepFraction` of the cycle and the rest
-    /// is rest — a continuous sweep with no gap reads as frantic.
     private static var cycle: TimeInterval { 1.75 }
     private static var sweepFraction: Double { 0.68 }
 
@@ -57,7 +37,7 @@ struct ShimmeringPlaceholder<Content: View>: View {
                         let width = proxy.size.width
                         let band = max(width * 0.42, 1)
                         LinearGradient(
-                            colors: [.clear, CalorynTheme.skeletonShine, .clear],
+                            colors: [.clear, CalorynTheme.fillLoadingHighlight, .clear],
                             startPoint: .leading,
                             endPoint: .trailing
                         )
@@ -71,11 +51,6 @@ struct ShimmeringPlaceholder<Content: View>: View {
         }
     }
 
-    /// How far across the band is: 0 at its entry edge, 1 once it has left.
-    ///
-    /// Anchored to absolute time rather than to an `onAppear`, so rows that
-    /// appear late join the sweep already in progress instead of starting their
-    /// own.
     static func sweep(at date: Date) -> Double {
         let elapsed = date.timeIntervalSinceReferenceDate
             .truncatingRemainder(dividingBy: cycle)
@@ -83,8 +58,6 @@ struct ShimmeringPlaceholder<Content: View>: View {
     }
 }
 
-/// Set on the copy of the content that serves as the shimmer's mask, so the bars
-/// draw fully opaque there and only their shape, not their faint fill, limits the band.
 private struct SkeletonDrawsOpaqueMaskKey: EnvironmentKey {
     static let defaultValue = false
 }

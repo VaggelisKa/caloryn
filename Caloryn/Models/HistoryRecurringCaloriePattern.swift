@@ -1,6 +1,5 @@
 import Foundation
 
-/// Thresholds for the deterministic recurring-calorie observation shown in History.
 struct HistoryRecurringCaloriePatternPolicy {
     static let standard = HistoryRecurringCaloriePatternPolicy()
 
@@ -80,8 +79,6 @@ struct HistoryRecurringCaloriePattern: Identifiable {
     /// summary carries its own: the drill-down receives the pattern alone.
     let calendar: Calendar
 
-    /// Supporting-day label, produced here so it cannot be spelled without the
-    /// calendar the day was bucketed in. Routes through `Date+Helpers`.
     func dayText(for date: Date) -> String {
         date.shortFormatted(in: calendar)
     }
@@ -110,15 +107,6 @@ struct HistoryRecurringCaloriePattern: Identifiable {
 
     var basisText: String {
         "Based on \(eligibleDayCount) logged days in the last 30 days"
-    }
-
-    var outcomeComparisonText: String {
-        switch kind {
-        case .weekdayMeal:
-            "\(outcomeComparisonCount) of \(outcomeComparisonDayCount) other eligible logged days were \(outcome.targetText)."
-        case .mealOnly:
-            "\(mealComparisonDayCount) other eligible logged days form the comparison."
-        }
     }
 
     var weekdayName: String {

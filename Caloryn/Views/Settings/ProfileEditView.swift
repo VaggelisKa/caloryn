@@ -5,17 +5,11 @@ struct ProfileEditView: View {
     @Bindable var profile: UserProfile
     @Environment(\.dismiss) private var dismiss
 
-    /// The editable state; the profile is only written on Save. See
-    /// `ProfileEditDraft`.
     @State private var draft: ProfileEditDraft
 
     init(profile: UserProfile) {
         self.profile = profile
         _draft = State(initialValue: ProfileEditDraft(profile: profile))
-    }
-
-    private var isActivityLevelLocked: Bool {
-        ProfileEditActivityLevelPolicy.isLocked(for: profile)
     }
 
     var body: some View {
@@ -43,31 +37,24 @@ struct ProfileEditView: View {
             } header: {
                 SettingsSectionTitle("Personal info")
             }
-            .listRowBackground(CalorynTheme.cardBackground)
+            .listRowBackground(CalorynTheme.backgroundSecondary)
 
             Section {
-                // A menu, not chips: five long names do not fit a row of chips.
                 Picker("Activity", selection: $draft.activityLevel) {
                     ForEach(ActivityLevel.allCases) { level in
                         Text(level.displayName.sentenceCased).tag(level)
                     }
                 }
                 .foregroundStyle(CalorynTheme.textPrimary)
-                .disabled(isActivityLevelLocked)
             } header: {
                 SettingsSectionTitle("Activity level")
-            } footer: {
-                if isActivityLevelLocked {
-                    SettingsSectionFooter(ProfileEditActivityLevelPolicy.lockedExplanation)
-                }
             }
-            .listRowBackground(CalorynTheme.cardBackground)
+            .listRowBackground(CalorynTheme.backgroundSecondary)
         }
         .calorynFormStyle()
         .calorynPageCanvas()
         .calorynDrillDownNavigation()
-        .navigationTitle("Edit profile")
-        .navigationBarTitleDisplayMode(.inline)
+        .calorynInlineTitle("Edit profile")
         .toolbar {
             ToolbarItem(placement: .calorynConfirmation) {
                 Button {
@@ -76,16 +63,14 @@ struct ProfileEditView: View {
                 } label: {
                     Text("Save")
                         .font(CalorynTheme.toolbarAction)
-                        .foregroundStyle(CalorynTheme.textPrimary)
+                        .foregroundStyle(CalorynTheme.accent)
                 }
+                .accessibilityIdentifier("profileEdit.save")
             }
         }
     }
 }
 
-/// Age on the Plate stepper: a `surface` pill with round minus and plus buttons. A stock
-/// `Stepper` draws its minus/plus pill in a system fill (#EEEEEF on the white group) that
-/// no token reaches.
 private struct ProfileAgeRow: View {
     @Binding var age: Int
 
@@ -109,13 +94,11 @@ private struct ProfileAgeRow: View {
                 onDecrement: { age = max(Self.range.lowerBound, age - 1) },
                 onIncrement: { age = min(Self.range.upperBound, age + 1) }
             )
+            .accessibilityIdentifier("profileEdit.age")
         }
     }
 }
 
-/// Male / Female as chips: a two-way choice, so the vocabulary's chips rather than a menu.
-/// The chips go under the title when both will not fit beside it (from about AX3), as the
-/// theme row does, rather than squeezing "Female" to "Fem…".
 private struct ProfileSexRow: View {
     @Binding var selection: Sex
 
@@ -155,6 +138,7 @@ private struct ProfileSexRow: View {
                 }
                 .buttonStyle(.borderless)
                 .accessibilityAddTraits(selection == sex ? .isSelected : [])
+                .accessibilityIdentifier("profileEdit.sex.\(sex.rawValue)")
             }
         }
         .accessibilityElement(children: .contain)
@@ -162,7 +146,6 @@ private struct ProfileSexRow: View {
     }
 }
 
-/// A measurement set with a slider: its name and value on one line, an ink slider under it.
 private struct ProfileSliderRow: View {
     let title: String
     let valueText: String
@@ -175,10 +158,8 @@ private struct ProfileSliderRow: View {
             SettingsValueRow(title: title, value: valueText, valueIsInk: true)
                 .accessibilityHidden(true)
 
-            // Stepped without `Slider(step:)`, which draws a tick per step on iOS 26 — the
-            // same slider onboarding sets height and weight with.
             OnboardingSlider(value: $value, range: range, step: step, label: title)
-                .tint(CalorynTheme.textPrimary)
+                .tint(CalorynTheme.accent)
                 .accessibilityLabel(title)
                 .accessibilityValue(valueText)
         }

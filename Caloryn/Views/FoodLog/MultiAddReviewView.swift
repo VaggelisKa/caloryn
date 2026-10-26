@@ -39,9 +39,6 @@ struct MultiAddReviewView: View {
 
     var body: some View {
         NavigationStack {
-            // A hairline list on the sheet, like Add Food, not a Form: the Form's white
-            // groups vanished on the white sheet but kept their insets, so every row
-            // started about 13pt right of the CTA and of the sibling sheets.
             List {
                 if let recoveryState {
                     recoverySection(recoveryState)
@@ -67,7 +64,7 @@ struct MultiAddReviewView: View {
                         Label("Close", systemImage: "xmark")
                             .font(CalorynTheme.toolbarIcon)
                             .foregroundStyle(
-                                isCommitting ? CalorynTheme.textSecondary : CalorynTheme.textPrimary
+                                isCommitting ? CalorynTheme.textSecondary : CalorynTheme.accent
                             )
                     }
                     .disabled(isCommitting)
@@ -88,7 +85,6 @@ struct MultiAddReviewView: View {
             commit()
         } label: {
             if isCommitting {
-                // Shown only while the button is disabled: the disabled label colour.
                 ProgressView()
                     .tint(CalorynTheme.textSecondary)
             } else {
@@ -100,7 +96,6 @@ struct MultiAddReviewView: View {
         .accessibilityIdentifier("multiAdd.commit")
     }
 
-    /// Rows on the sheet's margin, so they line up with the title, the CTA and the editor.
     private static let rowInsets = EdgeInsets(
         top: 10,
         leading: CalorynTheme.pagePadding,
@@ -108,8 +103,6 @@ struct MultiAddReviewView: View {
         trailing: CalorynTheme.pagePadding
     )
 
-    /// The section's title as its first row rather than a `Section` header: a plain list
-    /// pins its headers, and before iOS 26 paints a pinned header's band in a system grey.
     private func sectionTitleRow<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
         content()
             .textCase(nil)
@@ -155,6 +148,7 @@ struct MultiAddReviewView: View {
                             Label("Remove", systemImage: "trash")
                         }
                         .accessibilityLabel("Remove \(item.snapshot.foodName)")
+                        .tint(CalorynTheme.fillAction)
                     }
                 }
                 .accessibilityIdentifier("multiAdd.item.\(item.id.uuidString)")
@@ -164,8 +158,6 @@ struct MultiAddReviewView: View {
         }
     }
 
-    /// A food row: the name over its portion (and, for a meal's first item, the meal it
-    /// came from), with this portion's calories on the right.
     private func reviewRow(_ item: MultiAddDraftItem) -> some View {
         HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
@@ -228,13 +220,11 @@ struct MultiAddReviewView: View {
                 .font(CalorynTypeface.text(.footnote))
                 .foregroundStyle(CalorynTheme.textSecondary)
 
-            // Ink, not red: red is lunch now. Its sibling below is ink with the same
-            // disabled ternary.
             Button(role: .destructive) {
                 recover(using: .removeAndRetry)
             } label: {
                 Text("Remove partial add and retry")
-                    .foregroundStyle(isCommitting ? CalorynTheme.textSecondary : CalorynTheme.textPrimary)
+                    .foregroundStyle(isCommitting ? CalorynTheme.textSecondary : CalorynTheme.accent)
             }
             .disabled(isCommitting)
             .accessibilityIdentifier("multiAdd.recovery.replace")
@@ -243,7 +233,7 @@ struct MultiAddReviewView: View {
                 recover(using: .keepAddedAndContinue)
             } label: {
                 Text("Keep added items and continue")
-                    .foregroundStyle(isCommitting ? CalorynTheme.textSecondary : CalorynTheme.textPrimary)
+                    .foregroundStyle(isCommitting ? CalorynTheme.textSecondary : CalorynTheme.accent)
             }
             .disabled(isCommitting)
             .accessibilityIdentifier("multiAdd.recovery.continue")
@@ -332,6 +322,7 @@ struct MultiAddReviewView: View {
                 switch outcome {
                 case .completed:
                     recoveryState = nil
+                    CalorynHaptics.success()
                     onLogged()
                 case .needsRecovery(let state):
                     recoveryState = state

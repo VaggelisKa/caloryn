@@ -1,36 +1,11 @@
 import Foundation
 
-/// What a food row says: the line under its name, and the figure on its right with the
-/// unit that figure is counted in.
-///
-/// A row that shows an amount prices that amount: 40 g of a 380 kcal per 100 g food reads
-/// "152" over "kcal", and the line under the name says what the amount is and what the food
-/// is worth, "Quaker, 40 g · per 100 g: 380 kcal". The amount is a specific portion (a
-/// suggestion's "150 g"), or the food's serving, written as declared ("1 pot 150 g") or as
-/// its weight ("250 g"). A row with no amount whose grams are known falls back to the food's
-/// value, "kcal per 100 g", and a recipe's figure is the whole thing, "kcal total".
-/// See `docs/design/plate-market.md`, "Row".
 struct FoodRowSummary: Equatable {
-    /// Brand and amount, with what 100 g is worth. `nil` when there is nothing to say.
     let subtitle: String?
-    /// The subtitle as VoiceOver reads it: the same facts, without the middle dot and colon
-    /// it would read out or skip.
     let subtitleAccessibilityLabel: String?
-    /// The kcal figure, rounded and grouped: "152", "1,900".
     let figure: String
-    /// What the figure counts: "kcal", "kcal per 100 g" or "kcal total".
     let figureCaption: String
 
-    /// - Parameters:
-    ///   - servingDescription: The food's declared serving, "1 pot (150g)".
-    ///   - servingGrams: What that serving weighs. When it is missing, a weight written in
-    ///     the description ("40 g", "1 pot (150g)") stands in for it.
-    ///   - detail: A line that replaces brand and amount, for a row that is not one food
-    ///     (a saved meal's "Saved meal, 3 items").
-    ///   - caloriesPerServing: What the serving adds, when the caller knows it better than
-    ///     its weight does; a recipe's whole.
-    ///   - portionGrams: A specific portion the row is about, which outranks the serving.
-    ///   - portionCalories: What that portion, or the row's `detail`, adds.
     init(
         brand: String? = nil,
         servingDescription: String? = nil,
@@ -62,7 +37,6 @@ struct FoodRowSummary: Equatable {
         }
 
         if isRecipe {
-            // A recipe has no serving of its own to show; its figure is the whole recipe.
             subtitle = nil
             subtitleAccessibilityLabel = nil
             if let caloriesPerServing {
@@ -93,8 +67,6 @@ struct FoodRowSummary: Equatable {
             figure = Self.kcalFigure(servingKcal)
             figureCaption = "kcal"
         } else {
-            // Nothing to price but the food itself: a serving of unknown weight ("1 cup") is
-            // still described, and the figure says it is per 100 g.
             let parts = [shownBrand, description].compactMap { $0 }
             let line = parts.isEmpty ? nil : parts.joined(separator: ", ")
             subtitle = line
@@ -104,7 +76,6 @@ struct FoodRowSummary: Equatable {
         }
     }
 
-    /// "Arla, 150 g" and "Arla, 150 grams".
     private static func amount(grams: Double, brand: String?) -> (text: String, spoken: String) {
         (
             joined(brand, grams.spacedMacroFormatted),
@@ -112,12 +83,10 @@ struct FoodRowSummary: Equatable {
         )
     }
 
-    /// "Quaker, 40 g · per 100 g: 380 kcal".
     private static func priced(_ amount: String, caloriesPer100g: Double) -> String {
         "\(amount) · per 100 g: \(kcalFigure(caloriesPer100g)) kcal"
     }
 
-    /// "Quaker, 40 grams, 380 kcal per 100 grams".
     private static func spokenPriced(_ amount: String, caloriesPer100g: Double) -> String {
         "\(amount), \(kcalFigure(caloriesPer100g)) kcal per 100 grams"
     }
@@ -142,10 +111,6 @@ struct FoodRowSummary: Equatable {
         kcal.isFinite ? kcal : nil
     }
 
-    /// Every figure rounds to the nearest kcal, as the Portion sheet's preview, the
-    /// multi-add review and the logged row on Today do, so a pot of 94.5 kcal reads 95 on
-    /// the row, on the sheet it opens and in the meal it lands in; grouped for the locale,
-    /// as every other kcal figure is ("1.900").
     private static func kcalFigure(_ kcal: Double) -> String {
         kcal.roundedCalories.formatted()
     }

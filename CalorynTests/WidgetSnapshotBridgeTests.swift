@@ -2,31 +2,12 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// Characterizes `WidgetSyncCoordinator` from
-/// `Caloryn/Services/WidgetSnapshotBridge.swift` — the dedupe + write path
-/// that sits between the app's live state and the shared app-group snapshot
-/// file the widget extension reads.
-///
-/// `WidgetSnapshotBridge` itself is a SwiftUI `View` driven by `@Query` and
-/// an internal `ActiveEnergyDayTracker`; it has no seam for injecting a
-/// SwiftData model context or HealthKit data in a unit test, so it is
-/// exercised only indirectly here via the `WidgetSyncCoordinator` it owns,
-/// which does have an injectable `WidgetSnapshotStore`. See the final report
-/// for this as a documented seam gap rather than something fixed here.
-///
-/// Each test uses its own unique temporary directory as the "app group"
-/// container, so tests are independent and safe to run in parallel without
-/// touching the real app-group defaults.
 @MainActor
 struct WidgetSnapshotBridgeTests {
-
     private func makeTempDirectory() -> URL {
         FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
     }
 
-    /// Fixed at local noon so that offsetting `generatedAt` by an hour (as
-    /// several tests below do, to prove renderIdentity ignores it) can never
-    /// cross a local-timezone midnight and accidentally change `dayStart`.
     private static let fixedDayStart = Date(timeIntervalSince1970: 1_700_000_000).startOfDay
 
     private func makeSnapshot(
@@ -38,7 +19,7 @@ struct WidgetSnapshotBridgeTests {
             generatedAt: generatedAt,
             dayStart: Self.fixedDayStart,
             state: .ready,
-            calories: WidgetCalorieSummary(consumed: consumed, baseTarget: target, target: target)
+            calories: WidgetCalorieSummary(consumed: consumed, target: target)
         )
     }
 
@@ -60,14 +41,11 @@ struct WidgetSnapshotBridgeTests {
         let store = WidgetSnapshotStore(directoryURL: directoryURL)
         let coordinator = WidgetSyncCoordinator(store: store)
         let first = makeSnapshot(generatedAt: Date(timeIntervalSince1970: 1_700_000_000))
-        // Same renderIdentity as `first` (same dayStart/state/calories), but a
-        // later generatedAt -- renderIdentity deliberately excludes generatedAt.
         let regenerated = makeSnapshot(generatedAt: Date(timeIntervalSince1970: 1_700_003_600))
 
         coordinator.publish(first)
         coordinator.publish(regenerated)
 
-        // If the write were not skipped, the stored generatedAt would have advanced.
         #expect(try store.load() == first)
     }
 
@@ -92,8 +70,6 @@ struct WidgetSnapshotBridgeTests {
         let onDisk = makeSnapshot(generatedAt: Date(timeIntervalSince1970: 1_700_000_000))
         try store.save(onDisk)
 
-        // Simulates process relaunch: a brand new coordinator with no in-memory
-        // `lastPublished`, so the best-effort disk load is what must dedupe.
         let coordinator = WidgetSyncCoordinator(store: store)
         let regenerated = makeSnapshot(generatedAt: Date(timeIntervalSince1970: 1_700_003_600))
 
@@ -107,8 +83,6 @@ struct WidgetSnapshotBridgeTests {
         let directoryURL = makeTempDirectory()
         try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true)
 
-        // Write a snapshot with a schema version newer than the app understands,
-        // simulating a downgrade or a corrupted/incompatible file left behind.
         let incompatible = makeSnapshot(generatedAt: Date(timeIntervalSince1970: 1_700_000_000))
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
@@ -137,7 +111,7 @@ struct WidgetSnapshotBridgeTests {
             generatedAt: .now,
             dayStart: .now.startOfDay,
             state: .ready,
-            calories: WidgetCalorieSummary(consumed: 500, baseTarget: 2_000, target: 2_000),
+            calories: WidgetCalorieSummary(consumed: 500, target: 2_000),
             schemaVersion: WidgetConstants.currentSchemaVersion + 1
         )
 
@@ -155,7 +129,7 @@ struct WidgetSnapshotBridgeTests {
             generatedAt: .now,
             dayStart: .now.startOfDay,
             state: .ready,
-            calories: WidgetCalorieSummary(consumed: 500, baseTarget: 2_000, target: 2_000),
+            calories: WidgetCalorieSummary(consumed: 500, target: 2_000),
             schemaVersion: WidgetConstants.currentSchemaVersion + 1
         )
         coordinator.publish(invalid)

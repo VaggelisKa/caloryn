@@ -2,12 +2,7 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// What the Today donut draws for a day: which sectors, in what order, at what size, and
-/// what the legend and the amounts beside it say.
 struct CalorieDonutSummaryTests {
-
-    // MARK: - Under budget
-
     @Test("Under budget, meals fill the ring in meal order and the rest of the budget is one sector")
     func underBudget() {
         let summary = CalorieDonutSummary(
@@ -40,8 +35,8 @@ struct CalorieDonutSummaryTests {
         #expect(summary.legend == [
             .init(meal: .breakfast, kcal: 382, isLogged: true),
             .init(meal: .lunch, kcal: 463, isLogged: true),
-            .init(meal: .dinner, kcal: 0, isLogged: false),
             .init(meal: .snack, kcal: 118, isLogged: true),
+            .init(meal: .dinner, kcal: 0, isLogged: false),
         ])
     }
 
@@ -55,8 +50,6 @@ struct CalorieDonutSummaryTests {
         #expect(summary.remainingKcal == 1_350)
         #expect(summary.legend.filter(\.isLogged).map(\.meal) == [.dinner])
     }
-
-    // MARK: - On the line
 
     @Test("Exactly on budget, the meals close the ring with no remaining sector")
     func exactlyOnBudget() {
@@ -72,8 +65,6 @@ struct CalorieDonutSummaryTests {
         #expect(summary.overKcal == 0)
     }
 
-    /// The budget rounds before it compares, so half a calorie past the target is not over.
-    /// The donut follows that decision rather than drawing a sliver of over.
     @Test("A sub-calorie overshoot the budget calls on target draws no over sector")
     func subCalorieOvershootFollowsTheBudget() {
         let summary = CalorieDonutSummary(mealTotals: [.lunch: 2_000.4], budget: 2_000, isOver: false)
@@ -82,8 +73,6 @@ struct CalorieDonutSummaryTests {
         #expect(summary.remainingKcal == 0)
         #expect(summary.overKcal == 0)
     }
-
-    // MARK: - Over budget
 
     @Test("Over budget, the ring is everything eaten and the overshoot is a final ink sector")
     func overBudget() {
@@ -94,7 +83,7 @@ struct CalorieDonutSummaryTests {
         )
 
         #expect(summary.sectors.map(\.kind) == [
-            .meal(.breakfast), .meal(.lunch), .meal(.dinner), .meal(.snack), .over,
+            .meal(.breakfast), .meal(.lunch), .meal(.snack), .meal(.dinner), .over,
         ])
 
         let total = summary.sectors.map(\.kcal).reduce(0, +)
@@ -133,7 +122,7 @@ struct CalorieDonutSummaryTests {
             isOver: true
         )
 
-        #expect(summary.legend.prefix(4).map(\.kcal) == [382, 463, 1_377, 118])
+        #expect(summary.legend.prefix(4).map(\.kcal) == [382, 463, 118, 1_377])
     }
 
     @Test("Over budget, the legend ends with an Over row carrying the overshoot")
@@ -145,7 +134,7 @@ struct CalorieDonutSummaryTests {
         )
 
         #expect(summary.legend.map(\.key) == [
-            .meal(.breakfast), .meal(.lunch), .meal(.dinner), .meal(.snack), .over,
+            .meal(.breakfast), .meal(.lunch), .meal(.snack), .meal(.dinner), .over,
         ])
         #expect(summary.legend.last == .over(kcal: 340))
         #expect(summary.legend.last?.meal == nil)
@@ -163,14 +152,11 @@ struct CalorieDonutSummaryTests {
 
     @Test("The amounts round the way the budget does: each figure first, then the difference")
     func amountsRoundLikeTheBudget() {
-        // 962.5 rounds to 963, so 1,037 left — not the 1,037.5 → 1,038 a single rounding gives.
         let summary = CalorieDonutSummary(mealTotals: [.lunch: 962.5], budget: 2_000, isOver: false)
 
         #expect(summary.eatenKcal == 963)
         #expect(summary.remainingKcal == 1_037)
     }
-
-    // MARK: - Nothing logged
 
     @Test("With nothing logged the ring is all remaining and every meal is not yet")
     func nothingLogged() {
@@ -178,7 +164,7 @@ struct CalorieDonutSummaryTests {
 
         #expect(summary.sectors == [.init(kind: .remaining, kcal: 2_000)])
         #expect(summary.legend.map(\.isLogged) == [false, false, false, false])
-        #expect(summary.legend.map(\.meal) == [.breakfast, .lunch, .dinner, .snack])
+        #expect(summary.legend.map(\.meal) == [.breakfast, .lunch, .snack, .dinner])
         #expect(summary.remainingKcal == 2_000)
         #expect(summary.eatenKcal == 0)
     }
@@ -190,8 +176,6 @@ struct CalorieDonutSummaryTests {
         #expect(summary.sectors.map(\.kind) == [.remaining])
         #expect(summary.legend.first == .init(meal: .breakfast, kcal: 0, isLogged: true))
     }
-
-    // MARK: - Bad budgets and bad totals
 
     @Test("A zero budget with nothing eaten has nothing to draw")
     func zeroBudgetNothingEaten() {
@@ -257,28 +241,14 @@ struct CalorieDonutSummaryTests {
         #expect(summary.hasOverSector)
     }
 
-    // MARK: - Reading the budget
-
     @Test("The budget's own target and over decision are taken as given")
     func readsTheBudget() {
-        let budget = ActivityCalorieBudget(
-            consumed: 2_130,
-            staticTarget: 2_000,
-            bmr: 1_700,
-            calorieDeficit: 500,
-            activeEnergyKcal: 0,
-            recentActiveEnergySamples: [],
-            calculationMode: .lifestyleEstimate,
-            isManualOverride: false,
-            isActivityLoading: false,
-            activityMessage: nil,
-            date: .now
-        )
+        let budget = CalorieBudget(consumed: 2_130, target: 2_000)
         let summary = CalorieDonutSummary(mealTotals: [.lunch: 1_000, .dinner: 1_130], budget: budget)
         let ring = CalorieRingSummary(budget: budget)
 
         #expect(summary.isOver == ring.isOver)
-        #expect(summary.budgetKcal == ring.adjustedTarget)
+        #expect(summary.budgetKcal == ring.target)
         #expect(summary.overKcal == ring.overAmount)
         #expect(summary.eatenKcal == ring.roundedConsumed)
     }

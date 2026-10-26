@@ -1,14 +1,6 @@
 import XCTest
 
-/// End-to-end journeys through the app's critical paths.
-///
-/// These are the safety net for the planned refactor that moves logic out of
-/// views, so every assertion here is about what a user can observe: visible
-/// text, values, and whether something exists. None of them depend on which
-/// type performs the work, so they must pass unchanged after that refactor.
 final class JourneyTests: UITestCase {
-    // MARK: Onboarding
-
     func testGivenAFirstLaunchWhenOnboardingIsCompletedThenTheMainTabsAppear() {
         let app = launch(fixture: .empty)
         let onboarding = OnboardingScreen(app: app)
@@ -39,8 +31,6 @@ final class JourneyTests: UITestCase {
                 onboarding.awaitTappable(veryActive).isSelected,
                 "Very Active should not be the starting choice"
             )
-            // What a level means is the description, not the name, so it has
-            // to reach VoiceOver too.
             XCTAssertTrue(
                 veryActive.label.contains("Hard exercise"),
                 "The row should speak its description, not just its name: \(veryActive.label)"
@@ -48,11 +38,6 @@ final class JourneyTests: UITestCase {
         }
 
         then("the whole row is a tap target, not just its text") {
-            // The card was once only as tappable as its glyphs were wide, which
-            // left it under Apple's 44pt minimum and missed every tap aimed at
-            // the row's empty right-hand side. This bites on iOS 26, which is
-            // what ships; iOS 27 hit-tests the whole row either way, so run
-            // this on the pinned simulator for it to mean anything.
             XCTAssertGreaterThanOrEqual(
                 veryActive.frame.height,
                 44,
@@ -78,8 +63,6 @@ final class JourneyTests: UITestCase {
             )
         }
     }
-
-    // MARK: Today
 
     func testGivenADayWithALoggedEntryWhenTodayOpensThenTheEntryAndRingAreShown() {
         let app = launch(fixture: .loggedDay)
@@ -107,7 +90,6 @@ final class JourneyTests: UITestCase {
         when("the user opens the entry and confirms deletion") {
             today.tap(entry)
             today.tap(portion.delete)
-            // Deletion is guarded by a confirmation dialog.
             today.tap(app.buttons["Delete"].firstMatch)
         }
 
@@ -135,8 +117,7 @@ final class JourneyTests: UITestCase {
 
         when("the user searches breakfast for a saved food and accepts the portion") {
             today.tap(today.mealHeader("breakfast"))
-            search.awaitTappable(search.searchField)
-            search.searchField.typeText("Smoothie")
+            search.searchField.awaitKeyboardFocus().typeText("Smoothie")
             search.tap(search.result(named: "Morning Smoothie"))
             portion.tap(portion.save)
         }
@@ -174,11 +155,6 @@ final class JourneyTests: UITestCase {
         }
     }
 
-    // MARK: Typing a portion
-
-    /// House Salad is 45 kcal per 100g and opens at its 180g serving, so every
-    /// figure below is arithmetic the user can check on screen: 180g is 81
-    /// calories, 300g is 135.
     func testGivenAPortionInGramsWhenAnAmountIsTypedThenThatAmountIsWhatGetsLogged() {
         let app = launch(fixture: .customFoods)
         let today = TodayScreen(app: app)
@@ -187,8 +163,7 @@ final class JourneyTests: UITestCase {
 
         given("the portion screen for a food measured in grams") {
             today.tap(today.mealHeader("lunch"))
-            search.awaitTappable(search.searchField)
-            search.searchField.typeText("Salad")
+            search.searchField.awaitKeyboardFocus().typeText("Salad")
             search.tap(search.result(named: "House Salad"))
             portion.awaitCalories(81)
         }
@@ -202,9 +177,6 @@ final class JourneyTests: UITestCase {
         }
 
         then("saving logs the typed amount, not the one the screen opened with") {
-            // Saved straight from the keypad, without the field ever losing
-            // focus — the path a user actually takes, and the one where a
-            // half-handled edit would log the opening 180g instead.
             portion.tap(portion.save)
 
             XCTAssertTrue(
@@ -218,9 +190,6 @@ final class JourneyTests: UITestCase {
         }
     }
 
-    /// A number pad carries no return key, so if a tap off the field does not
-    /// dismiss it the keypad covers the lower half of the screen with no way
-    /// out but saving. That is what shipped, and this is the regression test.
     func testGivenTheKeypadIsOpenWhenTappingOffTheFieldThenItCloses() {
         let app = launch(fixture: .customFoods)
         let today = TodayScreen(app: app)
@@ -229,8 +198,7 @@ final class JourneyTests: UITestCase {
 
         given("the keypad is open over the portion screen") {
             today.tap(today.mealHeader("lunch"))
-            search.awaitTappable(search.searchField)
-            search.searchField.typeText("Salad")
+            search.searchField.awaitKeyboardFocus().typeText("Salad")
             search.tap(search.result(named: "House Salad"))
             portion.tap(portion.amountBox)
             XCTAssertTrue(
@@ -255,15 +223,10 @@ final class JourneyTests: UITestCase {
 
         then("the field still works afterwards") {
             portion.typeGrams(250)
-            // 250g of 45 kcal per 100g is 112.5, and the readout rounds, as the
-            // logged row on Today does.
             portion.awaitCalories(113)
         }
     }
 
-    /// The shortcuts exist so a common amount costs one tap. This is also the
-    /// only journey that proves the field and the chips agree: the chip has to
-    /// move the number the field shows, not just the portion behind it.
     func testGivenAPortionInGramsWhenAShortcutIsTappedThenItSetsTheAmount() {
         let app = launch(fixture: .customFoods)
         let today = TodayScreen(app: app)
@@ -272,19 +235,16 @@ final class JourneyTests: UITestCase {
 
         given("the portion screen for a food measured in grams") {
             today.tap(today.mealHeader("lunch"))
-            search.awaitTappable(search.searchField)
-            search.searchField.typeText("Salad")
+            search.searchField.awaitKeyboardFocus().typeText("Salad")
             search.tap(search.result(named: "House Salad"))
             portion.awaitCalories(81)
         }
 
         when("the user taps a shortcut amount") {
-            // 50g is the first shortcut for a food with no countable serving.
             portion.tap(portion.quickGrams(50))
         }
 
         then("the preview moves to that amount") {
-            // 50g of 45 kcal per 100g is 22.5, rounded.
             portion.awaitCalories(23)
         }
 
@@ -293,8 +253,6 @@ final class JourneyTests: UITestCase {
             portion.awaitCalories(180)
         }
     }
-
-    // MARK: My Foods
 
     func testGivenSavedCustomFoodsWhenMyFoodsOpensThenTheyAreListed() {
         let app = launch(fixture: .customFoods)
@@ -336,12 +294,8 @@ final class JourneyTests: UITestCase {
         when("the user creates a manual entry") {
             myFoods.tap(myFoods.createMenu)
             myFoods.tap(myFoods.createManualEntry)
-            form.tap(form.name)
-            form.name.typeText("Desk Almonds")
-            // Calories sits far enough down the form that the keyboard can put
-            // it below the fold, so scroll to it rather than waiting on it.
-            form.tap(form.revealed(form.calories))
-            form.calories.typeText("180")
+            form.name.focusForTyping().typeText("Desk Almonds")
+            form.revealed(form.calories).focusForTyping().typeText("180")
             form.tap(form.save)
         }
 
@@ -355,8 +309,7 @@ final class JourneyTests: UITestCase {
         then("it can be logged from search like any other food") {
             tabs.go(to: .today)
             today.tap(today.mealHeader("snack"))
-            search.awaitTappable(search.searchField)
-            search.searchField.typeText("Almonds")
+            search.searchField.awaitKeyboardFocus().typeText("Almonds")
             search.tap(search.result(named: "Desk Almonds"))
             portion.tap(portion.save)
 
@@ -366,8 +319,6 @@ final class JourneyTests: UITestCase {
             )
         }
     }
-
-    // MARK: History
 
     func testGivenThirtyLoggedDaysWhenHistoryRangesAreSwitchedThenEachRangeRenders() {
         let app = launch(fixture: .history)
@@ -385,13 +336,8 @@ final class JourneyTests: UITestCase {
             for label in ["7 Days", "14 Days", "30 Days", "90 Days"] {
                 history.selectRange(label)
 
-                // Assert the selection actually moved. Checking that the
-                // range control still exists would pass even if tapping did
-                // nothing, since the control is always on screen.
                 history.awaitRangeSelected(label)
 
-                // And that the screen still renders its trend content for the
-                // newly selected range rather than going blank.
                 XCTAssertTrue(
                     app.staticTexts.count > 0,
                     "History should render content for the \(label) range"
@@ -457,7 +403,32 @@ final class JourneyTests: UITestCase {
         }
     }
 
-    // MARK: Settings
+    func testGivenHistoryWasOpenedWhenTodaysEntryPortionIsEditedThenHistoryShowsTheNewAverage() {
+        let app = launch(fixture: .history)
+        let tabs = TabBar(app: app)
+        let today = TodayScreen(app: app)
+        let portion = PortionPickerScreen(app: app)
+        let history = HistoryScreen(app: app)
+
+        given("History already showing a week that averages 679 kcal a day") {
+            XCTAssertTrue(tabs.isVisible)
+            tabs.go(to: .history)
+            XCTAssertTrue(history.averageCalories.awaitLabel(containing: "679"))
+        }
+
+        when("today's 100g of oats is changed to 200g on Today") {
+            tabs.go(to: .today)
+            today.tap(today.entry(named: "Rolled Oats"))
+            portion.typeGrams(200)
+            portion.awaitCalories(760)
+            portion.tap(portion.save)
+        }
+
+        then("returning to History shows the average with the new portion counted") {
+            tabs.go(to: .history)
+            XCTAssertTrue(history.averageCalories.awaitLabel(containing: "733"))
+        }
+    }
 
     func testGivenAProfileWhenTheCalorieTargetIsViewedThenSettingsShowsIt() {
         let app = launch(fixture: .profileOnly)
@@ -481,8 +452,6 @@ final class JourneyTests: UITestCase {
         let app = launch(fixture: .profileOnly)
         let tabs = TabBar(app: app)
         let settings = SettingsScreen(app: app)
-        // The headline groups the figure for the locale ("2.400", "2,400"), like every
-        // kcal figure; the app and this runner share the simulator's locale.
         let typedTarget = 2400.formatted(.number)
 
         given("Settings showing a calculated calorie target") {
@@ -498,7 +467,7 @@ final class JourneyTests: UITestCase {
         when("the user overrides the target by hand and saves") {
             settings.tap(settings.editGoal)
             settings.tap(settings.manualOverride)
-            settings.awaitTappable(settings.goalTargetField).replaceText("2400")
+            settings.goalTargetField.replaceText("2400")
             settings.tap(settings.saveGoal)
         }
 
@@ -507,7 +476,110 @@ final class JourneyTests: UITestCase {
         }
     }
 
-    // MARK: Accessibility
+    func testGivenAManualTargetWhenMacroGoalsAreTypedInGramsThenSettingsKeepsThem() {
+        let app = launch(fixture: .profileOnly)
+        let tabs = TabBar(app: app)
+        let settings = SettingsScreen(app: app)
+
+        when("the user types protein, carb, and fat goals that do not fill the calorie target") {
+            XCTAssertTrue(tabs.isVisible)
+            tabs.go(to: .settings)
+            settings.tap(settings.editGoal)
+            XCTAssertTrue(settings.proteinGoal.awaitExistence())
+            settings.goalTargetField.replaceText("1800")
+            settings.proteinGoal.replaceText("160")
+            settings.carbGoal.replaceText("170")
+            settings.fatGoal.replaceText("60")
+            XCTAssertTrue(settings.macroAccount.awaitLabel(containing: 1_860.formatted(.number)))
+            settings.capture("goal-edit-grams")
+            settings.tap(settings.saveGoal)
+        }
+
+        then("Settings shows the calorie target and the gram goals") {
+            XCTAssertTrue(settings.calorieTarget.awaitLabel(containing: 1_800.formatted(.number)))
+            XCTAssertTrue(app.staticTexts["At least 160 grams"].awaitExistence())
+            XCTAssertTrue(app.staticTexts["170 grams"].awaitExistence())
+            XCTAssertTrue(app.staticTexts["60 grams"].awaitExistence())
+            settings.capture("settings-gram-goals")
+        }
+    }
+
+    func testGivenOnboardingWhenTheCalorieTargetIsManualThenMacrosAreEnteredInGrams() {
+        let app = launch(fixture: .empty)
+        let onboarding = OnboardingScreen(app: app)
+
+        when("onboarding reaches a manual calorie target") {
+            XCTAssertTrue(onboarding.getStarted.awaitExistence())
+            onboarding.tap(onboarding.getStarted)
+            onboarding.tap(onboarding.element("onboarding.personalInfo.continue"))
+            onboarding.tap(onboarding.element("onboarding.activityLevel.continue"))
+            onboarding.tap(onboarding.setManually)
+            onboarding.manualCalorieTarget.awaitKeyboardFocus().replaceText("1800")
+            if app.keyboards.firstMatch.exists {
+                app.staticTexts["Your daily plate"].firstMatch.tap()
+            }
+            onboarding.tap(onboarding.element("onboarding.goalSummary.continue"))
+        }
+
+        then("protein, carbs, and fat are entered in grams and kept") {
+            XCTAssertTrue(onboarding.proteinGoal.awaitExistence())
+            onboarding.proteinGoal.replaceText("150")
+            onboarding.carbGoal.replaceText("180")
+            onboarding.fatGoal.replaceText("50")
+            XCTAssertTrue(onboarding.macroAccount.awaitLabel(containing: 1_770.formatted(.number)))
+            onboarding.capture("onboarding-gram-goals")
+            if app.keyboards.firstMatch.exists {
+                app.staticTexts["Macro goals"].firstMatch.tap()
+            }
+            onboarding.tap(onboarding.element("onboarding.macroRatios.continue"))
+            onboarding.tap(onboarding.startTracking)
+
+            let tabs = TabBar(app: app)
+            XCTAssertTrue(tabs.isVisible)
+            tabs.go(to: .settings)
+            XCTAssertTrue(app.staticTexts["At least 150 grams"].awaitExistence())
+            XCTAssertTrue(app.staticTexts["180 grams"].awaitExistence())
+            XCTAssertTrue(app.staticTexts["50 grams"].awaitExistence())
+            onboarding.capture("onboarding-settings-grams")
+        }
+    }
+
+    func testGivenALoggedDayWhenItsOnlyEntryIsDeletedThenThereIsNothingToExport() {
+        let app = launch(fixture: .loggedDay)
+        let tabs = TabBar(app: app)
+        let today = TodayScreen(app: app)
+        let portion = PortionPickerScreen(app: app)
+        let settings = SettingsScreen(app: app)
+        let entry = today.entry(named: "Rolled Oats")
+
+        given("Settings offering to export the one logged entry") {
+            XCTAssertTrue(tabs.isVisible)
+            tabs.go(to: .settings)
+            XCTAssertTrue(settings.revealExport().isEnabled, "A logged entry should be exportable")
+        }
+
+        when("that entry is deleted from Today") {
+            tabs.go(to: .today)
+            today.tap(entry)
+            today.tap(portion.delete)
+            today.tap(app.buttons["Delete"].firstMatch)
+            let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: entry)
+            XCTAssertEqual(XCTWaiter().wait(for: [gone], timeout: UITestCase.defaultTimeout), .completed)
+        }
+
+        then("Settings no longer offers an export") {
+            tabs.go(to: .settings)
+            let disabled = XCTNSPredicateExpectation(
+                predicate: NSPredicate(format: "isEnabled == false"),
+                object: settings.export
+            )
+            XCTAssertEqual(
+                XCTWaiter().wait(for: [disabled], timeout: UITestCase.defaultTimeout),
+                .completed,
+                "With nothing logged there should be nothing to export"
+            )
+        }
+    }
 
     func testGivenTheMainScreensWhenAuditedThenNoAccessibilityIssuesAreReported() throws {
         let app = launch(fixture: .history)
@@ -525,8 +597,6 @@ final class JourneyTests: UITestCase {
             ]
 
             try XCTContext.runActivity(named: "Audit \(destination.rawValue)") { _ in
-                // Contrast and dynamic-type audits are excluded because they report on
-                // the design system rather than on defects this suite is positioned to fix.
                 try app.performAccessibilityAudit(for: auditTypes)
             }
         }

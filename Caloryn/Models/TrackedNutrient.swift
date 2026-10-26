@@ -54,8 +54,6 @@ enum TrackedNutrientUnit {
         }
     }
 
-    /// "66.7 g", "2.300 mg": a space before the unit and the number in the reader's locale,
-    /// as the Portion sheet writes a weight. `locale` exists for tests.
     func formatted(_ value: Double, locale: Locale = .current) -> String {
         switch self {
         case .grams:
@@ -65,8 +63,6 @@ enum TrackedNutrientUnit {
         }
     }
 
-    /// The same number as `formatted`, with the unit spelled out so VoiceOver says
-    /// "66.7 grams" rather than reading the bare glyph in "66.7 g".
     func spokenFormatted(_ value: Double) -> String {
         switch self {
         case .grams:
@@ -78,9 +74,6 @@ enum TrackedNutrientUnit {
 
     private static func spoken(_ value: Double, singular: String, plural: String) -> String {
         let rounded = (value * 10).rounded() / 10
-        // Formatted straight from the `Double`: `Int(_:)` traps rather than converts past
-        // `Int.max`, and nothing bounds a nutrient goal on the way in, so a goal typed as
-        // "1" and thirty zeroes reaches here — doubled again by the milligram branch.
         let number = rounded == rounded.rounded()
             ? String(format: "%.0f", rounded)
             : String(format: "%.1f", rounded)
@@ -231,23 +224,6 @@ enum TrackedNutrient: String, CaseIterable, Identifiable, Hashable {
         }
     }
 
-    var color: Color {
-        switch self {
-        case .protein:
-            CalorynTheme.proteinColor
-        case .carbs, .sugars:
-            CalorynTheme.carbColor
-        case .fat, .addedSugars, .saturatedFat, .cholesterol:
-            CalorynTheme.fatColor
-        case .fiber:
-            CalorynTheme.fiberColor
-        case .sodium:
-            CalorynTheme.stone
-        case .alcohol:
-            CalorynTheme.textSecondary
-        }
-    }
-
     var unit: TrackedNutrientUnit {
         switch self {
         case .sodium, .cholesterol:
@@ -309,13 +285,6 @@ struct TrackedNutrientMetric: Identifiable {
     var progress: Double {
         guard let target, target > 0 else { return 0 }
         return min(value / target, 1.0)
-    }
-
-    var accentColor: Color {
-        if goalKind == .maximum, let target, value > target {
-            return CalorynTheme.terracotta
-        }
-        return nutrient.color
     }
 
     var accessibilityLabel: String {

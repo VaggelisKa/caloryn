@@ -46,8 +46,7 @@ struct MealFormView: View {
             }
             .scrollDismissesKeyboard(.interactively)
             .calorynSheetCanvas()
-            .navigationTitle(isEditing ? "Edit meal" : "Create meal")
-            .navigationBarTitleDisplayMode(.inline)
+            .calorynInlineTitle(isEditing ? "Edit meal" : "Create meal")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     CreationFormCloseButton {
@@ -63,6 +62,7 @@ struct MealFormView: View {
                     }
                     .accessibilityLabel("Save Meal")
                     .disabled(!draft.canSave || isSaving)
+                    .accessibilityIdentifier("meal.save")
                 }
             }
             .onAppear(perform: populateFromExisting)
@@ -107,6 +107,7 @@ struct MealFormView: View {
                 .textInputAutocapitalization(.words)
                 .focused($nameIsFocused)
                 .calorynInputField(isFocused: nameIsFocused)
+                .accessibilityIdentifier("meal.name")
         }
     }
 
@@ -128,6 +129,7 @@ struct MealFormView: View {
             CreationFormAddButton(title: "Add item") {
                 showingFoodSearch = true
             }
+            .accessibilityIdentifier("meal.addItem")
         } content: {
             if draft.components.isEmpty {
                 CreationFormEmptyRow(

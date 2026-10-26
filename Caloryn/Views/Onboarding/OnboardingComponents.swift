@@ -1,27 +1,14 @@
 import SwiftUI
 
-// The Plate / Market vocabulary for the onboarding steps (`docs/design/plate-market.md`,
-// boards `PlateWelcome` and `PlateGoal`): content directly on the page, a heavy
-// sentence-case title, hairline rows, chips for small choices and the ink primary button
-// at the foot. Every colour comes from `CalorynTheme`.
-
-/// Type sizes the boards use that `CalorynTheme` has no name for. Text-style-relative, so
-/// Dynamic Type still scales them.
 enum OnboardingTypography {
-    /// A row's label and value on the goal step, 15pt.
-    static let rowText: Font = .system(.subheadline)
-    static let rowValue: Font = .system(.subheadline).monospacedDigit()
-    /// Supporting copy under a figure or a choice, 13pt.
-    static let detail: Font = .system(.footnote)
-    /// "Gain / Keep / Lose" under the slider, 12pt.
-    static let scaleLabel: Font = .system(.caption)
-    /// A text link ("Set a number yourself instead"), 15pt semibold.
-    static let link: Font = .system(.subheadline, weight: .semibold)
-    /// A choice row's title, 16pt medium.
-    static let choiceTitle: Font = .system(.callout, weight: .medium)
+    static let rowText: Font = CalorynTypeface.text(.subheadline)
+    static let rowValue: Font = CalorynTypeface.text(.subheadline).monospacedDigit()
+    static let detail: Font = CalorynTypeface.text(.footnote)
+    static let scaleLabel: Font = CalorynTypeface.text(.caption)
+    static let link: Font = CalorynTypeface.text(.subheadline, weight: .semibold)
+    static let choiceTitle: Font = CalorynTypeface.text(.callout, weight: .medium)
 }
 
-/// The step's title and the line under it, left-aligned as the boards draw them.
 struct OnboardingStepHeader: View {
     let title: String
     let subtitle: String
@@ -43,7 +30,6 @@ struct OnboardingStepHeader: View {
     }
 }
 
-/// A bold section title over a group of rows ("How fast", "Where the number comes from").
 struct OnboardingSectionTitle: View {
     let title: String
 
@@ -59,21 +45,15 @@ struct OnboardingSectionTitle: View {
     }
 }
 
-/// The 1pt rule drawn between rows on the page. A scroll view has no list separators, so
-/// it draws its own (see "Pages" in the spec).
 struct OnboardingHairline: View {
     var body: some View {
         Rectangle()
-            .fill(CalorynTheme.hairline)
+            .fill(CalorynTheme.separator)
             .frame(height: CalorynTheme.hairlineWidth)
             .accessibilityHidden(true)
     }
 }
 
-/// A slider that moves in steps without drawing them. `Slider(step:)` draws a tick per step
-/// on iOS 26 — a dotted rule under the height and weight tracks — and `PlateGoal` draws a
-/// bare track, so the value is snapped through the binding (`SliderStep`) instead, and
-/// VoiceOver still adjusts it one step at a time. Edit Profile's height and weight use it too.
 struct OnboardingSlider: View {
     @Binding var value: Double
     let range: ClosedRange<Double>
@@ -104,8 +84,6 @@ struct OnboardingSlider: View {
     }
 }
 
-/// The foot of every step: the ink primary button over a fade from the page, so content
-/// scrolling under it does not end in a hard edge.
 struct OnboardingActionBar<Content: View>: View {
     @ViewBuilder let content: Content
 
@@ -119,8 +97,8 @@ struct OnboardingActionBar<Content: View>: View {
         .background {
             LinearGradient(
                 stops: [
-                    .init(color: CalorynTheme.pageBackground.opacity(0), location: 0),
-                    .init(color: CalorynTheme.pageBackground, location: 0.35),
+                    .init(color: CalorynTheme.backgroundPrimary.opacity(0), location: 0),
+                    .init(color: CalorynTheme.backgroundPrimary, location: 0.35),
                 ],
                 startPoint: .top,
                 endPoint: .bottom
@@ -130,14 +108,10 @@ struct OnboardingActionBar<Content: View>: View {
     }
 }
 
-/// One option of a single choice (activity level, calorie estimate): a title, a line of
-/// detail and a round mark on the right. Rows sit on the page between hairlines, not in
-/// cards.
 struct OnboardingChoiceRow: View {
     let title: String
     let detail: String
     let isSelected: Bool
-    var isDisabled = false
     var accessibilityIdentifier: String?
     let action: () -> Void
 
@@ -161,25 +135,16 @@ struct OnboardingChoiceRow: View {
             }
             .padding(.vertical, 14)
             .frame(maxWidth: .infinity, alignment: .leading)
-            // The label's own shape is the union of its glyphs, so without this the
-            // row is only tappable on its text (and under the 44pt minimum).
             .contentShape([.interaction, .accessibility], Rectangle())
         }
         .buttonStyle(.plain)
-        .disabled(isDisabled)
-        .opacity(isDisabled ? 0.45 : 1)
         .accessibilityElement(children: .ignore)
         .accessibilityIdentifier(accessibilityIdentifier ?? "")
-        // The detail is what tells the options apart, so it stays in the spoken
-        // label; selection is a trait rather than words in that label.
         .accessibilityLabel("\(title), \(detail)")
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
 }
 
-/// The radio mark of a choice row: an ink disc with a paper tick when chosen, a quiet ring
-/// when not. Drawn rather than an SF Symbol so the tick takes the page colour in both
-/// appearances.
 struct OnboardingSelectionMark: View {
     let isSelected: Bool
 
@@ -189,12 +154,13 @@ struct OnboardingSelectionMark: View {
         ZStack {
             if isSelected {
                 Circle()
-                    .fill(CalorynTheme.textPrimary)
+                    .fill(CalorynTheme.accent)
                 Image(systemName: "checkmark")
                     .font(.system(size: size * 0.45, weight: .bold))
-                    .foregroundStyle(CalorynTheme.pageBackground)
+                    .foregroundStyle(CalorynTheme.textOnAccent)
             } else {
                 Circle()
+                    // swiftlint:disable:next text_token_as_shape
                     .strokeBorder(CalorynTheme.textTertiary, lineWidth: 1.5)
             }
         }
@@ -204,9 +170,6 @@ struct OnboardingSelectionMark: View {
     }
 }
 
-/// A row's label beside its control, or above it at accessibility text sizes, where the two
-/// no longer fit on one line and the control would truncate (the same switch
-/// `CustomFoodFormView` makes for its barcode row).
 struct OnboardingAdaptiveRow<Label: View, Trailing: View>: View {
     var alignment: VerticalAlignment = .center
     var spacing: CGFloat = 12
@@ -234,10 +197,6 @@ struct OnboardingAdaptiveRow<Label: View, Trailing: View>: View {
     }
 }
 
-/// Chips that wrap onto as many lines as they need, left-aligned, so a choice never
-/// truncates its options: the nutrients step always, the sex choice and the custom food
-/// form's "Count as" when the text is large. A chip wider than the whole line is offered the
-/// line's width rather than overflowing it.
 struct WrappingChipFlow: Layout {
     var spacing: CGFloat = 8
     var lineSpacing: CGFloat = 8

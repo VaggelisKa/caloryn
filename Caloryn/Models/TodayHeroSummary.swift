@@ -1,16 +1,5 @@
 import Foundation
 
-/// What the Today hero prints beside its donut: the big number, the caption under it, the
-/// "eaten" line and the legend's values.
-///
-/// Takes the two summaries the hero is drawn from rather than the budget again, so the
-/// figure, the caption, the ring and VoiceOver all follow one over/under decision —
-/// `ActivityCalorieBudget`'s, handed through `CalorieRingSummary` and `CalorieDonutSummary`.
-/// Nothing here re-derives remaining, over or eaten.
-///
-/// Figures are grouped for the reader's locale ("2,000", "2.000"), the way SwiftUI's own
-/// `Text` interpolation of the big number groups them, so the caption and the number beside
-/// it agree. `locale` exists for tests.
 struct TodayHeroSummary: Equatable {
     let ring: CalorieRingSummary
     let donut: CalorieDonutSummary
@@ -22,9 +11,7 @@ struct TodayHeroSummary: Equatable {
         self.locale = locale
     }
 
-    /// Feeds both summaries from the same budget, so the donut and the number cannot
-    /// disagree about which side of the budget the day is on.
-    init(mealTotals: [MealType: Double], budget: ActivityCalorieBudget, locale: Locale = .current) {
+    init(mealTotals: [MealType: Double], budget: CalorieBudget, locale: Locale = .current) {
         self.init(
             ring: CalorieRingSummary(budget: budget),
             donut: CalorieDonutSummary(mealTotals: mealTotals, budget: budget),
@@ -36,7 +23,24 @@ struct TodayHeroSummary: Equatable {
         ring.isOver
     }
 
-    /// The big number: kcal left, or kcal over once past the budget.
+    var unrevealed: TodayHeroSummary {
+        let target = ring.target
+        let emptyRing = CalorieRingSummary(
+            isOver: false,
+            remaining: target,
+            overAmount: 0,
+            roundedConsumed: 0,
+            target: target
+        )
+        let loggedMeals = donut.legend.compactMap { $0.isLogged ? $0.meal : nil }
+        let emptyDonut = CalorieDonutSummary(
+            mealTotals: Dictionary(uniqueKeysWithValues: loggedMeals.map { ($0, 0) }),
+            budget: Double(target),
+            isOver: false
+        )
+        return TodayHeroSummary(ring: emptyRing, donut: emptyDonut, locale: locale)
+    }
+
     var headline: Int {
         ring.centerValue
     }
@@ -45,32 +49,22 @@ struct TodayHeroSummary: Equatable {
         grouped(headline)
     }
 
-    /// "kcal left of 2,000", or "kcal over".
     var caption: String {
-        isOver ? "kcal over" : "kcal left of \(grouped(ring.adjustedTarget))"
+        isOver ? "kcal over" : "kcal left of \(grouped(ring.target))"
     }
 
-    /// "963 of 2,000 eaten" — the same sentence on both sides of the budget, so the line
-    /// never has to describe the ring's colours (the overshoot is ink: dark in light mode,
-    /// light in dark).
     var eatenLine: String {
-        "\(grouped(ring.roundedConsumed)) of \(grouped(ring.adjustedTarget)) eaten"
+        "\(grouped(ring.roundedConsumed)) of \(grouped(ring.target)) eaten"
     }
 
-    /// A legend row's figure: the meal's own kcal, or "not yet" for a meal nothing is
-    /// logged in. A meal logged at 0 kcal (black coffee) is logged, so it reads "0".
     func legendValue(for entry: CalorieDonutSummary.LegendEntry) -> String {
         entry.isLogged ? grouped(entry.kcal) : "not yet"
     }
 
-    /// A legend row's name: the meal, or "Over" for the overshoot row.
     func legendName(for entry: CalorieDonutSummary.LegendEntry) -> String {
         entry.meal?.displayName ?? "Over"
     }
 
-    /// kcal per meal for the donut. Only meals with at least one entry get a key — that is
-    /// how `CalorieDonutSummary` tells "logged at 0 kcal" from "not yet" — and every snack
-    /// slot lands on the one `.snack` key.
     static func mealTotals<Entry>(
         _ entries: [Entry],
         mealType: KeyPath<Entry, MealType>,

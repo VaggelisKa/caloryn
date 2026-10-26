@@ -54,14 +54,9 @@ struct PersonalInfoStepView: View {
             }
         }
         .calorynPageCanvas()
-        // This step hides the navigation bar outright, so there is no back
-        // button to replace — `calorynDrillDownNavigation()` would install a
-        // toolbar item into a bar that is never shown.
         .toolbarVisibility(.hidden, for: .navigationBar)
     }
 
-    /// Two options, so chips rather than a segmented control. At accessibility sizes the
-    /// label goes above them and they wrap, so neither option is cut to a stub.
     private var sexRow: some View {
         OnboardingAdaptiveRow {
             rowLabel("Sex")
@@ -87,8 +82,6 @@ struct PersonalInfoStepView: View {
         .padding(.vertical, 14)
     }
 
-    /// A count, so the Plate stepper pill rather than a stock `Stepper`, whose minus/plus
-    /// pill is a system grey no token reaches. The same pill as Edit profile's Age.
     private var ageRow: some View {
         let range = OnboardingPersonalInfo.ageRange
 

@@ -2,13 +2,8 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// Behaviour of the food search screen's list rules, extracted from
-/// `FoodSearchView` so they can be exercised without a view.
 @MainActor
 struct FoodSearchListingTests {
-
-    // MARK: - Helpers
-
     private static let loggingMode = FoodSearchListing.Mode(
         includesRecipes: true,
         supportsMultiSelection: true
@@ -45,8 +40,6 @@ struct FoodSearchListingTests {
         makeTestFoodItem(name: name, isCustom: true, isRecipe: true)
     }
 
-    /// A catalog product the user has edited: custom *and* carrying a provider
-    /// identity. Both halves are needed; either alone is something else.
     private func editedProduct(name: String, barcode: String) -> FoodItem {
         let food = makeTestFoodItem(name: name, isCustom: true)
         food.providerProductIdentityRaw = barcode
@@ -91,8 +84,6 @@ struct FoodSearchListingTests {
         return makeTestSearchResult(product: product)
     }
 
-    // MARK: - Resting state
-
     @Test("An empty field rests on recents rather than searching")
     func emptyQueryShowsRecents() {
         #expect(listing(searchText: "").showingRecent)
@@ -104,18 +95,24 @@ struct FoodSearchListingTests {
         #expect(listing(searchText: " \t ").showingRecent)
     }
 
-    @Test("Any non-blank character leaves the resting state")
-    func nonBlankQueryLeavesRestingState() {
-        #expect(!listing(searchText: "a").showingRecent)
-        #expect(!listing(searchText: "  a  ").showingRecent)
+    @Test("A query too short to search stays on recents until it matches something saved")
+    func shortQueryRestsUntilItMatchesLocally() {
+        #expect(listing(searchText: "a").showingRecent)
+        #expect(listing(searchText: "  a  ").showingRecent)
+        #expect(listing(searchText: "!!").showingRecent)
+        #expect(!listing(searchText: "a", recentFoods: [manualEntry(name: "Apple Shake")]).showingRecent)
+    }
+
+    @Test("Two letters or digits in a row leave the resting state")
+    func searchableQueryLeavesRestingState() {
+        #expect(!listing(searchText: "ab").showingRecent)
+        #expect(!listing(searchText: "  12  ").showingRecent)
     }
 
     @Test("The query is trimmed and case-folded once")
     func queryIsNormalized() {
         #expect(listing(searchText: "  ChIcKeN  ").query == "chicken")
     }
-
-    // MARK: - Recents
 
     @Test("Recents exclude the user's own foods, which have their own sections")
     func recentsExcludeUserCreatedFoods() {
@@ -156,7 +153,43 @@ struct FoodSearchListingTests {
         #expect(displayed.last?.name == "Food 20")
     }
 
-    // MARK: - Suggestions
+    @Test("Foods the recents section hides do not use up its cap")
+    func hiddenFoodsDoNotUseUpTheRecentsCap() {
+        let suggested = makeTestFoodItem(name: "Oats")
+        let head = [
+            manualEntry(name: "My Shake"),
+            manualEntry(name: "My Bar"),
+            recipe(name: "Chili"),
+            suggested
+        ]
+        let catalog = (1...25).map { makeTestFoodItem(name: "Food \($0)") }
+        let displayed = listing(
+            recentFoods: head + catalog,
+            suggestions: [suggestion(for: suggested)]
+        ).displayedRecentFoods
+
+        #expect(displayed.map(\.name) == catalog.prefix(FoodSearchListing.recentFoodLimit).map(\.name))
+    }
+
+    @Test("The recents cap does not cut short the other sections")
+    func recentsCapLeavesOtherSectionsWhole() {
+        let catalog = (1...25).map { makeTestFoodItem(name: "Food \($0)") }
+        let tail = [
+            manualEntry(name: "Late Shake"),
+            recipe(name: "Late Stew"),
+            editedProduct(name: "Late Skyr", barcode: "5711953150388")
+        ]
+        let mode = FoodSearchListing.Mode(includesRecipes: true, supportsMultiSelection: false)
+        let resting = listing(mode: mode, recentFoods: catalog + tail)
+        let searching = listing(mode: mode, searchText: "late", recentFoods: catalog + tail)
+
+        #expect(resting.manualEntries.map(\.name) == ["Late Shake"])
+        #expect(resting.recipes.map(\.name) == ["Late Stew"])
+        #expect(resting.editedProducts.map(\.name) == ["Late Skyr"])
+        #expect(searching.matchingManualEntries.map(\.name) == ["Late Shake"])
+        #expect(searching.matchingRecipes.map(\.name) == ["Late Stew"])
+        #expect(searching.matchingEditedProducts.map(\.name) == ["Late Skyr"])
+    }
 
     @Test("Suggestions resolve to the food they point at, in suggestion order")
     func suggestionsPairWithTheirFood() {
@@ -168,6 +201,29 @@ struct FoodSearchListingTests {
         )
 
         #expect(listing.contextualSuggestions.map(\.0.name) == ["Eggs", "Toast"])
+    }
+
+    @Test("A suggested food of the user's own still keeps its own section")
+    func suggestedManualEntryStaysInItsSection() {
+        let shake = manualEntry(name: "My Shake")
+        let listing = listing(recentFoods: [shake], suggestions: [suggestion(for: shake)])
+
+        #expect(listing.contextualSuggestions.map(\.0.name) == ["My Shake"])
+        #expect(listing.manualEntries.map(\.name) == ["My Shake"])
+    }
+
+    @Test("Two foods sharing an id resolve a suggestion to the later one in the list")
+    func duplicateIDsResolveToTheLaterFood() {
+        let earlier = makeTestFoodItem(name: "Oats")
+        let later = makeTestFoodItem(name: "Porridge Oats")
+        later.id = earlier.id
+        let listing = listing(
+            recentFoods: [earlier, later],
+            suggestions: [suggestion(for: earlier)]
+        )
+
+        #expect(listing.contextualSuggestions.map(\.0.name) == ["Porridge Oats"])
+        #expect(listing.displayedRecentFoods.isEmpty)
     }
 
     @Test("A suggestion whose food has left the library is dropped, not crashed on")
@@ -190,8 +246,6 @@ struct FoodSearchListingTests {
         #expect(listing.contextualSuggestions.isEmpty)
     }
 
-    // MARK: - Recipes
-
     @Test("Recipes are hidden entirely from modes that cannot use them")
     func recipesAreHiddenFromIngredientSelection() {
         #expect(listing(mode: Self.ingredientMode, recentFoods: [recipe(name: "Chili")])
@@ -213,8 +267,6 @@ struct FoodSearchListingTests {
         #expect(listing(searchText: "  ", recentFoods: [recipe(name: "Chili")])
             .matchingRecipes.isEmpty)
     }
-
-    // MARK: - Manual entries
 
     @Test("Manual entry search matches the brand as well as the name")
     func manualEntrySearchMatchesBrand() {
@@ -249,8 +301,6 @@ struct FoodSearchListingTests {
         #expect(listing(searchText: "skyr", recentFoods: [edited]).matchingManualEntries.isEmpty)
     }
 
-    // MARK: - Meals
-
     @Test("Meal search matches names case-insensitively")
     func mealSearchMatchesNames() {
         let meals = [mealTemplate(named: "Sunday Roast"), mealTemplate(named: "Breakfast")]
@@ -266,8 +316,6 @@ struct FoodSearchListingTests {
         #expect(listing(mode: Self.ingredientMode, searchText: "roast", mealTemplates: meals)
             .matchingMeals.isEmpty)
     }
-
-    // MARK: - Provider results and edited products
 
     @Test("An edited product hides the provider row it was made from")
     func editedProductsOverlayTheirProviderResult() throws {
@@ -297,8 +345,6 @@ struct FoodSearchListingTests {
         #expect(listing.visibleProviderSearchResults.isEmpty)
     }
 
-    // MARK: - Emptiness
-
     @Test("A query with nothing behind it reports no matches of any kind")
     func nothingMatchesAnEmptyLibrary() {
         let listing = listing(searchText: "chicken")
@@ -327,8 +373,6 @@ struct FoodSearchListingTests {
         #expect(!listing.hasProductSearchResults)
     }
 
-    // MARK: - Selectable option count
-
     @Test("At rest the count spans suggestions, meals and recents")
     func restingCountSpansEverySection() {
         let suggested = makeTestFoodItem(name: "Oats")
@@ -338,8 +382,6 @@ struct FoodSearchListingTests {
             suggestions: [suggestion(for: suggested)]
         )
 
-        // One suggestion, one meal, and one recent — the suggested food is not
-        // counted twice.
         #expect(listing.selectableOptionCount() == 3)
     }
 
@@ -368,8 +410,6 @@ struct FoodSearchListingTests {
         #expect(listing.selectableOptionCount(isLookingUpBarcode: true) == 0)
         #expect(listing.selectableOptionCount(hasBarcodeLookupError: true) == 0)
     }
-
-    // MARK: - Mode facts
 
     @Test("Mode carries the two facts filtering asks for, taken from FoodSearchMode")
     func modeIsDerivedFromFoodSearchMode() {

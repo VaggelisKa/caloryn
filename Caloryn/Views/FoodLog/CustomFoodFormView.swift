@@ -13,8 +13,6 @@ struct CustomFoodFormView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Query(sort: \FoodItem.lastUsed, order: .reverse) private var savedFoods: [FoodItem]
 
-    /// Every rule this form applies lives in the draft; the view reads it and
-    /// renders. See `CustomFoodDraft`.
     @State private var draft = CustomFoodDraft()
     @State private var showingDeleteConfirmation = false
     @State private var favoriteErrorMessage: String?
@@ -30,9 +28,6 @@ struct CustomFoodFormView: View {
 
     private var canSave: Bool { draft.canSave }
     private var previewCalories: Double { draft.previewCalories }
-    private var previewProtein: Double { draft.previewProtein }
-    private var previewCarbs: Double { draft.previewCarbs }
-    private var previewFat: Double { draft.previewFat }
 
     init(
         existingFood: FoodItem? = nil,
@@ -74,8 +69,7 @@ struct CustomFoodFormView: View {
             }
             .scrollDismissesKeyboard(.interactively)
             .calorynSheetCanvas()
-            .navigationTitle(formTitle)
-            .navigationBarTitleDisplayMode(.inline)
+            .calorynInlineTitle(formTitle)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     CreationFormCloseButton {
@@ -185,8 +179,6 @@ struct CustomFoodFormView: View {
             .accessibilityLabel("Barcode \(barcode)")
     }
 
-    /// Three options, so chips rather than a segmented control. They wrap rather than
-    /// truncate when the text is too large for one line.
     private var produceTrackingSection: some View {
         CreationFormSection("Fruit and veg variety") {
             VStack(alignment: .leading, spacing: 10) {
@@ -366,8 +358,6 @@ struct CustomFoodFormView: View {
         }
     }
 
-    /// A label, a well and its unit on one line; at accessibility sizes the label goes above
-    /// the well, so neither the label nor the unit is broken mid-word in a fixed column.
     @ViewBuilder
     private func fieldRow<Label: View, FieldView: View, Unit: View>(
         labelWidth: CGFloat? = nil,
@@ -443,8 +433,8 @@ struct CustomFoodFormView: View {
                         isFavorite: materialization.food.isFavorite
                     )
                 }
+                CalorynHaptics.success()
             } catch {
-                // Keep the existing silent save behavior.
             }
             BarcodeRecoveryAnalytics.record(
                 path: existingFood == nil ? .manualCreation : .personalEdit,
@@ -475,8 +465,8 @@ struct CustomFoodFormView: View {
                 CalorynAppShortcutRefresh.favoriteWasEdited(
                     isFavorite: food.isFavorite
                 )
+                CalorynHaptics.success()
             } catch {
-                // Keep the existing silent save behavior.
             }
             onSaved?(food)
         } else {
@@ -505,7 +495,9 @@ struct CustomFoodFormView: View {
                 suppliedFat: draft.suppliedFat
             )
             modelContext.insert(food)
-            try? modelContext.save()
+            if (try? modelContext.save()) != nil {
+                CalorynHaptics.success()
+            }
             onSaved?(food)
         }
         dismiss()
@@ -527,7 +519,6 @@ struct CustomFoodFormView: View {
                 try modelContext.save()
                 CalorynAppShortcutRefresh.favoritesChanged()
             } catch {
-                // Keep the existing silent deletion behavior.
             }
         }
         dismiss()

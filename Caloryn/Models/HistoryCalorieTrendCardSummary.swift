@@ -1,11 +1,5 @@
 import Foundation
 
-/// The numbers around the calorie-trend chart: the section's support line, the drill-down's
-/// range-summary figures and the spoken description of the chart.
-///
-/// Takes the period facts the wording depends on rather than the projection, so
-/// the empty-range wording is reachable without building a summary. The chart itself is
-/// elsewhere. Differences from the goal are told in words, never by a tint.
 struct HistoryCalorieTrendCardSummary: Equatable {
     let range: HistoryRange
     let dailyCalorieTarget: Int
@@ -42,8 +36,6 @@ struct HistoryCalorieTrendCardSummary: Equatable {
         self.loggedDayTargetTotal = loggedDayTargetTotal
     }
 
-    // MARK: - Figures
-
     var averageValueText: String {
         averageCaloriesPerLoggedDay.rounded().truncatedSafely.formatted()
     }
@@ -56,10 +48,6 @@ struct HistoryCalorieTrendCardSummary: Equatable {
         "\(onTrackLoggedDayCount)/\(loggedDayCount)"
     }
 
-    /// The line under the trend section's title: the range's logged total against the sum
-    /// of the same days' own goals — "12,800 kcal logged, 800 over your goals". The daily
-    /// average already leads the page, so the section carries the total instead. `nil` with
-    /// nothing logged, when there is no total to state.
     var totalSupportText: String? {
         guard hasLoggedData else { return nil }
 
@@ -70,10 +58,6 @@ struct HistoryCalorieTrendCardSummary: Equatable {
         return "\(total), right on your goals"
     }
 
-    // MARK: - Spoken descriptions
-
-    /// The card's chart is one accessibility element; without it VoiceOver
-    /// reads a wall of unlabelled bars.
     var chartAccessibilityLabel: String {
         guard hasLoggedData else {
             return "Calorie trend for \(range.label). 0 of \(totalDayCount) days logged. Target \(dailyCalorieTarget) calories."
@@ -82,9 +66,6 @@ struct HistoryCalorieTrendCardSummary: Equatable {
         return "Calorie trend for \(range.label). \(loggedDayCount) of \(totalDayCount) days logged. Average \(averageCaloriesPerLoggedDay.rounded().truncatedSafely) calories per logged day. Target \(dailyCalorieTarget) calories."
     }
 
-    /// The drill-down's chart phrases the same sentence more briefly — the
-    /// numbers are already on screen above it. It lives beside the card's so
-    /// the two cannot drift apart unnoticed.
     static func detailChartAccessibilityLabel(
         range: HistoryRange,
         loggedDayCount: Int,

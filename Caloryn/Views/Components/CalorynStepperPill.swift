@@ -1,18 +1,5 @@
 import SwiftUI
 
-/// The Plate stepper for a count: a `surface` capsule with round minus and plus buttons at
-/// its ends and the value between them — the Portion sheet's grams pill (`GramAmountField`)
-/// without the typed field.
-///
-/// It stands in for the stock `Stepper` and for a wheel `Picker`, whose own fills (the
-/// stepper's minus/plus pill, the wheel's selection band) are a cool system grey that no
-/// token reaches and the colour census cannot see.
-///
-/// `.regular` is the Portion sheet's size: a big number with its unit beside it in
-/// secondary text. `.compact` sits at the trailing end of a form row ("Age", "Snack slot").
-///
-/// To VoiceOver it is one adjustable element, as a stock stepper is: swipe up or down to
-/// step. The identifier goes on that element.
 struct CalorynStepperPill: View {
     enum Size {
         case regular
@@ -35,8 +22,6 @@ struct CalorynStepperPill: View {
     @ScaledMetric(relativeTo: .body) private var compactHeight: CGFloat = 38
     @ScaledMetric(relativeTo: .body) private var compactButton: CGFloat = 30
 
-    // Capped the way `GramAmountField` caps its pill: both buttons and the value share one
-    // line on a phone at every text size.
     private var pillHeight: CGFloat {
         size == .regular ? min(regularHeight, 80) : min(compactHeight, 56)
     }
@@ -45,8 +30,6 @@ struct CalorynStepperPill: View {
         size == .regular ? min(regularButton, 60) : min(compactButton, 44)
     }
 
-    /// Apple's minimum touch target. The compact pill's 30pt circles are smaller, so each
-    /// button takes touches across 44pt while laying out, and drawing, at its own size.
     private static let minimumHitTarget: CGFloat = 44
 
     private var hitTargetOverhang: CGFloat {
@@ -61,10 +44,10 @@ struct CalorynStepperPill: View {
         }
         .padding(.horizontal, size == .regular ? 10 : 4)
         .frame(minHeight: pillHeight)
-        .background(CalorynTheme.surface, in: Capsule())
+        .background(CalorynTheme.backgroundTertiary, in: Capsule())
         .overlay {
             Capsule()
-                .strokeBorder(CalorynTheme.hairline, lineWidth: CalorynTheme.hairlineWidth)
+                .strokeBorder(CalorynTheme.separator, lineWidth: CalorynTheme.hairlineWidth)
                 .allowsHitTesting(false)
         }
         .accessibilityElement(children: .ignore)
@@ -73,9 +56,9 @@ struct CalorynStepperPill: View {
         .accessibilityAdjustableAction { direction in
             switch direction {
             case .increment:
-                if canIncrement { onIncrement() }
+                if canIncrement { step(onIncrement) }
             case .decrement:
-                if canDecrement { onDecrement() }
+                if canDecrement { step(onDecrement) }
             @unknown default:
                 break
             }
@@ -112,34 +95,34 @@ struct CalorynStepperPill: View {
         }
     }
 
-    /// The board's round white button on the pill, with the hairline ring that still
-    /// separates it from the pill in dark mode, where card and surface are one colour.
     private func stepButton(systemImage: String, isEnabled: Bool, action: @escaping () -> Void) -> some View {
         Button {
-            withAnimation(.smooth(duration: 0.2)) { action() }
+            step(action)
         } label: {
             Image(systemName: systemImage)
                 .font(size == .regular ? CalorynTheme.inlineIcon : CalorynTheme.compactIcon)
-                .foregroundStyle(isEnabled ? CalorynTheme.textPrimary : CalorynTheme.textTertiary)
+                .foregroundStyle(isEnabled ? CalorynTheme.accent : CalorynTheme.textTertiary)
                 .frame(width: buttonDiameter, height: buttonDiameter)
-                .background(CalorynTheme.cardBackground, in: Circle())
+                .background(CalorynTheme.backgroundSecondary, in: Circle())
                 .overlay {
                     Circle()
-                        .strokeBorder(CalorynTheme.hairline, lineWidth: CalorynTheme.hairlineWidth)
+                        .strokeBorder(CalorynTheme.separator, lineWidth: CalorynTheme.hairlineWidth)
                 }
-                .shadow(color: CalorynTheme.hairline, radius: size == .regular ? 4 : 2, y: size == .regular ? 2 : 1)
+                .shadow(color: CalorynTheme.shadow, radius: size == .regular ? 4 : 2, y: size == .regular ? 2 : 1)
                 .frame(
                     width: buttonDiameter + hitTargetOverhang * 2,
                     height: buttonDiameter + hitTargetOverhang * 2
                 )
                 .contentShape(Rectangle())
-                // Hands the overhang back to the layout, so the pill keeps its size.
                 .padding(-hitTargetOverhang)
         }
-        // Borderless, not plain: inside a `Form` row a plain button makes the whole row
-        // its tap target, and a tap anywhere on "Age" would step it.
         .buttonStyle(.borderless)
         .disabled(!isEnabled)
+    }
+
+    private func step(_ action: () -> Void) {
+        CalorynHaptics.selectionChanged()
+        withAnimation(.smooth(duration: 0.2)) { action() }
     }
 }
 
@@ -170,5 +153,5 @@ struct CalorynStepperPill: View {
         }
     }
     .padding()
-    .background(CalorynTheme.cardBackground)
+    .background(CalorynTheme.backgroundSecondary)
 }

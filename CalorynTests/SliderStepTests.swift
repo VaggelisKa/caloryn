@@ -1,11 +1,8 @@
 import Testing
 @testable import Caloryn
 
-/// The stepped value the onboarding sliders settle on now that they no longer pass `step:`
-/// to `Slider` (which draws a tick per step on iOS 26).
 @Suite("Slider step")
 struct SliderStepTests {
-
     @Test("A value moves to the nearest step counted from the lower bound")
     func snapsToTheNearestStep() {
         #expect(SliderStep.snap(522, in: -500...1_000, step: 50) == 500)

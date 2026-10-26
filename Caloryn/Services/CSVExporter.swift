@@ -1,13 +1,17 @@
 import Foundation
 
 enum CSVExporter {
-    /// Quotes a field per RFC 4180, so the value survives the round trip.
-    ///
-    /// Only fields that would otherwise break the format are quoted, which
-    /// keeps the common case — a plain food name — byte-identical to what
-    /// this exporter has always produced.
+    private static let formulaTriggers: Set<Unicode.Scalar> = ["=", "+", "-", "@", "\t", "\r"]
+
+    private static func neutralised(_ field: String) -> String {
+        guard let first = field.unicodeScalars.first, formulaTriggers.contains(first) else { return field }
+        return "'" + field
+    }
+
     private static func escaped(_ field: String) -> String {
-        guard field.contains(where: { $0 == "," || $0 == "\"" || $0 == "\n" || $0 == "\r" }) else {
+        let field = neutralised(field)
+        // `isNewline`, not `== "\n" || == "\r"`: "\r\n" is one Character and equals neither.
+        guard field.contains(where: { $0 == "," || $0 == "\"" || $0.isNewline }) else {
             return field
         }
         return "\"" + field.replacingOccurrences(of: "\"", with: "\"\"") + "\""
@@ -16,7 +20,13 @@ enum CSVExporter {
     static func generateCSV(from entries: [FoodLogEntry]) -> String {
         var csv = "Date,Meal,Food,Portion (g),Calories,Protein (g),Carbs (g),Fat (g),Fiber (g)\n"
 
-        let sorted = entries.sorted { $0.date < $1.date }
+        let sorted = entries.sorted { lhs, rhs in
+            if lhs.date != rhs.date { return lhs.date < rhs.date }
+            if lhs.mealType.sortOrder != rhs.mealType.sortOrder {
+                return lhs.mealType.sortOrder < rhs.mealType.sortOrder
+            }
+            return lhs.createdAt < rhs.createdAt
+        }
 
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
@@ -40,10 +50,10 @@ enum CSVExporter {
         return csv
     }
 
-    static func exportURL(from entries: [FoodLogEntry]) -> URL? {
+    static func exportURL(from entries: [FoodLogEntry], fileName: String = "Caloryn_Export") -> URL? {
         let csv = generateCSV(from: entries)
         let tempDir = FileManager.default.temporaryDirectory
-        let fileURL = tempDir.appendingPathComponent("Caloryn_Export.csv")
+        let fileURL = tempDir.appendingPathComponent(fileName).appendingPathExtension("csv")
 
         do {
             try csv.write(to: fileURL, atomically: true, encoding: .utf8)

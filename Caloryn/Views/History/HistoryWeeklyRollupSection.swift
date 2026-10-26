@@ -1,8 +1,6 @@
 import SwiftUI
 import Charts
 
-/// "Weekly consistency" for the 30- and 90-day ranges: the share of each week's logged days
-/// that landed on track, in the day palette's three weights.
 struct HistoryWeeklyRollupSection: View {
     let projection: HistoryWeeklyConsistencyProjection
 
@@ -57,7 +55,7 @@ struct HistoryWeeklyRollupSection: View {
             .chartYAxis {
                 AxisMarks(position: .leading, values: [0, 50, 100]) { value in
                     AxisGridLine()
-                        .foregroundStyle(CalorynTheme.hairline)
+                        .foregroundStyle(CalorynTheme.separator)
                     AxisValueLabel {
                         if let percentage = value.as(Int.self) {
                             Text("\(percentage)%")

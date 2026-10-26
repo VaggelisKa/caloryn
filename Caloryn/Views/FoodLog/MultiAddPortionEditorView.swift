@@ -26,7 +26,6 @@ struct MultiAddPortionEditorView: View {
 
     @Binding private var item: MultiAddDraftItem
     private let destinationDescription: String
-    /// The meal the batch lands in, whose ink the calorie figure takes.
     private let destinationMeal: MealType
     private let originalSnapshot: FoodLogEntrySnapshot
     private let quickGramOptions: [Int]
@@ -34,8 +33,6 @@ struct MultiAddPortionEditorView: View {
     @State private var portionGrams: Double
     @State private var gramsInput: String
 
-    /// Owned here rather than inside the field, so a tap anywhere on the page
-    /// can clear it. See `dismissesGramKeypadOnTap`.
     @FocusState private var isGramsFieldFocused: Bool
 
     init(
@@ -66,8 +63,6 @@ struct MultiAddPortionEditorView: View {
             .padding(.bottom, 24)
             .dismissesGramKeypadOnTap($isGramsFieldFocused)
         }
-        // See `PortionPickerView` — interactive dismissal ignores a drag that
-        // never reaches the keypad.
         .scrollDismissesKeyboard(.immediately)
         .calorynSheetCanvas()
         .calorynDrillDownNavigation()
@@ -117,8 +112,6 @@ struct MultiAddPortionEditorView: View {
                 identifierPrefix: "multiAdd.editor",
                 isFocused: $isGramsFieldFocused,
                 onTextChange: {
-                    // The calorie readout follows every keystroke; text that is
-                    // not yet a number leaves the portion alone.
                     if let typed = PortionSelection.parsedGrams(gramsInput) {
                         portionGrams = Double(typed)
                     }
@@ -188,16 +181,11 @@ struct MultiAddPortionEditorView: View {
     }
 
     private func save() {
-        // The keypad need not have been dismissed, so an uncommitted edit
-        // would otherwise be dropped on the way out.
         commitGramsInput()
         item.snapshot = editedSnapshot
         dismiss()
     }
 
-    /// There is no `FoodItem` here — a draft item carries only a snapshot — so
-    /// the shortcuts scale off the portion being edited rather than off a
-    /// serving size, falling back to round numbers when that is unusable.
     private static func quickGramOptions(around initialPortion: Double) -> [Int] {
         guard initialPortion.isFinite, initialPortion > 0 else {
             return PortionSelection.fallbackQuickGramOptions

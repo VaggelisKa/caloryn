@@ -3,11 +3,8 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// The weekly-consistency chart's layout and labelling. Weeks are numbered by
-/// position, so a week with nothing logged still holds its place.
 @Suite("History weekly consistency chart")
 struct HistoryWeeklyConsistencyChartTests {
-
     @Test("given no weeks, when scaling the chart, then it still has a drawable domain")
     func noWeeksStillScales() {
         let chart = HistoryWeeklyConsistencyChart(weekCount: 0)

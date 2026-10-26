@@ -1,14 +1,9 @@
 import Testing
 @testable import Caloryn
 
-/// Covers the figures the onboarding goal step derives and the manual-target
-/// rule it applies, which until now were only reachable by driving the step.
 @MainActor
 @Suite("Onboarding goal summary draft")
 struct OnboardingGoalSummaryDraftTests {
-
-    // MARK: - Derived figures
-
     @Test("BMR and daily burn come from the shared calculator, not a second derivation")
     func figuresComeFromTheCalculator() {
         let basis = makeBasis()
@@ -28,8 +23,6 @@ struct OnboardingGoalSummaryDraftTests {
     func surplusRaisesTarget() {
         #expect(makeBasis(calorieDeficit: -500).calculatedTarget > makeBasis(calorieDeficit: 0).calculatedTarget)
     }
-
-    // MARK: - Manual target
 
     @Test("Without the manual toggle the typed text is ignored")
     func manualTextIgnoredWhileToggleIsOff() {
@@ -96,8 +89,6 @@ struct OnboardingGoalSummaryDraftTests {
         #expect(draft.displayTarget(basis: makeBasis()) == 99_999)
     }
 
-    // MARK: - Seeding and tracking
-
     @Test("The field opens showing the calculation, not an empty box")
     func fieldSeedsWithTheCalculation() {
         var draft = OnboardingGoalSummaryDraft()
@@ -142,8 +133,6 @@ struct OnboardingGoalSummaryDraftTests {
         #expect(draft.manualTargetText == "\(basis.calculatedTarget)")
     }
 
-    // MARK: - What the step hands on
-
     @Test("A manual target is handed on flagged as manual, so the profile stops recalculating it")
     func manualTargetIsFlagged() {
         var draft = OnboardingGoalSummaryDraft()
@@ -179,8 +168,6 @@ struct OnboardingGoalSummaryDraftTests {
         #expect(!saved.manualOverride)
     }
 
-    // MARK: - Helpers
-
     private func makeBasis(calorieDeficit: Double = 500) -> OnboardingGoalSummaryDraft.Basis {
         OnboardingGoalSummaryDraft.Basis(
             age: 30,
@@ -199,7 +186,6 @@ struct OnboardingGoalSummaryDraftTests {
             heightCm: 180,
             weightKg: 80,
             activityLevel: .moderatelyActive,
-            energyCalculationMode: .lifestyleEstimate,
             calorieDeficit: 500,
             calorieTarget: calorieTarget,
             isManualTarget: isManualTarget,

@@ -1,22 +1,8 @@
 import Foundation
 import SwiftData
 
-/// Records and reads the one-per-day goal snapshots that make History
-/// date-accurate.
-///
-/// Finalization timing: the snapshot for the current calendar day is upserted
-/// every time Today recomputes its calorie budget. The day's final target is
-/// therefore whatever was last written before local midnight — once the device
-/// rolls into the next day, `recordSnapshot` refuses to touch earlier days, so
-/// history is never rewritten retroactively.
 @MainActor
 enum DailyGoalSnapshotStore {
-    /// Upserts the snapshot for `date`, but only while `date` is still the
-    /// current calendar day (per `calendar`/`now`). Past and future days are
-    /// ignored: past days are already finalized, and future days have no
-    /// authoritative target yet.
-    ///
-    /// Returns `true` when a snapshot was created or updated.
     @discardableResult
     static func recordSnapshot(
         values: DailyGoalSnapshotValues,
@@ -33,8 +19,6 @@ enum DailyGoalSnapshotStore {
 
         var didChange = false
         if let snapshot = existing.first {
-            // Clean up duplicates that can appear after CloudKit merges;
-            // the most recently updated snapshot is authoritative.
             for duplicate in existing.dropFirst() {
                 context.delete(duplicate)
                 didChange = true
@@ -61,18 +45,11 @@ enum DailyGoalSnapshotStore {
             try context.save()
             return true
         } catch {
-            // Discard the insert, update, and duplicate deletions staged above.
-            // Leaving them pending would let History read a target that was
-            // never stored, or let an unrelated later save persist it. The
-            // caller learns the day was not recorded and History falls back to
-            // its documented estimate.
             context.rollback()
             return false
         }
     }
 
-    /// Collapses fetched snapshots into one value per day key, preferring the
-    /// most recently updated snapshot when duplicates exist.
     static func latestValuesByDayKey(
         _ snapshots: [DailyGoalSnapshot]
     ) -> [String: DailyGoalSnapshotValues] {
@@ -98,27 +75,15 @@ enum DailyGoalSnapshotStore {
     }
 }
 
-/// The per-day calorie target History compares against.
 struct HistoryDayTarget: Equatable {
     let calories: Int
-
-    /// `true` when no snapshot exists for the day and the target is a
-    /// conservative estimate. Estimated days must not be presented with false
-    /// precision — History surfaces them with an explicit note.
     let isEstimated: Bool
 }
 
-/// Resolves the effective calorie target for any calendar day.
-///
-/// Days with a persisted `DailyGoalSnapshot` use that snapshot's effective
-/// target — the exact goal Today showed on that date. Legacy days recorded
-/// before snapshots existed (or days the app was never opened) have no
-/// snapshot; the documented fallback is the current profile's static calorie
-/// target, flagged as estimated. This matches the pre-snapshot behavior of
-/// History and deliberately avoids guessing historical Health adjustments.
 struct HistoryDayTargetResolver {
     let fallbackTarget: Int
     private let valuesByDayKey: [String: DailyGoalSnapshotValues]
+    private let chronologicalDayKeys: [String]
 
     init(
         fallbackTarget: Int,
@@ -126,13 +91,20 @@ struct HistoryDayTargetResolver {
     ) {
         self.fallbackTarget = fallbackTarget
         self.valuesByDayKey = valuesByDayKey
+        self.chronologicalDayKeys = valuesByDayKey.keys.sorted()
     }
 
     func target(for date: Date, calendar: Calendar = .current) -> HistoryDayTarget {
         let key = DailyGoalSnapshot.dayKey(for: date, calendar: calendar)
-        guard let values = valuesByDayKey[key] else {
-            return HistoryDayTarget(calories: fallbackTarget, isEstimated: true)
+        if let values = valuesByDayKey[key] {
+            return HistoryDayTarget(calories: values.calorieTarget, isEstimated: false)
         }
-        return HistoryDayTarget(calories: values.effectiveCalorieTarget, isEstimated: false)
+        return HistoryDayTarget(calories: estimatedTarget(forDayKey: key), isEstimated: true)
+    }
+
+    private func estimatedTarget(forDayKey key: String) -> Int {
+        let nearestKey = chronologicalDayKeys.last { $0 < key } ?? chronologicalDayKeys.first
+        guard let nearestKey, let values = valuesByDayKey[nearestKey] else { return fallbackTarget }
+        return values.calorieTarget
     }
 }

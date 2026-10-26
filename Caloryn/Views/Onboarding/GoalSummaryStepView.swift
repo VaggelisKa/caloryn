@@ -1,8 +1,5 @@
 import SwiftUI
 
-/// "Your daily plate" (`PlateGoal`): the target as an empty plate inside a dotted ring of
-/// what you burn, the slider that sets the gap between them, the rows the number is worked
-/// out from, and a way to type a number instead.
 struct GoalSummaryStepView: View {
     let age: Int
     let sex: Sex
@@ -12,8 +9,6 @@ struct GoalSummaryStepView: View {
     @Binding var calorieDeficit: Double
     var onContinue: (Int, Bool) -> Void
 
-    /// Every rule this step applies lives in the draft; the view reads it and
-    /// renders. See `OnboardingGoalSummaryDraft`.
     @State private var draft = OnboardingGoalSummaryDraft()
     @FocusState private var isManualTargetFocused: Bool
 
@@ -21,11 +16,8 @@ struct GoalSummaryStepView: View {
     @ScaledMetric(relativeTo: .largeTitle) private var plateSize: CGFloat = 132
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-    /// The drawing is decoration, so it stops growing well before the number does.
     private var plateDiameter: CGFloat { min(plateSize, 160) }
 
-    /// The answers from the earlier steps, which this step only reads. The
-    /// deficit is the container's, because the saved profile keeps it.
     private var basis: OnboardingGoalSummaryDraft.Basis {
         OnboardingGoalSummaryDraft.Basis(
             age: age,
@@ -39,7 +31,6 @@ struct GoalSummaryStepView: View {
 
     private var displayTarget: Int { draft.displayTarget(basis: basis) }
 
-    /// What the plate, the rows and the captions say. See `OnboardingGoalPlate`.
     private var plate: OnboardingGoalPlate {
         OnboardingGoalPlate(basis: basis, target: displayTarget)
     }
@@ -82,10 +73,6 @@ struct GoalSummaryStepView: View {
         }
     }
 
-    // MARK: - The plate and its number
-
-    /// The plate left of the number, as `PlateGoal` draws it. At accessibility sizes the
-    /// number needs the whole width, so the plate goes above it instead.
     private var targetDisplay: some View {
         let layout = dynamicTypeSize.isAccessibilitySize
             ? AnyLayout(VStackLayout(alignment: .leading, spacing: 16))
@@ -119,14 +106,11 @@ struct GoalSummaryStepView: View {
         }
     }
 
-    /// The empty plate, sized to the target, inside a dotted ring sized to the daily burn.
-    /// Both are drawn proportional to their area (`OnboardingGoalPlate`), the larger filling
-    /// the frame; the board's ring sits at 97% of the frame and the plate's rim at 94%.
     private var plateDrawing: some View {
         ZStack {
             Circle()
                 .stroke(
-                    CalorynTheme.textPrimary.opacity(0.3),
+                    CalorynTheme.dataPrimary.opacity(0.3),
                     style: StrokeStyle(lineWidth: 1.5, dash: [4, 4])
                 )
                 .frame(
@@ -145,8 +129,6 @@ struct GoalSummaryStepView: View {
         .animation(.smooth(duration: 0.35), value: plate.burnDiameterRatio)
         .accessibilityHidden(true)
     }
-
-    // MARK: - How fast
 
     private var paceSection: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -174,13 +156,6 @@ struct GoalSummaryStepView: View {
         .animation(.smooth(duration: 0.2), value: draft.useManualOverride)
     }
 
-    /// "Gain" and "Lose" at the ends, "Keep" under the point where the adjustment is zero —
-    /// a third of the way along, not the middle, because the range leans towards losing.
-    ///
-    /// "Keep" is pinned to a point on the track while "Gain" grows from the edge, so past
-    /// the second accessibility size the two collide (from about AX4 on a 375pt phone).
-    /// The labels stop growing there; they are hidden from VoiceOver, which reads the
-    /// slider's own value instead.
     private var scaleLabels: some View {
         ZStack(alignment: .leading) {
             Text("Gain")
@@ -190,7 +165,6 @@ struct GoalSummaryStepView: View {
         }
         .overlay {
             GeometryReader { proxy in
-                // The thumb travels between half its own width from each end.
                 let thumbInset: CGFloat = 14
                 let travel = max(0, proxy.size.width - 2 * thumbInset)
                 Text("Keep")
@@ -206,8 +180,6 @@ struct GoalSummaryStepView: View {
         .foregroundStyle(CalorynTheme.textSecondary)
         .accessibilityHidden(true)
     }
-
-    // MARK: - Where the number comes from
 
     private var sourcesSection: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -235,13 +207,14 @@ struct GoalSummaryStepView: View {
             } label: {
                 Text(draft.useManualOverride ? "Use the worked-out number instead" : "Set a number yourself instead")
                     .font(OnboardingTypography.link)
-                    .foregroundStyle(CalorynTheme.textPrimary)
-                    .underline(true, color: CalorynTheme.hairline)
+                    .foregroundStyle(CalorynTheme.accent)
+                    .underline(true, color: CalorynTheme.separator)
                     .padding(.vertical, 10)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .padding(.top, 4)
+            .accessibilityIdentifier("onboarding.goalSummary.setManually")
         }
     }
 
@@ -266,6 +239,7 @@ struct GoalSummaryStepView: View {
                 .font(CalorynTheme.numericBody)
                 .focused($isManualTargetFocused)
                 .calorynInputField(isFocused: isManualTargetFocused)
+                .accessibilityIdentifier("onboarding.goalSummary.manualTarget")
                 .accessibilityLabel("Your daily calories")
 
             Text("kcal a day")

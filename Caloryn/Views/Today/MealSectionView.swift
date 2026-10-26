@@ -1,10 +1,6 @@
 import SwiftData
 import SwiftUI
 
-/// One meal on Today, drawn as hairline rows on the page: the meal's header (name in its
-/// ink, the total, the add button in its fill), then a row per entry — or, for an empty
-/// meal, one row saying how to fill it.
-///
 /// Rows live in the `List` Today owns, so swipe-to-edit and swipe-to-delete stay the
 /// system's own. The header is a row too rather than a `Section` header: a plain list pins
 /// its section headers while scrolling, and the board's headers scroll with their meal.
@@ -18,7 +14,6 @@ struct MealSectionView: View {
     var onEdit: (FoodLogEntry) -> Void
     var onDelete: (FoodLogEntry) -> Void
 
-    /// Space above each meal, between it and the meal (or hero) before it.
     private static let sectionSpacing: CGFloat = 22
 
     init(
@@ -98,9 +93,6 @@ struct MealSectionView: View {
 }
 
 extension View {
-    /// A row on Today's page: the page's side margins, and a separator that runs from the
-    /// content's leading edge to its trailing edge, as the board's hairlines do, rather than
-    /// off the trailing edge of the screen.
     func todayPlateRowLayout(top: CGFloat = 0, bottom: CGFloat = 0) -> some View {
         self
             .alignmentGuide(.listRowSeparatorLeading) { $0[.leading] }
@@ -146,13 +138,20 @@ private struct SingleMealTransitionRow: View {
                     .opacity(isDeletingEntry ? 0 : 1)
                     .allowsHitTesting(!isDeletingEntry)
                     .accessibilityHidden(isDeletingEntry)
+                    .id(entry.id)
+                    .transition(.asymmetric(insertion: .opacity, removal: .identity))
             }
 
             EmptyMealRow(text: emptyText)
                 .opacity(showsEmptyState ? 1 : 0)
                 .accessibilityHidden(!showsEmptyState)
+                .animation(showsEmptyState ? .easeIn(duration: 0.16) : nil, value: showsEmptyState)
         }
         .animation(.easeIn(duration: 0.16), value: entry?.id)
+        // A swipe action draws its label in white on the tint. Before iOS 26 the app-wide
+        // ink tint reaches it, destructive role or not, and ink is near-white in dark mode:
+        // the Delete action was a white glyph on a white bar. `fillAction` is a dark
+        // grey in both appearances, the token the palette reserves for exactly this.
         .onChange(of: entry?.id) { _, newID in
             if pendingDeletionID != newID {
                 pendingDeletionID = nil
@@ -166,6 +165,7 @@ private struct SingleMealTransitionRow: View {
                 } label: {
                     Label("Edit", systemImage: "pencil")
                 }
+                .tint(CalorynTheme.fillAction)
             }
         }
         .swipeActions(edge: .trailing) {
@@ -175,6 +175,7 @@ private struct SingleMealTransitionRow: View {
                 } label: {
                     Label("Delete", systemImage: "trash")
                 }
+                .tint(CalorynTheme.fillAction)
             }
         }
     }
@@ -210,6 +211,7 @@ private struct MealEntryActionRow: View {
                 } label: {
                     Label("Edit", systemImage: "pencil")
                 }
+                .tint(CalorynTheme.fillAction)
             }
             .swipeActions(edge: .trailing) {
                 Button(role: .destructive) {
@@ -217,6 +219,7 @@ private struct MealEntryActionRow: View {
                 } label: {
                     Label("Delete", systemImage: "trash")
                 }
+                .tint(CalorynTheme.fillAction)
             }
     }
 }
@@ -250,13 +253,6 @@ private struct EmptyMealRow: View {
     }
 }
 
-/// An entry as the board draws it: name, then its type or Nutri-Score badge, then grams in
-/// secondary text and the kcal in a fixed right-hand column so the figures line up down the
-/// meal.
-///
-/// At accessibility text sizes the grams, the kcal column and a badge alone fill the row,
-/// and the name would shrink to an ellipsis. There the name and badges take the first line
-/// (the name may wrap) and the figures go under them.
 private struct MealEntryRow: View {
     let entry: FoodLogEntry
 
@@ -320,8 +316,6 @@ private struct MealEntryRow: View {
         }
     }
 
-    /// "99.6 g", "1,500 g": the app's house form for a weight, as the Portion sheet and
-    /// Nutrition Details write the same portion.
     private var gramsText: some View {
         Text(entry.portionGrams.spacedMacroFormatted)
             .font(TodayPlateFont.rowDetail)
@@ -331,7 +325,6 @@ private struct MealEntryRow: View {
             .accessibilityLabel(TrackedNutrientUnit.grams.spokenFormatted(entry.portionGrams))
     }
 
-    /// The board's column carries no unit; once the figure leaves the column it says one.
     private func kcalText(unit: String) -> some View {
         Text("\(kcal)\(unit)")
             .font(TodayPlateFont.rowValue)

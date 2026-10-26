@@ -2,25 +2,7 @@
 import Foundation
 import SwiftData
 
-/// Seed data for looking at the Today screens in their fuller states, reached through
-/// `-uitest-reset -uitest-seed overBudgetDay`.
-///
-/// It lives beside the screens it exists for rather than in `UITestSeeder`, which only holds
-/// the one-line hook (as it does for `HistoryPreviewFixtures`), so the shared fixture registry
-/// changes by a case and an arm. No journey asserts on it; it is for captures:
-///
-/// ```
-/// xcrun simctl launch <UDID> www.caloryn -uitest-reset -uitest-seed overBudgetDay
-/// ```
-///
-/// Compiled out of release builds.
 enum TodayDebugFixtures {
-    /// About 2,340 kcal against the profile's 2,000: breakfast, lunch, a heavy dinner and a
-    /// snack. On top of the profile's macro goals it sets two maximums the day goes past
-    /// (sugars 50g, saturated fat 20g), so Nutrition Details shows an overshoot. One fruit
-    /// has a scanned product's long name, to show a chip truncating rather than running off
-    /// the sheet. The red wine's saved food has been deleted, so its row opens the
-    /// missing-food editor rather than the portion picker.
     static func seedOverBudgetDay(profile: UserProfile, in context: ModelContext) {
         profile.setTarget(50, for: .sugars)
         profile.setTarget(20, for: .saturatedFat)
@@ -72,8 +54,6 @@ enum TodayDebugFixtures {
             context.insert(FoodLogEntry(date: today, mealType: meal, foodItem: item, portionGrams: grams))
         }
 
-        // Logged from a saved food that has since been deleted: only the entry's own snapshot
-        // remains. The food is built but never inserted.
         let wine = FoodItem(
             name: "Red wine",
             caloriesPer100g: 68,

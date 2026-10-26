@@ -17,6 +17,7 @@ final class FoodSearchService {
     var errorMessage: String? { failure?.presentation.message }
 
     private var searchTask: Task<Void, Never>?
+    private var activeQuery: FoodSearchQuery?
     private let policy: FoodProviderPolicy
     private let session: URLSession
     private let countryCode: String?
@@ -61,26 +62,28 @@ final class FoodSearchService {
         #endif
     }
 
-    func search(query: String) {
+    func search(query typed: String) {
+        let query = FoodSearchQuery(typed)
+        if query == activeQuery, failure == nil { return }
+
         searchTask?.cancel()
 
         #if DEBUG
-        // The in-flight fixture stays in flight: a real search resolves in milliseconds,
-        // which is too fast for the screenshot harness to photograph.
         if Self.pinsSearchInFlight {
             isSearching = true
             return
         }
         #endif
 
-        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else {
+        guard query.meetsSearchMinimum else {
+            activeQuery = nil
             searchResults = []
             isSearching = false
             failure = nil
             return
         }
 
+        activeQuery = query
         isSearching = true
         failure = nil
 
@@ -88,21 +91,21 @@ final class FoodSearchService {
             do {
                 try await Task.sleep(for: .milliseconds(300))
                 try Task.checkCancellation()
-                await performSearch(query: trimmed)
+                await performSearch(query: query.text)
             } catch {
                 // Search cancellation is expected when the query changes or the view clears.
             }
         }
     }
 
-    func searchImmediately(query: String) async throws -> [FoodSearchResult] {
-        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { throw FoodLookupError.invalidRequest }
+    func searchImmediately(query typed: String) async throws -> [FoodSearchResult] {
+        let query = FoodSearchQuery(typed)
+        guard query.meetsSearchMinimum else { throw FoodLookupError.invalidRequest }
 
         let locale = SearchLocaleContext.current
         let attempt = try await executeWithFailover(operation: .search) { provider in
             try await self.fetchResults(
-                query: trimmed,
+                query: query,
                 locale: locale,
                 provider: provider
             )
@@ -126,6 +129,7 @@ final class FoodSearchService {
 
     func clearResults() {
         searchTask?.cancel()
+        activeQuery = nil
         searchResults = []
         isSearching = false
         failure = nil
@@ -134,6 +138,12 @@ final class FoodSearchService {
     func lookupBarcode(_ code: String) async throws -> FoodSearchResult {
         let trimmed = code.trimmingCharacters(in: .whitespacesAndNewlines)
         guard Self.isValidBarcode(trimmed) else { throw FoodLookupError.invalidRequest }
+
+        #if DEBUG
+        if let fixture = try await Self.debugBarcodeLookupFixture(matching: trimmed) {
+            return fixture
+        }
+        #endif
 
         let attempt = try await executeWithFailover(operation: .barcode) { provider in
             try await self.fetchBarcode(trimmed, provider: provider)
@@ -207,7 +217,10 @@ final class FoodSearchService {
             isSearching = false
             failure = nil
         } catch let lookupError as FoodLookupError {
-            guard !Task.isCancelled, lookupError != .cancelled else { return }
+            // Only this task's own cancellation means a newer search took over. A request
+            // cancelled underneath a live search (URLError.cancelled) still has to end it,
+            // or the spinner never stops.
+            guard !Task.isCancelled else { return }
 
             searchResults = []
             isSearching = false
@@ -273,7 +286,7 @@ final class FoodSearchService {
     }
 
     private func fetchResults(
-        query: String,
+        query: FoodSearchQuery,
         locale: SearchLocaleContext,
         provider: FoodSearchProvider
     ) async throws -> [OpenFoodFactsProduct] {
@@ -282,7 +295,7 @@ final class FoodSearchService {
         case .calorynAPI:
             var calorynComponents = URLComponents(string: "\(Self.calorynAPIBaseURL)/api/v1/search")
             var queryItems = [
-                URLQueryItem(name: "q", value: query),
+                URLQueryItem(name: "q", value: query.calorynAPIText),
                 URLQueryItem(name: "limit", value: String(Self.pageSize))
             ]
             if let countryCode {
@@ -294,7 +307,7 @@ final class FoodSearchService {
         case .openFoodFacts:
             var offComponents = URLComponents(string: "\(Self.openFoodFactsSearchBaseURL)/search")
             offComponents?.queryItems = [
-                URLQueryItem(name: "q", value: query),
+                URLQueryItem(name: "q", value: query.text),
                 URLQueryItem(name: "fields", value: Self.searchFields),
                 URLQueryItem(name: "page_size", value: String(Self.pageSize)),
                 URLQueryItem(name: "langs", value: locale.preferredLanguageCodes.joined(separator: ","))
@@ -327,7 +340,7 @@ final class FoodSearchService {
         case .calorynAPI:
             urlString = "\(Self.calorynAPIBaseURL)/api/v1/products/\(encodedCode)"
         case .openFoodFacts:
-            urlString = "\(Self.openFoodFactsBarcodeBaseURL)/api/v0/product/\(encodedCode).json"
+            urlString = "\(Self.openFoodFactsBarcodeBaseURL)/api/v0/product/\(encodedCode).json?fields=\(Self.searchFields)"
         }
 
         guard let url = URL(string: urlString) else { throw FoodLookupError.invalidRequest }
@@ -518,10 +531,6 @@ final class FoodSearchService {
         guard ProcessInfo.processInfo.environment["CALORYN_LOOKUP_FIXTURE"]?.hasPrefix("search-") == true else {
             return ""
         }
-        // The in-flight fixture wants the list that shows *results and* skeleton rows,
-        // which needs a local match: with none, the view shows the full-screen skeleton
-        // instead. "salad" matches the `customFoods` seed — and matches nothing in
-        // `loggedDay`, which is how the full-screen state gets photographed too.
         return pinsSearchInFlight ? "salad" : "fixture"
     }
 
@@ -540,12 +549,51 @@ final class FoodSearchService {
             .hasPrefix("barcode-") == true ? "5711953150388" : nil
     }
 
-    /// Holds the loading skeleton on screen instead of letting it resolve. The trailing
-    /// "still searching" rows are only visible for a few hundred milliseconds in a real
-    /// search, so every settled capture misses them — which is how the spinner they
-    /// replaced painted its own white background over the sheet canvas unnoticed.
     static var pinsSearchInFlight: Bool {
         ProcessInfo.processInfo.environment["CALORYN_LOOKUP_FIXTURE"] == "search-loading"
+    }
+
+    private static func debugBarcodeLookupFixture(matching code: String) async throws -> FoodSearchResult? {
+        switch ProcessInfo.processInfo.environment["CALORYN_LOOKUP_FIXTURE"] {
+        case "barcode-lookup-found":
+            await Task.yield()
+            return FoodSearchResult(
+                product: OpenFoodFactsProduct.fixture(
+                    code: code,
+                    name: "Fixture Bar",
+                    brand: "Caloryn",
+                    energy: 250,
+                    protein: 5,
+                    carbohydrates: 30,
+                    fat: 12,
+                    fiber: 2
+                ),
+                provenance: FoodProvenance(
+                    provider: .calorynAPI,
+                    source: .calorynCatalog,
+                    completeness: .complete,
+                    recoveredByFallback: false
+                )
+            )
+        case "barcode-lookup-pending":
+            try await holdUntilCancelled()
+        case "barcode-lookup-unavailable-then-pending":
+            debugBarcodeLookupCount += 1
+            guard debugBarcodeLookupCount == 1 else { try await holdUntilCancelled() }
+            try await Task.sleep(for: .milliseconds(2500))
+            try Task.checkCancellation()
+            throw FoodLookupError.unavailable
+        default:
+            return nil
+        }
+    }
+
+    private static var debugBarcodeLookupCount = 0
+
+    private static func holdUntilCancelled() async throws -> Never {
+        while true {
+            try await Task.sleep(for: .seconds(60))
+        }
     }
 
     private func applyDebugFixtureIfRequested() {

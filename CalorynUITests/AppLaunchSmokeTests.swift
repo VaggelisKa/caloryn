@@ -1,7 +1,5 @@
 import XCTest
 
-/// Proves the UI test target, the launch-argument seeding contract, and the
-/// two entry states of the app all work. Journey tests build on these.
 final class AppLaunchSmokeTests: UITestCase {
     func testGivenNoProfileWhenAppLaunchesThenOnboardingIsShown() {
         given("a store with no profile") {
@@ -9,7 +7,6 @@ final class AppLaunchSmokeTests: UITestCase {
         }
 
         then("the app presents onboarding rather than the main tabs") {
-            // Onboarding is shown whenever no UserProfile exists.
             XCTAssertTrue(
                 app.wait(for: .runningForeground, timeout: UITestCase.defaultTimeout),
                 "App did not reach the foreground"

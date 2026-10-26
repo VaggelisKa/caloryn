@@ -2,9 +2,6 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-// MARK: - Fixtures
-
-/// A plausible human body used to drive property-based sweeps.
 struct NutritionInvariantBody: Sendable, CustomStringConvertible {
     let weightKg: Double
     let heightCm: Double
@@ -15,7 +12,6 @@ struct NutritionInvariantBody: Sendable, CustomStringConvertible {
     }
 }
 
-/// A protein/carb/fat calorie split of the kind the macro sliders can produce.
 struct NutritionInvariantMacroSplit: Sendable, CustomStringConvertible {
     let protein: Double
     let carbs: Double
@@ -36,7 +32,6 @@ private let plausibleBodies: [NutritionInvariantBody] = [
     NutritionInvariantBody(weightKg: 250, heightCm: 220, age: 100),
 ]
 
-/// Every split sums to 1.0 and every component sits inside the slider ranges the UI exposes.
 private let macroRatioPresets: [NutritionInvariantMacroSplit] = [
     NutritionInvariantMacroSplit(protein: 0.30, carbs: 0.40, fat: 0.30),
     NutritionInvariantMacroSplit(protein: 0.25, carbs: 0.50, fat: 0.25),
@@ -50,7 +45,6 @@ private let macroRatioPresets: [NutritionInvariantMacroSplit] = [
 
 private let calorieTargets: [Int] = [1_200, 1_450, 1_800, 2_000, 2_350, 3_000, 4_500]
 
-/// A published Mifflin-St Jeor result used as a golden value.
 struct NutritionInvariantBMRGolden: Sendable, CustomStringConvertible {
     let sex: Sex
     let weightKg: Double
@@ -77,8 +71,6 @@ private let fatKcalPerGram = 9.0
 private func isClose(_ lhs: Double, _ rhs: Double, tolerance: Double = 1e-9) -> Bool {
     abs(lhs - rhs) <= tolerance * max(1, abs(lhs), abs(rhs))
 }
-
-// MARK: - BMR properties
 
 @Suite("NutritionCalculator BMR invariants")
 struct NutritionCalculatorBMRInvariantTests {
@@ -181,8 +173,6 @@ struct NutritionCalculatorBMRInvariantTests {
 
     @Test("Given an empty body with a high age, when BMR is computed, then it goes negative unchecked")
     func degenerateInputsCanProduceNegativeBMR() {
-        // Characterization: the formula has no floor of its own; callers rely on
-        // `defaultTarget` clamping downstream.
         let value = NutritionCalculator.bmr(sex: .female, weightKg: 0, heightCm: 0, age: 100)
 
         #expect(value == -661)
@@ -216,8 +206,6 @@ struct NutritionCalculatorBMRInvariantTests {
         #expect(isClose(value, golden.expected, tolerance: 1e-9))
     }
 }
-
-// MARK: - TDEE properties
 
 @Suite("NutritionCalculator TDEE invariants")
 struct NutritionCalculatorTDEEInvariantTests {
@@ -289,8 +277,6 @@ struct NutritionCalculatorTDEEInvariantTests {
         #expect(isClose(NutritionCalculator.tdee(bmr: 1_730, activity: golden.activity), golden.expected))
     }
 }
-
-// MARK: - Macro properties
 
 @Suite("NutritionCalculator macro invariants")
 struct NutritionCalculatorMacroInvariantTests {
@@ -378,9 +364,6 @@ struct NutritionCalculatorMacroInvariantTests {
 
     @Test("Given a zero calories-per-gram divisor, when grams are computed, then the result is a finite zero")
     func zeroDivisorYieldsZeroRatherThanANonFiniteValue() {
-        // A zero divisor has no meaningful answer. Returning 0 keeps a bad
-        // input from propagating as a plausible-looking infinity into a macro
-        // target and only failing much later, at the formatter.
         let withCalories = NutritionCalculator.macroGrams(calories: 2_000, ratio: 0.3, caloriesPerGram: 0)
         #expect(withCalories == 0)
 
@@ -390,10 +373,6 @@ struct NutritionCalculatorMacroInvariantTests {
 
     @Test("Given a non-finite expenditure, when the default target is computed, then it stays representable")
     func nonFiniteExpenditureDoesNotTrapTheTargetConversion() {
-        // `Int(_:)` traps on a non-finite Double, and this is the one place
-        // `defaultTarget` converts one. The ceiling is the calorie domain
-        // rather than `Int.max`, because callers subtract from this number and
-        // sum it across a period — `Int.max` only moves the trap there.
         #expect(NutritionCalculator.defaultTarget(energyExpenditure: .nan) == 1_200)
         #expect(NutritionCalculator.defaultTarget(energyExpenditure: -.infinity) == 1_200)
         #expect(NutritionCalculator.defaultTarget(energyExpenditure: .infinity) == CalorieDomain.maximum)
@@ -411,8 +390,6 @@ struct NutritionCalculatorMacroInvariantTests {
         #expect(first == second)
     }
 }
-
-// MARK: - Daily target properties
 
 @Suite("NutritionCalculator daily target invariants")
 struct NutritionCalculatorDailyTargetInvariantTests {
@@ -453,7 +430,6 @@ struct NutritionCalculatorDailyTargetInvariantTests {
 
     @Test("Given a fractional remainder, when the daily target is derived, then it truncates rather than rounds")
     func fractionalTargetsTruncate() {
-        // Characterization: `Int(...)` truncates toward zero; 1900.99 - 500 = 1400.99 -> 1400.
         #expect(NutritionCalculator.defaultTarget(energyExpenditure: 1_900.99, deficit: 500) == 1_400)
         #expect(NutritionCalculator.defaultTarget(energyExpenditure: 2_000.5, deficit: 0) == 2_000)
     }

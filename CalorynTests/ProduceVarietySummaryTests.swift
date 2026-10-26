@@ -95,7 +95,6 @@ final class ProduceVarietySummaryTests: XCTestCase {
             portionGrams: 80
         )
 
-        // Deleting a saved food detaches the relationship while keeping the entry.
         apple.foodItem = nil
         carrot.foodItem = nil
 
@@ -152,7 +151,6 @@ final class ProduceVarietySummaryTests: XCTestCase {
         let editedEntry = makeTestEntry(foodItem: recipe, portionGrams: 110)
         let deletedEntry = makeTestEntry(foodItem: recipe, portionGrams: 110)
 
-        // Later the recipe's ingredients change and the recipe itself is deleted.
         recipe.recipeIngredients = []
         deletedEntry.foodItem = nil
 
@@ -184,8 +182,6 @@ final class ProduceVarietySummaryTests: XCTestCase {
 
         let summary = ProduceVarietySummary(entries: [legacyEntry])
 
-        // Legacy entries never captured quality data; once the saved food is
-        // gone we surface nothing rather than fabricating a classification.
         XCTAssertEqual(summary.totalCount, 0)
     }
 

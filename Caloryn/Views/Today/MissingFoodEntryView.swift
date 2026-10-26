@@ -1,8 +1,6 @@
 import SwiftUI
 import SwiftData
 
-/// Editor for a log entry whose saved food has been deleted: edits use the
-/// nutrition snapshot recorded on the entry itself.
 struct MissingFoodEntryView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
@@ -32,13 +30,13 @@ struct MissingFoodEntryView: View {
         NavigationStack {
             Form {
                 Section {
-                    Text("The original saved food is missing. Editing uses the nutrition and quality values recorded in this log entry.")
+                    Text(SnapshotEntryNotice.message(for: entry.historicalProvenance.source))
                         .font(TodayPlateFont.detailsNote)
                         .foregroundStyle(CalorynTheme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                .listRowBackground(CalorynTheme.cardBackground)
-                .listRowSeparatorTint(CalorynTheme.hairline)
+                .listRowBackground(CalorynTheme.backgroundSecondary)
+                .listRowSeparatorTint(CalorynTheme.separator)
 
                 Section {
                     LabeledContent("Food") {
@@ -96,26 +94,23 @@ struct MissingFoodEntryView: View {
                     sectionHeader("Entry")
                 }
                 .foregroundStyle(CalorynTheme.textPrimary)
-                .listRowBackground(CalorynTheme.cardBackground)
-                .listRowSeparatorTint(CalorynTheme.hairline)
+                .listRowBackground(CalorynTheme.backgroundSecondary)
+                .listRowSeparatorTint(CalorynTheme.separator)
 
                 Section {
-                    // Ink, not red: red is lunch now. The confirmation dialog that follows
-                    // is where the destructive colour belongs, as on the Portion sheet.
                     Button(role: .destructive) {
                         showingDeleteConfirmation = true
                     } label: {
                         Text("Delete log entry")
-                            .foregroundStyle(CalorynTheme.textPrimary)
+                            .foregroundStyle(CalorynTheme.accent)
                             .frame(maxWidth: .infinity)
                     }
                 }
-                .listRowBackground(CalorynTheme.cardBackground)
+                .listRowBackground(CalorynTheme.backgroundSecondary)
             }
             .calorynFormStyle()
             .calorynSheetCanvas()
-            .navigationTitle("Edit portion")
-            .navigationBarTitleDisplayMode(.inline)
+            .calorynInlineTitle("Edit portion")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button {
@@ -123,7 +118,7 @@ struct MissingFoodEntryView: View {
                     } label: {
                         Label("Close", systemImage: "xmark")
                             .font(CalorynTheme.toolbarIcon)
-                            .foregroundStyle(CalorynTheme.textPrimary)
+                            .foregroundStyle(CalorynTheme.accent)
                     }
                     .accessibilityLabel("Close")
                 }
@@ -136,7 +131,7 @@ struct MissingFoodEntryView: View {
                             .font(CalorynTheme.toolbarAction)
                             .foregroundStyle(
                                 FavoriteFoodLogging.isSafePortion(portionGrams)
-                                    ? CalorynTheme.textPrimary
+                                    ? CalorynTheme.accent
                                     : CalorynTheme.textTertiary
                             )
                     }
@@ -162,9 +157,6 @@ struct MissingFoodEntryView: View {
 
     private static let snackSlots = 1...20
 
-    /// The date as a value, like the rows above it; tapping it opens a calendar under the
-    /// row. A compact `DatePicker` drew its date in a system-grey pill beside the
-    /// `surface` portion well, and no token reaches that fill.
     @ViewBuilder
     private var dateRow: some View {
         Button {
@@ -199,19 +191,15 @@ struct MissingFoodEntryView: View {
             )
             .datePickerStyle(.graphical)
             .labelsHidden()
-            // Not ink: the selected day is drawn white on the tint, and ink is near-white
-            // in dark mode.
-            .tint(CalorynTheme.controlTint)
+            .tint(CalorynTheme.accentControl)
         }
     }
 
-    /// The meal as chips in each meal's own colour — the Portion sheet's vocabulary — rather
-    /// than a menu picker. They wrap onto a second line rather than truncating once larger
-    /// text or a narrower phone stops all four fitting on one.
     private var mealChips: some View {
         ChipFlowLayout(spacing: 6, lineSpacing: 6) {
             ForEach(MealType.allCases) { meal in
                 Button {
+                    if mealType != meal { CalorynHaptics.selectionChanged() }
                     mealType = meal
                 } label: {
                     Text(meal.displayName)
@@ -243,6 +231,7 @@ struct MissingFoodEntryView: View {
                 modelContext: modelContext,
                 snackIndex: snackIndex
             )
+            CalorynHaptics.success()
             dismiss()
         } catch {
             errorMessage = error.localizedDescription

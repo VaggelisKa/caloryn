@@ -1,18 +1,4 @@
-# Theme enforcement only.
-#
-# This config deliberately disables every default rule. It exists to stop one class of
-# regression — screens drifting off the theme — not to impose a general Swift style on a
-# codebase that has done without a linter until now. Adding stylistic rules here is a
-# separate decision, and a noisy one: it would flag hundreds of pre-existing lines.
-#
-# The rules below ban the *primitive* rather than requiring the abstraction. SwiftLint's
-# custom rules are per-match regexes with no whole-file logic, so "this file uses List but
-# not calorynGroupedListStyle" is not expressible. Banning `.listStyle(...)` outright is
-# both expressible and stronger: the unthemed state becomes unreachable rather than merely
-# discouraged.
 
-# `custom_rules` is itself a rule identifier, so listing it alone runs the rules below
-# and nothing else.
 only_rules:
   - custom_rules
 
@@ -21,14 +7,14 @@ included:
   - CalorynWidgets
 
 excluded:
-  - Caloryn/Theme          # defines the abstractions these rules point at
-  - Caloryn/GlassCompatibility.swift  # owns the material/glass surfaces
+  - Caloryn/Theme
+  - Caloryn/GlassCompatibility.swift
 
 custom_rules:
   raw_list_style:
     name: "Raw list style"
     regex: '\.listStyle\('
-    message: "Use calorynGroupedListStyle() or calorynPlainListStyle(). A bare .listStyle lets the List paint a system background over the theme — see CLAUDE.md rule 7."
+    message: "Use calorynGroupedListStyle() or calorynPlainListStyle(). A bare .listStyle lets the List paint a system background over the theme — see CLAUDE.md rule 6."
     severity: error
 
   raw_system_background_color:
@@ -39,21 +25,36 @@ custom_rules:
 
   raw_white_color:
     name: "Raw white"
-    regex: 'Color\.white|Color\(\.white\)|UIColor\.white'
+    regex: 'Color\.white|Color\(\.white\)|UIColor\.white|\(\s*\.white\s*\)'
     # The barcode scanner draws a UIKit overlay on top of a live camera feed. That text and
     # its reticle are white against video, not against the theme, so they are correctly
     # appearance-independent.
     excluded: ".*BarcodeScannerView\\.swift"
-    message: "Use a CalorynTheme colour: cardBackground for the white of a sheet or group, mealOnFill(_:) for a label on a meal fill. A literal white has no dark appearance, so it turns into a glaring block in dark mode."
+    message: "Use a CalorynTheme colour: backgroundSecondary for the white of a sheet or group, textOnAccent for a label on accent, mealOnFill(_:) for a label on a meal fill. A literal white has no dark appearance, so it turns into a glaring block in dark mode."
     severity: error
 
-  # Not the whole trap class: `Int(someDouble)` in general is indistinguishable by regex
-  # from `Int(someInt)` and `Int(someString)`, which are safe. `Int(x.rounded())` is
-  # unambiguously a floating-point conversion, and it is the form the crash arrived in.
+  text_token_as_shape:
+    name: "Text token on a shape"
+    regex: '\.(fill|background|stroke|strokeBorder)\(\s*CalorynTheme\.text\w+|\.tint\(\s*CalorynTheme\.textPrimary\b'
+    message: "A text token paints text. Use accent for a control's fill, tint or outline, dataPrimary for a data mark, separator for a line, or a fill* / background* token for a shape. See docs/theme.md."
+    severity: error
+
+  background_token_as_text:
+    name: "Background token on text"
+    regex: '\.foregroundStyle\(\s*CalorynTheme\.background\w+'
+    message: "A background token paints a surface. A label on accent is textOnAccent; other text takes a text* token."
+    severity: error
+
+  asset_colour_outside_theme:
+    name: "Asset colour outside the theme"
+    regex: '\bColor\(\.[a-z]\w*\)'
+    message: "Read colours through CalorynTheme's role tokens (CalorynShared/CalorynThemeColors.swift), so a re-skin changes the catalog and nothing else."
+    severity: error
+
   trapping_int_conversion:
     name: "Trapping Int conversion"
     regex: '\bInt\((?:[^()]|\([^()]*\))*\.rounded\(\)\)'
-    message: "Use Double.truncatedSafely. Int(_:) is a trap, not a conversion — NaN, an infinity or anything past Int64 terminates the process, and these numbers reach it from user input, HealthKit and the food API."
+    message: "Use Double.truncatedSafely. Int(_:) is a trap, not a conversion — NaN, an infinity or anything past Int64 terminates the process, and these numbers reach it from user input and the food API."
     severity: error
 
   raw_color_literal:

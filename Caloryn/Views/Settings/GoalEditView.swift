@@ -6,6 +6,9 @@ private let nutrientGoalAnimationDuration: TimeInterval = 0.24
 
 private enum GoalEditFocus: Hashable {
     case manualTarget
+    case protein
+    case carbs
+    case fat
     case nutrient(TrackedNutrient)
 }
 
@@ -15,8 +18,6 @@ struct GoalEditView: View {
 
     @FocusState private var focusedField: GoalEditFocus?
 
-    /// Every rule this screen applies lives in the draft; the view reads it and
-    /// renders. See `GoalEditDraft`.
     @State private var draft: GoalEditDraft
 
     init(profile: UserProfile) {
@@ -25,6 +26,7 @@ struct GoalEditView: View {
     }
 
     private var calculatedTarget: Int { draft.calculatedTarget(tdee: profile.tdee) }
+    private var previewCalorieTarget: Int { draft.effectiveCalorieTarget(tdee: profile.tdee) }
     private var previewProteinTarget: Double { draft.proteinTargetGrams(tdee: profile.tdee) }
     private var previewCarbTarget: Double { draft.carbTargetGrams(tdee: profile.tdee) }
     private var previewFatTarget: Double { draft.fatTargetGrams(tdee: profile.tdee) }
@@ -63,7 +65,7 @@ struct GoalEditView: View {
             } header: {
                 SettingsSectionTitle("Daily calorie target")
             }
-            .listRowBackground(CalorynTheme.cardBackground)
+            .listRowBackground(CalorynTheme.backgroundSecondary)
 
             if !draft.manualOverride {
                 Section {
@@ -73,7 +75,7 @@ struct GoalEditView: View {
                             .foregroundStyle(CalorynTheme.textPrimary)
 
                         Slider(value: $draft.calorieDeficit, in: -500...1000, step: 50)
-                            .tint(CalorynTheme.textPrimary)
+                            .tint(CalorynTheme.accent)
                             .accessibilityLabel("Calorie adjustment")
                             .accessibilityValue(draft.deficitLabel)
 
@@ -92,36 +94,72 @@ struct GoalEditView: View {
                 } footer: {
                     SettingsSectionFooter("Positive values create a deficit for weight loss, negative values create a surplus for weight gain.")
                 }
-                .listRowBackground(CalorynTheme.cardBackground)
+                .listRowBackground(CalorynTheme.backgroundSecondary)
             }
 
             Section {
-                MacroGoalSliderRow(
-                    name: "Protein",
-                    ratio: $draft.proteinRatio,
-                    range: 0.10...0.50,
-                    gramsText: previewProteinTarget.spacedMacroFormatted
-                )
-                MacroGoalSliderRow(
-                    name: "Carbs",
-                    ratio: $draft.carbRatio,
-                    range: 0.10...0.60,
-                    gramsText: previewCarbTarget.spacedMacroFormatted
-                )
-                MacroGoalSliderRow(
-                    name: "Fat",
-                    ratio: $draft.fatRatio,
-                    range: 0.10...0.50,
-                    gramsText: previewFatTarget.spacedMacroFormatted
-                )
+                if draft.manualOverride {
+                    MacroGramFieldRow(
+                        name: "Protein",
+                        text: $draft.proteinGramsText,
+                        percentText: draft.macroGramGoals.sharePercentText(for: .protein, calorieTarget: previewCalorieTarget),
+                        identifier: "goalEdit.protein",
+                        focus: .protein,
+                        focusedField: $focusedField
+                    )
+                    MacroGramFieldRow(
+                        name: "Carbs",
+                        text: $draft.carbGramsText,
+                        percentText: draft.macroGramGoals.sharePercentText(for: .carbs, calorieTarget: previewCalorieTarget),
+                        identifier: "goalEdit.carbs",
+                        focus: .carbs,
+                        focusedField: $focusedField
+                    )
+                    MacroGramFieldRow(
+                        name: "Fat",
+                        text: $draft.fatGramsText,
+                        percentText: draft.macroGramGoals.sharePercentText(for: .fat, calorieTarget: previewCalorieTarget),
+                        identifier: "goalEdit.fat",
+                        focus: .fat,
+                        focusedField: $focusedField
+                    )
 
-                if !draft.isMacroValid {
-                    SettingsWarningText("Ratios should total 100% (currently \((draft.macroTotal * 100).truncatedSafely)%)")
+                    if let message = draft.macroGramGoals.validationMessage {
+                        SettingsWarningText(message)
+                    }
+                } else {
+                    MacroGoalSliderRow(
+                        name: "Protein",
+                        ratio: $draft.proteinRatio,
+                        range: 0.10...0.50,
+                        gramsText: previewProteinTarget.spacedMacroFormatted
+                    )
+                    MacroGoalSliderRow(
+                        name: "Carbs",
+                        ratio: $draft.carbRatio,
+                        range: 0.10...0.60,
+                        gramsText: previewCarbTarget.spacedMacroFormatted
+                    )
+                    MacroGoalSliderRow(
+                        name: "Fat",
+                        ratio: $draft.fatRatio,
+                        range: 0.10...0.50,
+                        gramsText: previewFatTarget.spacedMacroFormatted
+                    )
+
+                    if !draft.isMacroValid {
+                        SettingsWarningText("Ratios should total 100% (currently \((draft.macroTotal * 100).truncatedSafely)%)")
+                    }
                 }
             } header: {
                 SettingsSectionTitle("Macro goals")
+            } footer: {
+                if let summary = draft.manualOverride ? draft.macroAccountSummary(tdee: profile.tdee) : nil {
+                    SettingsSectionFooter(summary)
+                        .accessibilityIdentifier("goalEdit.macroAccount")
+                }
             }
-            .listRowBackground(CalorynTheme.cardBackground)
+            .listRowBackground(CalorynTheme.backgroundSecondary)
 
             Section {
                 ForEach(TrackedNutrient.editableGoalNutrients) { nutrient in
@@ -142,26 +180,22 @@ struct GoalEditView: View {
             } footer: {
                 SettingsSectionFooter("These goals appear anywhere the nutrient is shown. Sodium and cholesterol are entered in milligrams.")
             }
-            .listRowBackground(CalorynTheme.cardBackground)
+            .listRowBackground(CalorynTheme.backgroundSecondary)
         }
         .calorynFormStyle()
         .calorynPageCanvas()
         .calorynDrillDownNavigation()
-        .navigationTitle("Edit goal")
-        .navigationBarTitleDisplayMode(.inline)
+        .calorynInlineTitle("Edit goal")
         .scrollDismissesKeyboard(.interactively)
         .toolbar {
             ToolbarItem(placement: .calorynConfirmation) {
                 Button {
-                    if draft.disablesAppleHealthAdjustment {
-                        AppleHealthAdjustmentSettings.disable()
-                    }
                     draft.apply(to: profile)
                     dismiss()
                 } label: {
                     Text("Save")
                         .font(CalorynTheme.toolbarAction)
-                        .foregroundStyle(draft.canSave ? CalorynTheme.textPrimary : CalorynTheme.textSecondary)
+                        .foregroundStyle(draft.canSave ? CalorynTheme.accent : CalorynTheme.textSecondary)
                 }
                 .accessibilityIdentifier("goalEdit.save")
                 .disabled(!draft.canSave)
@@ -190,8 +224,47 @@ struct GoalEditView: View {
     }
 }
 
-/// One macro's share of the day: its name, the grams the share comes to, the percentage in
-/// ink, and an ink slider. Macros are told apart by name, never colour.
+private struct MacroGramFieldRow: View {
+    let name: String
+    @Binding var text: String
+    let percentText: String
+    let identifier: String
+    let focus: GoalEditFocus
+    @FocusState.Binding var focusedField: GoalEditFocus?
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Text(name)
+                .font(CalorynTheme.bodyText)
+                .foregroundStyle(CalorynTheme.textPrimary)
+
+            Spacer(minLength: 8)
+
+            Text(percentText)
+                .font(CalorynTheme.numericBody.weight(.semibold))
+                .foregroundStyle(CalorynTheme.textPrimary)
+                .accessibilityLabel("\(name) share of the calorie target")
+
+            TextField("0", text: $text)
+                .keyboardType(.decimalPad)
+                .multilineTextAlignment(.trailing)
+                .font(CalorynTheme.numericBody)
+                .foregroundStyle(CalorynTheme.textPrimary)
+                .focused($focusedField, equals: focus)
+                .calorynInputField(isFocused: focusedField == focus)
+                .frame(width: 92)
+                .accessibilityIdentifier(identifier)
+                .accessibilityLabel("\(name) goal in grams")
+
+            Text("g")
+                .font(CalorynTheme.caption)
+                .foregroundStyle(CalorynTheme.textSecondary)
+                .frame(width: 24, alignment: .leading)
+        }
+        .padding(.vertical, 2)
+    }
+}
+
 private struct MacroGoalSliderRow: View {
     let name: String
     @Binding var ratio: Double
@@ -220,7 +293,7 @@ private struct MacroGoalSliderRow: View {
             .accessibilityHidden(true)
 
             Slider(value: $ratio, in: range, step: 0.05)
-                .tint(CalorynTheme.textPrimary)
+                .tint(CalorynTheme.accent)
                 .accessibilityLabel(name)
                 .accessibilityValue("\(percentText), \(gramsText)")
         }
@@ -253,8 +326,6 @@ private struct NutrientGoalEditRow: View {
                 Spacer()
 
                 if isInvalid {
-                    // The field's own text stays ink; this glyph says which field the
-                    // group's warning is about, without leaning on a colour.
                     Image(systemName: "exclamationmark.circle.fill")
                         .font(CalorynTheme.compactIcon)
                         .foregroundStyle(CalorynTheme.textPrimary)
@@ -298,10 +369,6 @@ private struct NutrientGoalEditRow: View {
         }
     }
 
-    /// Minimum / Target / Maximum as chips: a small choice, so the vocabulary's chips rather
-    /// than a segmented control, which ignores the ink tint. A wrapping layout, so at
-    /// accessibility text sizes the three choices go onto further lines instead of being
-    /// cut to a few letters each.
     private var goalKindChips: some View {
         ChipFlowLayout(spacing: 6, lineSpacing: 6) {
             ForEach(NutrientGoalKind.allCases) { kind in

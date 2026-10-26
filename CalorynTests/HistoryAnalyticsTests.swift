@@ -175,7 +175,6 @@ final class HistoryAnalyticsTests: XCTestCase {
         let appleEntry = makeTestEntry(date: date, foodItem: apple, portionGrams: 100)
         let cerealEntry = makeTestEntry(date: date, foodItem: cereal, portionGrams: 50)
 
-        // The apple is later edited and the cereal deleted from My Foods.
         apple.nutriscoreGrade = "e"
         cerealEntry.foodItem = nil
 
@@ -211,8 +210,6 @@ final class HistoryAnalyticsTests: XCTestCase {
         )
 
         let detail = analytics.current.days.last!.makeDetail()
-        // Legacy entry with a live food keeps the pre-snapshot behavior; the
-        // detached legacy entry is excluded rather than given an invented grade.
         XCTAssertEqual(detail.nutriscoreDistribution.map(\.grade), ["b"])
         XCTAssertEqual(detail.nutriscoreDistribution.map(\.count), [1])
     }

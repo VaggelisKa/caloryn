@@ -2,8 +2,6 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// A labeled single-field change, so each analytics-relevant field is its own
-/// test case: the case fails by name when a field stops being captured.
 struct FieldMutation<Model>: Sendable, CustomTestStringConvertible {
     let field: String
     let mutate: @MainActor (Model) -> Void
@@ -11,22 +9,9 @@ struct FieldMutation<Model>: Sendable, CustomTestStringConvertible {
     var testDescription: String { field }
 }
 
-/// Pins the equality behavior History's `.task(id:)` recompute hangs on: the
-/// refresh ID must stay equal while nothing analytics-relevant changed (no
-/// spurious recompute), and must become unequal when any rendered fact of an
-/// entry, the profile, a goal snapshot, the day, or the entry list itself
-/// changes (no silently stale analytics).
-///
-/// Models are plain in-memory instances, mirroring `DailyGoalSnapshotTests`:
-/// nothing here fetches, so no container is needed.
 @MainActor
 @Suite("History analytics refresh ID")
 struct HistoryAnalyticsRefreshIDTests {
-
-    // MARK: - Baselines
-
-    /// An entry whose optional nutrients, Nutri-Score and produce kind are all
-    /// present, so a mutation of any captured field is a real change.
     private func makeRichEntry() -> FoodLogEntry {
         makeTestEntry(
             date: makeTestDate(year: 2026, month: 3, day: 9),
@@ -66,10 +51,7 @@ struct HistoryAnalyticsRefreshIDTests {
         DailyGoalSnapshot(
             dayKey: "2026-03-09",
             values: DailyGoalSnapshotValues(
-                baseCalorieTarget: 2_000,
-                healthAdjustment: 200,
-                effectiveCalorieTarget: 2_200,
-                calculationMode: .dynamicHealth,
+                calorieTarget: 2_200,
                 isManualTarget: false
             ),
             profile: nil,
@@ -91,8 +73,6 @@ struct HistoryAnalyticsRefreshIDTests {
         )
     }
 
-    // MARK: - No spurious recompute
-
     @Test("given unchanged models, when the refresh ID is computed twice, then the IDs are equal so analytics do not rerun")
     func unchangedModelsProduceEqualRefreshIDs() {
         let profile = makeProfile()
@@ -104,8 +84,6 @@ struct HistoryAnalyticsRefreshIDTests {
 
         #expect(first == second)
     }
-
-    // MARK: - Entry fields trigger a recompute
 
     nonisolated private static let entryMutations: [FieldMutation<FoodLogEntry>] = [
         FieldMutation(field: "id (delete and re-log)") { $0.id = UUID() },
@@ -159,8 +137,6 @@ struct HistoryAnalyticsRefreshIDTests {
         #expect(HistoryEntrySignature(entry: entry) != before)
     }
 
-    // MARK: - Profile fields trigger a recompute
-
     nonisolated private static let profileMutations: [FieldMutation<UserProfile>] = [
         FieldMutation(field: "id (profile replaced)") { $0.id = UUID() },
         FieldMutation(field: "updatedAt") {
@@ -194,8 +170,6 @@ struct HistoryAnalyticsRefreshIDTests {
         #expect(HistoryProfileSignature(profile: profile) != before)
     }
 
-    // MARK: - Goal snapshot fields trigger a recompute
-
     nonisolated private static let goalSnapshotMutations: [FieldMutation<DailyGoalSnapshot>] = [
         FieldMutation(field: "dayKey") { $0.dayKey = "2026-03-10" },
         FieldMutation(field: "effectiveCalorieTarget") { $0.effectiveCalorieTarget += 100 },
@@ -216,8 +190,6 @@ struct HistoryAnalyticsRefreshIDTests {
 
         #expect(HistoryGoalSnapshotSignature(snapshot: snapshot) != before)
     }
-
-    // MARK: - The remaining refresh-ID inputs
 
     @Test("given midnight passes, when the day start moves, then the refresh ID changes so the window advances")
     func dayStartChangeChangesTheRefreshID() {

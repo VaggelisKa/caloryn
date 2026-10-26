@@ -2,15 +2,9 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// Covers the flat nutrient list the portion picker previews: which rows
-/// appear, their order, their labels and their units — and that the flat
-/// table stays in agreement with `NutrientDetailGroup`, whose grouped cards
-/// describe the same domain for the Nutrition Details sheet.
 @Suite("Portion nutrient breakdown")
 struct PortionNutrientBreakdownTests {
     private static let us = Locale(identifier: "en_US")
-
-    // MARK: - Core rows
 
     @Test("The four core macros are always shown, even when nothing else is recorded")
     func coreRowsAlwaysPresent() {
@@ -28,8 +22,6 @@ struct PortionNutrientBreakdownTests {
         #expect(items.first { $0.id == "fat" }?.spacedFormattedValue(locale: Self.us) == "100 g")
     }
 
-    // MARK: - Optional rows
-
     @Test("An optional nutrient nothing was recorded for is omitted rather than shown as zero")
     func absentOptionalRowsAreDropped() {
         let nutrition = NutritionValues(calories: 63, sugarsG: 3.7, sodiumG: 0.05)
@@ -46,10 +38,6 @@ struct PortionNutrientBreakdownTests {
         #expect(items.contains { $0.id == "starch" && $0.value == 0 })
     }
 
-    // MARK: - Order and labels
-
-    /// The full table, pinned: rows keep the declared order regardless of which
-    /// happen to be recorded, so the preview never reshuffles between foods.
     @Test("Rows keep a fixed order and their exact labels")
     func fullTableOrderAndLabels() {
         let items = PortionNutrientBreakdown(nutrition: Self.everyNutrientRecorded).items
@@ -103,8 +91,6 @@ struct PortionNutrientBreakdownTests {
         #expect(items.map(\.id) == ["protein", "carbs", "fat", "fiber", "sugars", "saturated-fat", "alcohol"])
     }
 
-    // MARK: - Units
-
     @Test("Sodium and cholesterol are stored in grams but displayed in milligrams")
     func sodiumAndCholesterolDisplayInMilligrams() {
         let nutrition = NutritionValues(calories: 63, sodiumG: 0.05, cholesterolG: 0.0104)
@@ -123,14 +109,6 @@ struct PortionNutrientBreakdownTests {
         #expect(items.first { $0.id == "sugars" }?.spacedFormattedValue(locale: Self.us) == "1.5 g")
     }
 
-    // MARK: - Parity with the grouped breakdown
-
-    /// The flat table and `NutrientDetailGroup` describe the same domain, and
-    /// used to do so in two hand-maintained copies. Every line a grouped card
-    /// can show must exist in the flat table with the same unit and the same
-    /// label — including salt, which reads "Salt" on both sides (issue #131),
-    /// so the Salt card shows "Salt › Salt". If one side changes alone, this
-    /// fails and the divergence gets a decision instead of going unnoticed.
     @Test("Every grouped detail line exists in the flat table with a matching label and unit")
     func parityWithNutrientDetailGroup() {
         let flatItems = PortionNutrientBreakdown(nutrition: Self.everyNutrientRecorded).items
@@ -150,16 +128,10 @@ struct PortionNutrientBreakdownTests {
             #expect(flat.label == grouped.label, "Label for \(grouped.id) differs between the two tables")
         }
 
-        // Salt used to be the one line worded differently on each side; both
-        // now say "Salt" (issue #131).
         #expect(groupedItems.first { $0.id == "salt" }?.label == "Salt")
         #expect(flatByID["salt"]?.label == "Salt")
     }
 
-    // MARK: - Fixtures
-
-    /// A value with every nutrient recorded, so the fixed tables surface all
-    /// of their lines.
     private static let everyNutrientRecorded = NutritionValues(
         calories: 500,
         proteinG: 1.5,

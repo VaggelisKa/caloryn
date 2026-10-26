@@ -16,6 +16,7 @@ enum FoodDataSource: String, Codable, Sendable {
     case calorynCatalog = "caloryn_catalog"
     case openFoodFactsCommunity = "open_food_facts_community"
     case userEntered = "user_entered"
+    case linkImport = "link_import"
     case mixed
     case unknown
 
@@ -24,18 +25,9 @@ enum FoodDataSource: String, Codable, Sendable {
         case .calorynCatalog: "Caloryn data"
         case .openFoodFactsCommunity: "Community data"
         case .userEntered: "Your data"
+        case .linkImport: "Imported data"
         case .mixed: "Mixed sources"
         case .unknown: "Source unknown"
-        }
-    }
-
-    var detailLabel: String {
-        switch self {
-        case .calorynCatalog: "Nutrition data from Caloryn"
-        case .openFoodFactsCommunity: "Community-provided data from Open Food Facts"
-        case .userEntered: "Nutrition data entered by you"
-        case .mixed: "Nutrition data combined from multiple sources"
-        case .unknown: "The original data source was not recorded"
         }
     }
 }

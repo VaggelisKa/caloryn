@@ -1,14 +1,9 @@
 import Testing
 @testable import Caloryn
 
-/// Covers the onboarding step order and its two branches, which until now were
-/// only reachable by driving the whole first-run flow.
 @MainActor
 @Suite("Onboarding flow")
 struct OnboardingFlowTests {
-
-    // MARK: - Order
-
     @Test("The steps run welcome, personal info, activity, calorie estimate, goal, macros, nutrients")
     func stepsRunInOrder() {
         var visited: [OnboardingStep] = [.welcome]
@@ -22,9 +17,8 @@ struct OnboardingFlowTests {
             .welcome,
             .personalInfo,
             .activityLevel,
-            .energyCalculationMode,
             .goalSummary,
-            .macroRatios(2_000),
+            .macroRatios(calorieTarget: 2_000, usesDirectGrams: false),
             .nutrientSelection
         ])
     }
@@ -34,14 +28,65 @@ struct OnboardingFlowTests {
         #expect(OnboardingFlow.step(after: .nutrientSelection) == nil)
     }
 
+    @Test("Choosing the estimate after typing grams keeps that split")
+    func choosingTheEstimateKeepsTheTypedSplit() {
+        let choice = OnboardingMacroChoice(
+            proteinRatio: 0.30,
+            carbRatio: 0.40,
+            fatRatio: 0.30,
+            grams: MacroGramGoals(proteinText: "150", carbText: "180", fatText: "50")
+        ).afterGoalSummary(isManual: false, wasManual: true, calorieTarget: 1_800)
+
+        #expect(abs(choice.proteinRatio - (600.0 / 1_770)) < 1e-12)
+        #expect(abs(choice.carbRatio - (720.0 / 1_770)) < 1e-12)
+        #expect(abs(choice.fatRatio - (450.0 / 1_770)) < 1e-12)
+        #expect(choice.grams.proteinText == "150")
+    }
+
+    @Test("Continuing the estimate keeps later slider edits instead of the earlier gram split")
+    func continuingTheEstimateKeepsSliderEdits() {
+        let choice = OnboardingMacroChoice(
+            proteinRatio: 0.25,
+            carbRatio: 0.45,
+            fatRatio: 0.30,
+            grams: MacroGramGoals(proteinText: "150", carbText: "180", fatText: "50")
+        ).afterGoalSummary(isManual: false, wasManual: false, calorieTarget: 1_800)
+
+        #expect(choice.proteinRatio == 0.25)
+        #expect(choice.carbRatio == 0.45)
+        #expect(choice.fatRatio == 0.30)
+        #expect(choice.grams.proteinText == "150")
+    }
+
+    @Test("Choosing the estimate with no gram goals keeps the percentage split")
+    func choosingTheEstimateWithoutGramsKeepsTheSplit() {
+        let choice = OnboardingMacroChoice(
+            proteinRatio: 0.25,
+            carbRatio: 0.45,
+            fatRatio: 0.30,
+            grams: .empty
+        ).afterGoalSummary(isManual: false, wasManual: true, calorieTarget: 1_800)
+
+        #expect(choice.proteinRatio == 0.25)
+        #expect(choice.carbRatio == 0.45)
+        #expect(choice.fatRatio == 0.30)
+    }
+
     @Test("The goal step hands its calorie target to the macro step")
     func goalStepCarriesTheTarget() {
-        #expect(OnboardingFlow.step(after: .goalSummary, calorieTarget: 1_750) == .macroRatios(1_750))
+        #expect(
+            OnboardingFlow.step(after: .goalSummary, calorieTarget: 1_750)
+                == .macroRatios(calorieTarget: 1_750, usesDirectGrams: false)
+        )
+        #expect(
+            OnboardingFlow.step(after: .goalSummary, calorieTarget: 1_800, usesDirectGrams: true)
+                == .macroRatios(calorieTarget: 1_800, usesDirectGrams: true)
+        )
     }
 
     @Test("No other step reads the calorie target")
     func otherStepsIgnoreTheTarget() {
-        for step in [OnboardingStep.welcome, .personalInfo, .activityLevel, .energyCalculationMode] {
+        for step in [OnboardingStep.welcome, .personalInfo, .activityLevel] {
             #expect(
                 OnboardingFlow.step(after: step, calorieTarget: 1_750)
                     == OnboardingFlow.step(after: step, calorieTarget: 9_999)
@@ -49,66 +94,12 @@ struct OnboardingFlowTests {
         }
 
         #expect(
-            OnboardingFlow.step(after: .macroRatios(1_750), calorieTarget: 4_000) == .nutrientSelection
+            OnboardingFlow.step(
+                after: .macroRatios(calorieTarget: 1_750, usesDirectGrams: true),
+                calorieTarget: 4_000
+            ) == .nutrientSelection
         )
     }
-
-    // MARK: - Calorie estimate branch
-
-    @Test("Choosing the lifestyle estimate switches Apple Health adjustment off and advances")
-    func lifestyleEstimateDisablesAppleHealth() {
-        #expect(
-            OnboardingFlow.energyModeContinuation(mode: .lifestyleEstimate, isRequestingAuthorization: false)
-                == .disableAppleHealthAndAdvance
-        )
-    }
-
-    @Test("Choosing Apple Health asks for authorization before advancing")
-    func appleHealthRequestsAuthorization() {
-        #expect(
-            OnboardingFlow.energyModeContinuation(mode: .dynamicHealth, isRequestingAuthorization: false)
-                == .requestAppleHealthAuthorization
-        )
-    }
-
-    @Test("A second tap while a request is in flight does nothing, whichever mode is chosen")
-    func inFlightRequestIgnoresTaps() {
-        for mode in EnergyCalculationMode.allCases {
-            #expect(
-                OnboardingFlow.energyModeContinuation(mode: mode, isRequestingAuthorization: true) == .ignore
-            )
-        }
-    }
-
-    // MARK: - Apple Health answer
-
-    @Test("Granted authorization advances the flow")
-    func grantedAuthorizationAdvances() {
-        #expect(OnboardingFlow.appleHealthOutcome(isEnabled: true, message: nil) == .advance)
-    }
-
-    @Test("Refused authorization stays on the step and reverts to the lifestyle estimate")
-    func refusedAuthorizationFallsBack() {
-        #expect(
-            OnboardingFlow.appleHealthOutcome(isEnabled: false, message: "Health is unavailable.")
-                == .fallBackToLifestyleEstimate(message: "Health is unavailable.")
-        )
-    }
-
-    @Test("A refusal with no explanation still falls back")
-    func silentRefusalFallsBack() {
-        #expect(
-            OnboardingFlow.appleHealthOutcome(isEnabled: false, message: nil)
-                == .fallBackToLifestyleEstimate(message: nil)
-        )
-    }
-
-    @Test("A granted request carries no message, so nothing is shown on the way out")
-    func grantedAuthorizationDropsAnyMessage() {
-        #expect(OnboardingFlow.appleHealthOutcome(isEnabled: true, message: "ignored") == .advance)
-    }
-
-    // MARK: - Completing
 
     @Test("A double tap on Start Tracking cannot run the save twice")
     func completionIsNotReentrant() {

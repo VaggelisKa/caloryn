@@ -1,9 +1,6 @@
 import SwiftUI
 import Charts
 
-/// "Calorie trend": the range's logged total and one bar per day (per week at 90 days) —
-/// over days in ink, on track in `historyEaten`, under a step lighter — against the goal line.
-/// The whole section opens the drill-down once there is enough logged to inspect.
 struct HistoryCalorieTrendSection: View {
     let projection: HistoryCalorieTrendProjection
     let drillDownAction: (() -> Void)?
@@ -124,7 +121,7 @@ struct HistoryCalorieTrendSection: View {
 
             RuleMark(y: .value("Target", projection.dailyCalorieTarget))
                 .lineStyle(StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [4, 3]))
-                .foregroundStyle(CalorynTheme.textSecondary)
+                .foregroundStyle(CalorynTheme.dataReference)
         }
         .chartXAxis {
             AxisMarks(values: projection.points.map(\.index)) { value in
@@ -163,7 +160,7 @@ struct HistoryCalorieTrendSection: View {
         .chartYAxis {
             AxisMarks(position: .leading) { _ in
                 AxisGridLine()
-                    .foregroundStyle(CalorynTheme.hairline)
+                    .foregroundStyle(CalorynTheme.separator)
                 AxisValueLabel()
                     .font(CalorynTheme.chartAxisLabel)
                     .foregroundStyle(CalorynTheme.textSecondary)

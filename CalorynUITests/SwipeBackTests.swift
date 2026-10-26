@@ -1,15 +1,5 @@
 import XCTest
 
-/// Edge-swipe back on pushed screens.
-///
-/// Every drill-down in the app hides the system back button so the chevron can be
-/// themed, and hiding it also disables `UINavigationController`'s interactive pop
-/// gesture. The app takes that recognizer's delegate back — see
-/// `UINavigationController+SwipeBack` — and these are the tests that say so. They
-/// assert what a user does: swipe from the left edge, arrive at the previous screen.
-///
-/// Both shapes of push are covered, because they are backed by different navigation
-/// controllers: one inside a tab, one inside a presented sheet.
 final class SwipeBackTests: UITestCase {
     func testGivenAHistoryDetailWhenSwipedFromTheLeftEdgeThenHistoryReturns() {
         let app = launch(fixture: .history)
@@ -67,10 +57,6 @@ final class SwipeBackTests: UITestCase {
         }
     }
 
-    /// Pushes inside a sheet deliberately keep the button and skip the gesture: swiping
-    /// one back drags a slab of the search field's keyboard in from the left edge. This
-    /// pins that decision, so restoring the gesture there has to be a deliberate act
-    /// rather than a side effect.
     func testGivenAPortionPickerInASheetWhenSwipedFromTheLeftEdgeThenItStaysPut() {
         let app = launch(fixture: .customFoods)
         let today = TodayScreen(app: app)
@@ -80,8 +66,7 @@ final class SwipeBackTests: UITestCase {
         given("a food has been picked from the search sheet") {
             XCTAssertTrue(today.isVisible)
             today.tap(today.mealHeader("breakfast"))
-            search.awaitTappable(search.searchField)
-            search.searchField.typeText("Smoothie")
+            search.searchField.awaitKeyboardFocus().typeText("Smoothie")
             search.tap(search.result(named: "Morning Smoothie"))
             XCTAssertTrue(portion.save.awaitExistence())
         }

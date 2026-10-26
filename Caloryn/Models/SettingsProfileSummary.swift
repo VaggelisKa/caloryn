@@ -1,7 +1,5 @@
 import Foundation
 
-/// How the read-only Profile rows on the Settings screen render the stored
-/// measurements: height whole, weight to one decimal, both in metric.
 struct SettingsProfileSummary: Equatable {
     let age: Int
     let sex: Sex
@@ -21,13 +19,10 @@ struct SettingsProfileSummary: Equatable {
 
     var sexText: String { sex.displayName }
 
-    /// Truncated, not rounded — the height slider only ever produces whole
-    /// centimetres.
     var heightText: String { "\(heightCm.truncatedSafely) cm" }
 
     var weightText: String { weightText(locale: .current) }
 
-    /// `weightText` in a given locale. `locale` exists for tests.
     func weightText(locale: Locale) -> String { weightKg.kilogramsFormatted(locale: locale) }
 
     var activityText: String { activityLevel.displayName.sentenceCased }

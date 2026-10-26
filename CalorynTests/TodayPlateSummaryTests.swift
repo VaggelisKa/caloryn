@@ -2,13 +2,9 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// What the restyled Today screens print: the hero's number column, the date heading, a
-/// meal header's total and its empty row, and how Nutrition Details sorts and words a day.
 struct TodayPlateSummaryTests {
     private let us = Locale(identifier: "en_US")
     private let danish = Locale(identifier: "da_DK")
-
-    // MARK: - Hero
 
     @Test("Under budget the hero counts down what is left, against the target it names")
     func heroUnderBudget() {
@@ -58,6 +54,37 @@ struct TodayPlateSummaryTests {
         #expect(hero.caption == "kcal left of 2.000")
     }
 
+    @Test("Before its entrance the hero shows the full budget left, with logged meals at 0")
+    func heroBeforeItsEntrance() {
+        let hero = makeHero(
+            mealTotals: [.breakfast: 382, .lunch: 463, .dinner: 1_377, .snack: 118],
+            isOver: true,
+            remaining: 0,
+            overAmount: 340,
+            consumed: 2_340
+        ).unrevealed
+
+        #expect(hero.isOver == false)
+        #expect(hero.headlineText == "2,000")
+        #expect(hero.caption == "kcal left of 2,000")
+        #expect(hero.eatenLine == "0 of 2,000 eaten")
+        #expect(hero.donut.legend.map { hero.legendValue(for: $0) } == ["0", "0", "0", "0"])
+    }
+
+    @Test("Before its entrance a meal with nothing logged still reads 'not yet'")
+    func heroBeforeItsEntranceKeepsUnloggedMeals() {
+        let hero = makeHero(
+            mealTotals: [.lunch: 463],
+            isOver: false,
+            remaining: 1_537,
+            overAmount: 0,
+            consumed: 463
+        ).unrevealed
+
+        let values = hero.donut.legend.map { hero.legendValue(for: $0) }
+        #expect(values == ["not yet", "0", "not yet", "not yet"])
+    }
+
     @Test("A legend row names its meal and its kcal, or 'not yet' when nothing is logged there")
     func heroLegendWording() {
         let hero = makeHero(
@@ -97,8 +124,6 @@ struct TodayPlateSummaryTests {
         #expect(totals[.lunch] == nil)
     }
 
-    // MARK: - Date heading
-
     @Test("The heading is weekday, day and month")
     func dayTitleText() {
         #expect(DayTitle.text(for: friday17October, in: calendar) == "Friday 17 October")
@@ -116,8 +141,6 @@ struct TodayPlateSummaryTests {
         #expect(DayTitle.accessibilityLabel(for: tomorrow, now: now, in: calendar) == "Tomorrow, Saturday 18 October")
         #expect(DayTitle.accessibilityLabel(for: lastWeek, now: now, in: calendar) == "Friday 10 October")
     }
-
-    // MARK: - Meal header and empty row
 
     @Test("A meal header totals its kcal rounded and grouped, and an empty meal says 'nothing yet'")
     func mealHeaderTotal() {
@@ -147,8 +170,6 @@ struct TodayPlateSummaryTests {
         #expect(dinner.emptyRowText(canCopyYesterday: false) == "Add dinner.")
         #expect(snack.emptyRowText(canCopyYesterday: false) == "Add a snack.")
     }
-
-    // MARK: - Nutrition Details
 
     @Test("Nutrients with a target become bars; the rest become amounts, in nutrient order")
     func detailsSortsTargetsFromAmounts() {
@@ -208,11 +229,11 @@ struct TodayPlateSummaryTests {
     @Test("The line beside the big number names the target, and the overshoot once past it")
     func detailsCalorieTargetText() {
         #expect(
-            NutritionDetailsSections.calorieTargetText(adjustedTarget: 2_000, isOver: false, overAmount: 0, locale: us)
+            NutritionDetailsSections.calorieTargetText(target: 2_000, isOver: false, overAmount: 0, locale: us)
                 == "of 2,000 kcal"
         )
         #expect(
-            NutritionDetailsSections.calorieTargetText(adjustedTarget: 2_000, isOver: true, overAmount: 337, locale: danish)
+            NutritionDetailsSections.calorieTargetText(target: 2_000, isOver: true, overAmount: 337, locale: danish)
                 == "of 2.000 kcal, 337 over"
         )
     }
@@ -248,8 +269,6 @@ struct TodayPlateSummaryTests {
         #expect("".sentenceCased == "")
     }
 
-    // MARK: - Helpers
-
     private var calendar: Calendar {
         var calendar = Calendar(identifier: .gregorian)
         calendar.locale = Locale(identifier: "en_GB")
@@ -257,7 +276,6 @@ struct TodayPlateSummaryTests {
         return calendar
     }
 
-    /// Friday 17 October 2025, midnight UTC.
     private var friday17October: Date {
         calendar.date(from: DateComponents(year: 2025, month: 10, day: 17))!
     }
@@ -280,7 +298,7 @@ struct TodayPlateSummaryTests {
                 remaining: remaining,
                 overAmount: overAmount,
                 roundedConsumed: consumed,
-                adjustedTarget: 2_000
+                target: 2_000
             ),
             donut: CalorieDonutSummary(mealTotals: mealTotals, budget: 2_000, isOver: isOver),
             locale: locale ?? us

@@ -173,7 +173,6 @@ final class FoodProvenancePersistenceTests: XCTestCase {
         XCTAssertEqual(completeEntry.historicalProvenance, .userEntered)
         XCTAssertNil(completeEntry.historicalProvenance.completeness.warningLabel)
 
-        // The earlier partial snapshot stays partial after a later complete edit.
         XCTAssertEqual(partialEntry.historicalProvenance.completeness, .partial)
     }
 
@@ -227,18 +226,10 @@ final class FoodProvenancePersistenceTests: XCTestCase {
         XCTAssertTrue(recipe.provenance.recoveredByFallback)
     }
 
-    // MARK: - Which foods are worth a nutrition notice
-
-    /// A food saved before the provenance fields existed carries unknown
-    /// completeness *and* unknown source. Warning about those meant a permanent
-    /// notice on ordinary foods describing our schema rather than the food.
     func testAFoodThatMerelyPredatesProvenanceIsNotWorthANotice() {
         XCTAssertFalse(FoodProvenance.unknown.warrantsNutritionNotice)
     }
 
-    /// But unknown completeness from a known provider is a real signal: it
-    /// means `hasMinimumUsableNutrition` failed, or a recipe ingredient had
-    /// unknown completeness. Those numbers may genuinely be unusable.
     func testUnknownCompletenessFromAKnownSourceIsWorthANotice() {
         for source in [FoodDataSource.calorynCatalog, .openFoodFactsCommunity, .userEntered, .mixed] {
             let provenance = FoodProvenance(

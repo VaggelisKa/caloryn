@@ -1,3 +1,4 @@
+import SwiftData
 import XCTest
 @testable import Caloryn
 
@@ -47,7 +48,7 @@ final class ContextualFoodSuggestionRankerTests: XCTestCase {
 
     func testScoreUsesDocumentedMealTimeWeekdayRecencyAndFrequencyWeights() throws {
         let foodID = UUID()
-        let now = date(2026, 7, 22, 11) // Wednesday, midday bucket
+        let now = date(2026, 7, 22, 11)
         let result = rank(
             foodIDs: [foodID],
             observations: [
@@ -311,5 +312,171 @@ final class ContextualFoodSuggestionAdapterTests: XCTestCase {
             entry.createdAt = date
             return entry
         }
+    }
+}
+
+@MainActor
+final class ContextualFoodSuggestionDestinationTests: XCTestCase {
+    private let now = makeTestDate(year: 2026, month: 7, day: 22, hour: 11)
+
+    func testPastDayReusesThePortionLoggedOnOrBeforeIt() throws {
+        let context = try makeContext()
+        let oats = insertFood("Oats", into: context)
+        log(oats, [(-6, 120), (-5, 130), (-1, 175), (0, 180)], into: context)
+
+        let suggestions = try suggestions(in: context, destinationDayOffset: -3)
+
+        XCTAssertEqual(suggestions.map(\.resolvedPortionGrams), [130])
+    }
+
+    func testPastDayBeforeEveryRecentLogReusesTheOlderPortion() throws {
+        let context = try makeContext()
+        let oats = insertFood("Oats", into: context)
+        log(oats, [(-120, 90), (-2, 200), (-1, 200), (0, 200)], into: context)
+
+        let suggestions = try suggestions(in: context, destinationDayOffset: -10)
+
+        XCTAssertEqual(suggestions.map(\.resolvedPortionGrams), [90])
+    }
+
+    func testDayOlderThanTheHistoryWindowReusesThePortionLoggedBeforeIt() throws {
+        let context = try makeContext()
+        let oats = insertFood("Oats", into: context)
+        log(oats, [(-120, 90), (-2, 200), (-1, 200), (0, 200)], into: context)
+
+        let suggestions = try suggestions(in: context, destinationDayOffset: -100)
+
+        XCTAssertEqual(suggestions.map(\.resolvedPortionGrams), [90])
+    }
+
+    func testFutureDayReusesThePortionAlreadyLoggedForAnEarlierFutureDay() throws {
+        let context = try makeContext()
+        let oats = insertFood("Oats", into: context)
+        log(oats, [(-2, 100), (-1, 100), (0, 100), (2, 250)], into: context)
+
+        let suggestions = try suggestions(in: context, destinationDayOffset: 3)
+
+        XCTAssertEqual(suggestions.map(\.resolvedPortionGrams), [250])
+    }
+
+    func testEquallyRecentLogsWithDifferentPortionsFallBackToTheServing() throws {
+        let context = try makeContext()
+        let oats = insertFood("Oats", into: context)
+        log(oats, [(-2, 100), (-1, 100), (0, 120), (0, 140)], into: context)
+
+        let suggestions = try suggestions(in: context, destinationDayOffset: 0)
+
+        XCTAssertEqual(suggestions.map(\.resolvedPortionGrams), [80])
+    }
+
+    func testUnavailableFoodIsNotSuggestedAlongsideAnAvailableOne() throws {
+        let context = try makeContext()
+        let oats = insertFood("Oats", into: context)
+        let unnamed = insertFood("   ", into: context)
+        log(oats, [(-2, 100), (-1, 100), (0, 100)], into: context)
+        log(unnamed, [(-2, 100), (-1, 100), (0, 100)], into: context)
+
+        let suggestions = try suggestions(in: context, destinationDayOffset: 0)
+
+        XCTAssertEqual(suggestions.map(\.foodID), [oats.id])
+    }
+
+    func testFoodsLoggedOnlyBeforeTheHistoryWindowDoNotChangeSuggestions() throws {
+        let context = try makeContext()
+        let oats = insertFood("Oats", into: context)
+        log(oats, [(-6, 120), (-2, 100), (-1, 100), (0, 100)], into: context)
+        let before = try suggestions(in: context, destinationDayOffset: 0)
+
+        let soup = insertFood("Soup", into: context)
+        log(soup, (91...190).map { (-$0, 150) }, into: context)
+        let after = try suggestions(in: context, destinationDayOffset: 0)
+
+        XCTAssertEqual(before.map(\.foodID), [oats.id])
+        XCTAssertEqual(after, before)
+    }
+
+    func testRankingTheStoreMatchesRankingEveryLoggedEntry() throws {
+        let context = try makeContext()
+        let oats = insertFood("Oats", into: context)
+        let soup = insertFood("Soup", into: context)
+        log(oats, [(-120, 90), (-6, 120), (-5, 130), (-2, 200), (-1, 175), (0, 180), (2, 250)], into: context)
+        log(soup, [(-95, 60), (-40, 300), (-3, 310), (-1, 320), (1, 330), (4, 340)], into: context)
+        try context.save()
+        let foods = try context.fetch(FetchDescriptor<FoodItem>())
+        let entries = try context.fetch(FetchDescriptor<FoodLogEntry>())
+
+        for offset in [-100, -10, -4, -1, 0, 1, 3, 7] {
+            let fromStore = ContextualFoodSuggestionAdapter.rank(
+                foods: foods,
+                modelContext: context,
+                destinationDate: day(offset),
+                destinationMeal: .breakfast,
+                now: now
+            )
+            let fromEveryEntry = ContextualFoodSuggestionAdapter.rank(
+                foods: foods,
+                entries: entries,
+                destinationDate: day(offset),
+                destinationMeal: .breakfast,
+                now: now
+            )
+
+            XCTAssertEqual(fromStore.count, 2, "day \(offset)")
+            XCTAssertEqual(fromStore, fromEveryEntry, "day \(offset)")
+        }
+    }
+
+    private func suggestions(
+        in context: ModelContext,
+        destinationDayOffset: Int
+    ) throws -> [ContextualFoodSuggestion] {
+        try context.save()
+        return ContextualFoodSuggestionAdapter.rank(
+            foods: try context.fetch(FetchDescriptor<FoodItem>()),
+            entries: try context.fetch(FetchDescriptor<FoodLogEntry>()),
+            destinationDate: day(destinationDayOffset),
+            destinationMeal: .breakfast,
+            now: now
+        )
+    }
+
+    private func insertFood(_ name: String, into context: ModelContext) -> FoodItem {
+        let food = makeTestFoodItem(name: name, defaultServingG: 80)
+        context.insert(food)
+        return food
+    }
+
+    private func log(
+        _ food: FoodItem,
+        _ portions: [(dayOffset: Int, grams: Double)],
+        into context: ModelContext
+    ) {
+        for portion in portions {
+            let date = day(portion.dayOffset)
+            let entry = makeTestEntry(
+                date: date,
+                mealType: .breakfast,
+                foodItem: food,
+                portionGrams: portion.grams
+            )
+            entry.createdAt = date
+            context.insert(entry)
+        }
+    }
+
+    private func day(_ offset: Int) -> Date {
+        Calendar.current.date(byAdding: .day, value: offset, to: now)!
+    }
+
+    private func makeContext() throws -> ModelContext {
+        ModelContext(
+            try ModelContainer(
+                for: UserProfile.self,
+                FoodItem.self,
+                FoodLogEntry.self,
+                RecipeIngredient.self,
+                configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+            )
+        )
     }
 }

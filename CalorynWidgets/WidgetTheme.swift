@@ -1,17 +1,25 @@
 import SwiftUI
 
-/// Widget-side names for the shared palette.
-///
-/// The colours themselves live in `CalorynShared/SharedColors.xcassets`, which is a member of
-/// both the app and the widget target — so these resolve to the same Color Sets the app uses
-/// and cannot drift from it. Add colours there, never as literals here.
 enum WidgetTheme {
-    static let sage = Color(.sage)
-    static let terracotta = Color(.terracotta)
+    static func mealFill(_ meal: WidgetMeal) -> Color {
+        switch meal {
+        case .breakfast: CalorynTheme.mealBreakfast
+        case .lunch: CalorynTheme.mealLunch
+        case .dinner: CalorynTheme.mealDinner
+        case .snack: CalorynTheme.mealSnack
+        }
+    }
 
-    /// Widgets sit on the home screen rather than on a page canvas, so this deliberately
-    /// tracks the card surface rather than `pageBackground`.
-    static let background = Color(.cardBackground)
+    static func mealInk(_ meal: WidgetMeal) -> Color {
+        switch meal {
+        case .breakfast: CalorynTheme.mealBreakfastInk
+        case .lunch: CalorynTheme.mealLunchInk
+        case .dinner: CalorynTheme.mealDinnerInk
+        case .snack: CalorynTheme.mealSnackInk
+        }
+    }
 
-    static let ringTrack = Color.secondary.opacity(0.16)
+    static func mealWash(_ meal: WidgetMeal) -> Color {
+        mealFill(meal).opacity(0.16)
+    }
 }

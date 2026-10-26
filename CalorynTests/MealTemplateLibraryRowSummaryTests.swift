@@ -2,8 +2,6 @@ import XCTest
 @testable import Caloryn
 
 final class MealTemplateLibraryRowSummaryTests: XCTestCase {
-    // MARK: - Detail line
-
     func testTheDetailLineNamesTheItemsInTheMealsOwnOrder() {
         let summary = makeSummary(items: [
             .init(name: "Skyr", calories: 95),
@@ -18,15 +16,12 @@ final class MealTemplateLibraryRowSummaryTests: XCTestCase {
         XCTAssertEqual(makeSummary(items: [.init(name: "Rugbrød", calories: 94)]).detail, "Rugbrød")
     }
 
-    /// A meal whose items could not be read is still listed, so it says why it is empty.
     func testAMealWithNoReadableItemsReadsAsUnavailable() {
         let summary = makeSummary(items: [])
 
         XCTAssertFalse(summary.isAvailable)
         XCTAssertEqual(summary.detail, "Unavailable meal")
     }
-
-    // MARK: - Trailing total
 
     func testTheTotalIsEveryItemAddedUpAndRoundedToWholeCalories() {
         let summary = makeSummary(items: [
@@ -38,12 +33,10 @@ final class MealTemplateLibraryRowSummaryTests: XCTestCase {
         XCTAssertEqual(summary.caloriesText, "276")
     }
 
-    /// "0 kcal" would claim the meal is free; an unreadable meal has no total at all.
     func testAnUnavailableMealPrintsNoTotal() {
         XCTAssertNil(makeSummary(items: []).caloriesText)
     }
 
-    /// A figure that never became a number must not turn the whole meal into NaN.
     func testANonFiniteItemCountsAsNothing() {
         let summary = makeSummary(items: [
             .init(name: "Skyr", calories: 95),
@@ -53,8 +46,6 @@ final class MealTemplateLibraryRowSummaryTests: XCTestCase {
 
         XCTAssertEqual(summary.caloriesText, "95")
     }
-
-    // MARK: - Accessibility
 
     func testTheSpokenLabelNamesTheMealItsItemsAndTheTotal() {
         let summary = makeSummary(
@@ -71,8 +62,6 @@ final class MealTemplateLibraryRowSummaryTests: XCTestCase {
             "Office lunch, Unavailable meal"
         )
     }
-
-    // MARK: - Helpers
 
     private func makeSummary(
         name: String = "Meal",

@@ -8,7 +8,6 @@ final class FakeReminderCenter: ReminderNotificationCenter, @unchecked Sendable 
     var removedIdentifierBatches: [[String]] = []
     var addedRequests: [UNNotificationRequest] = []
     var addError: Error?
-    /// Test hook to suspend an apply mid-reconciliation.
     var beforeAuthorizationCheck: (() async -> Void)?
 
     func authorizationStatus() async -> UNAuthorizationStatus {
@@ -122,8 +121,6 @@ final class DailyReminderSchedulerTests: XCTestCase {
         await scheduler.apply(makePlan())
         XCTAssertEqual(center.pending.count, 7)
 
-        // Same plan, permission revoked in iOS Settings: only a forced apply
-        // gets past the dedupe guard to notice and clear the stale requests.
         center.status = .denied
         await scheduler.apply(makePlan(), force: true)
 
@@ -140,7 +137,6 @@ final class DailyReminderSchedulerTests: XCTestCase {
         await scheduler.apply(makePlan())
         XCTAssertTrue(center.pending.isEmpty)
 
-        // A partial apply must not be cached, so the identical plan is retried.
         center.addError = nil
         await scheduler.apply(makePlan())
 
@@ -168,7 +164,6 @@ final class DailyReminderSchedulerTests: XCTestCase {
         await firstApply.value
         await secondApply.value
 
-        // Applies are serialized, so the newer plan always lands last.
         XCTAssertEqual(center.addedRequests.count, 14)
         XCTAssertEqual(center.pending.count, 7)
         XCTAssertEqual(

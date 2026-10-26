@@ -8,9 +8,6 @@ struct PortionPickerView: View {
     let isNewFood: Bool
     let snackIndex: Int
     let existingEntry: FoodLogEntry?
-    /// The portion a contextual suggestion arrived with. Outranks the food's
-    /// default serving, because the suggestion knows what this user actually
-    /// logs; outranked by an existing entry, which is the real thing.
     let suggestedPortionGrams: Double?
     var onLogged: (() -> Void)?
     var onDeleted: ((FoodLogEntry) -> Void)?
@@ -18,8 +15,6 @@ struct PortionPickerView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
-    /// How the portion is being expressed and the grams behind it. Every rule
-    /// that reconciles the three wheels lives there. See `PortionSelection`.
     @State private var selection: PortionSelection
     @State private var selectedMeal: MealType
     @State private var showingDeleteConfirmation = false
@@ -27,8 +22,6 @@ struct PortionPickerView: View {
     @State private var hasPersistedPersonalFood = false
     @State private var replacementFoodItem: FoodItem?
 
-    /// Owned here rather than inside the field, so a tap anywhere on the page
-    /// can clear it. See `dismissesGramKeypadOnTap`.
     @FocusState private var isGramsFieldFocused: Bool
 
     private typealias PortionMode = PortionSelection.Mode
@@ -81,8 +74,6 @@ struct PortionPickerView: View {
         replacementFoodItem ?? foodItem
     }
 
-    /// Which rows appear, their order, labels and formatting all live in
-    /// `PortionNutrientBreakdown`; the view only draws them.
     private var nutritionDetails: [DetailNutrient] {
         PortionNutrientBreakdown(nutrition: previewNutrition).items
     }
@@ -129,20 +120,18 @@ struct PortionPickerView: View {
                     } label: {
                         Label("Close", systemImage: "xmark")
                             .font(CalorynTheme.toolbarIcon)
-                            .foregroundStyle(CalorynTheme.textPrimary)
+                            .foregroundStyle(CalorynTheme.accent)
                     }
                     .accessibilityLabel("Close")
                 }
 
                 ToolbarItem(placement: .topBarTrailing) {
-                    // Ink, not red: red is lunch now. The confirmation dialog that
-                    // follows is where the destructive colour belongs.
                     Button(role: .destructive) {
                         showingDeleteConfirmation = true
                     } label: {
                         Label("Delete", systemImage: "trash")
                             .font(CalorynTheme.toolbarIcon)
-                            .foregroundStyle(CalorynTheme.textPrimary)
+                            .foregroundStyle(CalorynTheme.accent)
                     }
                     .accessibilityLabel("Delete Log Entry")
                     .accessibilityIdentifier("portionPicker.delete")
@@ -156,7 +145,7 @@ struct PortionPickerView: View {
                     } label: {
                         Label("Back", systemImage: "chevron.left")
                             .font(CalorynTheme.toolbarIcon)
-                            .foregroundStyle(CalorynTheme.textPrimary)
+                            .foregroundStyle(CalorynTheme.accent)
                     }
                     .accessibilityLabel("Back")
                     .accessibilityIdentifier("portionPicker.back")
@@ -173,7 +162,7 @@ struct PortionPickerView: View {
                     } label: {
                         Label("Edit Food Details", systemImage: "pencil")
                             .font(CalorynTheme.toolbarIcon)
-                            .foregroundStyle(CalorynTheme.textPrimary)
+                            .foregroundStyle(CalorynTheme.accent)
                     }
                     .accessibilityLabel("Edit Food Details")
                     .accessibilityHint("Creates or updates your private version of this barcode")
@@ -181,8 +170,6 @@ struct PortionPickerView: View {
             }
         }
         .foodLogBottomAction {
-            // "Log to lunch" in the lunch fill: the one primary button that is not ink.
-            // Editing keeps the ink button — the entry already belongs to a meal.
             Button(action: savePortion) {
                 Text(saveButtonTitle)
                     .contentTransition(.opacity)
@@ -202,9 +189,6 @@ struct PortionPickerView: View {
                 existingFood: activeFoodItem,
                 onSaved: { savedFood in
                     replacementFoodItem = savedFood
-                    // Editing the food can remove the serving the portion is
-                    // expressed in, so the picker has to take on the new shape
-                    // rather than keep a mode the food no longer supports.
                     selection.update(shape: PortionSelection.Shape(foodItem: savedFood))
                     hasPersistedPersonalFood = true
                     showingFoodEditor = false
@@ -230,8 +214,6 @@ struct PortionPickerView: View {
         )
     }
 
-    /// The figure in the ink of the meal it will land in, so changing the meal chip
-    /// below recolours it.
     private var caloriePreview: some View {
         FoodLogCaloriePreview(
             calories: previewCalories.rounded().truncatedSafely,
@@ -271,7 +253,7 @@ struct PortionPickerView: View {
                 } label: {
                     Text("Edit food details")
                         .fontWeight(.semibold)
-                        .foregroundStyle(CalorynTheme.textPrimary)
+                        .foregroundStyle(CalorynTheme.accent)
                         .underline()
                 }
                 .buttonStyle(.plain)
@@ -287,8 +269,6 @@ struct PortionPickerView: View {
 
     private var maxServingCount: Int { selection.maxServingCount }
 
-    /// The ways this food can be measured besides grams: none, a countable serving
-    /// ("pot"), or a share of a recipe. Chosen with chips beside "How much".
     private var unitOptions: [UnitOption] {
         if activeFoodItem.isRecipe {
             return [UnitOption(label: "grams", mode: .grams), UnitOption(label: "serving", mode: .recipeServing)]
@@ -304,12 +284,8 @@ struct PortionPickerView: View {
         let mode: PortionMode
     }
 
-
     private var portionPicker: some View {
         VStack(alignment: .leading, spacing: 10) {
-            // A food with no second unit gets no unit control at all: the stepper already
-            // reads "180 g". The chips sit beside the title, or under it when a large text
-            // size will not fit both on one line.
             ViewThatFits(in: .horizontal) {
                 HStack(alignment: .center, spacing: 8) {
                     FoodLogSectionTitle("How much")
@@ -333,8 +309,6 @@ struct PortionPickerView: View {
             Group {
                 switch selection.mode {
                 case .grams:
-                    // Typed, not spun: a wheel is fine for "3 slices" and
-                    // miserable for "340 g". See `GramAmountField`.
                     GramAmountField(
                         text: $selection.gramsInput,
                         quickOptions: selection.quickGramOptions,
@@ -352,19 +326,11 @@ struct PortionPickerView: View {
                         }
                     )
                 case .serving:
-                    // The same pill as grams, stepping a count. A wheel drew a system-grey
-                    // selection band, needed 150pt of height and clipped its last row.
                     servingStepper
                 case .recipeServing:
                     recipeServingStepper
                 }
             }
-            // Choosing a unit swaps this whole area between the stepper and a
-            // wheel, which without a transition is an abrupt cut. The `id` is
-            // what makes it one: without it SwiftUI reuses the view across the
-            // switch and there is no insertion to transition. The old control
-            // leaves first so the two never cross-dissolve into mush, and the
-            // scale is what makes a fade between two controls read at all.
             .id(selection.mode)
             .transition(
                 .asymmetric(
@@ -374,7 +340,6 @@ struct PortionPickerView: View {
                 )
             )
             .frame(maxWidth: .infinity, alignment: .leading)
-            // Scoped to the mode, so a step animates only the number.
             .animation(.easeInOut(duration: 0.28), value: selection.mode)
             // No identifier on this container. An identifier here is
             // inherited by every descendant, so it overwrote the field's
@@ -401,8 +366,6 @@ struct PortionPickerView: View {
         .accessibilityIdentifier("portionPicker.servingCount")
     }
 
-    /// A share of the recipe, stepped through the same options the wheel listed
-    /// (¼, ½, 1, 2, 3, 4).
     private var recipeServingStepper: some View {
         let options = PortionSelection.recipeServingOptions
         let index = options.firstIndex { $0.id == selection.recipeServingID } ?? 0
@@ -419,11 +382,11 @@ struct PortionPickerView: View {
         .accessibilityIdentifier("portionPicker.recipeServing")
     }
 
-    /// Grams or the food's own unit, as ink chips.
     private var unitChips: some View {
         HStack(spacing: 6) {
             ForEach(unitOptions, id: \.mode) { option in
                 Button {
+                    if selection.mode != option.mode { CalorynHaptics.selectionChanged() }
                     selection.mode = option.mode
                 } label: {
                     Text(option.label)
@@ -453,9 +416,6 @@ struct PortionPickerView: View {
         }
     }
 
-    /// The four meals as chips, each in its own colour: the chosen one filled, the others
-    /// outlined with the meal's ink. Two rows when a large text size will not fit four, and
-    /// one chip a row when it will not fit two.
     private var mealSelector: some View {
         VStack(alignment: .leading, spacing: 10) {
             FoodLogSectionTitle("Which meal")
@@ -493,10 +453,9 @@ struct PortionPickerView: View {
 
     private func mealChip(_ meal: MealType) -> some View {
         Button {
+            if selectedMeal != meal { CalorynHaptics.selectionChanged() }
             selectedMeal = meal
         } label: {
-            // The label keeps its own width and the chip stretches round it, so the
-            // four share the row evenly the way the board lays them out.
             Text(meal.displayName)
                 .fixedSize()
                 .frame(maxWidth: .infinity)
@@ -524,7 +483,6 @@ struct PortionPickerView: View {
                 portionGrams: portionGrams,
                 snackIndex: snackIndex
             )
-            try? modelContext.save()
         } else {
             DailyFoodLogCommands.logFood(
                 foodItem: activeFoodItem,
@@ -535,7 +493,9 @@ struct PortionPickerView: View {
                 modelContext: modelContext,
                 snackIndex: snackIndex
             )
-            try? modelContext.save()
+        }
+        if (try? modelContext.save()) != nil {
+            CalorynHaptics.success()
         }
         if let onLogged {
             onLogged()
@@ -557,7 +517,6 @@ struct PortionPickerView: View {
         }
         dismiss()
     }
-
 }
 
 #Preview("Cup serving") {

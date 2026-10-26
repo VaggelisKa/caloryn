@@ -2,21 +2,14 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-/// What the calorie-trend drill-down says about a selected day or week: the
-/// meal split, the food-driver framing, the unlogged wording and the
-/// biggest-swing rule. Dates arrive already formatted, so nothing here depends
-/// on the device calendar.
 @Suite("History calorie trend breakdown")
 struct HistoryCalorieTrendBreakdownTests {
-
-    // MARK: - Meal split
-
     @Test("given a day with two meals logged, when splitting it, then all four meals still get a row")
     func everyMealGetsARowInCanonicalOrder() {
         let breakdown = makeDay(mealCalories: [.breakfast: 400, .dinner: 700])
 
-        #expect(breakdown.mealRows.map(\.mealType) == [.breakfast, .lunch, .dinner, .snack])
-        #expect(breakdown.mealRows.map(\.calories) == [400, 0, 700, 0])
+        #expect(breakdown.mealRows.map(\.mealType) == [.breakfast, .lunch, .snack, .dinner])
+        #expect(breakdown.mealRows.map(\.calories) == [400, 0, 0, 700])
     }
 
     @Test("given a meal with no calories, when rendering its row, then it reads as absent rather than as zero")
@@ -41,10 +34,8 @@ struct HistoryCalorieTrendBreakdownTests {
     func theSnackRowReadsPlural() {
         let titles = makeDay(mealCalories: [:]).mealRows.map(\.title)
 
-        #expect(titles == ["Breakfast", "Lunch", "Dinner", "Snacks"])
+        #expect(titles == ["Breakfast", "Lunch", "Snacks", "Dinner"])
     }
-
-    // MARK: - Food drivers
 
     @Test("given a day over target, when titling the food list, then it reads as an explanation")
     func overTargetTheFoodsExplainTheOverage() {
@@ -93,8 +84,6 @@ struct HistoryCalorieTrendBreakdownTests {
         #expect(HistoryCalorieTrendDayBreakdown.entryCountText(count) == expected)
     }
 
-    // MARK: - Unlogged day
-
     @Test("given a day with nothing logged, when describing it, then the day's own target is named")
     func anUnloggedDayNamesItsOwnTarget() {
         let breakdown = makeDay(isLogged: false, dailyCalorieTarget: 950)
@@ -102,8 +91,6 @@ struct HistoryCalorieTrendBreakdownTests {
         #expect(breakdown.isLogged == false)
         #expect(breakdown.unloggedText == "No food logged. Target was 950 kcal.")
     }
-
-    // MARK: - Selected week
 
     @Test("given a week with nothing logged, when describing it, then it says so rather than showing zeroes")
     func anEmptyWeekSaysSo() {
@@ -163,8 +150,6 @@ struct HistoryCalorieTrendBreakdownTests {
         #expect(breakdown.visibleFoods.count == HistoryCalorieTrendDayBreakdown.visibleFoodLimit)
         #expect(breakdown.showsFoodSection)
     }
-
-    // MARK: - Helpers
 
     private func makeDay(
         isLogged: Bool = true,

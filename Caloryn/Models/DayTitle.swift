@@ -1,24 +1,8 @@
 import Foundation
 
-/// The heading for one calendar day: "Friday 17 October" on Today's date row and as the
-/// Nutrition Details sheet's title.
-///
-/// The printed title is the date even when the day is today — the date row says which day,
-/// the chevrons beside it move between days — but VoiceOver hears "Today, Friday 17 October",
-/// so the relative day the old "Today" heading carried is not lost to anyone listening.
-///
-/// Every rule takes the calendar it is judged in: its locale names the weekday and month, its
-/// time zone decides which day `date` falls on. Day before month, as the app's other date
-/// formats are (`Date.shortFormatted`).
 enum DayTitle {
     static func text(for date: Date, in calendar: Calendar = .current) -> String {
-        let formatter = DateFormatter()
-        // `locale` first: assigning it resets `calendar` to the locale's own.
-        formatter.locale = calendar.locale ?? .current
-        formatter.calendar = calendar
-        formatter.timeZone = calendar.timeZone
-        formatter.dateFormat = "EEEE d MMMM"
-        return formatter.string(from: date)
+        date.formatted(pattern: "EEEE d MMMM", in: calendar)
     }
 
     static func accessibilityLabel(

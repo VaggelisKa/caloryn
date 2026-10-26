@@ -52,6 +52,7 @@ enum FavoriteFoodLogging {
         destinationMeal: MealType,
         destinationDate: Date,
         destinationSnackIndex: Int = 0,
+        history: [FoodLogEntry]? = nil,
         calendar: Calendar = .current
     ) -> FavoriteFoodLogPlan {
         let date = calendar.startOfDay(for: destinationDate)
@@ -71,7 +72,7 @@ enum FavoriteFoodLogging {
         }
 
         let action = lastPortionAction(
-            for: food,
+            in: history ?? food.logEntries ?? [],
             onOrBefore: date,
             calendar: calendar
         )
@@ -217,14 +218,11 @@ enum FavoriteFoodLogging {
         return true
     }
 
-    /// Returns the literal portion from the favorite's most recently created
-    /// live log entry, regardless of meal. Ambiguous or unsafe latest entries
-    /// are intentionally not replaced with an older value.
     static func mostRecentlyLoggedSafePortion(for food: FoodItem) -> Double? {
         reusablePortion(
             from: food.logEntries ?? [],
             where: { _ in true },
-            sortedBy: { lhs, rhs in
+            orderedBy: { lhs, rhs in
                 if lhs.createdAt != rhs.createdAt {
                     return lhs.createdAt > rhs.createdAt
                 }
@@ -236,20 +234,26 @@ enum FavoriteFoodLogging {
         )
     }
 
+    static func lastPortionCutoff(
+        onOrBefore destinationDate: Date,
+        calendar: Calendar
+    ) -> Date? {
+        calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: destinationDate))
+    }
+
     private static func lastPortionAction(
-        for food: FoodItem,
+        in entries: [FoodLogEntry],
         onOrBefore destinationDate: Date,
         calendar: Calendar
     ) -> FavoriteFoodLogPlan.Action {
-        let start = calendar.startOfDay(for: destinationDate)
-        guard let end = calendar.date(byAdding: .day, value: 1, to: start) else {
+        guard let end = lastPortionCutoff(onOrBefore: destinationDate, calendar: calendar) else {
             return .confirmQuantity
         }
 
         guard let portion = reusablePortion(
-            from: food.logEntries ?? [],
+            from: entries,
             where: { $0.date < end },
-            sortedBy: { lhs, rhs in
+            orderedBy: { lhs, rhs in
                 if lhs.date != rhs.date {
                     return lhs.date > rhs.date
                 }
@@ -270,21 +274,14 @@ enum FavoriteFoodLogging {
     private static func reusablePortion(
         from entries: [FoodLogEntry],
         where isIncluded: (FoodLogEntry) -> Bool,
-        sortedBy areInIncreasingOrder: (FoodLogEntry, FoodLogEntry) -> Bool,
+        orderedBy isMoreRecent: (FoodLogEntry, FoodLogEntry) -> Bool,
         hasSameRecency: (FoodLogEntry, FoodLogEntry) -> Bool
     ) -> Double? {
-        let orderedEntries = entries
-            .filter(isIncluded)
-            .sorted(by: areInIncreasingOrder)
-
-        guard let latest = orderedEntries.first else {
-            return nil
-        }
-
-        let equallyRecentPortions = orderedEntries
-            .prefix { hasSameRecency($0, latest) }
-            .map(\.portionGrams)
-        guard equallyRecentPortions.allSatisfy({ $0 == latest.portionGrams }),
+        let includedEntries = entries.filter(isIncluded)
+        guard let latest = includedEntries.min(by: isMoreRecent),
+              includedEntries.allSatisfy({
+                  !hasSameRecency($0, latest) || $0.portionGrams == latest.portionGrams
+              }),
               isSafePortion(latest.portionGrams) else {
             return nil
         }

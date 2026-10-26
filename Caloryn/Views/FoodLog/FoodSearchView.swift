@@ -2,17 +2,17 @@ import SwiftUI
 import SwiftData
 import UIKit
 
-/// The row builders live in `FoodSearchRows.swift`; the members they touch
-/// are internal rather than private so that same-type extension can reach
-/// them from its own file. Nothing else should.
 struct FoodSearchView: View {
     struct MultiAddPresentation: Identifiable {
         let id = UUID()
         let groups: [MultiAddSelectionGroup]
     }
 
-    /// A saved food on its way to the portion picker, carrying the portion a
-    /// contextual suggestion came with when that is where the tap started.
+    struct PastedFoodPresentation: Identifiable {
+        let id = UUID()
+        let confirmation: PastedFoodConfirmation
+    }
+
     struct PortionDestination: Identifiable, Hashable {
         let food: FoodItem
         var suggestedPortionGrams: Double?
@@ -30,6 +30,8 @@ struct FoodSearchView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.locale) private var locale
     @Query(sort: \FoodItem.lastUsed, order: .reverse) private var recentFoods: [FoodItem]
     @Query(sort: \MealTemplate.updatedAt, order: .reverse) private var mealTemplates: [MealTemplate]
 
@@ -38,10 +40,9 @@ struct FoodSearchView: View {
     @State private var selectedResult: FoodSearchResult?
     @State var selectedFoodItem: PortionDestination?
     @State private var showingScanner = false
+    @State private var revealFoodAfterScannerDismiss = false
     @State private var hasPresentedInitialScanner = false
     @State private var showingCustomFoodForm = false
-    /// Every rule about what a scan, a failure and a recovery do to this
-    /// screen's state lives in `BarcodeLookupFlow`.
     @State private var barcodeFlow = BarcodeLookupFlow(
         error: FoodSearchService.debugInitialBarcodeFailure,
         lastScannedBarcode: FoodSearchService.debugInitialBarcode
@@ -52,15 +53,17 @@ struct FoodSearchView: View {
     @State private var suggestionSnapshot: [ContextualFoodSuggestion] = []
     @State private var hasCapturedSuggestions = false
     @State var multiAddPresentation: MultiAddPresentation?
+    @State private var pastedFoodPresentation: PastedFoodPresentation?
+    @State private var pasteOffer = ChatbotPasteOffer()
+    @State private var pasteRejectionMessage: String?
+    @AppStorage("chatbotPasteboardGeneration") private var pasteboardGeneration = 0
+    @AppStorage("chatbotPasteRejectedGeneration") private var rejectedPasteGeneration: Int?
     @ScaledMetric(relativeTo: .body)
     var selectionIndicatorWidth: CGFloat = 22
-    /// The search well and the scanner button beside it share one height, the board's 46pt.
     @ScaledMetric(relativeTo: .body)
     private var searchControlHeight: CGFloat = 46
     @FocusState private var isSearchFocused: Bool
 
-    /// Every rule about what this screen lists lives in `FoodSearchListing`.
-    /// The view reads it; it does not decide anything itself.
     private var listing: FoodSearchListing {
         FoodSearchListing(
             mode: FoodSearchListing.Mode(mode),
@@ -72,53 +75,54 @@ struct FoodSearchView: View {
         )
     }
 
-    private var showingRecent: Bool { listing.showingRecent }
-
-    private var recipes: [FoodItem] { listing.recipes }
-
-    private var manualEntries: [FoodItem] { listing.manualEntries }
-
-    private var displayedRecentFoods: [FoodItem] { listing.displayedRecentFoods }
-
-    private var contextualSuggestions: [(FoodItem, ContextualFoodSuggestion)] {
-        listing.contextualSuggestions
-    }
-
     private var selectedItemCount: Int {
         multiAddSelection.itemCount
     }
 
-    private var selectableOptionCount: Int {
-        listing.selectableOptionCount(
-            isLookingUpBarcode: barcodeFlow.isLookingUp,
-            hasBarcodeLookupError: barcodeFlow.hasError
-        )
+    private var screenContent: FoodSearchScreenContent {
+        screenContent(for: listing)
     }
 
-    /// Which of the screen's seven states is showing. `FoodSearchScreenContent`
-    /// owns the precedence; the view only renders the answer.
-    private var screenContent: FoodSearchScreenContent {
+    private func screenContent(for listing: FoodSearchListing) -> FoodSearchScreenContent {
         FoodSearchScreenContent.resolve(
             isLookingUpBarcode: barcodeFlow.isLookingUp,
             hasBarcodeLookupError: barcodeFlow.hasError,
-            showingRecent: showingRecent,
+            showingRecent: listing.showingRecent,
             isSearching: searchService.isSearching,
             hasSearchFailure: searchService.failure != nil,
-            hasLocalMatches: hasLocalMatches,
-            hasProductSearchResults: hasProductSearchResults
+            hasLocalMatches: listing.hasLocalMatches,
+            hasProductSearchResults: listing.hasProductSearchResults
         )
     }
 
     var body: some View {
+        let resolvedListing = listing
+        let resolvedScreenContent = screenContent(for: resolvedListing)
         NavigationStack {
             VStack(spacing: 0) {
-                searchBar
+                if showsSearchBar(for: resolvedScreenContent) {
+                    searchBar
+                }
 
-                switch screenContent {
-                case .barcodeLookupFailure, .barcodeLookupProgress:
+                if pasteOffer.showsPasteRow(
+                    in: mode,
+                    on: resolvedScreenContent,
+                    isSelectingMultiple: isSelectingMultiple,
+                    rejectedGeneration: rejectedPasteGeneration
+                ) {
+                    ChatbotPasteRow(onPaste: receivePaste)
+                }
+
+                switch resolvedScreenContent {
+                case .barcodeLookupProgress:
+                    BarcodeLookupProgressView(
+                        barcode: barcodeFlow.pendingBarcode,
+                        onCancel: sheetLookupCancel
+                    )
+                case .barcodeLookupFailure:
                     barcodeLookupOverlay
                 case .recent:
-                    recentFoodsList
+                    recentFoodsList(resolvedListing)
                 case .searchProgress:
                     FoodSearchSkeletonList()
                 case .searchFailure:
@@ -141,7 +145,7 @@ struct FoodSearchView: View {
                             .foregroundStyle(CalorynTheme.textSecondary)
                     }
                 case .results:
-                    searchResultsList
+                    searchResultsList(resolvedListing)
                 }
             }
             .calorynSheetCanvas()
@@ -157,15 +161,19 @@ struct FoodSearchView: View {
                     } label: {
                         Label("Close", systemImage: "xmark")
                             .font(CalorynTheme.toolbarIcon)
-                            .foregroundStyle(CalorynTheme.textPrimary)
+                            .foregroundStyle(CalorynTheme.accent)
                     }
                     .accessibilityLabel("Close")
+                    .accessibilityIdentifier("foodSearch.close")
                 }
                 if mode.supportsMultiSelection {
                     ToolbarItem(placement: .primaryAction) {
                         let isEnabled = mode.isMultiSelectionControlEnabled(
                             isSelectingMultiple: isSelectingMultiple,
-                            selectableOptionCount: selectableOptionCount
+                            selectableOptionCount: resolvedListing.selectableOptionCount(
+                                isLookingUpBarcode: barcodeFlow.isLookingUp,
+                                hasBarcodeLookupError: barcodeFlow.hasError
+                            )
                         )
                         Button {
                             toggleMultiSelectionMode()
@@ -174,7 +182,7 @@ struct FoodSearchView: View {
                                 .font(CalorynTheme.toolbarAction)
                                 .contentTransition(.opacity)
                                 .foregroundStyle(
-                                    isEnabled ? CalorynTheme.textPrimary : CalorynTheme.textSecondary
+                                    isEnabled ? CalorynTheme.accent : CalorynTheme.textSecondary
                                 )
                                 .animation(
                                     selectionModeAnimation,
@@ -187,6 +195,7 @@ struct FoodSearchView: View {
                                 : "Select multiple items"
                         )
                         .disabled(!isEnabled)
+                        .accessibilityIdentifier("foodSearch.selectMultiple")
                     }
                 } else if mode.allowsManualEntryCreation {
                     ToolbarItem(placement: .primaryAction) {
@@ -196,7 +205,7 @@ struct FoodSearchView: View {
                         } label: {
                             Label("Create Manual Entry", systemImage: "plus")
                                 .font(CalorynTheme.toolbarIcon)
-                                .foregroundStyle(CalorynTheme.textPrimary)
+                                .foregroundStyle(CalorynTheme.accent)
                         }
                         .accessibilityLabel("Create Manual Entry")
                     }
@@ -204,7 +213,7 @@ struct FoodSearchView: View {
             }
             .safeAreaInset(edge: .bottom) {
                 Group {
-                    if isSelectingMultiple, selectedItemCount > 0 {
+                    if isSelectingMultiple, selectedItemCount > 0, resolvedScreenContent != .barcodeLookupProgress {
                         Button {
                             multiAddPresentation = MultiAddPresentation(
                                 groups: multiAddSelection.groups
@@ -271,7 +280,23 @@ struct FoodSearchView: View {
                 )
                 .presentationDragIndicator(.visible)
             }
-            .fullScreenCover(isPresented: $showingScanner) {
+            .sheet(item: $pastedFoodPresentation) { presentation in
+                PastedFoodConfirmationView(
+                    confirmation: presentation.confirmation,
+                    mealType: mealType,
+                    snackIndex: snackIndex,
+                    logDate: logDate,
+                    onAdded: dismiss.callAsFunction
+                )
+                .presentationDragIndicator(.visible)
+            }
+            .fullScreenCover(isPresented: $showingScanner, onDismiss: {
+                barcodeFlow.scannerDismissed()
+                if revealFoodAfterScannerDismiss {
+                    revealFoodAfterScannerDismiss = false
+                    barcodeFlow.lookupSucceeded()
+                }
+            }) {
                 barcodeScannerSheet
             }
             .alert("Couldn’t Add Meal", isPresented: mealErrorIsPresented) {
@@ -280,6 +305,12 @@ struct FoodSearchView: View {
                 }
             } message: {
                 Text(mealErrorMessage ?? "Please try again.")
+            }
+            .alert("Couldn’t Read Link", isPresented: pasteRejectionIsPresented) {
+                Button("OK", role: .cancel) { pasteRejectionMessage = nil }
+                    .accessibilityIdentifier("foodSearch.pasteRejection.ok")
+            } message: {
+                Text(verbatim: pasteRejectionMessage ?? "")
             }
             .onAppear {
                 #if DEBUG
@@ -298,11 +329,51 @@ struct FoodSearchView: View {
                 guard let pendingBarcode = barcodeFlow.pendingBarcode else { return }
                 await performBarcodeLookup(pendingBarcode)
             }
+            .task(id: scenePhase) {
+                guard scenePhase == .active else { return }
+                await checkPasteboardForLink()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIPasteboard.changedNotification)) { _ in
+                Task { await checkPasteboardForLink() }
+            }
         }
     }
 
-    /// "Add to Lunch" while logging, the meal word in its own ink; the mode's own title
-    /// for every other way the sheet is opened.
+    private func checkPasteboardForLink() async {
+        let changeCount = UIPasteboard.general.changeCount
+        guard pasteOffer.beginCheck(changeCount: changeCount, generation: pasteboardGeneration) else { return }
+        let patterns = try? await UIPasteboard.general.detectedPatterns(for: [\.probableWebURL, \.links])
+        pasteOffer.finishCheck(changeCount: changeCount, foundLink: !(patterns ?? []).isEmpty)
+    }
+
+    private func receivePaste(_ strings: [String]) {
+        switch PastedFoodConfirmation.opening(pasted: strings, locale: locale) {
+        case .success(let confirmation):
+            isSearchFocused = false
+            pastedFoodPresentation = PastedFoodPresentation(confirmation: confirmation)
+        case .failure(let rejection):
+            CalorynHaptics.warning()
+            rejectedPasteGeneration = pasteOffer.generation
+            pasteRejectionMessage = rejection.localizedDescription
+        }
+    }
+
+    private var pasteRejectionIsPresented: Binding<Bool> {
+        Binding(
+            get: { pasteRejectionMessage != nil },
+            set: { if !$0 { pasteRejectionMessage = nil } }
+        )
+    }
+
+    private func showsSearchBar(for screenContent: FoodSearchScreenContent) -> Bool {
+        screenContent != .barcodeLookupProgress || barcodeFlow.scannerLookupBarcode == nil
+    }
+
+    private var sheetLookupCancel: (() -> Void)? {
+        guard barcodeFlow.scannerLookupBarcode == nil else { return nil }
+        return { cancelBarcodeLookup() }
+    }
+
     private var sheetTitle: String {
         guard case .logging = mode else { return mode.title }
         return "Add to \(mealType.displayName)"
@@ -359,34 +430,39 @@ struct FoodSearchView: View {
                         searchService.clearResults()
                     } label: {
                         Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(CalorynTheme.textSecondary)
+                            .symbolRenderingMode(.hierarchical)
+                            .foregroundStyle(CalorynTheme.accent)
                     }
                     .accessibilityLabel("Clear search")
                 }
             }
-            // The well: a `surface` capsule beside the round scanner, as the board draws it.
             .foodSearchWell(isFocused: isSearchFocused, height: searchControlHeight)
 
-            // Glass, like the close and Select circles above it: chrome stays glass. Tinted
-            // with the well's `surface` and edged with its hairline, as the board draws the
-            // circle beside the well: clear glass on the white sheet showed no edge at all.
             Button {
                 isSearchFocused = false
+                if barcodeFlow.isLookingUp {
+                    barcodeFlow.lookupCancelled()
+                }
                 barcodeFlow.scannerOpened()
                 showingScanner = true
             } label: {
                 Image(systemName: "barcode.viewfinder")
                     .font(CalorynTheme.inlineIcon)
-                    .foregroundStyle(CalorynTheme.textPrimary)
+                    .foregroundStyle(CalorynTheme.accent)
                     .frame(width: searchControlHeight, height: searchControlHeight)
             }
-            .adaptiveCircleInteractiveGlass(tint: CalorynTheme.surface, edge: CalorynTheme.hairline)
+            .adaptiveCircleInteractiveGlass(tint: CalorynTheme.backgroundInset, edge: CalorynTheme.separator)
             .accessibilityLabel("Scan a barcode")
+            .accessibilityIdentifier("foodSearch.scanBarcode")
         }
         .padding(.horizontal, CalorynTheme.pagePadding)
         .padding(.top, 8)
         .padding(.bottom, 6)
         .onChange(of: searchText) {
+            if barcodeFlow.isLookingUp,
+               !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                barcodeFlow.lookupCancelled()
+            }
             if FoodSearchScreenContent.dismissesBarcodeFailure(
                 forSearchText: searchText,
                 errorDismissesOnNameSearch: barcodeFlow.errorDismissesOnNameSearch
@@ -398,13 +474,11 @@ struct FoodSearchView: View {
         }
     }
 
-    private var recentFoodsList: some View {
-        // The sections and their order are the app's own, unchanged by the restyle:
-        // suggestions, the saved meals, the user's own foods when picking one, then Recent.
+    private func recentFoodsList(_ listing: FoodSearchListing) -> some View {
         List {
-            if !contextualSuggestions.isEmpty {
+            if !listing.contextualSuggestions.isEmpty {
                 foodSection(title: FoodLogSheetCopy.suggestionsTitle(for: mealType)) {
-                    ForEach(contextualSuggestions, id: \.1.id) { pair in
+                    ForEach(listing.contextualSuggestions, id: \.1.id) { pair in
                         contextualSuggestionRow(
                             food: pair.0,
                             suggestion: pair.1
@@ -421,25 +495,25 @@ struct FoodSearchView: View {
                 }
             }
 
-            if mode.isSelection, !recipes.isEmpty {
+            if mode.isSelection, !listing.recipes.isEmpty {
                 foodSection(title: "Recipes") {
-                    ForEach(recipes) { recipe in
+                    ForEach(listing.recipes) { recipe in
                         recipeRow(for: recipe)
                     }
                 }
             }
 
-            if mode.isSelection, !manualEntries.isEmpty {
+            if mode.isSelection, !listing.manualEntries.isEmpty {
                 foodSection(title: "Your own entries") {
-                    ForEach(manualEntries) { food in
+                    ForEach(listing.manualEntries) { food in
                         personalFoodRow(for: food)
                     }
                 }
             }
 
-            if !displayedRecentFoods.isEmpty {
+            if !listing.displayedRecentFoods.isEmpty {
                 foodSection(title: "Recent") {
-                    ForEach(displayedRecentFoods) { food in
+                    ForEach(listing.displayedRecentFoods) { food in
                         savedFoodRow(for: food)
                     }
                 }
@@ -449,72 +523,52 @@ struct FoodSearchView: View {
         .scrollDismissesKeyboard(.immediately)
     }
 
-    private var matchingManualEntries: [FoodItem] { listing.matchingManualEntries }
-
-    private var matchingEditedProducts: [FoodItem] { listing.matchingEditedProducts }
-
-    private var visibleProviderSearchResults: [FoodSearchResult] {
-        listing.visibleProviderSearchResults
-    }
-
-    private var matchingRecipes: [FoodItem] { listing.matchingRecipes }
-
-    private var matchingMeals: [MealTemplate] { listing.matchingMeals }
-
-    private var hasLocalMatches: Bool { listing.hasLocalMatches }
-
-    private var hasCategorizedLocalMatches: Bool { listing.hasCategorizedLocalMatches }
-
-    private var hasProductSearchResults: Bool { listing.hasProductSearchResults }
-
-    private var searchResultsList: some View {
+    private func searchResultsList(_ listing: FoodSearchListing) -> some View {
         List {
-            if !matchingMeals.isEmpty {
+            if !listing.matchingMeals.isEmpty {
                 foodSection(title: "Meals") {
-                    ForEach(matchingMeals) { meal in
+                    ForEach(listing.matchingMeals) { meal in
                         mealRow(for: meal)
                     }
                 }
             }
 
-            if !matchingRecipes.isEmpty {
+            if !listing.matchingRecipes.isEmpty {
                 foodSection(title: "Recipes") {
-                    ForEach(matchingRecipes) { food in
+                    ForEach(listing.matchingRecipes) { food in
                         recipeRow(for: food)
                     }
                 }
             }
 
-            if !matchingManualEntries.isEmpty {
+            if !listing.matchingManualEntries.isEmpty {
                 foodSection(title: "Your own entries") {
-                    ForEach(matchingManualEntries) { food in
+                    ForEach(listing.matchingManualEntries) { food in
                         personalFoodRow(for: food)
                     }
                 }
             }
 
-            if hasProductSearchResults {
+            if listing.hasProductSearchResults {
                 foodSection(
                     title: "Search results",
-                    showsTitle: hasCategorizedLocalMatches
+                    showsTitle: listing.hasCategorizedLocalMatches
                 ) {
-                    ForEach(matchingEditedProducts) { food in
+                    ForEach(listing.matchingEditedProducts) { food in
                         savedFoodRow(for: food)
                     }
 
-                    ForEach(visibleProviderSearchResults) { result in
+                    ForEach(listing.visibleProviderSearchResults) { result in
                         remoteProductRow(result)
                     }
                 }
             }
 
             if searchService.isSearching {
-                // The previous row's hairline is this cell's top separator, so only the
-                // bottom one goes; the skeleton draws its own between its rows.
                 FoodSearchSkeletonRows()
                     .listRowInsets(FoodSearchSkeletonRows.listRowInsets)
                     .listRowSeparator(.hidden, edges: .bottom)
-                    .listRowSeparatorTint(CalorynTheme.hairline)
+                    .listRowSeparatorTint(CalorynTheme.separator)
                     .calorynClearRowBackground()
             }
         }
@@ -522,14 +576,6 @@ struct FoodSearchView: View {
         .scrollDismissesKeyboard(.immediately)
     }
 
-    /// The one shape every section of both lists shares: a title that either
-    /// scrolls away with its rows or pins to the top, per the mode, above
-    /// rows on a clear background.
-    ///
-    /// A pinned header (`usesNonStickySectionTitles == false`, ingredient selection) is the
-    /// same 17pt bold ink title as a scrolling one, with the same hairline under it. The
-    /// resting list's own-entries section used to take `Section(_:)`'s system header
-    /// instead, which drew in the system's grey.
     @ViewBuilder
     private func foodSection<Rows: View>(
         title: String,
@@ -548,11 +594,6 @@ struct FoodSearchView: View {
                 rows()
                     .calorynHairlineSeparators()
             } header: {
-                // Before iOS 26 a plain list paints a pinned header's band in a system grey
-                // (My Foods' `LibrarySectionHeader` covers it the same way). The header
-                // covers that band with the sheet's own colour, edge to edge, and keeps
-                // its title on the rows' 16pt system margin with padding instead of row
-                // insets, as `LibraryRowStyle.headerPadding` does.
                 if showsTitle {
                     Text(title)
                         .font(CalorynTheme.sectionHeaderTitle)
@@ -561,16 +602,13 @@ struct FoodSearchView: View {
                         .padding(.horizontal, 16)
                         .padding(.vertical, 6)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(CalorynTheme.cardBackground)
+                        .background(CalorynTheme.backgroundSecondary)
                         .listRowInsets(EdgeInsets())
                         .accessibilityAddTraits(.isHeader)
                 }
             }
-            // The section's own top separator is the hairline under a pinned title, the one
-            // a scrolling title draws as its row separator (My Foods' sections keep it the
-            // same way), so both lists open a section alike.
             .listSectionSeparator(showsTitle ? .visible : .automatic, edges: .top)
-            .listSectionSeparatorTint(CalorynTheme.hairline)
+            .listSectionSeparatorTint(CalorynTheme.separator)
         }
     }
 
@@ -594,32 +632,12 @@ struct FoodSearchView: View {
 
     private func captureSuggestionsIfNeeded() {
         guard !hasCapturedSuggestions, mode.supportsMultiSelection else { return }
-        let now = Date()
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: now)
-        guard let historyStart = calendar.date(
-            byAdding: .day,
-            value: -(ContextualFoodSuggestionRanker.historyDayCount - 1),
-            to: today
-        ), let historyEnd = calendar.date(byAdding: .day, value: 1, to: today) else {
-            hasCapturedSuggestions = true
-            return
-        }
-        let entries = (try? modelContext.fetch(
-            FetchDescriptor<FoodLogEntry>(
-                predicate: #Predicate { entry in
-                    entry.date >= historyStart && entry.date < historyEnd
-                }
-            )
-        )) ?? []
         suggestionSnapshot = ContextualFoodSuggestionAdapter.rank(
             foods: recentFoods,
-            entries: entries,
+            modelContext: modelContext,
             destinationDate: logDate,
             destinationMeal: mealType,
-            destinationSnackIndex: snackIndex,
-            now: now,
-            calendar: calendar
+            destinationSnackIndex: snackIndex
         )
         hasCapturedSuggestions = true
     }
@@ -651,6 +669,7 @@ struct FoodSearchView: View {
         withAnimation(selectionChangeAnimation) {
             multiAddSelection.toggle(group)
         }
+        CalorynHaptics.selectionChanged()
     }
 
     private func toggle(
@@ -660,6 +679,7 @@ struct FoodSearchView: View {
         try withAnimation(selectionChangeAnimation) {
             try multiAddSelection.toggle(id, makeGroup: makeGroup)
         }
+        CalorynHaptics.selectionChanged()
     }
 
     func toggleFoodSelection(_ food: FoodItem) {
@@ -715,8 +735,6 @@ struct FoodSearchView: View {
         }
     }
 
-    /// A 17pt bold ink title that scrolls with its rows. Only its top separator is hidden,
-    /// so the hairline under it opens the section the way the board draws it.
     private func nonStickySectionTitle(_ title: String) -> some View {
         Text(title)
             .font(CalorynTheme.sectionHeaderTitle)
@@ -741,6 +759,7 @@ struct FoodSearchView: View {
                 availableFoods: recentFoods,
                 modelContext: modelContext
             )
+            CalorynHaptics.success()
             dismiss()
         } catch {
             mealErrorMessage = error.localizedDescription
@@ -760,26 +779,58 @@ struct FoodSearchView: View {
 
     private var barcodeScannerSheet: some View {
         ZStack(alignment: .topLeading) {
-            BarcodeScannerView { code in
-                showingScanner = false
-                barcodeFlow.scanned(code)
+            if let barcode = barcodeFlow.scannerLookupBarcode {
+                BarcodeLookupProgressView(barcode: barcode)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .calorynSheetCanvas()
+            } else {
+                BarcodeScannerView { code in
+                    acceptScannedBarcode(code)
+                }
+                .ignoresSafeArea()
             }
-            .ignoresSafeArea()
 
-            // Over live video, not over the theme: the glyph stays white in both
-            // appearances, on a glass circle the camera shows through.
             Button {
-                showingScanner = false
+                abandonScanner()
             } label: {
-                Image(systemName: "xmark")
-                    .font(CalorynTheme.toolbarIcon)
-                    .foregroundStyle(.white)
-                    .frame(width: 40, height: 40)
-                    .adaptiveCircleInteractiveGlass()
+                scannerCloseGlyph
             }
-            .accessibilityLabel("Close")
+            .accessibilityLabel(
+                barcodeFlow.scannerLookupBarcode == nil ? "Close" : "Cancel lookup"
+            )
+            .accessibilityIdentifier("barcodeScanner.close")
             .padding(.top, 56)
             .padding(.leading, 20)
+        }
+        .animation(
+            accessibilityReduceMotion ? nil : .smooth(duration: 0.28),
+            value: barcodeFlow.scannerLookupBarcode
+        )
+        #if DEBUG
+        .task {
+            guard barcodeFlow.scannerLookupBarcode == nil,
+                  let code = ProcessInfo.processInfo.environment["CALORYN_UITEST_BARCODE"],
+                  !code.isEmpty else { return }
+            acceptScannedBarcode(code)
+        }
+        #endif
+    }
+
+    @ViewBuilder
+    private var scannerCloseGlyph: some View {
+        if barcodeFlow.scannerLookupBarcode == nil {
+            Image(systemName: "xmark")
+                .font(CalorynTheme.toolbarIcon)
+                // swiftlint:disable:next raw_white_color
+                .foregroundStyle(.white)
+                .frame(width: 40, height: 40)
+                .adaptiveCircleInteractiveGlass()
+        } else {
+            Image(systemName: "xmark")
+                .font(CalorynTheme.toolbarIcon)
+                .foregroundStyle(CalorynTheme.accent)
+                .frame(width: 40, height: 40)
+                .adaptiveCircleInteractiveGlass()
         }
     }
 
@@ -793,20 +844,37 @@ struct FoodSearchView: View {
                     onRetry: handleRetryableBarcodeFailureAction,
                     onCreateManually: openManualBarcodeRecovery
                 )
-            } else {
-                VStack(spacing: 14) {
-                    Spacer()
-                    ProgressView()
-                        .controlSize(.large)
-                        .tint(CalorynTheme.textPrimary)
-                    Text("Looking up the product…")
-                        .font(CalorynTheme.bodyText)
-                        .foregroundStyle(CalorynTheme.textSecondary)
-                    Spacer()
-                }
             }
         }
         .frame(maxWidth: .infinity)
+    }
+
+    private func acceptScannedBarcode(_ code: String) {
+        barcodeFlow.scanned(code)
+        if !barcodeFlow.isLookingUp {
+            showingScanner = false
+        }
+    }
+
+    private func cancelBarcodeLookup() {
+        barcodeFlow.lookupCancelled()
+    }
+
+    private func abandonScanner() {
+        revealFoodAfterScannerDismiss = false
+        if barcodeFlow.isLookingUp {
+            selectedResult = nil
+            selectedFoodItem = nil
+            barcodeFlow.lookupCancelled()
+        }
+        showingScanner = false
+    }
+
+    private var opensPortionFromScan: Bool {
+        if case .logging = mode, !isSelectingMultiple {
+            return true
+        }
+        return false
     }
 
     private func performBarcodeLookup(_ code: String) async {
@@ -816,19 +884,56 @@ struct FoodSearchView: View {
             providerLookup: searchService.lookupBarcode
         )
         guard !Task.isCancelled else { return }
+        guard barcodeFlow.pendingBarcode == code else { return }
 
         switch outcome {
         case .remote(let result):
-            barcodeFlow.lookupSucceeded()
-            handleProductSelection(result)
+            if opensPortionFromScan {
+                stageResolvedBarcode { selectedResult = result }
+                await revealStagedBarcodeFood()
+            } else {
+                barcodeFlow.lookupSucceeded()
+                showingScanner = false
+                handleProductSelection(result)
+            }
         case .local(let food, _):
-            barcodeFlow.lookupSucceeded()
             try? modelContext.save()
-            handleFoodItemSelection(food)
+            if opensPortionFromScan {
+                stageResolvedBarcode {
+                    selectedFoodItem = PortionDestination(food: food)
+                }
+                await revealStagedBarcodeFood()
+            } else {
+                barcodeFlow.lookupSucceeded()
+                showingScanner = false
+                handleFoodItemSelection(food)
+            }
         case .failure(let error):
             guard let feedback = barcodeFlow.lookupFailed(error) else { return }
+            showingScanner = false
             triggerBarcodeLookupHaptic(feedback)
         }
+    }
+
+    private func stageResolvedBarcode(_ stage: () -> Void) {
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            stage()
+        }
+    }
+
+    private func revealStagedBarcodeFood() async {
+        guard showingScanner else {
+            barcodeFlow.lookupSucceeded()
+            return
+        }
+        // The portion has to commit under the cover before the cover leaves,
+        // or the search sheet flashes in the gap.
+        await Task.yield()
+        guard showingScanner, barcodeFlow.pendingBarcode != nil else { return }
+        revealFoodAfterScannerDismiss = true
+        showingScanner = false
     }
 
     private func openManualBarcodeRecovery() {
@@ -848,13 +953,11 @@ struct FoodSearchView: View {
     }
 
     private func triggerBarcodeLookupHaptic(_ feedback: BarcodeLookupFlow.FailureFeedback) {
-        let generator = UINotificationFeedbackGenerator()
-        generator.prepare()
         switch feedback {
         case .warning:
-            generator.notificationOccurred(.warning)
+            CalorynHaptics.warning()
         case .error:
-            generator.notificationOccurred(.error)
+            CalorynHaptics.error()
         }
     }
 
@@ -888,16 +991,11 @@ struct FoodSearchView: View {
     }
 
     #if DEBUG
-    /// Seeds the demo foods and puts the sheet in the state `-uitest-present` asks for, once
-    /// per launch. See `FoodLogDebugPresentation`.
     private func applyDebugPresentationIfRequested() {
         guard case .logging = mode,
               let request = FoodLogDebugPresentation.takeRequest() else { return }
         let foods = FoodLogDebugPresentation.seedDemoFoods(into: modelContext)
 
-        // After the first frame: by then the query has caught up with the seeded foods, so
-        // the suggestions are captured again, and a push or a sheet requested during the
-        // sheet's own appearance would be dropped.
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(600))
             hasCapturedSuggestions = false
@@ -907,8 +1005,6 @@ struct FoodSearchView: View {
             case .addFood:
                 break
             case .portion:
-                // A remembered 160 g is not a whole pot, so the sheet opens on the
-                // grams stepper rather than the pot wheel.
                 selectedFoodItem = PortionDestination(food: foods.skyr, suggestedPortionGrams: 160)
             case .portionServing:
                 selectedFoodItem = PortionDestination(food: foods.rugbrod)
@@ -923,6 +1019,68 @@ struct FoodSearchView: View {
         }
     }
     #endif
+}
+
+private struct BarcodeLookupProgressView: View {
+    var barcode: String?
+    var onCancel: (() -> Void)?
+
+    @ScaledMetric(relativeTo: .largeTitle) private var symbolSize: CGFloat = 52
+
+    var body: some View {
+        VStack(spacing: 18) {
+            Spacer(minLength: 24)
+
+            Image(systemName: "barcode.viewfinder")
+                .font(.system(size: symbolSize, weight: .light))
+                .foregroundStyle(CalorynTheme.accent)
+                .accessibilityHidden(true)
+
+            ProgressView()
+                .controlSize(.large)
+                .tint(CalorynTheme.accent)
+                .accessibilityHidden(true)
+
+            VStack(spacing: 6) {
+                Text("Looking up this food")
+                    .font(CalorynTheme.sectionHeaderTitle)
+                    .foregroundStyle(CalorynTheme.textPrimary)
+                Text("Checking your foods and the catalog.")
+                    .font(CalorynTheme.bodyText)
+                    .foregroundStyle(CalorynTheme.textSecondary)
+                    .multilineTextAlignment(.center)
+                if let barcode, !barcode.isEmpty {
+                    Text("Barcode \(barcode)")
+                        .font(CalorynTheme.numericCaption)
+                        .foregroundStyle(CalorynTheme.textSecondary)
+                        .textSelection(.enabled)
+                }
+            }
+            .padding(.horizontal, CalorynTheme.pagePadding)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(accessibilityLabel)
+            .accessibilityIdentifier("barcodeLookup.progress")
+
+            if let onCancel {
+                Button("Cancel", action: onCancel)
+                    .buttonStyle(.bordered)
+                    .tint(CalorynTheme.accent)
+                    .controlSize(.large)
+                    .accessibilityLabel("Cancel lookup")
+                    .accessibilityIdentifier("barcodeLookup.cancel")
+            }
+
+            Spacer(minLength: 24)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var accessibilityLabel: String {
+        if let barcode, !barcode.isEmpty {
+            return "Looking up this food. Barcode \(barcode). Checking your foods and the catalog."
+        }
+        return "Looking up this food. Checking your foods and the catalog."
+    }
 }
 
 private struct FoodLookupFailureView: View {
@@ -945,8 +1103,6 @@ private struct FoodLookupFailureView: View {
     }
 }
 
-/// A lookup failure's title in ink over its symbol in the secondary text colour, rather
-/// than the system's own greys.
 private struct FoodLookupFailureLabel: View {
     let presentation: FoodLookupFailurePresentation
 
@@ -994,7 +1150,7 @@ private struct BarcodeLookupFailureView: View {
                 if let retryTitle = presentation.retryTitle {
                     Button(retryTitle, action: onRetry)
                         .buttonStyle(.bordered)
-                        .tint(CalorynTheme.textPrimary)
+                        .tint(CalorynTheme.accent)
                         .controlSize(.large)
                 }
             }

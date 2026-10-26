@@ -9,7 +9,9 @@ final class UserProfile {
     var heightCm: Double = 0
     var weightKg: Double = 0
     var activityLevel: ActivityLevel = ActivityLevel.sedentary
-    var energyCalculationModeRaw: String = EnergyCalculationMode.lifestyleEstimate.rawValue
+    // Written by the removed Apple Health auto-adjust and no longer read. Kept so the
+    // CloudKit-backed store migrates without a schema change.
+    var energyCalculationModeRaw: String = "lifestyleEstimate"
 
     var bmr: Double = 0
     var tdee: Double = 0
@@ -60,7 +62,6 @@ final class UserProfile {
         dailyCalorieTarget: Int? = nil,
         manualOverride: Bool = false,
         calorieDeficit: Double = 500,
-        energyCalculationMode: EnergyCalculationMode = .lifestyleEstimate,
         proteinRatio: Double = 0.30,
         carbRatio: Double = 0.40,
         fatRatio: Double = 0.30,
@@ -72,7 +73,6 @@ final class UserProfile {
         self.heightCm = heightCm
         self.weightKg = weightKg
         self.activityLevel = activityLevel
-        self.energyCalculationModeRaw = energyCalculationMode.rawValue
         self.manualOverride = manualOverride
         self.calorieDeficit = calorieDeficit
         self.createdAt = Date()
@@ -91,23 +91,6 @@ final class UserProfile {
         self.fiberTargetG = fiberTargetG
     }
 
-    var energyCalculationMode: EnergyCalculationMode {
-        get {
-            EnergyCalculationMode(rawValue: energyCalculationModeRaw) ?? .lifestyleEstimate
-        }
-        set {
-            energyCalculationModeRaw = newValue.rawValue
-        }
-    }
-
-    var effectiveEnergyCalculationMode: EnergyCalculationMode {
-        manualOverride ? .lifestyleEstimate : energyCalculationMode
-    }
-
-    /// The split the saved grams represent. Derived by `ProfileEditMacroRatios`
-    /// so this and the profile screen's Save agree; it used to divide by
-    /// `max(target, 1)` instead, which turned a zero target into ratios in the
-    /// hundreds rather than the default split.
     var macroRatios: ProfileEditMacroRatios {
         ProfileEditMacroRatios(
             dailyCalorieTarget: dailyCalorieTarget,
@@ -122,49 +105,25 @@ final class UserProfile {
         tdee = NutritionCalculator.tdee(bmr: bmr, activity: activityLevel)
         if !manualOverride {
             dailyCalorieTarget = NutritionCalculator.defaultTarget(tdee: tdee, deficit: calorieDeficit)
+            proteinTargetG = NutritionCalculator.macroGrams(calories: Double(dailyCalorieTarget), ratio: proteinRatio, caloriesPerGram: 4)
+            carbTargetG = NutritionCalculator.macroGrams(calories: Double(dailyCalorieTarget), ratio: carbRatio, caloriesPerGram: 4)
+            fatTargetG = NutritionCalculator.macroGrams(calories: Double(dailyCalorieTarget), ratio: fatRatio, caloriesPerGram: 9)
         }
-        proteinTargetG = NutritionCalculator.macroGrams(calories: Double(dailyCalorieTarget), ratio: proteinRatio, caloriesPerGram: 4)
-        carbTargetG = NutritionCalculator.macroGrams(calories: Double(dailyCalorieTarget), ratio: carbRatio, caloriesPerGram: 4)
-        fatTargetG = NutritionCalculator.macroGrams(calories: Double(dailyCalorieTarget), ratio: fatRatio, caloriesPerGram: 9)
         updatedAt = Date()
     }
 
-    var activeEnergyBaseCalorieTarget: Int {
-        guard !manualOverride else { return dailyCalorieTarget }
-        return NutritionCalculator.defaultTarget(energyExpenditure: bmr, deficit: calorieDeficit)
-    }
-
-    func calorieBaseTarget(usesActiveEnergy: Bool) -> Int {
-        usesActiveEnergy ? activeEnergyBaseCalorieTarget : dailyCalorieTarget
-    }
-
-    func activityBudget(
-        consumed: Double,
-        activeEnergyKcal: Double,
-        recentActiveEnergySamples: [DailyActiveEnergySample],
-        isActivityLoading: Bool,
-        activityMessage: String?,
-        date: Date
-    ) -> ActivityCalorieBudget {
-        ActivityCalorieBudget(
+    func calorieBudget(consumed: Double) -> CalorieBudget {
+        CalorieBudget(
             consumed: consumed,
-            staticTarget: dailyCalorieTarget,
-            bmr: bmr,
-            calorieDeficit: calorieDeficit,
-            activeEnergyKcal: activeEnergyKcal,
-            recentActiveEnergySamples: recentActiveEnergySamples,
-            calculationMode: effectiveEnergyCalculationMode,
-            isManualOverride: manualOverride,
-            isActivityLoading: isActivityLoading,
-            activityMessage: activityMessage,
-            date: date
+            target: dailyCalorieTarget,
+            isManualOverride: manualOverride
         )
     }
 
     func nutrientTargets(forCalorieTarget calorieTarget: Int? = nil) -> [TrackedNutrient: Double] {
         var targets = nutrientTargets
 
-        if let calorieTarget {
+        if let calorieTarget, !manualOverride {
             let ratios = macroRatios
             targets[.protein] = NutritionCalculator.macroGrams(
                 calories: Double(calorieTarget),

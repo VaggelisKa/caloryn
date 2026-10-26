@@ -1,14 +1,8 @@
 import XCTest
 
-/// Base class for Caloryn UI tests.
-///
-/// Every test launches the app with a named fixture so it never depends on
-/// state left behind by an earlier test. Assertions in subclasses must describe
-/// user-visible behavior, never view structure, so they survive refactoring.
 class UITestCase: XCTestCase {
     var app: XCUIApplication!
 
-    /// Default time to wait for a UI element before failing.
     static let defaultTimeout: TimeInterval = 10
 
     override func setUp() {
@@ -21,7 +15,6 @@ class UITestCase: XCTestCase {
         super.tearDown()
     }
 
-    /// Launches the app with a fresh in-memory store seeded with `fixture`.
     @discardableResult
     func launch(fixture: Fixture) -> XCUIApplication {
         let app = XCUIApplication()
@@ -31,7 +24,6 @@ class UITestCase: XCTestCase {
         return app
     }
 
-    /// Mirrors `UITestConfiguration.Fixture` in the app target.
     enum Fixture: String {
         case empty
         case profileOnly
@@ -41,16 +33,10 @@ class UITestCase: XCTestCase {
         case history
         case historyPattern
         case historyNoPattern
-        /// Today over budget, with a Nutri-Score day and an entry whose food was deleted.
-        /// Only the theme harness reaches for it.
         case overBudgetDay
     }
 }
 
-// MARK: - Given/When/Then
-
-/// Lightweight structure so tests read as behavior specifications. These are
-/// labels rather than machinery: no parser, no step registry, no dependency.
 extension XCTestCase {
     func given(_ description: String, _ body: () throws -> Void) rethrows {
         try XCTContext.runActivity(named: "Given \(description)") { _ in try body() }
@@ -65,10 +51,7 @@ extension XCTestCase {
     }
 }
 
-// MARK: - Waiting
-
 extension XCUIElement {
-    /// Waits for the element to exist, failing the test with a clear message.
     @discardableResult
     func awaitExistence(
         timeout: TimeInterval = UITestCase.defaultTimeout,

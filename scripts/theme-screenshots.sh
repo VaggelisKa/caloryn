@@ -1,18 +1,4 @@
 #!/bin/bash
-#
-# Capture every themed surface in both appearances, as PNGs you can actually look at.
-#
-#   ./scripts/theme-screenshots.sh [output-dir]
-#
-# Default output: /tmp/caloryn-theme-shots
-#
-# Why this exists: no XCTAssert reads a colour. The theme regressions this project has
-# actually shipped — grouped-list rows rendering pure white, dark mode falling back to
-# system greys, toolbar glyphs ignoring the accent — all passed the full test suite and a
-# 5/5 review. The only thing that caught them was looking at pixels. See docs/theme.md.
-#
-# Prints an index at the end, and a colour census per screen so a drift shows up as a
-# number before anyone opens an image.
 
 set -euo pipefail
 
@@ -20,11 +6,7 @@ OUT="${1:-/tmp/caloryn-theme-shots}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RESULT="$(mktemp -d)/theme.xcresult"
 
-# An iOS 26 iPhone simulator; the UI test target cannot run below 26.0. A already-booted one
-# wins, so running this does not boot a second simulator alongside whichever one you are
-# testing on by hand — an earlier version picked the first *available* device and did exactly
-# that.
-UDID="$(xcrun simctl list devices available -j \
+UDID="${CALORYN_UDID:-$(xcrun simctl list devices available -j \
   | python3 -c '
 import json,sys
 d=json.load(sys.stdin)["devices"]
@@ -38,7 +20,7 @@ for runtime, devices in d.items():
         if fallback is None: fallback = dev["udid"]
 if fallback is None: raise SystemExit("no available iOS 26 iPhone simulator")
 print(fallback)
-')"
+')}"
 
 echo "==> simulator $UDID"
 echo "==> running ThemeScreenshotTests (both appearances, ~3 min)"
@@ -72,20 +54,14 @@ for entry in json.load(open(os.path.join(raw, "manifest.json"))):
                     os.path.join(out, re.sub(r"_0_[A-F0-9-]+\.png$", ".png", name)))
 shutil.rmtree(raw)
 
-# Colour census. Drift is visible as a number before anyone opens an image.
-# Keep these in step with CalorynShared/SharedColors.xcassets (docs/design/plate-market.md).
 TOKENS = {
     "page":  {"light": (254,253,250), "dark": (20,22,20)},    # PageBackground #FEFDFA / #141614
     "card":  {"light": (255,255,255), "dark": (38,42,38)},    # CardBackground #FFFFFF / #262A26
     "sage":  {"light": (124,142,107), "dark": (150,171,131)}, # retired Sage #7C8E6B / #96AB83
 }
-# What a List or Form paints when a row or the list itself escapes the theme. Light mode can
-# only show the list canvas: a stray *row* paints secondarySystemGroupedBackground, which is
-# #FFFFFF, the same as CardBackground now. Dark mode shows both, so read the dark column.
 SYSTEM = {
-    "light": [(242,242,247)],                          # systemGroupedBackground #F2F2F7
-    "dark":  [(28,28,30), (0,0,0), (44,44,46)],        # secondarySystemGrouped #1C1C1E,
-                                                       # systemBackground #000000, tertiary #2C2C2E
+    "light": [(242,242,247)],
+    "dark":  [(28,28,30), (0,0,0), (44,44,46)],
 }
 try:
     from PIL import Image
@@ -110,6 +86,6 @@ for f in sorted(os.listdir(out)):
 print("\nSYSTEM above ~2% means a List or Form is painting a system grey over the theme:")
 print("#F2F2F7 in light, #1C1C1E / #000000 / #2C2C2E in dark. A missing row background is")
 print("only visible in the dark column, because the light system row is the same white as")
-print("CardBackground. Page and card at 0.0% means the appearance never switched.")
+print("BackgroundSecondary. Page and card at 0.0% means the appearance never switched.")
 print("See docs/theme.md, 'Row backgrounds, and the limit of the abstraction'.")
 PY

@@ -28,8 +28,6 @@ enum BarcodeRecoveryAnalyticsResult: String, Sendable {
     case failed
 }
 
-/// Deliberately allowlisted aggregate dimensions. This type cannot carry a
-/// barcode, food/provider payload, persistent ID, nutrition value, or context.
 struct BarcodeRecoveryAnalyticsEvent: Equatable, Sendable {
     let path: BarcodeRecoveryAnalyticsPath
     let result: BarcodeRecoveryAnalyticsResult
@@ -188,7 +186,7 @@ extension FoodItem {
         switch provenance.source {
         case .calorynCatalog, .openFoodFactsCommunity:
             return .provider
-        case .userEntered, .mixed, .unknown:
+        case .userEntered, .linkImport, .mixed, .unknown:
             return .user
         }
     }
@@ -373,6 +371,12 @@ enum BarcodeLookupRecoveryCoordinator {
     ) async -> BarcodeLookupRecoveryOutcome {
         guard let normalizedBarcode = BarcodeIdentity.normalized(barcode) else {
             return .failure(.invalidRequest)
+        }
+
+        if let saved = BarcodeRecoveryService.preferredLocalFood(for: normalizedBarcode, in: localFoods),
+           !BarcodeRecoveryService.providerCanReconcile(saved, scannedIdentity: normalizedBarcode) {
+            BarcodeRecoveryAnalytics.record(path: .localFallback, result: .completed)
+            return .local(saved, .none)
         }
 
         do {
@@ -614,13 +618,7 @@ enum BarcodeRecoveryService {
             return .remote(providerResult)
         }
 
-        if let existingIdentity = BarcodeIdentity.normalized(local.providerProductIdentityRaw) {
-            guard existingIdentity == providerIdentity else {
-                return .local(local, .none)
-            }
-        } else if local.isCustom {
-            // A migrated personal version without stable provider identity is
-            // intentionally preserved rather than attached by barcode alone.
+        guard providerCanReconcile(local, scannedIdentity: scannedIdentity) else {
             return .local(local, .none)
         }
 
@@ -647,6 +645,15 @@ enum BarcodeRecoveryService {
         local.providerProductIdentityRaw = providerIdentity
         local.refreshOverlayProvenance(from: providerResult.provenance)
         return .local(local, changes)
+    }
+
+    static func providerCanReconcile(_ local: FoodItem, scannedIdentity: String) -> Bool {
+        if let existingIdentity = BarcodeIdentity.normalized(local.providerProductIdentityRaw) {
+            return existingIdentity == scannedIdentity
+        }
+        // A migrated personal version without stable provider identity is
+        // intentionally preserved rather than attached by barcode alone.
+        return !local.isCustom
     }
 
     static func localFallback(

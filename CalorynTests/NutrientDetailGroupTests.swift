@@ -2,10 +2,6 @@ import XCTest
 @testable import Caloryn
 
 final class NutrientDetailGroupTests: XCTestCase {
-    // MARK: - Absent values
-
-    /// A sub-nutrient nothing was recorded for is left out. Printing it as zero
-    /// would claim the food genuinely contains none of it.
     func testANutrientWithNothingRecordedIsOmittedRatherThanShownAsZero() {
         let items = NutrientDetailGroup.carbs.items(in: NutritionValues(calories: 100))
 
@@ -24,8 +20,6 @@ final class NutrientDetailGroupTests: XCTestCase {
 
         XCTAssertTrue(groups.isEmpty)
     }
-
-    // MARK: - Grouping
 
     func testEachNutrientIsListedUnderItsOwnGroup() {
         let nutrition = NutritionValues(
@@ -47,9 +41,6 @@ final class NutrientDetailGroupTests: XCTestCase {
         XCTAssertEqual(groups[3].items.map(\.id), ["salt"])
     }
 
-    /// Sugars stay in the order they are declared in, not the order of whatever
-    /// the day happened to contain, so the breakdown does not reshuffle between
-    /// days.
     func testCarbLinesKeepAFixedOrderRegardlessOfWhichAreRecorded() {
         let nutrition = NutritionValues(
             calories: 400,
@@ -73,8 +64,6 @@ final class NutrientDetailGroupTests: XCTestCase {
         XCTAssertEqual(groups.first?.title, "Salt")
     }
 
-    // MARK: - Identity
-
     func testEveryGroupAndLineHasAStableIdentity() {
         let ids = NutrientDetailGroup.allCases.flatMap { group in
             NutrientDetailGroup.definitionIDsForTesting(group)
@@ -83,8 +72,6 @@ final class NutrientDetailGroupTests: XCTestCase {
         XCTAssertEqual(Set(ids).count, ids.count, "Detail nutrient identifiers must be unique across groups")
         XCTAssertEqual(Set(NutrientDetailGroup.allCases.map(\.id)).count, NutrientDetailGroup.allCases.count)
     }
-
-    // MARK: - Formatting
 
     private static let us = Locale(identifier: "en_US")
 
@@ -106,9 +93,6 @@ final class NutrientDetailGroupTests: XCTestCase {
         XCTAssertEqual(nutrient.spacedFormattedValue(locale: Self.us), "20 mg")
     }
 
-    /// Nothing bounds a nutrient value on the way in, and the milligram branch
-    /// multiplies it by a thousand before rounding — which `Int(_:)` answers by
-    /// terminating the process.
     func testAnUnboundedNutrientValueIsRenderedRatherThanCrashing() {
         let huge = DetailNutrient(id: "salt", label: "Salt", value: 1e30, unit: .milligramsFromGrams)
 
@@ -117,8 +101,6 @@ final class NutrientDetailGroupTests: XCTestCase {
 }
 
 private extension NutrientDetailGroup {
-    /// The line identifiers this group can produce, reached through a value that
-    /// records every one of them.
     static func definitionIDsForTesting(_ group: NutrientDetailGroup) -> [String] {
         group.items(in: everyNutrientRecorded).map(\.id)
     }

@@ -10,16 +10,14 @@ permissions:
   contents: read
 
 concurrency:
-  group: ios-tests-${{ github.ref }}
-  cancel-in-progress: true
+  group: ios-tests-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # Theme enforcement. Deliberately its own job rather than a build phase: it is fast,
-  # it has nothing to do with the simulator, and a lint failure should be readable
-  # without scrolling through an xcodebuild log. See docs/theme.md.
   lint:
     name: SwiftLint
-    runs-on: macos-26
+    runs-on: ubuntu-latest
+    container: ghcr.io/realm/swiftlint:0.65.1
     timeout-minutes: 5
 
     steps:
@@ -28,18 +26,16 @@ jobs:
 
       - name: Lint
         run: |
-          set -euo pipefail
-          # Preinstalled on the macOS runner image; install only if that changes.
-          if ! command -v swiftlint >/dev/null 2>&1; then
-            brew install swiftlint
-          fi
+          set -eu
           swiftlint --version
           swiftlint lint --strict --reporter github-actions-logging
 
   unit-tests:
     name: Unit tests
     runs-on: macos-26
-    timeout-minutes: 30
+    timeout-minutes: 45
+    outputs:
+      device: ${{ steps.simulator.outputs.device }}
 
     steps:
       - name: Checkout
@@ -48,9 +44,6 @@ jobs:
       - name: Show Xcode version
         run: xcodebuild -version
 
-      # Package resolution is a network call on every run. Caching it keeps the
-      # build off the network in the common case, and the key is the resolved
-      # manifest so a dependency change busts it automatically.
       - name: Cache Swift packages
         uses: actions/cache@v4
         with:
@@ -62,10 +55,9 @@ jobs:
       - name: Select simulator
         id: simulator
         uses: ./.github/actions/select-simulator
+        with:
+          warm-cache: "true"
 
-      # Package.resolved is tracked, so the versions are already decided.
-      # These two flags stop xcodebuild re-resolving over the network on
-      # every run, which was costing about 40s per job even on a cache hit.
       - name: Run unit tests
         run: |
           set -euo pipefail
@@ -97,27 +89,26 @@ jobs:
           echo "percent=$(cat TestResults/coverage-percent.txt)" >> "$GITHUB_OUTPUT"
           cat TestResults/coverage-summary.md >> "$GITHUB_STEP_SUMMARY"
 
-      # The baseline is the coverage percentage last measured on main. Main
-      # builds write it and pull requests read it, so a PR fails only when it
-      # lowers coverage rather than for missing an arbitrary fixed target.
-      #
-      # The key includes the simulator model. Coverage of code that merely runs
-      # at start-up differs between models, so if a run falls back to a
-      # different device it simply finds no baseline and reports without
-      # gating, rather than comparing two unlike measurements.
-      #
-      # The commit sha makes each main build write a *new* key. Cache entries are
-      # immutable — saving to an existing key is a silent no-op — so a fixed key
-      # froze the baseline at whatever the first main build measured. The exact
-      # `key` here can never hit (no baseline is stored under a PR's own sha), so
-      # it always falls through to `restore-keys`, which prefix-matches the most
-      # recently created baseline for this device.
+      - name: Export line coverage
+        run: |
+          set -euo pipefail
+          mkdir -p LineCoverage
+          python3 .github/scripts/line_coverage.py export TestResults/Unit.xcresult \
+            --root "$GITHUB_WORKSPACE" --output LineCoverage/unit-lines.json
+
+      - name: Upload line coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-line-coverage
+          path: LineCoverage/unit-lines.json
+          if-no-files-found: error
+
       - name: Restore coverage baseline
         if: github.event_name == 'pull_request'
         uses: actions/cache/restore@v4
         with:
           path: coverage-baseline.txt
-          key: coverage-baseline-main-${{ steps.simulator.outputs.device }}-${{ github.sha }}
+          key: coverage-baseline-main-${{ steps.simulator.outputs.device }}-${{ github.event.pull_request.base.sha }}
           restore-keys: |
             coverage-baseline-main-${{ steps.simulator.outputs.device }}-
 
@@ -136,7 +127,6 @@ jobs:
           baseline="$(cat coverage-baseline.txt)"
           echo "Baseline (main): ${baseline}%  Current: ${current}%"
 
-          # Small tolerance so trivial line-count churn does not fail a PR.
           if awk "BEGIN { exit !(${current} < ${baseline} - 0.5) }"; then
             echo "::error::Coverage dropped from ${baseline}% to ${current}%."
             exit 1
@@ -164,17 +154,32 @@ jobs:
           if-no-files-found: ignore
 
   ui-tests:
-    name: UI tests
+    name: UI tests (${{ matrix.shard }})
     runs-on: macos-26
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: journeys
+            selection: >-
+              -only-testing:CalorynUITests/JourneyTests
+          - shard: features
+            selection: >-
+              -only-testing:CalorynUITests/FeatureJourneyTests
+              -only-testing:CalorynUITests/BarcodeLookupUITests
+          - shard: rest
+            selection: >-
+              -skip-testing:CalorynUITests/JourneyTests
+              -skip-testing:CalorynUITests/FeatureJourneyTests
+              -skip-testing:CalorynUITests/BarcodeLookupUITests
+    outputs:
+      device: ${{ steps.simulator.outputs.device }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Package resolution is a network call on every run. Caching it keeps the
-      # build off the network in the common case, and the key is the resolved
-      # manifest so a dependency change busts it automatically.
       - name: Cache Swift packages
         uses: actions/cache@v4
         with:
@@ -187,28 +192,148 @@ jobs:
         id: simulator
         uses: ./.github/actions/select-simulator
 
-      # As above: resolution is pinned, so do not go to the network for it.
       - name: Run UI tests
+        env:
+          SELECTION: ${{ matrix.selection }}
         run: |
           set -euo pipefail
 
+          read -ra selection <<< "$SELECTION"
           mkdir -p TestResults
           xcodebuild test \
             -project Caloryn.xcodeproj \
             -scheme Caloryn \
             -testPlan Caloryn-UI \
+            "${selection[@]}" \
             -configuration Debug \
             -destination "platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}" \
             -resultBundlePath TestResults/UI.xcresult \
             -clonedSourcePackagesDirPath .spm-cache \
             -onlyUsePackageVersionsFromResolvedFile \
             -disableAutomaticPackageResolution \
+            -enableCodeCoverage YES \
             CODE_SIGNING_ALLOWED=NO
+
+      - name: Export line coverage
+        run: |
+          set -euo pipefail
+          mkdir -p LineCoverage
+          python3 .github/scripts/line_coverage.py export TestResults/UI.xcresult \
+            --root "$GITHUB_WORKSPACE" --output "LineCoverage/ui-${{ matrix.shard }}-lines.json"
+
+      - name: Upload line coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-${{ matrix.shard }}-line-coverage
+          path: LineCoverage/ui-${{ matrix.shard }}-lines.json
+          if-no-files-found: error
 
       - name: Upload results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ui-test-results
+          name: ui-${{ matrix.shard }}-test-results
           path: TestResults
+          if-no-files-found: ignore
+
+  combined-coverage:
+    name: Combined coverage
+    needs: [unit-tests, ui-tests]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      COVERAGE_FLOOR: "70"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Test the coverage script
+        run: python3 -m unittest discover -v .github/scripts
+
+      - name: Download line coverage
+        uses: actions/download-artifact@v4
+        with:
+          pattern: "*-line-coverage"
+          path: LineCoverage
+          merge-multiple: true
+
+      - name: Combine
+        id: coverage
+        run: |
+          set -euo pipefail
+
+          inputs=(--input unit=LineCoverage/unit-lines.json)
+          for shard in LineCoverage/ui-*-lines.json; do
+            inputs+=(--input "ui=$shard")
+          done
+
+          python3 .github/scripts/line_coverage.py combine \
+            "${inputs[@]}" \
+            --output LineCoverage/combined-summary.md \
+            --percent-file LineCoverage/combined-percent.txt
+
+          echo "percent=$(cat LineCoverage/combined-percent.txt)" >> "$GITHUB_OUTPUT"
+          cat LineCoverage/combined-summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Check coverage floor
+        run: |
+          set -euo pipefail
+
+          current="${{ steps.coverage.outputs.percent }}"
+          if awk "BEGIN { exit !(${current} < ${COVERAGE_FLOOR}) }"; then
+            echo "::error::Combined coverage is ${current}%, below the ${COVERAGE_FLOOR}% floor."
+            exit 1
+          fi
+
+          echo "Combined coverage ${current}% is at or above the ${COVERAGE_FLOOR}% floor."
+
+      - name: Restore combined coverage baseline
+        if: github.event_name == 'pull_request'
+        uses: actions/cache/restore@v4
+        with:
+          path: combined-coverage-baseline.txt
+          key: combined-coverage-baseline-main-${{ needs.unit-tests.outputs.device }}-${{ needs.ui-tests.outputs.device }}-${{ github.event.pull_request.base.sha }}
+          restore-keys: |
+            combined-coverage-baseline-main-${{ needs.unit-tests.outputs.device }}-${{ needs.ui-tests.outputs.device }}-
+
+      - name: Check combined coverage ratchet
+        if: github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail
+
+          current="${{ steps.coverage.outputs.percent }}"
+
+          if [ ! -f combined-coverage-baseline.txt ]; then
+            echo "No combined baseline recorded yet; reporting ${current}% without gating."
+            exit 0
+          fi
+
+          baseline="$(cat combined-coverage-baseline.txt)"
+          echo "Baseline (main): ${baseline}%  Current: ${current}%"
+
+          if awk "BEGIN { exit !(${current} < ${baseline} - 0.5) }"; then
+            echo "::error::Combined coverage dropped from ${baseline}% to ${current}%."
+            exit 1
+          fi
+
+          echo "Combined coverage did not regress."
+
+      - name: Save combined coverage baseline
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: echo "${{ steps.coverage.outputs.percent }}" > combined-coverage-baseline.txt
+
+      - name: Store combined coverage baseline
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/cache/save@v4
+        with:
+          path: combined-coverage-baseline.txt
+          key: combined-coverage-baseline-main-${{ needs.unit-tests.outputs.device }}-${{ needs.ui-tests.outputs.device }}-${{ github.sha }}
+
+      - name: Upload combined summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: combined-coverage
+          path: LineCoverage
           if-no-files-found: ignore

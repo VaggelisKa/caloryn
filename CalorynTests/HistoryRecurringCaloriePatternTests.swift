@@ -403,10 +403,7 @@ final class HistoryRecurringCaloriePatternTests: XCTestCase {
             (
                 DailyGoalSnapshot.dayKey(for: date),
                 DailyGoalSnapshotValues(
-                    baseCalorieTarget: target,
-                    healthAdjustment: 0,
-                    effectiveCalorieTarget: target,
-                    calculationMode: .lifestyleEstimate,
+                    calorieTarget: target,
                     isManualTarget: false
                 )
             )

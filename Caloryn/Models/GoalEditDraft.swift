@@ -1,19 +1,8 @@
 import Foundation
 
-/// The editable state of the goal screen, and every rule that acts on it.
-///
-/// `GoalEditSeed` produces the starting values; this carries them while the
-/// user edits, answers what the screen needs to render, decides whether the
-/// edit may be saved, and writes the result back to the profile. Keeping all of
-/// that here rather than in `GoalEditView` means the rules are reachable
-/// without driving a form.
 struct GoalEditDraft: Equatable {
-    /// Below this the manual target is rejected, since a target this low is
-    /// far more likely to be a typo than an intent.
     static let minimumManualTarget = 1_000
 
-    /// Ratios are stepped in 0.05 increments, so exact equality with 1.0 is
-    /// not reachable through floating-point accumulation.
     static let macroTotalTolerance = 0.01
 
     var targetText: String
@@ -22,6 +11,9 @@ struct GoalEditDraft: Equatable {
     var proteinRatio: Double
     var carbRatio: Double
     var fatRatio: Double
+    var proteinGramsText: String
+    var carbGramsText: String
+    var fatGramsText: String
     var nutrientTargetTexts: [TrackedNutrient: String] = [:]
     var nutrientGoalKinds: [TrackedNutrient: NutrientGoalKind] = [:]
 
@@ -32,46 +24,58 @@ struct GoalEditDraft: Equatable {
         proteinRatio = seed.proteinRatio
         carbRatio = seed.carbRatio
         fatRatio = seed.fatRatio
+        proteinGramsText = seed.proteinGramsText
+        carbGramsText = seed.carbGramsText
+        fatGramsText = seed.fatGramsText
     }
 
     init(profile: UserProfile) {
         self.init(seed: GoalEditSeed(profile: profile))
     }
 
-    // MARK: - Calorie target
-
-    /// Clamped into `CalorieDomain`: this is a free-text field, and the typed
-    /// number is saved onto the profile, then subtracted from and summed across
-    /// a period by History.
     var manualTarget: Int? { Int(targetText).map(CalorieDomain.clamped) }
 
     func calculatedTarget(tdee: Double) -> Int {
         NutritionCalculator.defaultTarget(tdee: tdee, deficit: calorieDeficit)
     }
 
-    /// The target the macro previews are computed from: the typed value while
-    /// the manual toggle is on, otherwise the calculation. A manual target that
-    /// does not parse falls back to the calculation so the previews stay
-    /// populated while the field is being typed into.
     func effectiveCalorieTarget(tdee: Double) -> Int {
         let calculated = calculatedTarget(tdee: tdee)
         return manualOverride ? (manualTarget ?? calculated) : calculated
     }
 
-    // MARK: - Macro previews
-
     var macroTotal: Double { proteinRatio + carbRatio + fatRatio }
 
+    var macroGramGoals: MacroGramGoals {
+        MacroGramGoals(proteinText: proteinGramsText, carbText: carbGramsText, fatText: fatGramsText)
+    }
+
     func proteinTargetGrams(tdee: Double) -> Double {
-        macroGrams(ratio: proteinRatio, caloriesPerGram: 4, tdee: tdee)
+        directOrDerivedGrams(for: .protein, ratio: proteinRatio, caloriesPerGram: 4, tdee: tdee)
     }
 
     func carbTargetGrams(tdee: Double) -> Double {
-        macroGrams(ratio: carbRatio, caloriesPerGram: 4, tdee: tdee)
+        directOrDerivedGrams(for: .carbs, ratio: carbRatio, caloriesPerGram: 4, tdee: tdee)
     }
 
     func fatTargetGrams(tdee: Double) -> Double {
-        macroGrams(ratio: fatRatio, caloriesPerGram: 9, tdee: tdee)
+        directOrDerivedGrams(for: .fat, ratio: fatRatio, caloriesPerGram: 9, tdee: tdee)
+    }
+
+    func macroAccountSummary(tdee: Double, locale: Locale = .current) -> String? {
+        macroGramGoals.accountSummary(calorieTarget: effectiveCalorieTarget(tdee: tdee), locale: locale)
+    }
+
+    private func directOrDerivedGrams(
+        for macro: MacroRatioSelection.Macro,
+        ratio: Double,
+        caloriesPerGram: Double,
+        tdee: Double
+    ) -> Double {
+        if manualOverride {
+            return macroGramGoals.grams(for: macro) ?? 0
+        }
+        return macroGrams(ratio: ratio, caloriesPerGram: caloriesPerGram, tdee: tdee)
     }
 
     private func macroGrams(ratio: Double, caloriesPerGram: Double, tdee: Double) -> Double {
@@ -82,10 +86,8 @@ struct GoalEditDraft: Equatable {
         )
     }
 
-    // MARK: - Validation
-
     var isMacroValid: Bool {
-        abs(macroTotal - 1.0) <= Self.macroTotalTolerance
+        manualOverride ? macroGramGoals.isValid : abs(macroTotal - 1.0) <= Self.macroTotalTolerance
     }
 
     var isManualTargetValid: Bool {
@@ -100,15 +102,11 @@ struct GoalEditDraft: Equatable {
         isMacroValid && isManualTargetValid && areNutrientGoalsValid
     }
 
-    /// A blank field is valid — it means "no goal for this nutrient" — so only
-    /// text that is present but unparseable is flagged.
     func isInvalidTarget(for nutrient: TrackedNutrient) -> Bool {
         let text = trimmedText(for: nutrient)
         return !text.isEmpty && storedTarget(for: nutrient) == nil
     }
 
-    /// The typed value converted to the unit the profile stores, or nil when
-    /// the field is blank, unparseable, or not a positive number.
     func storedTarget(for nutrient: TrackedNutrient) -> Double? {
         // decimalInputValue accepts a decimal comma so the field behaves the
         // same for users whose keyboard produces one, and rejects the spellings
@@ -134,20 +132,16 @@ struct GoalEditDraft: Equatable {
         targetText(for: nutrient).trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    // MARK: - Labels
-
     var deficitLabel: String {
-        if calorieDeficit > 0 {
-            return "-\(calorieDeficit.truncatedSafely) kcal/day (lose weight)"
-        } else if calorieDeficit < 0 {
-            return "+\(abs(calorieDeficit).truncatedSafely) kcal/day (gain weight)"
+        let wholeDeficit = calorieDeficit.truncatedSafely
+        if wholeDeficit > 0 {
+            return "-\(wholeDeficit) kcal/day (lose weight)"
+        } else if wholeDeficit < 0 {
+            return "+\(abs(wholeDeficit)) kcal/day (gain weight)"
         }
         return "Maintenance (no change)"
     }
 
-    // MARK: - Profile round trip
-
-    /// Reads the profile's saved nutrient goals into the editable fields.
     mutating func loadNutrientGoals(from profile: UserProfile) {
         for nutrient in TrackedNutrient.editableGoalNutrients {
             if let target = profile.target(for: nutrient) {
@@ -159,39 +153,68 @@ struct GoalEditDraft: Equatable {
         }
     }
 
-    /// Turning the manual toggle on pre-fills the field with the current
-    /// calculation, so the user adjusts a real number instead of whatever was
-    /// last typed.
     mutating func manualOverrideChanged(to isManual: Bool, tdee: Double) {
-        manualOverride = isManual
-        guard isManual else { return }
-        targetText = "\(calculatedTarget(tdee: tdee))"
+        if isManual {
+            let calories = Double(calculatedTarget(tdee: tdee))
+            proteinGramsText = MacroGramGoals.fieldText(
+                forGrams: NutritionCalculator.macroGrams(calories: calories, ratio: proteinRatio, caloriesPerGram: 4)
+            )
+            carbGramsText = MacroGramGoals.fieldText(
+                forGrams: NutritionCalculator.macroGrams(calories: calories, ratio: carbRatio, caloriesPerGram: 4)
+            )
+            fatGramsText = MacroGramGoals.fieldText(
+                forGrams: NutritionCalculator.macroGrams(calories: calories, ratio: fatRatio, caloriesPerGram: 9)
+            )
+            manualOverride = true
+            targetText = "\(calculatedTarget(tdee: tdee))"
+            return
+        }
+
+        if let snapped = macroGramGoals.snappedRatios() {
+            proteinRatio = snapped.protein
+            carbRatio = snapped.carbs
+            fatRatio = snapped.fat
+        }
+        manualOverride = false
     }
 
-    /// Writes the edit back. Saving a manual target also drops the profile out
-    /// of any dynamic energy mode, because a hand-picked number should not then
-    /// be moved by Apple Health.
     func apply(to profile: UserProfile) {
         profile.manualOverride = manualOverride
         profile.calorieDeficit = calorieDeficit
 
-        if manualOverride, let manualTarget {
-            profile.dailyCalorieTarget = manualTarget
-            profile.energyCalculationMode = .lifestyleEstimate
+        if manualOverride {
+            if let manualTarget {
+                profile.dailyCalorieTarget = manualTarget
+            }
+            if let protein = resolvedMacroGrams(proteinGramsText, saved: profile.proteinTargetG),
+               let carbs = resolvedMacroGrams(carbGramsText, saved: profile.carbTargetG),
+               let fat = resolvedMacroGrams(fatGramsText, saved: profile.fatTargetG) {
+                profile.proteinTargetG = protein
+                profile.carbTargetG = carbs
+                profile.fatTargetG = fat
+            }
         }
 
         profile.recalculate(proteinRatio: proteinRatio, carbRatio: carbRatio, fatRatio: fatRatio)
 
         for nutrient in TrackedNutrient.editableGoalNutrients {
             profile.setGoalKind(goalKind(for: nutrient), for: nutrient)
+            guard !isUnchangedGoal(for: nutrient, in: profile) else { continue }
             profile.setTarget(storedTarget(for: nutrient), for: nutrient)
         }
     }
 
-    /// Whether saving this draft should also switch Apple Health adjustment
-    /// off. Separated from `apply(to:)` so the write to the profile stays free
-    /// of the global settings side effect.
-    var disablesAppleHealthAdjustment: Bool {
-        manualOverride && manualTarget != nil
+    private func resolvedMacroGrams(_ text: String, saved: Double) -> Double? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed == MacroGramGoals.fieldText(forGrams: saved), MacroGramGoals.accepts(saved) {
+            return saved
+        }
+        guard let value = trimmed.decimalInputValue, MacroGramGoals.accepts(value) else { return nil }
+        return value
+    }
+
+    private func isUnchangedGoal(for nutrient: TrackedNutrient, in profile: UserProfile) -> Bool {
+        guard let saved = profile.target(for: nutrient) else { return false }
+        return trimmedText(for: nutrient) == nutrient.unit.inputFormatted(saved)
     }
 }

@@ -1,10 +1,5 @@
 import Foundation
 
-/// The selected day's display data, derived in one pass over the live log.
-///
-/// `TodayView` needs the selected day, the previous day, and each meal section.
-/// Keeping those results together avoids independently filtering the complete
-/// SwiftData query for every total and section on each body evaluation.
 struct DayFoodLogProjection<Entry> {
     let today: [Entry]
     let yesterday: [Entry]
@@ -20,14 +15,16 @@ struct DayFoodLogProjection<Entry> {
         createdAt: (Entry) -> Date
     ) {
         let previousDay = calendar.date(byAdding: .day, value: -1, to: day) ?? day
+        let selectedDay = CalendarDay(containing: day, in: calendar)
+        let dayBefore = CalendarDay(containing: previousDay, in: calendar)
         var today: [Entry] = []
         var yesterday: [Entry] = []
 
         for entry in entries {
             let entryDate = date(entry)
-            if calendar.isDate(entryDate, inSameDayAs: day) {
+            if selectedDay.contains(entryDate) {
                 today.append(entry)
-            } else if calendar.isDate(entryDate, inSameDayAs: previousDay) {
+            } else if dayBefore.contains(entryDate) {
                 yesterday.append(entry)
             }
         }
@@ -45,31 +42,19 @@ struct DayFoodLogProjection<Entry> {
     }
 }
 
-/// Which of the log's entries belong to the day on screen, and in what order.
-///
-/// The rules are generic over the entry so they can be exercised without a
-/// SwiftData store: each one takes the facts it needs — a date, a meal, a
-/// creation time — as accessors rather than reaching into a `FoodLogEntry`.
 enum DayFoodLogSelection {
-    /// The meals that always have a section, whether or not anything is in them.
-    /// Snacks are shown separately because they carry a slot number.
-    static let coreMeals: [MealType] = [.breakfast, .lunch, .dinner]
+    static let dayMeals: [MealType] = [.breakfast, .lunch, .snack, .dinner]
 
-    /// Everything logged on the given day.
-    ///
-    /// Matched by calendar day rather than by a range, so a day is still its own
-    /// day across a daylight-saving change.
     static func entries<Entry>(
         _ entries: [Entry],
         on day: Date,
         calendar: Calendar = .current,
         date: (Entry) -> Date
     ) -> [Entry] {
-        entries.filter { calendar.isDate(date($0), inSameDayAs: day) }
+        let selectedDay = CalendarDay(containing: day, in: calendar)
+        return entries.filter { selectedDay.contains(date($0)) }
     }
 
-    /// One meal's entries, oldest first, so a section keeps the order things
-    /// were added in rather than reshuffling when a portion is edited.
     static func entries<Entry>(
         _ entries: [Entry],
         inMeal meal: MealType,
@@ -81,9 +66,6 @@ enum DayFoodLogSelection {
             .sorted { createdAt($0) < createdAt($1) }
     }
 
-    /// Yesterday's log in the order it should be re-created: meal by meal down
-    /// the day, and within a meal oldest first. Copying in query order would
-    /// interleave breakfast and dinner in the new day's timestamps.
     static func copyOrdered<Entry>(
         _ entries: [Entry],
         mealType: (Entry) -> MealType,
@@ -99,9 +81,26 @@ enum DayFoodLogSelection {
         }
     }
 
-    /// Copying yesterday is offered only into an empty day, so it can never
-    /// silently double up a day that has already been logged.
     static func canCopyYesterday(loggedTodayCount: Int, loggedYesterdayCount: Int) -> Bool {
         loggedTodayCount == 0 && loggedYesterdayCount > 0
+    }
+}
+
+private struct CalendarDay {
+    private let day: Date
+    private let calendar: Calendar
+    private let bounds: Range<Date>?
+
+    init(containing day: Date, in calendar: Calendar) {
+        self.day = day
+        self.calendar = calendar
+        bounds = calendar.dateInterval(of: .day, for: day).map { $0.start..<$0.end }
+    }
+
+    func contains(_ date: Date) -> Bool {
+        guard let bounds else {
+            return calendar.isDate(date, inSameDayAs: day)
+        }
+        return bounds.contains(date)
     }
 }

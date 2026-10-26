@@ -1,11 +1,5 @@
 import SwiftUI
 
-// The pieces the food-log sheets share — Portion, the multi-add portion editor and the
-// ingredient amount picker — so the three read as one sheet in three uses
-// (`docs/design/plate-market.md`, "Portion sheet"). Every colour comes from `CalorynTheme`.
-
-/// A sheet's inline title in 17pt bold ink, for the toolbar's principal slot. The system
-/// title draws in its own label colour, which is not the palette's ink.
 struct FoodLogSheetTitle: View {
     let title: String
 
@@ -18,8 +12,6 @@ struct FoodLogSheetTitle: View {
     }
 }
 
-/// The food a sheet is about: its name 26pt heavy with the Nutri-Score badge beside it, and
-/// the detail lines under it in the secondary text colour.
 struct FoodLogSheetHeader: View {
     let name: String
     var nutriscoreGrade: String? = nil
@@ -53,15 +45,6 @@ struct FoodLogSheetHeader: View {
     }
 }
 
-/// The kcal preview: the figure 64pt heavy in `tint`, with "kcal" beside it over an
-/// optional detail line.
-///
-/// The figure never wraps. Side by side while the two fit; at large text sizes "kcal" and
-/// the detail drop under the figure instead, because squeezed into what the caption left
-/// it, "100" broke into "10" over "0" and read as ten.
-///
-/// The figure is its own accessibility element carrying `identifier`, so its label is the
-/// bare number a journey waits on.
 struct FoodLogCaloriePreview: View {
     let calories: Int
     let tint: Color
@@ -115,7 +98,6 @@ struct FoodLogCaloriePreview: View {
     }
 }
 
-/// "How much", "Which meal", "In this portion": 15pt bold ink.
 struct FoodLogSectionTitle: View {
     let title: String
 
@@ -131,8 +113,6 @@ struct FoodLogSectionTitle: View {
     }
 }
 
-/// Label-and-value rows with a hairline over each, the way the board draws "In this
-/// portion". Values are tabular and roll when they change.
 struct FoodLogValueRows: View {
     struct Row: Identifiable, Equatable {
         let id: String
@@ -147,7 +127,7 @@ struct FoodLogValueRows: View {
             ForEach(rows) { row in
                 VStack(spacing: 0) {
                     Rectangle()
-                        .fill(CalorynTheme.hairline)
+                        .fill(CalorynTheme.separator)
                         .frame(height: CalorynTheme.hairlineWidth)
                         .accessibilityHidden(true)
 
@@ -172,14 +152,12 @@ struct FoodLogValueRows: View {
     }
 }
 
-/// What a sheet's bottom action sits on: the sheet's own colour, clear at the top and
-/// opaque under the button, so rows scroll out beneath it rather than under a bar.
 struct FoodLogBottomFade: View {
     var body: some View {
         LinearGradient(
             stops: [
-                .init(color: CalorynTheme.cardBackground.opacity(0), location: 0),
-                .init(color: CalorynTheme.cardBackground, location: 0.3),
+                .init(color: CalorynTheme.backgroundSecondary.opacity(0), location: 0),
+                .init(color: CalorynTheme.backgroundSecondary, location: 0.3),
             ],
             startPoint: .top,
             endPoint: .bottom
@@ -189,17 +167,14 @@ struct FoodLogBottomFade: View {
 }
 
 extension View {
-    /// The Add Food search well: `calorynInputField`'s tokens — a `surface` fill, a hairline
-    /// edge, ink while focused — drawn as the board's capsule, so it matches the round
-    /// scanner button beside it. The form fields keep `calorynInputField`'s rectangle.
     func foodSearchWell(isFocused: Bool, height: CGFloat) -> some View {
         padding(.horizontal, 16)
             .frame(minHeight: height)
-            .background(CalorynTheme.surface, in: Capsule())
+            .background(CalorynTheme.backgroundInset, in: Capsule())
             .overlay {
                 Capsule()
                     .strokeBorder(
-                        isFocused ? CalorynTheme.textPrimary : CalorynTheme.hairline,
+                        isFocused ? CalorynTheme.accent : CalorynTheme.separator,
                         lineWidth: isFocused ? 1.2 : CalorynTheme.hairlineWidth
                     )
                     .allowsHitTesting(false)
@@ -207,7 +182,6 @@ extension View {
             .animation(.smooth(duration: 0.18), value: isFocused)
     }
 
-    /// A sheet's primary action pinned to the bottom edge over `FoodLogBottomFade`.
     func foodLogBottomAction<Action: View>(@ViewBuilder _ action: () -> Action) -> some View {
         safeAreaInset(edge: .bottom) {
             action()

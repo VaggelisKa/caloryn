@@ -3,8 +3,8 @@ import Foundation
 enum MealType: String, Codable, CaseIterable, Identifiable {
     case breakfast
     case lunch
-    case dinner
     case snack
+    case dinner
 
     var id: String { rawValue }
 
@@ -13,15 +13,6 @@ enum MealType: String, Codable, CaseIterable, Identifiable {
         case .breakfast: "Breakfast"
         case .lunch: "Lunch"
         case .dinner: "Dinner"
-        case .snack: "Snack"
-        }
-    }
-
-    var danishName: String {
-        switch self {
-        case .breakfast: "Morgenmad"
-        case .lunch: "Frokost"
-        case .dinner: "Aftensmad"
         case .snack: "Snack"
         }
     }
@@ -39,14 +30,23 @@ enum MealType: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .breakfast: 0
         case .lunch: 1
-        case .dinner: 2
-        case .snack: 3
+        case .snack: 2
+        case .dinner: 3
         }
     }
 
     func displayName(snackIndex: Int) -> String {
         guard self == .snack else { return displayName }
         return "Snack \(snackIndex)"
+    }
+
+    var widgetMeal: WidgetMeal {
+        switch self {
+        case .breakfast: .breakfast
+        case .lunch: .lunch
+        case .dinner: .dinner
+        case .snack: .snack
+        }
     }
 
     init(widgetMeal: WidgetMeal) {

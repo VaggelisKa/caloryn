@@ -1,20 +1,6 @@
 import SwiftUI
 
-/// The rows of `FoodSearchView`'s two lists.
-///
-/// Pure rendering, split out of `FoodSearchView.swift` for size. Every row is
-/// a `Button` wrapping a `selectionRow`, which reserves space for the
-/// multi-selection tick only while selection mode is active. Nothing here
-/// decides anything: what to show and what a tap does are answered by the
-/// models and handlers the main file owns.
 extension FoodSearchView {
-
-    /// One saved meal, in either list.
-    ///
-    /// Both lists had their own copy of this and only the resting one carried
-    /// the identifier, so a journey could tick a meal from Recent but not from
-    /// search results. One builder is what keeps that from drifting apart
-    /// again.
     func mealRow(for meal: MealTemplate) -> some View {
         Button {
             handleMealSelection(meal)
@@ -97,8 +83,6 @@ extension FoodSearchView {
     func remoteProductRow(_ result: FoodSearchResult) -> some View {
         let product = result.product
         let productName = product.productName ?? "Unknown"
-        // The serving the product is saved with, so the row prices what the Portion sheet
-        // opens on. A serving size with no weight anywhere is still shown, unpriced.
         let serving = product.effectiveServingInfo
 
         return Button {
@@ -137,10 +121,6 @@ extension FoodSearchView {
             if isSelectingMultiple {
                 toggleFoodSelection(food)
             } else {
-                // A single tap goes where every other single tap goes — the
-                // portion picker, seeded with the suggested amount. The review
-                // sheet is for a batch, and reading as one for a single food
-                // was the confusion.
                 selectedFoodItem = PortionDestination(
                     food: food,
                     suggestedPortionGrams: suggestion.resolvedPortionGrams
@@ -203,9 +183,6 @@ extension FoodSearchView {
 
             content()
         }
-        // Every hairline runs from the row's leading margin. Left to itself the separator
-        // starts under the first text, which in selection mode is the name after the tick,
-        // and only the rows laid out after the mode changed moved over.
         .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
         .animation(selectionModeAnimation, value: isSelectingMultiple)
     }
@@ -214,7 +191,7 @@ extension FoodSearchView {
         Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
             .font(CalorynTheme.inlineIcon)
             .foregroundStyle(
-                isSelected ? CalorynTheme.textPrimary : CalorynTheme.textSecondary
+                isSelected ? CalorynTheme.accent : CalorynTheme.textSecondary
             )
             .contentTransition(.symbolEffect(.replace))
             .scaleEffect(isSelected ? 1 : 0.94)
@@ -222,8 +199,6 @@ extension FoodSearchView {
             .accessibilityHidden(true)
     }
 
-    /// A saved meal as a food row: its name, "Saved meal, 3 items", and what logging the
-    /// whole meal adds.
     private func savedMealRow(_ meal: MealTemplate) -> some View {
         let snapshots = (try? MealTemplateCommands.snapshots(for: meal)) ?? []
 

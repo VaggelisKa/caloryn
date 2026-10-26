@@ -2,14 +2,7 @@ import CoreGraphics
 import Testing
 @testable import Caloryn
 
-/// The widths behind the food search placeholder rows.
-///
-/// What is worth pinning is that the same index always yields the same row —
-/// the bars must not move while the shimmer runs — and that a group starting
-/// part-way through the cycle continues it rather than repeating the rows
-/// above it.
 struct FoodSearchSkeletonTests {
-
     @Test("Asking twice yields the same rows")
     func widthsAreStable() {
         #expect(FoodSearchSkeleton.rows(count: 5) == FoodSearchSkeleton.rows(count: 5))

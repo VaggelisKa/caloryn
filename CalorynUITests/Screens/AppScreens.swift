@@ -1,13 +1,5 @@
 import XCTest
 
-/// Page objects for the app's main screens.
-///
-/// Each exposes what a *user* can see and do. Nothing here reaches into view
-/// structure, so these keep working when view logic later moves into view
-/// models.
-
-// MARK: - Tab bar
-
 struct TabBar: Screen {
     let app: XCUIApplication
 
@@ -38,42 +30,32 @@ struct TabBar: Screen {
     }
 }
 
-// MARK: - Onboarding
-
 struct OnboardingScreen: Screen {
     let app: XCUIApplication
 
     var getStarted: XCUIElement { element("onboarding.getStarted") }
-    var goalTarget: XCUIElement { element("onboarding.goalSummary.target") }
     var startTracking: XCUIElement { element("onboarding.startTracking") }
+    var setManually: XCUIElement { element("onboarding.goalSummary.setManually") }
+    var manualCalorieTarget: XCUIElement { element("onboarding.goalSummary.manualTarget") }
+    var proteinGoal: XCUIElement { element("onboarding.macroGrams.protein") }
+    var carbGoal: XCUIElement { element("onboarding.macroGrams.carbs") }
+    var fatGoal: XCUIElement { element("onboarding.macroGrams.fat") }
+    var macroAccount: XCUIElement { element("onboarding.macroGrams.account") }
 
-    /// One activity level choice. Which one is chosen shows up as the element's
-    /// selected trait, the same thing VoiceOver announces.
     func activityLevel(_ level: String) -> XCUIElement {
         element("onboarding.activityLevel.option.\(level)")
     }
 
-    /// Every step of the flow, in the order `OnboardingStep` pushes them, paired
-    /// with the control that both proves the step is on screen and moves past it.
-    ///
-    /// Each identifier belongs to exactly one step, so "the next one exists" is a
-    /// sound arrival check even while a push animation is still running. The
-    /// screenshot harness walks this list to photograph each screen and
-    /// `completeWithDefaults` walks it to get past onboarding, so the order is
-    /// written down once rather than in each caller.
     static let steps: [Step] = [
         Step(name: "welcome", advanceIdentifier: "onboarding.getStarted"),
         Step(name: "personal-info", advanceIdentifier: "onboarding.personalInfo.continue"),
         Step(name: "activity-level", advanceIdentifier: "onboarding.activityLevel.continue"),
-        Step(name: "energy-mode", advanceIdentifier: "onboarding.energyMode.continue"),
         Step(name: "goal-summary", advanceIdentifier: "onboarding.goalSummary.continue"),
         Step(name: "macro-ratios", advanceIdentifier: "onboarding.macroRatios.continue"),
         Step(name: "nutrients", advanceIdentifier: "onboarding.startTracking")
     ]
 
     struct Step {
-        /// Used in screenshot filenames, so it is kebab-case rather than the
-        /// enum's camelCase.
         let name: String
         let advanceIdentifier: String
     }
@@ -82,21 +64,14 @@ struct OnboardingScreen: Screen {
         element(step.advanceIdentifier)
     }
 
-    /// Walks the whole onboarding flow using each step's continue button.
-    /// Steps are advanced by identifier rather than by position, so inserting
-    /// a step does not silently skip part of the flow.
     func completeWithDefaults() {
         tap(getStarted)
 
         for step in Self.steps.dropFirst() {
-            // Not every build presents every step; skip any that is absent
-            // rather than failing, but require that at least the flow ends.
             tapIfPresent(advance(step), timeout: 5)
         }
     }
 }
-
-// MARK: - Today
 
 struct TodayScreen: Screen {
     let app: XCUIApplication
@@ -118,8 +93,6 @@ struct TodayScreen: Screen {
         calorieRing.waitForExistence(timeout: UITestCase.defaultTimeout)
     }
 
-    /// Today is a lazy `List`, so rows below the fold do not enter the
-    /// accessibility tree until the user scrolls toward them.
     @discardableResult
     func revealTowardBottom(
         _ element: XCUIElement,
@@ -130,7 +103,6 @@ struct TodayScreen: Screen {
         reveal(element, maximumScrolls: maximumScrolls, swipe: app.swipeUp, file: file, line: line)
     }
 
-    /// Returns from the bottom actions row to meal entries near the top.
     @discardableResult
     func revealTowardTop(
         _ element: XCUIElement,
@@ -160,8 +132,6 @@ struct TodayScreen: Screen {
     }
 }
 
-// MARK: - My Foods
-
 struct MyFoodsScreen: Screen {
     let app: XCUIApplication
 
@@ -173,8 +143,6 @@ struct MyFoodsScreen: Screen {
     }
 }
 
-// MARK: - Custom food form
-
 struct CustomFoodFormScreen: Screen {
     let app: XCUIApplication
 
@@ -184,16 +152,54 @@ struct CustomFoodFormScreen: Screen {
     var save: XCUIElement { element("customFood.save") }
 }
 
-// MARK: - Food search and portion
-
 struct FoodSearchScreen: Screen {
     let app: XCUIApplication
 
     var searchField: XCUIElement { element("foodSearch.searchField") }
+    var scan: XCUIElement { element("foodSearch.scanBarcode") }
+    var close: XCUIElement { element("foodSearch.close") }
 
     func result(named name: String) -> XCUIElement {
         element("foodSearch.result.\(name)")
     }
+}
+
+struct PastedFoodScreen: Screen {
+    let app: XCUIApplication
+
+    var paste: XCUIElement { element("foodSearch.pasteLink") }
+
+    var name: XCUIElement { element("pastedFood.name") }
+    var calories: XCUIElement { element("pastedFood.calories") }
+    var protein: XCUIElement { element("pastedFood.protein") }
+    var carbs: XCUIElement { element("pastedFood.carbs") }
+    var fat: XCUIElement { element("pastedFood.fat") }
+    var meal: XCUIElement { element("pastedFood.meal") }
+    var grams: XCUIElement { element("pastedFood.grams") }
+    var nameBlockedReason: XCUIElement { element("pastedFood.nameBlockedReason") }
+    var addBlockedReason: XCUIElement { element("pastedFood.addBlockedReason") }
+    var add: XCUIElement { element("pastedFood.add") }
+    var disabledAdd: XCUIElement {
+        app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier == %@ AND isEnabled == false", "pastedFood.add"))
+            .firstMatch
+    }
+    var cancel: XCUIElement { element("pastedFood.cancel") }
+    var addAgain: XCUIElement { element("pastedFood.alreadyLogged.addAgain") }
+    var keepSingle: XCUIElement { element("pastedFood.alreadyLogged.cancel") }
+    var dismissRejection: XCUIElement { element("foodSearch.pasteRejection.ok") }
+
+    func text(containing substring: String) -> XCUIElement {
+        app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label CONTAINS %@", substring))
+            .firstMatch
+    }
+}
+
+struct BarcodeScannerScreen: Screen {
+    let app: XCUIApplication
+
+    var close: XCUIElement { element("barcodeScanner.close") }
 }
 
 struct PortionPickerScreen: Screen {
@@ -204,30 +210,18 @@ struct PortionPickerScreen: Screen {
     var delete: XCUIElement { element("portionPicker.delete") }
     var back: XCUIElement { element("portionPicker.back") }
 
-    /// The tappable box around the grams field. The field itself is at zero
-    /// opacity until focused, so this is what a journey taps to start typing.
     var amountBox: XCUIElement { element("portionPicker.amountBox") }
 
     func quickGrams(_ grams: Int) -> XCUIElement {
         element("portionPicker.quickGrams.\(grams)")
     }
 
-    /// Replaces whatever the grams field holds with `grams`.
-    ///
-    /// The deletes are a fixed count rather than one per existing character:
-    /// reading the old value back would be a second round trip, and a portion
-    /// never exceeds five digits, so over-deleting an already empty field is
-    /// both harmless and cheaper.
     func typeGrams(_ grams: Int) {
         tap(amountBox)
         app.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 6))
         app.typeText("\(grams)")
     }
 
-    /// Waits for the calorie readout to settle on `calorieCount`.
-    ///
-    /// The readout animates, so the first sample after typing can still be the
-    /// old number — this waits for the value rather than asserting on it once.
     @discardableResult
     func awaitCalories(
         _ calorieCount: Int,
@@ -248,8 +242,6 @@ struct PortionPickerScreen: Screen {
     }
 }
 
-// MARK: - Nutrition details
-
 struct NutritionDetailsScreen: Screen {
     let app: XCUIApplication
 
@@ -257,12 +249,11 @@ struct NutritionDetailsScreen: Screen {
     var consumedCalories: XCUIElement { element("nutritionDetails.consumedCalories") }
 }
 
-// MARK: - History
-
 struct HistoryScreen: Screen {
     let app: XCUIApplication
 
     var rangePicker: XCUIElement { element("history.rangePicker") }
+    var averageCalories: XCUIElement { element("history.goalSummary.metric.kcal/day-avg") }
     var calorieTrendCard: XCUIElement { element("history.calorieTrend.card") }
     var calorieTrendDetails: XCUIElement { element("history.calorieTrend.details") }
     var recurringPatternCard: XCUIElement { element("history.recurringPattern.card") }
@@ -272,7 +263,6 @@ struct HistoryScreen: Screen {
         element("history.recurringPattern.supportingDay.details")
     }
 
-    /// Range controls are segmented-control buttons labelled "7 Days" and so on.
     func selectRange(_ label: String) {
         tap(rangeButton(label))
     }
@@ -282,9 +272,6 @@ struct HistoryScreen: Screen {
         return scoped.exists ? scoped : app.buttons[label]
     }
 
-    /// Waits for the named range to become the selected segment, so a test can
-    /// assert the selection actually changed rather than that the control
-    /// merely still exists.
     @discardableResult
     func awaitRangeSelected(
         _ label: String,
@@ -302,8 +289,6 @@ struct HistoryScreen: Screen {
     }
 }
 
-// MARK: - Settings
-
 struct SettingsScreen: Screen {
     let app: XCUIApplication
 
@@ -313,4 +298,145 @@ struct SettingsScreen: Screen {
     var goalTargetField: XCUIElement { element("goalEdit.target") }
     var manualOverride: XCUIElement { element("goalEdit.manualOverride") }
     var saveGoal: XCUIElement { element("goalEdit.save") }
+    var proteinGoal: XCUIElement { element("goalEdit.protein") }
+    var carbGoal: XCUIElement { element("goalEdit.carbs") }
+    var fatGoal: XCUIElement { element("goalEdit.fat") }
+    var macroAccount: XCUIElement { element("goalEdit.macroAccount") }
+
+    var export: XCUIElement { element("settings.export") }
+    var copyChatbotInstructions: XCUIElement { element("settings.copyChatbotInstructions") }
+
+    @discardableResult
+    func revealClearOfTabBar(
+        _ element: XCUIElement,
+        maximumDrags: Int = 10,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        let window = app.windows.firstMatch
+        let tabBar = app.tabBars.firstMatch
+        var drags = 0
+        while !(element.isHittable && element.frame.maxY <= tabBar.frame.minY), drags < maximumDrags {
+            window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6))
+                .press(
+                    forDuration: 0.05,
+                    thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4))
+                )
+            drags += 1
+        }
+        if !(element.isHittable && element.frame.maxY <= tabBar.frame.minY) {
+            XCTFail("Never scrolled \(element) clear of the tab bar", file: file, line: line)
+        }
+        return element
+    }
+
+    @discardableResult
+    func revealExport(
+        maximumScrolls: Int = 6,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        var scrolls = 0
+        while !(export.exists && export.isHittable), scrolls < maximumScrolls {
+            app.swipeUp()
+            scrolls += 1
+        }
+        if !(export.exists && export.isHittable) {
+            XCTFail("Never scrolled to \(export)", file: file, line: line)
+        }
+        return export
+    }
+}
+
+struct MultiAddScreen: Screen {
+    let app: XCUIApplication
+
+    var selectMultiple: XCUIElement { element("foodSearch.selectMultiple") }
+    var review: XCUIElement { element("multiAdd.review") }
+    var commit: XCUIElement { element("multiAdd.commit") }
+    var editorSave: XCUIElement { element("multiAdd.editor.save") }
+    var editorCalories: XCUIElement { element("multiAdd.editor.calories") }
+
+    func item(named name: String) -> XCUIElement {
+        app.descendants(matching: .any)
+            .matching(NSPredicate(
+                format: "identifier BEGINSWITH %@ AND label CONTAINS %@",
+                "multiAdd.item.",
+                name
+            ))
+            .firstMatch
+    }
+
+    func editorQuickGrams(_ grams: Int) -> XCUIElement {
+        app.descendants(matching: .any)
+            .matching(NSPredicate(
+                format: "identifier == %@ AND label == %@",
+                "multiAdd.editor.portion",
+                "\(grams) grams"
+            ))
+            .firstMatch
+    }
+}
+
+struct CreationFormScreen: Screen {
+    let app: XCUIApplication
+
+    var createRecipe: XCUIElement { element("myFoods.createRecipe") }
+    var createMeal: XCUIElement { element("myFoods.createMeal") }
+
+    var recipeName: XCUIElement { element("recipe.name") }
+    var addIngredient: XCUIElement { element("recipe.addIngredient") }
+    var saveRecipe: XCUIElement { element("recipe.save") }
+
+    var mealName: XCUIElement { element("meal.name") }
+    var addMealItem: XCUIElement { element("meal.addItem") }
+    var saveMeal: XCUIElement { element("meal.save") }
+
+    var amountGrams: XCUIElement { element("ingredientAmount.grams") }
+    var amountCalories: XCUIElement { element("ingredientAmount.calories") }
+    var saveAmount: XCUIElement { element("ingredientAmount.save") }
+
+    func libraryMeal(named name: String) -> XCUIElement {
+        element("myFoods.meal.\(name)")
+    }
+
+    var firstMealResult: XCUIElement { element(withIdentifierPrefix: "meal.select.") }
+}
+
+struct MissingFoodEntryScreen: Screen {
+    let app: XCUIApplication
+
+    var portion: XCUIElement { element("missingEntry.portion") }
+    var save: XCUIElement { element("missingEntry.save") }
+}
+
+struct ProfileEditScreen: Screen {
+    let app: XCUIApplication
+
+    var age: XCUIElement { element("profileEdit.age") }
+    var save: XCUIElement { element("profileEdit.save") }
+
+    func sex(_ rawValue: String) -> XCUIElement {
+        element("profileEdit.sex.\(rawValue)")
+    }
+
+    var settingsAge: XCUIElement { element("settings.profile.age") }
+    var settingsSex: XCUIElement { element("settings.profile.sex") }
+}
+
+struct DailyReminderScreen: Screen {
+    let app: XCUIApplication
+
+    var toggle: XCUIElement { element("settings.dailyReminder.toggle") }
+    var time: XCUIElement { element("settings.dailyReminder.time") }
+    var timePicker: XCUIElement { element("settings.dailyReminder.timePicker") }
+    var openSettings: XCUIElement { element("settings.dailyReminder.openSettings") }
+
+    var isOn: Bool { (toggle.value as? String) == "1" }
+
+    func flip() {
+        awaitTappable(toggle)
+            .coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.5))
+            .tap()
+    }
 }

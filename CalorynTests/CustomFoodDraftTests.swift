@@ -1,14 +1,9 @@
 import Testing
 @testable import Caloryn
 
-/// Covers the manual-food form's arithmetic and provenance bookkeeping, which
-/// until now were only reachable by typing into thirteen text fields.
 @MainActor
 @Suite("Custom food draft")
 struct CustomFoodDraftTests {
-
-    // MARK: - Parsing
-
     @Test(
         "Decimals parse the same whichever separator the keyboard produces",
         arguments: [("12.5", 12.5), ("12,5", 12.5), ("  7 ", 7.0), ("0", 0.0), ("-2.5", -2.5)]
@@ -25,9 +20,6 @@ struct CustomFoodDraftTests {
         #expect(text.decimalInputValue == nil)
     }
 
-    /// A decimal keypad cannot produce any of these, so anything that does is
-    /// pasted or injected. `Double(_:)` accepts them all, and an infinity or a
-    /// NaN reaching a formatter or an `Int(_:)` conversion terminates the app.
     @Test(
         "Notation a decimal keypad cannot produce is rejected",
         arguments: [
@@ -39,8 +31,6 @@ struct CustomFoodDraftTests {
     func nonKeypadNotationIsRejected(text: String) {
         #expect(text.decimalInputValue == nil)
     }
-
-    // MARK: - Save gating
 
     @Test("A name and a calorie figure are enough to save")
     func minimalDraftCanSave() {
@@ -88,8 +78,6 @@ struct CustomFoodDraftTests {
         draft.sodiumPerServing = ""
         #expect(draft.canSave)
     }
-
-    // MARK: - Every field enforces the keypad contract
 
     @Test(
         "Calories written in notation the keypad cannot produce block saving",
@@ -200,8 +188,6 @@ struct CustomFoodDraftTests {
         #expect(edit.defaultServingG == nil)
     }
 
-    // MARK: - Serving size
-
     @Test(
         "A serving that is blank, unparseable, or non-positive falls back to 100g",
         arguments: ["", "abc", "0", "-50"]
@@ -211,7 +197,6 @@ struct CustomFoodDraftTests {
         draft.servingSizeGrams = text
 
         #expect(draft.effectiveServingGrams == CustomFoodDraft.fallbackServingGrams)
-        // The fallback is only for the arithmetic; nothing unusable is stored.
         #expect(draft.storedServingGrams == nil)
     }
 
@@ -224,8 +209,6 @@ struct CustomFoodDraftTests {
         #expect(draft.storedServingGrams == 40)
     }
 
-    // MARK: - Per-serving to per-100g
-
     @Test("Values typed per serving are scaled to per 100g")
     func perServingScalesToPer100g() {
         var draft = CustomFoodDraft()
@@ -234,7 +217,6 @@ struct CustomFoodDraftTests {
         draft.proteinPerServing = "5.2"
         draft.servingSizeGrams = "40"
 
-        // 152 kcal in 40 g is 380 kcal in 100 g.
         #expect(abs(draft.nutritionPer100g.calories - 380) < 0.001)
         #expect(abs((draft.proteinPer100g ?? 0) - 13) < 0.001)
     }
@@ -256,7 +238,6 @@ struct CustomFoodDraftTests {
 
         #expect(draft.suppliedProtein == nil)
         #expect(draft.proteinPer100g == nil)
-        // The nutrition figure still needs a number, so it reads as zero there.
         #expect(draft.nutritionPerServing.proteinG == 0)
     }
 
@@ -275,11 +256,8 @@ struct CustomFoodDraftTests {
         draft.sodiumPerServing = "500"
         draft.servingSizeGrams = "100"
 
-        // 500 mg is 0.5 g.
         #expect(abs((draft.nutritionPerServing.sodiumG ?? 0) - 0.5) < 0.001)
     }
-
-    // MARK: - Provenance
 
     @Test("For a new food, every field with content counts as user-supplied")
     func newFoodReportsFilledFields() {
@@ -335,8 +313,6 @@ struct CustomFoodDraftTests {
         #expect(draft.userEditedRecoveryFields(isEditingExistingFood: true).contains(.produceKind))
     }
 
-    // MARK: - Loading an existing food
-
     @Test("Loading a food shows its nutrition for the serving it is stored against")
     func populateShowsPerServingValues() {
         let food = makeTestFoodItem(
@@ -350,7 +326,6 @@ struct CustomFoodDraftTests {
 
         #expect(draft.name == "Rolled Oats")
         #expect(draft.servingSizeGrams == "40")
-        // 380 kcal per 100 g is 152 per 40 g.
         #expect(draft.caloriesPerServing == "152")
         #expect(draft.proteinPerServing == "5.2")
     }
@@ -376,8 +351,6 @@ struct CustomFoodDraftTests {
         #expect(abs(round.fatG - 7) < 0.5)
     }
 
-    // MARK: - Brand
-
     @Test("A blank brand is stored as no brand rather than an empty string")
     func blankBrandIsNil() {
         var draft = CustomFoodDraft()
@@ -387,8 +360,6 @@ struct CustomFoodDraftTests {
         #expect(draft.trimmedBrand == "Quaker")
     }
 
-    // MARK: - Writing values back into the form
-
     @Test("A nutrient the food does not record is shown blank")
     func absentNutrientShowsBlank() {
         #expect(CustomFoodDraft.optionalPerServingText(nil, serving: 40) == "")
@@ -396,13 +367,11 @@ struct CustomFoodDraftTests {
 
     @Test("A gram nutrient is scaled to the serving")
     func gramNutrientScalesToServing() {
-        // 10 g per 100 g is 4 g in a 40 g serving.
         #expect(CustomFoodDraft.optionalPerServingText(10, serving: 40) == "4")
     }
 
     @Test("A milligram nutrient is shown in milligrams")
     func milligramNutrientShowsAsMilligrams() {
-        // 0.5 g of sodium per 100 g is 0.2 g in a 40 g serving, shown as 200 mg.
         #expect(
             CustomFoodDraft.optionalPerServingText(0.5, serving: 40, unit: .milligramsFromGrams)
                 == "200"
@@ -423,8 +392,6 @@ struct CustomFoodDraftTests {
         #expect(CustomFoodDraft.editableCoreText(13, origin: .provider) == "13")
     }
 
-    // MARK: - The barcode recovery payload
-
     @Test("A new food's recovery payload carries the typed values scaled to per 100g")
     func personalEditCarriesScaledValues() {
         var draft = CustomFoodDraft()
@@ -442,7 +409,6 @@ struct CustomFoodDraftTests {
         #expect(abs(edit.caloriesPer100g - 380) < 0.001)
         #expect(abs((edit.proteinPer100g ?? 0) - 13) < 0.001)
         #expect(edit.defaultServingG == 40)
-        // 200 mg in 40 g is 0.5 g per 100 g.
         #expect(abs((edit.sodiumPer100g ?? 0) - 0.5) < 0.001)
     }
 
@@ -485,8 +451,6 @@ struct CustomFoodDraftTests {
         #expect(claimed.contains(.calories))
         #expect(!claimed.contains(.protein))
     }
-
-    // MARK: - Input formatting
 
     @Test(
         "Values are written back without a pointless trailing zero",

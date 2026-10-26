@@ -14,10 +14,6 @@ struct FavoriteIntentCandidate: Equatable, Sendable {
     let portionGrams: Double
     let favoritedAt: Date?
     let displayTitle: String
-
-    var displaySubtitle: String {
-        "\(kind.rawValue), last logged \(IntentNumberFormatting.grams(portionGrams)) g"
-    }
 }
 
 @MainActor
@@ -210,9 +206,7 @@ enum TodayCaloriesIntentResponse: Equatable, Sendable {
     static func make(
         snapshot: DailyWidgetSnapshot?,
         currentConsumed: Double,
-        expectedBaseTarget: Int,
         expectedTarget: Int,
-        expectsDynamicTarget: Bool,
         now: Date = .now,
         calendar: Calendar = .current,
         locale: Locale = .current
@@ -221,9 +215,7 @@ enum TodayCaloriesIntentResponse: Equatable, Sendable {
               snapshot.state == .ready,
               calendar.isDate(snapshot.dayStart, inSameDayAs: now),
               snapshot.calories.consumed == max(0, currentConsumed.rounded().truncatedSafely),
-              snapshot.calories.baseTarget == max(1, expectedBaseTarget),
-              snapshot.calories.target == max(1, expectedTarget),
-              snapshot.usesDynamicTarget == expectsDynamicTarget else {
+              snapshot.calories.target == max(1, expectedTarget) else {
             return .unavailable("Open Caloryn to refresh today’s calorie snapshot.")
         }
 

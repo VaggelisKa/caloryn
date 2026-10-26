@@ -3,19 +3,27 @@ import SwiftUI
 import SwiftData
 
 struct TodayView: View {
+    @State private var selectedDate: Date = Date().startOfDay
+
+    var body: some View {
+        TodayDayView(day: selectedDate, selectedDate: $selectedDate)
+    }
+}
+
+private struct TodayDayView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(AppRouter.self) private var router
     @Query(sort: \UserProfile.updatedAt, order: .reverse) private var profiles: [UserProfile]
-    @Query private var allEntries: [FoodLogEntry]
+    @Query private var entriesAroundDay: [FoodLogEntry]
+    @Query private var goalSnapshots: [DailyGoalSnapshot]
+    @Binding private var selectedDate: Date
 
-    /// Apple's minimum touch target; a bare chevron glyph is smaller than this and the
-    /// accessibility audit reports "Hit area is too small".
     private static let minimumHitTarget: CGFloat = 44
-    /// The glass circle drawn inside each day button's hit target.
     private static let dayButtonSize: CGFloat = 36
 
     private struct FoodSearchPresentation: Identifiable {
@@ -32,53 +40,43 @@ struct TodayView: View {
     /// chips under the top region while the single list had room for everything.
     @State private var isWiderThanTall = false
 
-    @State private var selectedDate: Date = Date().startOfDay
     @State private var lastKnownToday: Date = Date().startOfDay
     @State private var showingNutritionDetails = false
     @State private var foodSearchPresentation: FoodSearchPresentation?
     @State private var entryToEdit: FoodLogEntry?
+    @Namespace private var dayButtonGlass
 
     @AppStorage("showNutriscore") private var showNutriscore = true
-    @State private var activeEnergyTracker = ActiveEnergyDayTracker()
+
+    init(day: Date, selectedDate: Binding<Date>) {
+        _entriesAroundDay = Query(
+            filter: FoodLogEntryWindow.logged(in: FoodLogEntryWindow.days(around: day, calendar: .current))
+        )
+        _selectedDate = selectedDate
+    }
 
     private var profile: UserProfile? { profiles.first }
-    private func calorieBudget(consumed: Double) -> ActivityCalorieBudget {
-        guard let profile else {
-            return ActivityCalorieBudget(
-                consumed: consumed,
-                staticTarget: 2_000,
-                bmr: 1_700,
-                calorieDeficit: 0,
-                activeEnergyKcal: 0,
-                recentActiveEnergySamples: [],
-                calculationMode: .lifestyleEstimate,
-                isManualOverride: false,
-                isActivityLoading: false,
-                activityMessage: nil,
-                date: selectedDate
+    private func calorieBudget(consumed: Double) -> CalorieBudget {
+        let current = profile?.calorieBudget(consumed: consumed) ?? CalorieBudget(consumed: consumed, target: 2_000)
+        let target = DayCalorieTarget.calories(
+            for: selectedDate,
+            today: .now,
+            currentTarget: current.target,
+            savedTargets: HistoryDayTargetResolver(
+                fallbackTarget: current.target,
+                valuesByDayKey: DailyGoalSnapshotStore.latestValuesByDayKey(goalSnapshots)
             )
-        }
-
-        return profile.activityBudget(
-            consumed: consumed,
-            activeEnergyKcal: activeEnergyTracker.activeEnergyKcal,
-            recentActiveEnergySamples: activeEnergyTracker.recentActiveEnergySamples,
-            isActivityLoading: activeEnergyTracker.isLoading,
-            activityMessage: activeEnergyTracker.message,
-            date: selectedDate
         )
-    }
-    private var healthRefreshKey: String {
-        "\(selectedDate.timeIntervalSinceReferenceDate)-\(profile?.effectiveEnergyCalculationMode.rawValue ?? EnergyCalculationMode.lifestyleEstimate.rawValue)"
+        return CalorieBudget(consumed: consumed, target: target, isManualOverride: current.isManualOverride)
     }
 
-    private var coreMeals: [MealType] {
-        DayFoodLogSelection.coreMeals
+    private var dayMeals: [MealType] {
+        DayFoodLogSelection.dayMeals
     }
 
     private var dayProjection: DayFoodLogProjection<FoodLogEntry> {
         DayFoodLogProjection(
-            allEntries,
+            entriesAroundDay,
             on: selectedDate,
             date: \.date,
             mealType: \.mealType,
@@ -125,6 +123,7 @@ struct TodayView: View {
                 proxy.size.width > proxy.size.height
             } action: { isWiderThanTall = $0 }
             .calorynPageCanvas()
+            .todayTitlelessBar()
             .sheet(item: $foodSearchPresentation) { presentation in
                 FoodSearchView(
                     mealType: presentation.mealType,
@@ -169,29 +168,15 @@ struct TodayView: View {
             }
         }
         .calorynPageCanvas()
-        .task(id: healthRefreshKey) {
-            await activeEnergyTracker.configure(
-                date: selectedDate,
-                isEnabled: profile?.effectiveEnergyCalculationMode == .dynamicHealth
-            )
-        }
         .task(id: router.pendingRoute) {
             handlePendingRoute()
         }
         .task(id: calorieBudget) {
             recordDailyGoalSnapshotIfNeeded(calorieBudget: calorieBudget)
         }
-        .onDisappear {
-            activeEnergyTracker.stopObserving()
-        }
-        .onChange(of: activeEnergyTracker.message) { _, message in
-            guard message != nil, profile?.energyCalculationMode == .dynamicHealth else { return }
-            profile?.energyCalculationMode = .lifestyleEstimate
-        }
         .onChange(of: scenePhase) { _, newPhase in
             guard newPhase == .active else { return }
             followCalendarRollover()
-            activeEnergyTracker.refreshWhenActive()
         }
         // Covers midnight passing while Today stays on screen, when no scene
         // transition ever happens.
@@ -210,7 +195,7 @@ struct TodayView: View {
     private struct DashboardContent {
         let entries: [FoodLogEntry]
         let yesterdayEntries: [FoodLogEntry]
-        let calorieBudget: ActivityCalorieBudget
+        let calorieBudget: CalorieBudget
         let nutriscoreDistribution: [(grade: String, count: Int)]
         let showsNutriscore: Bool
         let canCopyYesterday: Bool
@@ -248,12 +233,11 @@ struct TodayView: View {
             mealRows(projection: projection, canCopyYesterday: dashboard.canCopyYesterday)
         }
         .calorynPlainListStyle()
-        // Rows size to the board's 41pt rather than the system's 44pt minimum; each
-        // is still a full-width tap target.
         .environment(\.defaultMinListRowHeight, 0)
         .contentMargins(.top, 0, for: .scrollContent)
-        .id(selectedDate)
+        .transaction(value: selectedDate) { $0.animation = nil }
         .animation(.smooth(duration: 0.35), value: dashboard.showsNutriscore)
+        .animation(reduceMotion ? nil : .smooth(duration: 0.3), value: projection.today.map(\.id))
     }
 
     /// Regular width and height, landscape: the dashboard is one region and the meals the
@@ -331,21 +315,24 @@ struct TodayView: View {
         .calorynPlainListStyle()
         .environment(\.defaultMinListRowHeight, 0)
         .contentMargins(.top, 0, for: .scrollContent)
-        .id(selectedDate)
+        .transaction(value: selectedDate) { $0.animation = nil }
+        .animation(reduceMotion ? nil : .smooth(duration: 0.3), value: projection.today.map(\.id))
     }
 
-    @ViewBuilder
     private func mealRows(
         projection: DayFoodLogProjection<FoodLogEntry>,
         canCopyYesterday: Bool
     ) -> some View {
-        ForEach(coreMeals) { meal in
+        ForEach(dayMeals) { meal in
+            let snackIndex = meal == .snack ? 1 : 0
             MealSectionView(
                 mealType: meal,
                 entries: projection.entries(for: meal),
+                snackIndex: snackIndex,
+                titleOverride: meal == .snack ? "Snacks" : nil,
                 canCopyYesterday: canCopyYesterday,
                 onAdd: {
-                    presentFoodSearch(mealType: meal, snackIndex: 0)
+                    presentFoodSearch(mealType: meal, snackIndex: snackIndex)
                 },
                 onEdit: { entry in
                     entryToEdit = entry
@@ -353,28 +340,8 @@ struct TodayView: View {
                 onDelete: deleteEntry
             )
         }
-
-        MealSectionView(
-            mealType: .snack,
-            entries: projection.entries(for: .snack),
-            snackIndex: 1,
-            titleOverride: "Snacks",
-            canCopyYesterday: canCopyYesterday,
-            onAdd: {
-                presentFoodSearch(mealType: .snack, snackIndex: 1)
-            },
-            onEdit: { entry in
-                entryToEdit = entry
-            },
-            onDelete: deleteEntry
-        )
     }
 
-    /// "Friday 17 October" on the left, previous and next day as glass circles on the right.
-    ///
-    /// One line, as the board draws it, until accessibility sizes: there the chevrons leave
-    /// the title about 246pt, and "Wednesday 30 September" would need to shrink below the
-    /// 0.7 floor and truncate. The title wraps instead.
     private var dateNavigator: some View {
         HStack(spacing: 12) {
             Text(DayTitle.text(for: selectedDate))
@@ -383,41 +350,42 @@ struct TodayView: View {
                 .foregroundStyle(CalorynTheme.textPrimary)
                 .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 1)
                 .minimumScaleFactor(0.7)
-                .contentTransition(.numericText())
+                .contentTransition(
+                    reduceMotion ? .identity : .numericText(value: selectedDate.timeIntervalSinceReferenceDate)
+                )
+                .animation(reduceMotion ? nil : .smooth(duration: 0.35), value: selectedDate)
                 .accessibilityLabel(DayTitle.accessibilityLabel(for: selectedDate))
                 .accessibilityAddTraits(.isHeader)
 
             Spacer(minLength: 8)
 
-            HStack(spacing: 0) {
-                dayButton(
-                    systemImage: "chevron.left",
-                    label: "Previous day",
-                    identifier: "today.previousDay",
-                    isEnabled: true
-                ) {
-                    selectedDate = selectedDate.yesterday
-                }
+            AdaptiveGlassGroup {
+                HStack(spacing: 0) {
+                    dayButton(
+                        systemImage: "chevron.left",
+                        label: "Previous day",
+                        identifier: "today.previousDay",
+                        isEnabled: true
+                    ) {
+                        selectedDate = selectedDate.yesterday
+                    }
 
-                dayButton(
-                    systemImage: "chevron.right",
-                    label: "Next day",
-                    identifier: "today.nextDay",
-                    isEnabled: !selectedDate.isAtFutureLogLimit
-                ) {
-                    selectedDate = selectedDate.tomorrow
+                    dayButton(
+                        systemImage: "chevron.right",
+                        label: "Next day",
+                        identifier: "today.nextDay",
+                        isEnabled: !selectedDate.isAtFutureLogLimit
+                    ) {
+                        selectedDate = selectedDate.tomorrow
+                    }
                 }
             }
-            // The 44pt hit targets overhang the 36pt circles by 4pt each side; pull the pair
-            // back so the right-hand circle sits on the page margin as the board draws it.
             .padding(.trailing, -(Self.minimumHitTarget - Self.dayButtonSize) / 2)
         }
         .padding(.top, 4)
         .padding(.bottom, 4)
     }
 
-    /// A 36pt glass circle inside a 44pt hit target — Apple's minimum; the accessibility audit
-    /// reports a bare 36pt control as "Hit area is too small".
     private func dayButton(
         systemImage: String,
         label: String,
@@ -425,19 +393,13 @@ struct TodayView: View {
         isEnabled: Bool,
         action: @escaping () -> Void
     ) -> some View {
-        Button {
-            withAnimation {
-                action()
-            }
-        } label: {
+        Button(action: action) {
             Image(systemName: systemImage)
                 .font(CalorynTheme.inlineIcon)
                 .imageScale(.small)
-                .foregroundStyle(isEnabled ? CalorynTheme.textPrimary : CalorynTheme.textTertiary)
+                .foregroundStyle(isEnabled ? CalorynTheme.accent : CalorynTheme.textTertiary)
                 .frame(width: Self.dayButtonSize, height: Self.dayButtonSize)
-                // Tinted with the card colour, as PlateDark draws filled discs: clear glass
-                // on the dark page showed nothing but its rim.
-                .adaptiveCircleInteractiveGlass(tint: CalorynTheme.cardBackground)
+                .adaptiveUnitedInteractiveGlass(tint: CalorynTheme.backgroundSecondary, id: "dayButtons", in: dayButtonGlass)
                 .frame(width: Self.minimumHitTarget, height: Self.minimumHitTarget)
                 .contentShape([.interaction, .accessibility], .rect)
         }
@@ -449,7 +411,7 @@ struct TodayView: View {
 
     private func dashboardSection(
         entries: [FoodLogEntry],
-        calorieBudget: ActivityCalorieBudget
+        calorieBudget: CalorieBudget
     ) -> some View {
         CalorieHeroView(
             summary: TodayHeroSummary(
@@ -471,13 +433,13 @@ struct TodayView: View {
     @ViewBuilder
     private func nutritionDetailsSheet(
         entries: [FoodLogEntry],
-        calorieBudget: ActivityCalorieBudget
+        calorieBudget: CalorieBudget
     ) -> some View {
         let content = NutritionDetailsView(
             date: selectedDate,
             entries: entries,
             calorieBudget: calorieBudget,
-            nutrientTargets: profile?.nutrientTargets(forCalorieTarget: calorieBudget.adjustedTarget) ?? [:],
+            nutrientTargets: profile?.nutrientTargets(forCalorieTarget: calorieBudget.target) ?? [:],
             nutrientGoalKinds: profile?.nutrientGoalKinds ?? [:]
         )
 
@@ -486,14 +448,10 @@ struct TodayView: View {
                 .presentationBackground(.regularMaterial)
         } else {
             content
-                .presentationBackground(CalorynTheme.cardBackground)
+                .presentationBackground(CalorynTheme.backgroundSecondary)
         }
     }
 
-    /// The day's Nutri-Score chips under a label in the style of the meal headers below it
-    /// (17pt bold, ink, as a non-meal section is titled), so the badges are not left to
-    /// explain themselves. One stop for VoiceOver: the chips already read "Nutri-Score today:
-    /// 3 A, 1 C", so the label is not read again before them.
     private func nutriscoreSection(distribution: [(grade: String, count: Int)]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Nutri-Score")
@@ -508,9 +466,6 @@ struct TodayView: View {
         .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .leading)))
     }
 
-    /// Copies all of yesterday's log onto an empty day. Shown under the hero, in the slot the
-    /// Nutri-Score chips take once anything is logged, because it is only ever offered while
-    /// the day is empty — and every empty meal row points at it ("or copy yesterday's").
     private func copyYesterdayButton(yesterdayEntries: [FoodLogEntry]) -> some View {
         Button {
             copyYesterday(yesterdayEntries)
@@ -542,12 +497,14 @@ struct TodayView: View {
             mealType: \.mealType,
             createdAt: \.createdAt
         )
-        DailyFoodLogCommands.copyLoggedEntries(
-            orderedEntries,
-            to: selectedDate,
-            modelContext: modelContext
-        )
-        try? modelContext.save()
+        withAnimation(reduceMotion ? nil : .smooth(duration: 0.35)) {
+            DailyFoodLogCommands.copyLoggedEntries(
+                orderedEntries,
+                to: selectedDate,
+                modelContext: modelContext
+            )
+            try? modelContext.save()
+        }
     }
 
     private func handlePendingRoute() {
@@ -575,12 +532,6 @@ struct TodayView: View {
         }
     }
 
-    /// Persists today's effective calorie target so History can later compare
-    /// the day against the goal that actually applied. Only the current
-    /// calendar day is ever recorded (the store enforces this), and the last
-    /// write before midnight finalizes the day.
-    /// Keeps the screen on the current day when the calendar rolls over while
-    /// the app is open, so the new day still gets its goal snapshot.
     private func followCalendarRollover() {
         selectedDate = SelectedDayRollover.selectedDay(
             selected: selectedDate,
@@ -589,11 +540,8 @@ struct TodayView: View {
         lastKnownToday = Date.now.startOfDay
     }
 
-    private func recordDailyGoalSnapshotIfNeeded(calorieBudget: ActivityCalorieBudget) {
+    private func recordDailyGoalSnapshotIfNeeded(calorieBudget: CalorieBudget) {
         guard let profile else { return }
-        // Skip transient budgets while Health data is still loading so a
-        // dynamic day is not momentarily snapshotted without its adjustment.
-        guard !calorieBudget.isActivityLoading else { return }
 
         DailyGoalSnapshotStore.recordSnapshot(
             values: calorieBudget.goalSnapshotValues,
@@ -609,9 +557,7 @@ struct TodayView: View {
             try? modelContext.save()
         }
     }
-
 }
-
 
 #Preview {
     TodayView()

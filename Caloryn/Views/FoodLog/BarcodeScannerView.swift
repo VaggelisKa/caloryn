@@ -38,6 +38,7 @@ final class ScannerViewController: UIViewController, AVCaptureMetadataOutputObje
     weak var delegate: ScannerViewControllerDelegate?
 
     private let captureSession = AVCaptureSession()
+    private let sessionQueue = DispatchQueue(label: "Caloryn.BarcodeScanner.session", qos: .userInitiated)
     private var previewLayer: AVCaptureVideoPreviewLayer!
     private var hasScanned = false
 
@@ -56,18 +57,13 @@ final class ScannerViewController: UIViewController, AVCaptureMetadataOutputObje
         previewLayer?.frame = view.bounds
     }
 
-    override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated)
-        if !captureSession.isRunning {
-            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-                self?.captureSession.startRunning()
-            }
-        }
-    }
-
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
-        if captureSession.isRunning {
+        stopSession()
+    }
+
+    private func stopSession() {
+        sessionQueue.async { [captureSession] in
             captureSession.stopRunning()
         }
     }
@@ -122,11 +118,10 @@ final class ScannerViewController: UIViewController, AVCaptureMetadataOutputObje
 
         addScanOverlay()
 
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            guard let self else { return }
-            self.captureSession.startRunning()
+        sessionQueue.async { [weak self, captureSession] in
+            captureSession.startRunning()
             DispatchQueue.main.async {
-                self.restrictScanArea(metadataOutput)
+                self?.restrictScanArea(metadataOutput)
             }
         }
     }
@@ -264,12 +259,10 @@ final class ScannerViewController: UIViewController, AVCaptureMetadataOutputObje
 
         hasScanned = true
         AudioServicesPlaySystemSound(SystemSoundID(kSystemSoundID_Vibrate))
-        captureSession.stopRunning()
+        stopSession()
         delegate?.didScanBarcode(normalizedBarcode)
     }
 }
-
-// MARK: - Scan Region Overlay
 
 private final class ScannerOverlayView: UIView {
     private let cutoutSize = CGSize(width: 280, height: 160)

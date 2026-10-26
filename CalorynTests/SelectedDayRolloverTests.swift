@@ -2,7 +2,6 @@ import XCTest
 @testable import Caloryn
 
 final class SelectedDayRolloverTests: XCTestCase {
-
     func testSelectionIsUntouchedWhenTheCalendarHasNotRolledOver() {
         let today = makeTestDate(year: 2026, month: 3, day: 9)
 

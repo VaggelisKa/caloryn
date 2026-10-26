@@ -7,14 +7,13 @@ private struct CalorynPageCanvasModifier: ViewModifier {
             pageCanvas(content)
         } else {
             pageCanvas(content)
-                .toolbarBackground(CalorynTheme.pageBackground, for: .navigationBar)
-                .toolbarBackground(.visible, for: .navigationBar)
+                .toolbarBackground(CalorynTheme.backgroundPrimary, for: .navigationBar)
         }
     }
 
     private func pageCanvas(_ content: Content) -> some View {
         content.background {
-            CalorynTheme.pageBackground
+            CalorynTheme.backgroundPrimary
                 .ignoresSafeArea()
         }
     }
@@ -27,7 +26,7 @@ private struct CalorynGroupedListStyleModifier: ViewModifier {
             .listSectionSpacing(.custom(CalorynTheme.cardSpacing))
             .scrollContentBackground(.hidden)
             .background {
-                CalorynTheme.pageBackground
+                CalorynTheme.backgroundPrimary
                     .ignoresSafeArea()
             }
     }
@@ -40,14 +39,13 @@ private struct CalorynSheetCanvasModifier: ViewModifier {
             sheetCanvas(content)
         } else {
             sheetCanvas(content)
-                .toolbarBackground(CalorynTheme.cardBackground, for: .navigationBar)
-                .toolbarBackground(.visible, for: .navigationBar)
+                .toolbarBackground(CalorynTheme.backgroundSecondary, for: .navigationBar)
         }
     }
 
     private func sheetCanvas(_ content: Content) -> some View {
         content.background {
-            CalorynTheme.cardBackground
+            CalorynTheme.backgroundSecondary
                 .ignoresSafeArea()
         }
     }
@@ -57,10 +55,6 @@ private struct CalorynFormStyleModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .scrollContentBackground(.hidden)
-        // A `Form` paints `systemGroupedBackground` over its canvas exactly as a `List`
-        // does — cool grey-blue, not the warm palette. Sections still need
-        // `.listRowBackground(CalorynTheme.cardBackground)`; this only clears the scroll
-        // background so the canvas shows through.
     }
 }
 
@@ -69,7 +63,7 @@ private struct CalorynDrillDownNavigationModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .tint(CalorynTheme.textPrimary)
+            .tint(CalorynTheme.accent)
             .navigationBarBackButtonHidden()
             .toolbar {
                 // `cancellationAction` is the placement Apple names for a custom Back: it
@@ -82,7 +76,7 @@ private struct CalorynDrillDownNavigationModifier: ViewModifier {
                     } label: {
                         Label("Back", systemImage: "chevron.left")
                             .font(CalorynTheme.toolbarIcon)
-                            .foregroundStyle(CalorynTheme.textPrimary)
+                            .foregroundStyle(CalorynTheme.accent)
                     }
                     .accessibilityLabel("Back")
                 }
@@ -95,10 +89,6 @@ private struct CalorynPlainListStyleModifier: ViewModifier {
         content
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
-        // Deliberately paints no background of its own: the surrounding canvas supplies
-        // the colour, so the same list reads correctly on a page (#F6F5F1) and in a sheet
-        // (#FFFFFF). Rows still need `.listRowBackground(Color.clear)` — hiding the scroll
-        // background does not stop a row drawing its own.
     }
 }
 
@@ -116,50 +106,40 @@ extension ToolbarItemPlacement {
 }
 
 extension View {
-    /// Canvas for a tab page: the warm page background.
     func calorynPageCanvas() -> some View {
         modifier(CalorynPageCanvasModifier())
     }
 
-    /// Canvas for a modal sheet: the lighter card surface, so a sheet reads as floating
-    /// above the page rather than continuing it. Pages stay `pageBackground`.
     func calorynSheetCanvas() -> some View {
         modifier(CalorynSheetCanvasModifier())
     }
 
-    /// Inset-grouped list on the page canvas — the card-like look.
     func calorynGroupedListStyle() -> some View {
         modifier(CalorynGroupedListStyleModifier())
     }
 
-    /// `Form` on whichever canvas surrounds it. Sections still need
-    /// `.listRowBackground(CalorynTheme.cardBackground)`.
     func calorynFormStyle() -> some View {
         modifier(CalorynFormStyleModifier())
     }
 
-    /// Navigation chrome for a pushed detail screen: a themed back button.
-    ///
-    /// The system back button is replaced rather than tinted, because under Liquid Glass it
-    /// honours neither the `AccentColor` asset, nor `.tint()`, nor a UIKit
-    /// `navigationBar.tintColor` bridge. History carried all three at once and its chevron
-    /// still measured near-black in a screenshot. Only `.foregroundStyle` on a label the app
-    /// owns works.
-    ///
-    /// Apply to anything reached by `NavigationLink` or `navigationDestination`. Screens that
-    /// already build their own leading toolbar item — `PortionPickerView`, `MyFoodsView` —
-    /// do not need it and must not have two.
     func calorynDrillDownNavigation() -> some View {
         modifier(CalorynDrillDownNavigationModifier())
     }
 
-    /// Flat list on the page canvas, for content that should not read as cards
-    /// (search results, pickers).
-    ///
-    /// `scrollContentBackground(.hidden)` is the load-bearing part of all three of
-    /// these: a `List` paints its own system background *over* anything behind it,
-    /// so setting `.background` alone silently does nothing. That is why bare
-    /// `.listStyle(...)` is banned — see CLAUDE.md rule 7.
+    func calorynInlineTitle(_ title: String) -> some View {
+        navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text(title)
+                        .font(CalorynTheme.sectionHeaderTitle)
+                        .foregroundStyle(CalorynTheme.textPrimary)
+                        .lineLimit(1)
+                        .accessibilityAddTraits(.isHeader)
+                }
+            }
+    }
+
     func calorynPlainListStyle() -> some View {
         modifier(CalorynPlainListStyleModifier())
     }

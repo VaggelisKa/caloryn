@@ -1,22 +1,21 @@
 import SwiftUI
 
-/// The day's nutrition, opened from Today's hero: the big number, the nutrients that have a
-/// target as ink bars, fruit and veg variety, the day's Nutri-Scores, everything else as
-/// hairline rows, and a note on where the figures come from.
-///
-/// Sections and their wording come from `NutritionDetailsSections`, the calorie rules from
-/// `NutritionDetailsSummary` and the day's `ActivityCalorieBudget`; this view only lays them
-/// out on the white sheet canvas.
 struct NutritionDetailsView: View {
     let date: Date
     let entries: [FoodLogEntry]
-    let calorieBudget: ActivityCalorieBudget
+    let calorieBudget: CalorieBudget
     let nutrientTargets: [TrackedNutrient: Double]
     let nutrientGoalKinds: [TrackedNutrient: NutrientGoalKind]
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @AppStorage("showNutriscore") private var showNutriscore = true
+    @State private var exportedDay: ExportedDay?
+
+    private struct ExportedDay: Identifiable {
+        let url: URL
+        var id: URL { url }
+    }
 
     @ScaledMetric(relativeTo: .largeTitle) private var numberSize: CGFloat = 52
     @ScaledMetric(relativeTo: .subheadline) private var barHeight: CGFloat = 8
@@ -30,15 +29,6 @@ struct NutritionDetailsView: View {
                     portionGrams: $0.portionGrams
                 )
             }
-        )
-    }
-
-    private var shouldShowDynamicTDEE: Bool {
-        NutritionDetailsSummary.showsDynamicTDEE(
-            isDynamicModeRequested: calorieBudget.isDynamicModeRequested,
-            activeEnergyKcal: calorieBudget.activeEnergyKcal,
-            dynamicAdjustment: calorieBudget.dynamicAdjustment,
-            hasActivityMessage: calorieBudget.activityMessage != nil
         )
     }
 
@@ -56,6 +46,37 @@ struct NutritionDetailsView: View {
         entries.map(\.historicalNutriscoreGrade)
     }
 
+    private var exportReport: DayExportReport {
+        DayExportReport(
+            day: date,
+            entries: entries.map {
+                DayExportReport.Entry(
+                    mealType: $0.mealType,
+                    foodName: $0.historicalFoodName,
+                    portionGrams: $0.portionGrams,
+                    macros: DayExportReport.Macros(
+                        calories: $0.calories,
+                        proteinG: $0.proteinG,
+                        carbsG: $0.carbsG,
+                        fatG: $0.fatG
+                    ),
+                    createdAt: $0.createdAt
+                )
+            },
+            targets: DayExportReport.Targets(
+                calories: calorieBudget.target,
+                proteinG: nutrientTargets[.protein],
+                carbsG: nutrientTargets[.carbs],
+                fatG: nutrientTargets[.fat]
+            )
+        )
+    }
+
+    private func share(_ url: URL?) {
+        guard let url else { return }
+        exportedDay = ExportedDay(url: url)
+    }
+
     var body: some View {
         let summary = summary
         let sections = NutritionDetailsSections(
@@ -67,7 +88,6 @@ struct NutritionDetailsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
                     calorieSummary(summary)
-                    dynamicTDEESummary
 
                     if !sections.targets.isEmpty {
                         targetsSection(sections.targets)
@@ -108,27 +128,49 @@ struct NutritionDetailsView: View {
                         .accessibilityIdentifier("nutritionDetails.title")
                 }
 
-                ToolbarItem(placement: .confirmationAction) {
+                ToolbarItem(placement: .primaryAction) {
+                    Menu {
+                        Button {
+                            share(DayExportPDF.exportURL(for: exportReport))
+                        } label: {
+                            Label("PDF", systemImage: "doc.text")
+                        }
+                        .accessibilityIdentifier("nutritionDetails.exportDay.pdf")
+
+                        Button {
+                            share(CSVExporter.exportURL(from: entries, fileName: exportReport.fileName))
+                        } label: {
+                            Label("CSV", systemImage: "tablecells")
+                        }
+                        .accessibilityIdentifier("nutritionDetails.exportDay.csv")
+                    } label: {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(CalorynTheme.toolbarIcon)
+                            .foregroundStyle(entries.isEmpty ? CalorynTheme.textTertiary : CalorynTheme.accent)
+                    }
+                    .disabled(entries.isEmpty)
+                    .accessibilityLabel("Share day")
+                    .accessibilityIdentifier("nutritionDetails.exportDay")
+                }
+
+                ToolbarItem(placement: .cancellationAction) {
                     Button {
                         dismiss()
                     } label: {
                         Label("Close", systemImage: "xmark")
                             .font(CalorynTheme.toolbarIcon)
-                            .foregroundStyle(CalorynTheme.textPrimary)
+                            .foregroundStyle(CalorynTheme.accent)
                     }
                     .accessibilityLabel("Close")
                     .accessibilityIdentifier("nutritionDetails.close")
                 }
             }
+            .sheet(item: $exportedDay) { exported in
+                ShareSheet(url: exported.url)
+            }
         }
     }
 
-    // MARK: - Calories
-
-    /// The big number with the target and the food amount beside it, or under it at the
-    /// accessibility text sizes: there a four-digit total took most of the row and the two
-    /// lines beside it were cut off. One layout swapped for the other, so the figure keeps its
-    /// identity and still rolls when it changes.
     private func calorieSummary(_ summary: NutritionDetailsSummary) -> some View {
         let isStacked = dynamicTypeSize.isAccessibilitySize
         let layout = isStacked
@@ -149,7 +191,7 @@ struct NutritionDetailsView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(
                     NutritionDetailsSections.calorieTargetText(
-                        adjustedTarget: calorieBudget.adjustedTarget,
+                        target: calorieBudget.target,
                         isOver: calorieBudget.isOver,
                         overAmount: calorieBudget.overAmount
                     )
@@ -166,94 +208,6 @@ struct NutritionDetailsView: View {
             .padding(.bottom, isStacked ? 0 : 4)
         }
     }
-
-    // MARK: - Auto-adjusted calories
-
-    @ViewBuilder
-    private var dynamicTDEESummary: some View {
-        if shouldShowDynamicTDEE {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    sectionTitle("Auto-adjusted calories")
-
-                    Spacer(minLength: 8)
-
-                    if calorieBudget.isActivityLoading {
-                        ProgressView()
-                            .controlSize(.small)
-                    }
-
-                    Text(dynamicAdjustmentText)
-                        .font(TodayPlateFont.detailsRowValue)
-                        .foregroundStyle(
-                            NutritionDetailsSummary.isDynamicAdjustmentMuted(calorieBudget.dynamicAdjustment)
-                                ? CalorynTheme.textSecondary
-                                : CalorynTheme.textPrimary
-                        )
-                        .contentTransition(.numericText())
-                }
-
-                Text(ActivityCalorieBudget.dynamicEnergyPolicyText)
-                    .font(TodayPlateFont.detailsNote)
-                    .foregroundStyle(CalorynTheme.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                if let dynamicMessage = calorieBudget.dynamicStatusText {
-                    dynamicStatusNotice(dynamicMessage)
-                }
-
-                VStack(spacing: 0) {
-                    amountRow(label: "Baseline", value: baselineText)
-                    amountRow(
-                        label: "Today",
-                        value: NutritionDetailsSummary.activeEnergyText(
-                            activeEnergyKcal: calorieBudget.activeEnergyKcal
-                        )
-                    )
-                    amountRow(label: "Target", value: calorieBudget.baseTarget.kcalFormatted)
-                }
-                .padding(.top, 4)
-            }
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel("Auto-adjusted calories, \(baselineText) baseline, \(calorieBudget.activeEnergyKcal.kcalFormatted) today, \(dynamicAdjustmentText) adjustment, \(calorieBudget.adjustedTarget.kcalFormatted) target")
-        }
-    }
-
-    private var baselineText: String {
-        NutritionDetailsSummary.baselineText(
-            activityBaselineKcal: calorieBudget.activityBaselineKcal
-        )
-    }
-
-    private var dynamicAdjustmentText: String {
-        NutritionDetailsSummary.dynamicAdjustmentText(calorieBudget.dynamicAdjustment)
-    }
-
-    /// Ink when auto-adjust cannot run at all, secondary otherwise. Weight, not colour: red
-    /// means lunch on this palette.
-    private var dynamicStatusNoticeColor: Color {
-        switch NutritionDetailsSummary.statusNoticeStyle(for: calorieBudget.dynamicStatus) {
-        case .warning:
-            CalorynTheme.textPrimary
-        case .informational, .neutral:
-            CalorynTheme.textSecondary
-        }
-    }
-
-    private func dynamicStatusNotice(_ message: String) -> some View {
-        Text(message)
-            .font(TodayPlateFont.detailsNote)
-            .foregroundStyle(dynamicStatusNoticeColor)
-            .fixedSize(horizontal: false, vertical: true)
-            .padding(10)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                CalorynTheme.surface,
-                in: RoundedRectangle(cornerRadius: CalorynTheme.smallCornerRadius, style: .continuous)
-            )
-    }
-
-    // MARK: - Targets
 
     private func targetsSection(_ rows: [NutritionDetailsSections.TargetRow]) -> some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -284,9 +238,6 @@ struct NutritionDetailsView: View {
         }
     }
 
-    /// "46g of 150g min", and past a maximum "34.8g of 20g max, 14.8g over" with the amount
-    /// bold and the overshoot in ink: weight and words, not colour, because red means lunch on
-    /// this palette. One `Text`, so a long line wraps under itself instead of truncating.
     private func targetFigures(_ row: NutritionDetailsSections.TargetRow) -> Text {
         let value = Text(row.valueText)
             .font(TodayPlateFont.detailsRowValue)
@@ -309,10 +260,10 @@ struct NutritionDetailsView: View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
                 Capsule()
-                    .fill(CalorynTheme.hairline)
+                    .fill(CalorynTheme.fillTrack)
 
                 Capsule()
-                    .fill(CalorynTheme.textPrimary)
+                    .fill(CalorynTheme.dataPrimary)
                     .frame(width: geo.size.width * progress)
             }
         }
@@ -320,8 +271,6 @@ struct NutritionDetailsView: View {
         .clipShape(Capsule())
         .accessibilityHidden(true)
     }
-
-    // MARK: - Fruit and veg
 
     private var produceSection: some View {
         let produce = produceSummary
@@ -337,11 +286,11 @@ struct NutritionDetailsView: View {
                     Text(item.name)
                         .font(CalorynTheme.chipLabel)
                         .fontWeight(.semibold)
-                        .foregroundStyle(CalorynTheme.mealSnackInk)
+                        .foregroundStyle(CalorynTheme.mealInk(.snack))
                         .lineLimit(1)
                         .padding(.horizontal, 12)
                         .frame(minHeight: chipHeight)
-                        .background(CalorynTheme.mealSnack.opacity(0.16), in: Capsule())
+                        .background(CalorynTheme.mealWash(.snack), in: Capsule())
                 }
 
                 if let remaining = NutritionDetailsSections.produceRemainingText(produce.totalCount) {
@@ -353,6 +302,7 @@ struct NutritionDetailsView: View {
                         .frame(minHeight: chipHeight)
                         .overlay {
                             Capsule()
+                                // swiftlint:disable:next text_token_as_shape
                                 .strokeBorder(
                                     CalorynTheme.textPrimary.opacity(0.25),
                                     style: StrokeStyle(lineWidth: 1, dash: [3, 3])
@@ -366,8 +316,6 @@ struct NutritionDetailsView: View {
             "Fruit and veg variety, \(produce.totalCount) unique, \(produce.breakdownText)"
         )
     }
-
-    // MARK: - Nutri-Score
 
     private var nutriscoreSection: some View {
         let distribution = NutriscoreDayDistribution.distribution(of: nutriscoreGrades)
@@ -383,8 +331,6 @@ struct NutritionDetailsView: View {
         }
     }
 
-    // MARK: - Amounts
-
     private func amountSection(_ title: String, rows: [NutritionDetailsSections.AmountRow]) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             sectionTitle(title)
@@ -396,12 +342,10 @@ struct NutritionDetailsView: View {
         }
     }
 
-    /// A hairline above, label left, figure right: the board's rows, drawn by the stack
-    /// itself because this is a scroll view, not a `List`.
     private func amountRow(label: String, value: String) -> some View {
         VStack(spacing: 0) {
             Rectangle()
-                .fill(CalorynTheme.hairline)
+                .fill(CalorynTheme.separator)
                 .frame(height: CalorynTheme.hairlineWidth)
 
             HStack {
@@ -426,8 +370,6 @@ struct NutritionDetailsView: View {
             .fixedSize(horizontal: false, vertical: true)
             .accessibilityIdentifier("nutritionDetails.dataQualityNote")
     }
-
-    // MARK: - Section headings
 
     private func sectionTitle(_ title: String) -> some View {
         Text(title)
@@ -459,7 +401,7 @@ struct NutritionDetailsView: View {
     }
 }
 
-#Preview("Nutrition Details - Auto-adjust") {
+#Preview("Nutrition Details") {
     let oatmeal = FoodItem(
         name: "Oatmeal",
         caloriesPer100g: 389,
@@ -493,19 +435,7 @@ struct NutritionDetailsView: View {
             FoodLogEntry(date: .now, mealType: .breakfast, foodItem: oatmeal, portionGrams: 80),
             FoodLogEntry(date: .now, mealType: .snack, foodItem: apple, portionGrams: 120)
         ],
-        calorieBudget: ActivityCalorieBudget(
-            consumed: 374,
-            staticTarget: 1900,
-            bmr: 1_600,
-            calorieDeficit: 300,
-            activeEnergyKcal: 430,
-            recentActiveEnergySamples: previewNutritionActivitySamples,
-            calculationMode: .dynamicHealth,
-            isManualOverride: false,
-            isActivityLoading: false,
-            activityMessage: nil,
-            date: .now
-        ),
+        calorieBudget: CalorieBudget(consumed: 374, target: 1_900),
         nutrientTargets: [
             .protein: 120,
             .carbs: 200,
@@ -519,12 +449,4 @@ struct NutritionDetailsView: View {
             .fiber: .minimum
         ]
     )
-}
-
-private let previewNutritionActivitySamples: [DailyActiveEnergySample] = (1...10).compactMap { offset in
-    guard let date = Calendar.current.date(byAdding: .day, value: -offset, to: Date.now.startOfDay) else {
-        return nil
-    }
-
-    return DailyActiveEnergySample(date: date, activeEnergyKcal: 280)
 }

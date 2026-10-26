@@ -31,14 +31,8 @@ struct MealTemplateReplicationState: Equatable {
 @MainActor
 enum MealTemplateCommands {
     enum ExistingBatchPolicy {
-        /// The default used by #74: an incomplete prior operation must be
-        /// surfaced for explicit recovery rather than silently changed.
         case rejectPartial
-        /// Delete the partial operation and recreate the complete batch in
-        /// the same save transaction.
         case replacePartial
-        /// Preserve valid existing indices and atomically add only the
-        /// missing items from the original plan.
         case completePartial
     }
 
@@ -334,9 +328,15 @@ enum MealTemplateCommands {
         if let transactionFoodResolver {
             resolvedFoods = try transactionFoodResolver(transactionContext)
         } else {
-            let availableFoodIDs = Set(availableFoods.map(\.id))
-            resolvedFoods = try transactionContext.fetch(FetchDescriptor<FoodItem>())
-                .filter { availableFoodIDs.contains($0.id) }
+            let sourceFoodIDs = Array(
+                Set(plan.items.compactMap(\.snapshot.sourceFoodID))
+                    .intersection(availableFoods.map(\.id))
+            )
+            resolvedFoods = try transactionContext.fetch(
+                FetchDescriptor<FoodItem>(
+                    predicate: #Predicate { sourceFoodIDs.contains($0.id) }
+                )
+            )
         }
         let foodsByID = resolvedFoods.reduce(into: [UUID: FoodItem]()) { result, food in
             result[food.id] = food
@@ -443,8 +443,6 @@ enum MealTemplateCommands {
     }
 
     private static func makeTransactionContext(from sourceContext: ModelContext) -> ModelContext {
-        // Commands must not save or roll back unrelated edits pending in the
-        // shared SwiftUI environment context.
         let context = ModelContext(sourceContext.container)
         context.autosaveEnabled = false
         return context

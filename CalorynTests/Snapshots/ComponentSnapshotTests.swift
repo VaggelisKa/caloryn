@@ -3,31 +3,12 @@ import SwiftUI
 import XCTest
 @testable import Caloryn
 
-/// Pixel snapshots of the app's reusable presentational components.
-///
-/// These were deliberately held back until the view-logic refactor had landed:
-/// a snapshot fails on any visual change, so recording them against a structure
-/// still being moved would have meant re-recording rather than reviewing.
-///
-/// Only components whose entire output is determined by their inputs are
-/// covered. Anything reading the clock, the store, or an animation clock is
-/// excluded — a snapshot that can change on its own is worse than no snapshot,
-/// because it teaches the team to re-record without looking.
-///
-/// References are recorded on iPhone 17 / iOS 26.5, which is what
-/// `.github/actions/select-simulator` pins CI to. The layout is a fixed size
-/// rather than a device profile, so the images do not depend on the simulator's
-/// screen at all.
 final class ComponentSnapshotTests: XCTestCase {
-    /// Wide enough for a realistic row, tall enough not to clip.
     private let rowLayout = SwiftUISnapshotLayout.fixed(width: 390, height: 76)
 
     override func setUp() {
         super.setUp()
 
-        // FoodRowView reads this through @AppStorage, so it would otherwise
-        // render differently depending on what the machine happened to have
-        // stored. Pinned rather than left to chance.
         UserDefaults.standard.set(true, forKey: "showNutriscore")
     }
 
@@ -35,8 +16,6 @@ final class ComponentSnapshotTests: XCTestCase {
         UserDefaults.standard.removeObject(forKey: "showNutriscore")
         super.tearDown()
     }
-
-    // MARK: - Food row
 
     func testFoodRowWithBrandAndServing() {
         assertSnapshot(
@@ -115,9 +94,6 @@ final class ComponentSnapshotTests: XCTestCase {
         )
     }
 
-    /// The two-line figure the Add Food rows are built around: "95" over "kcal" for the pot
-    /// the line beside it names — 94.5 rounded, as the Portion preview and the logged row on
-    /// Today read the same pot.
     func testFoodRowWithACountableServing() {
         assertSnapshot(
             of: row(
@@ -133,8 +109,6 @@ final class ComponentSnapshotTests: XCTestCase {
             as: .image(precision: precision, perceptualPrecision: perceptualPrecision, layout: rowLayout, traits: .reference)
         )
     }
-
-    // MARK: - Nutri-Score day summary
 
     func testNutriScoreSummaryWithAMixedDay() {
         assertSnapshot(
@@ -174,13 +148,6 @@ final class ComponentSnapshotTests: XCTestCase {
         )
     }
 
-    // MARK: - Dark mode
-
-    // The palette declares a light and a dark appearance for every colour, but until
-    // these existed only the light one was ever rendered — which is exactly where
-    // `pageBackground` and `cardBackground` had been silently falling back to system
-    // greys. A dark reference image is the only thing that would have caught that.
-
     func testFoodRowAcrossAppearances() {
         assertAppearances(
             of: row(
@@ -218,14 +185,6 @@ final class ComponentSnapshotTests: XCTestCase {
         )
     }
 
-    // MARK: - Group surface
-
-    // `calorynGroupSurface` is the surface the Plate screens use (the History insight, the
-    // Portion completeness note, the creation-form groups, onboarding): `cardBackground`,
-    // a 22pt continuous corner and a `hairline` border. This test rendered the retired
-    // `solidCardSurface` until no screen used it any more, so the real surface could have
-    // changed colour without a reference image moving.
-
     func testGroupSurfaceOnPageBackgroundAcrossAppearances() {
         let card = VStack(alignment: .leading, spacing: 6) {
             Text("Lunch runs heavy on weekdays")
@@ -243,17 +202,10 @@ final class ComponentSnapshotTests: XCTestCase {
             of: card
                 .padding(CalorynTheme.pagePadding)
                 .frame(width: 390, height: 160)
-                .background(CalorynTheme.pageBackground),
+                .background(CalorynTheme.backgroundPrimary),
             layout: .fixed(width: 390, height: 160)
         )
     }
-
-    // MARK: - Meal vocabulary
-
-    // The meal palette's three roles, each drawn by a component nothing else here renders:
-    // the section header (the name in the meal's ink, the total or "nothing yet" in secondary
-    // text, the plus in the meal's ink on a wash of its fill) and the meal chips (selected: fill
-    // with on-fill text; unselected: hairline with the meal's ink).
 
     func testMealSectionHeadersAcrossAppearances() {
         let headers = VStack(spacing: 14) {
@@ -269,7 +221,7 @@ final class ComponentSnapshotTests: XCTestCase {
         }
         .padding(CalorynTheme.pagePadding)
         .frame(width: 390, height: 230)
-        .background(CalorynTheme.pageBackground)
+        .background(CalorynTheme.backgroundPrimary)
 
         assertAppearances(of: headers, layout: .fixed(width: 390, height: 230))
     }
@@ -282,12 +234,6 @@ final class ComponentSnapshotTests: XCTestCase {
                         Text(meal.displayName)
                             .calorynChip(isSelected: isSelected, meal: meal)
                             .fixedSize()
-                            // The layer render draws a capsule `strokeBorder` with a stray
-                            // tick at each end of its bounds, outside the capsule, which the
-                            // app never shows. Clipping to the chip's own shape leaves only
-                            // what the app draws; drawing in the key window avoided the ticks
-                            // but captured the simulator's colour management, which differs
-                            // between the pinned runtime and CI's.
                             .clipShape(Capsule())
                     }
                 }
@@ -295,18 +241,10 @@ final class ComponentSnapshotTests: XCTestCase {
         }
         .padding(CalorynTheme.pagePadding)
         .frame(width: 440, height: 130)
-        .background(CalorynTheme.cardBackground)
+        .background(CalorynTheme.backgroundSecondary)
 
-        // Wider than a phone: four chips a row is a fixture, not a layout under test.
         assertAppearances(of: chips, layout: .fixed(width: 440, height: 130))
     }
-
-    // MARK: - Calorie donut
-
-    // `animated: false` draws the final state on the first frame, so neither image races an
-    // animation clock. Under and over side by side cover both of the ring's wholes — the
-    // budget, and everything eaten — and both non-meal sectors: hairline for what is left,
-    // ink for the overshoot.
 
     func testCalorieDonutUnderAndOverAcrossAppearances() {
         let donuts = HStack(spacing: 22) {
@@ -328,29 +266,26 @@ final class ComponentSnapshotTests: XCTestCase {
             )
         }
         .frame(width: 390, height: 200)
-        .background(CalorynTheme.pageBackground)
+        .background(CalorynTheme.backgroundPrimary)
 
         assertAppearances(of: donuts, layout: .fixed(width: 390, height: 200))
     }
-
-    // History's day plates: one uniform eaten fill, and the three outlines that tell an
-    // over day and today apart from the rest. The last plate keeps each meal's own fill.
 
     func testCalorieMiniDonutOutlinesAcrossAppearances() {
         let plates = HStack(spacing: 12) {
             CalorieMiniDonutView(
                 summary: CalorieDonutSummary(mealTotals: [.dinner: 2_300], budget: 2_000, isOver: true),
                 outline: .over,
-                uniformFill: CalorynTheme.historyEaten
+                uniformFill: CalorynTheme.dataSecondary
             )
             CalorieMiniDonutView(
                 summary: CalorieDonutSummary(mealTotals: [.dinner: 1_690], budget: 2_000, isOver: false),
-                uniformFill: CalorynTheme.historyEaten
+                uniformFill: CalorynTheme.dataSecondary
             )
             CalorieMiniDonutView(
                 summary: CalorieDonutSummary(mealTotals: [.dinner: 963], budget: 2_000, isOver: false),
                 outline: .today,
-                uniformFill: CalorynTheme.historyEaten
+                uniformFill: CalorynTheme.dataSecondary
             )
             CalorieMiniDonutView(
                 summary: CalorieDonutSummary(
@@ -361,16 +296,61 @@ final class ComponentSnapshotTests: XCTestCase {
             )
         }
         .frame(width: 390, height: 72)
-        .background(CalorynTheme.pageBackground)
+        .background(CalorynTheme.backgroundPrimary)
 
         assertAppearances(of: plates, layout: .fixed(width: 390, height: 72))
     }
 
-    // MARK: - Nutri-Score badge
+    func testHistoryDayPlateGridAtMonthSizeAcrossAppearances() {
+        let grid = HistoryDayPlateGrid(strip: dayPlateStrip(dayCount: 30, columnCount: 10, plateSize: 28))
+            .padding(CalorynTheme.pagePadding)
+            .frame(width: 402, height: 230)
+            .background(CalorynTheme.backgroundPrimary)
 
-    // The Nutri-Score colours are appearance-independent by design: they are the
-    // official brand values and must render identically in both modes. Asserting both
-    // is what makes that a checked property rather than an intention.
+        assertAppearances(of: grid, layout: .fixed(width: 402, height: 230))
+    }
+
+    func testHistoryDayPlateGridAtWeekSizeAcrossAppearances() {
+        let grid = HistoryDayPlateGrid(strip: dayPlateStrip(dayCount: 14, columnCount: 7, plateSize: 40))
+            .padding(CalorynTheme.pagePadding)
+            .frame(width: 402, height: 200)
+            .background(CalorynTheme.backgroundPrimary)
+
+        assertAppearances(of: grid, layout: .fixed(width: 402, height: 200))
+    }
+
+    func testSettingsGoalPlateAcrossAppearances() {
+        let days: [(meals: [MealType: Double], isOver: Bool)] = [
+            ([:], false),
+            ([.breakfast: 420, .lunch: 610], false),
+            ([.breakfast: 300, .dinner: 900], false),
+            ([.lunch: 2_000], false),
+            ([.breakfast: 500, .lunch: 600, .dinner: 700, .snack: 200], false),
+            ([.breakfast: 900, .lunch: 800, .dinner: 700], true),
+        ]
+        let plates = VStack(spacing: 12) {
+            ForEach([CGFloat(40), 43.667], id: \.self) { size in
+                HStack(spacing: 12) {
+                    ForEach(days.indices, id: \.self) { index in
+                        CalorieMiniDonutView(
+                            summary: CalorieDonutSummary(
+                                mealTotals: days[index].meals,
+                                budget: 2_000,
+                                isOver: days[index].isOver
+                            ),
+                            size: size,
+                            plateColor: CalorynTheme.backgroundPrimary,
+                            fillsPlate: true
+                        )
+                    }
+                }
+            }
+        }
+        .frame(width: 390, height: 130)
+        .background(CalorynTheme.backgroundSecondary)
+
+        assertAppearances(of: plates, layout: .fixed(width: 390, height: 130))
+    }
 
     func testNutriscoreBadgeForEveryGradeAcrossAppearances() {
         let badges = HStack(spacing: 8) {
@@ -380,16 +360,31 @@ final class ComponentSnapshotTests: XCTestCase {
         }
         .padding(16)
         .frame(width: 390, height: 72)
-        .background(CalorynTheme.pageBackground)
+        .background(CalorynTheme.backgroundPrimary)
 
         assertAppearances(of: badges, layout: .fixed(width: 390, height: 72))
     }
 
-    // MARK: - Dynamic Type
+    func testPastedFoodConfirmationAcrossAppearances() {
+        let confirmation = PastedFoodConfirmation(
+            draft: LogLinkDraft(
+                name: "Chicken Caesar salad with croutons, parmesan and extra dressing",
+                kcal: 640.5,
+                grams: nil,
+                proteinG: 38.5,
+                carbsG: nil,
+                fatG: 42,
+                meal: nil
+            ),
+            locale: Locale(identifier: "en_US")
+        )
+        let form = PastedFoodConfirmationForm(confirmation: .constant(confirmation), mealType: .lunch)
+            .environment(\.locale, Locale(identifier: "en_US"))
+            .frame(width: 390, height: 660, alignment: .top)
+            .background(CalorynTheme.backgroundSecondary)
 
-    // Text metrics drive row height and truncation. At the largest accessibility size
-    // a row that looks fine at .large can clip or collide, and no other test here would
-    // notice: every one of them pins `.large`.
+        assertAppearances(of: form, layout: .fixed(width: 390, height: 660))
+    }
 
     func testFoodRowAtLargestAccessibilitySize() {
         assertSnapshot(
@@ -402,7 +397,7 @@ final class ComponentSnapshotTests: XCTestCase {
             )
             .padding(.horizontal, 16)
             .frame(width: 390, height: 300)
-            .background(CalorynTheme.pageBackground),
+            .background(CalorynTheme.backgroundPrimary),
             as: .image(
                 precision: precision,
                 perceptualPrecision: perceptualPrecision,
@@ -412,13 +407,6 @@ final class ComponentSnapshotTests: XCTestCase {
         )
     }
 
-    // MARK: - Helpers
-
-    /// Renders `view` in both appearances as two separately-named reference images.
-    ///
-    /// The existing single-appearance tests above are deliberately left alone: their
-    /// images are the recorded proof that light mode did not move when the palette
-    /// migrated to the asset catalog, and re-recording them would have thrown that away.
     private func assertAppearances(
         of view: some View,
         layout: SwiftUISnapshotLayout,
@@ -452,33 +440,44 @@ final class ComponentSnapshotTests: XCTestCase {
         )
     }
 
-    /// Every pixel must match. The two knobs are not interchangeable and
-    /// getting them the wrong way round makes the whole suite decorative:
-    ///
-    /// - `precision` is the *fraction of pixels* allowed to differ. At 0.99 a
-    ///   single changed digit is roughly 0.1% of the image, so it passes — the
-    ///   first version of these tests did not notice 380 kcal becoming 381.
-    /// - `perceptualPrecision` is how far each pixel may drift in colour. This
-    ///   is the one that should absorb antialiasing.
-    ///
-    /// So: no pixels may differ, but each may differ slightly.
     private var precision: Float { 1.0 }
     private var perceptualPrecision: Float { 0.98 }
 
-    /// Rows are rendered on the app's own background, since several of their
-    /// colours are only legible against it.
     private func row(_ view: some View) -> some View {
         view
             .padding(.horizontal, 16)
             .frame(width: 390, height: 76)
-            .background(CalorynTheme.pageBackground)
+            .background(CalorynTheme.backgroundPrimary)
     }
 
     private func summary(_ view: some View) -> some View {
         view
             .padding(16)
             .frame(width: 390, height: 140)
-            .background(CalorynTheme.pageBackground)
+            .background(CalorynTheme.backgroundPrimary)
+    }
+
+    private func dayPlateStrip(dayCount: Int, columnCount: Int, plateSize: CGFloat) -> HistoryDayPlateStrip {
+        let calories: [Double] = [
+            0, 12, 40, 350, 963, 1_000, 1_500, 1_690, 1_990, 1_999.5, 2_000, 2_300, 1_240, 640, 1_810,
+        ]
+        let periods = (0..<dayCount).map { offset in
+            let kcal = calories[offset % calories.count]
+            return HistoryDayPlateStrip.Period(
+                start: Date(timeIntervalSinceReferenceDate: Double(offset) * 86_400),
+                label: "\(offset + 1)",
+                calories: kcal,
+                target: 2_000,
+                status: kcal == 0 ? .notLogged : (kcal > 2_000 ? .over : .onTrack),
+                isCurrent: offset == dayCount - 1
+            )
+        }
+        return HistoryDayPlateStrip(
+            periods: periods,
+            granularity: .day,
+            columnCount: columnCount,
+            plateSize: plateSize
+        )
     }
 }
 
@@ -499,15 +498,11 @@ private extension UITraitCollection {
         traits.preferredContentSizeCategory = .large
     }
 
-    /// `reference` in dark mode. Same content size, so a diff between the two
-    /// images is purely a colour difference.
     static let referenceDark = UITraitCollection { traits in
         traits.userInterfaceStyle = .dark
         traits.preferredContentSizeCategory = .large
     }
 
-    /// `reference` at the largest accessibility text size, for layout that has
-    /// to survive re-flow rather than for colour.
     static let referenceAccessibility = UITraitCollection { traits in
         traits.userInterfaceStyle = .light
         traits.preferredContentSizeCategory = .accessibilityExtraExtraExtraLarge

@@ -42,10 +42,6 @@ final class TrackedNutrientTests: XCTestCase {
         XCTAssertEqual(TrackedNutrientUnit.milligramsFromGrams.spokenFormatted(0.001), "1 milligram")
     }
 
-    /// `GoalEditDraft.storedTarget` puts no upper bound on a nutrient goal, so a user can
-    /// save "1" followed by thirty zeroes. Sodium and cholesterol are editable goals in
-    /// milligrams, which multiply by a further 1000 before formatting, so that path is the
-    /// one that overflows first. A `Double` past `Int.max` must render, not trap.
     func testSpokenFormattingSurvivesValuesBeyondIntMax() {
         XCTAssertTrue(TrackedNutrientUnit.milligramsFromGrams.spokenFormatted(1e30).hasSuffix(" milligrams"))
         XCTAssertTrue(TrackedNutrientUnit.grams.spokenFormatted(1e30).hasSuffix(" grams"))
@@ -101,10 +97,6 @@ final class TrackedNutrientTests: XCTestCase {
         XCTAssertEqual(metric.accessibilityLabel, "Sodium: 2 mg, at most 2 mg")
     }
 
-    /// A nutrient goal is parsed with `Double(_:)` and only checked for being
-    /// positive, so "1" followed by thirty zeroes is a target a user can type
-    /// and save. Both of these formatters then converted it with a bare
-    /// `Int(_:)`, which traps rather than rendering.
     func testUnboundedGoalTargetsFormatWithoutTrapping() {
         let us = Locale(identifier: "en_US")
         XCTAssertEqual(
