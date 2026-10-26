@@ -7,16 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		4B1000092F80000000A00001 /* CalorynWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4B1000012F80000000A00001 /* CalorynWidgets.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		5D1000032FA0000000A00001 /* SnapshotTesting in Frameworks */ = {isa = PBXBuildFile; productRef = 5D1000022FA0000000A00001 /* SnapshotTesting */; };
-		4B1000092F80000000A00001 /* CalorynWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4B1000012F80000000A00001 /* CalorynWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, CodeSignOnCopy, ); }; };
 /* End PBXBuildFile section */
-
-/* Begin PBXFileReference section */
-		1C70CDD12F545455007DE238 /* Caloryn.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Caloryn.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		2A60E0012F69000100A00001 /* CalorynTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CalorynTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		4B1000012F80000000A00001 /* CalorynWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = CalorynWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		5C1000012F90000000A00001 /* CalorynUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CalorynUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-/* End PBXFileReference section */
 
 /* Begin PBXContainerItemProxy section */
 		2A60E00B2F69000100A00001 /* PBXContainerItemProxy */ = {
@@ -55,6 +48,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		1C70CDD12F545455007DE238 /* Caloryn.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Caloryn.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2A60E0012F69000100A00001 /* CalorynTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CalorynTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		4B1000012F80000000A00001 /* CalorynWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = CalorynWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		5C1000012F90000000A00001 /* CalorynUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CalorynUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
 		4B10000F2F80000000A00001 /* Exceptions for "Caloryn" folder in "Caloryn" target */ = {
@@ -228,8 +228,8 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				4B1000032F80000000A00001 /* CalorynWidgets */,
 				4B1000022F80000000A00001 /* CalorynShared */,
+				4B1000032F80000000A00001 /* CalorynWidgets */,
 			);
 			name = CalorynWidgets;
 			packageProductDependencies = (
@@ -269,7 +269,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 2620;
-				LastUpgradeCheck = 2620;
+				LastUpgradeCheck = 2700;
 				TargetAttributes = {
 					1C70CDD02F545455007DE238 = {
 						CreatedOnToolsVersion = 26.2;
@@ -296,10 +296,10 @@
 			);
 			mainGroup = 1C70CDC82F545455007DE238;
 			minimizedProjectReferenceProxies = 1;
-			preferredProjectObjectVersion = 77;
 			packageReferences = (
 				5D1000012FA0000000A00001 /* XCRemoteSwiftPackageReference "swift-snapshot-testing" */,
 			);
+			preferredProjectObjectVersion = 77;
 			productRefGroup = 1C70CDD22F545455007DE238 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -452,6 +452,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -509,6 +510,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				VALIDATE_PRODUCT = YES;
 			};
@@ -527,10 +529,10 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Caloryn/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Caloryn;
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "Caloryn reads Active Energy from Apple Health to adjust your daily calorie budget on device.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Caloryn does not write data to Apple Health. It only reads Active Energy to adjust your calorie budget on device.";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Caloryn uses the camera to scan food barcodes and look up nutritional information.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Caloryn reads Active Energy from Apple Health to adjust your daily calorie budget on device.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Caloryn does not write data to Apple Health. It only reads Active Energy to adjust your calorie budget on device.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UIBackgroundModes = "remote-notification";
@@ -568,10 +570,10 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Caloryn/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Caloryn;
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "Caloryn reads Active Energy from Apple Health to adjust your daily calorie budget on device.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Caloryn does not write data to Apple Health. It only reads Active Energy to adjust your calorie budget on device.";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Caloryn uses the camera to scan food barcodes and look up nutritional information.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Caloryn reads Active Energy from Apple Health to adjust your daily calorie budget on device.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Caloryn does not write data to Apple Health. It only reads Active Energy to adjust your calorie budget on device.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UIBackgroundModes = "remote-notification";
