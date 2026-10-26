@@ -201,7 +201,7 @@ struct HistoryAnalyticsCoverageTests {
         #expect(summary.loggedDayTargetTotal == 4_001)
         #expect(summary.averageTargetPerLoggedDay == 2_001)
         #expect(summary.averageCaloriesPerLoggedDay == 1_000.5)
-        #expect(summary.dailyCalorieTarget == 2_000)
+        #expect(summary.dailyCalorieTarget == 2_001)
     }
 
     @Test("given logged and unlogged days, when averaging calories, then only the logged days are divided by")
