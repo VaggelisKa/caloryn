@@ -171,7 +171,7 @@ struct HistoryAnalyticsCoverageTests {
         )
 
         let week = try #require(summary.weeklyRollups.first)
-        #expect(week.targetPerLoggedDay == 1_943)
+        #expect(week.targetPerLoggedDay == 1_801)
         #expect(week.loggedDays == 0)
         #expect(week.onTrackRatio == 0)
     }

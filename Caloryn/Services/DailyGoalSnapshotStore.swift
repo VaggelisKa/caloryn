@@ -83,6 +83,7 @@ struct HistoryDayTarget: Equatable {
 struct HistoryDayTargetResolver {
     let fallbackTarget: Int
     private let valuesByDayKey: [String: DailyGoalSnapshotValues]
+    private let chronologicalDayKeys: [String]
 
     init(
         fallbackTarget: Int,
@@ -90,13 +91,20 @@ struct HistoryDayTargetResolver {
     ) {
         self.fallbackTarget = fallbackTarget
         self.valuesByDayKey = valuesByDayKey
+        self.chronologicalDayKeys = valuesByDayKey.keys.sorted()
     }
 
     func target(for date: Date, calendar: Calendar = .current) -> HistoryDayTarget {
         let key = DailyGoalSnapshot.dayKey(for: date, calendar: calendar)
-        guard let values = valuesByDayKey[key] else {
-            return HistoryDayTarget(calories: fallbackTarget, isEstimated: true)
+        if let values = valuesByDayKey[key] {
+            return HistoryDayTarget(calories: values.calorieTarget, isEstimated: false)
         }
-        return HistoryDayTarget(calories: values.calorieTarget, isEstimated: false)
+        return HistoryDayTarget(calories: estimatedTarget(forDayKey: key), isEstimated: true)
+    }
+
+    private func estimatedTarget(forDayKey key: String) -> Int {
+        let nearestKey = chronologicalDayKeys.last { $0 < key } ?? chronologicalDayKeys.first
+        guard let nearestKey, let values = valuesByDayKey[nearestKey] else { return fallbackTarget }
+        return values.calorieTarget
     }
 }

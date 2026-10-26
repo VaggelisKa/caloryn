@@ -182,7 +182,7 @@ struct HistoryCalorieTrendProjection {
 
     var estimatedTargetNoteText: String? {
         guard hasEstimatedTargets else { return nil }
-        return "Days without a saved daily goal are compared with your current target."
+        return "Days without a saved daily goal are compared with the goal in effect around then."
     }
 
     var totalTargetDeltaText: String {
