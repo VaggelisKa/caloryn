@@ -72,11 +72,15 @@ private struct CalorynDrillDownNavigationModifier: ViewModifier {
             .tint(CalorynTheme.textPrimary)
             .navigationBarBackButtonHidden()
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                // `cancellationAction` is the placement Apple names for a custom Back: it
+                // leads the bar on every axis, so iPhone Duo's vertical bar keeps it at the
+                // top. The `Label` draws as the symbol alone; its title is what the vertical
+                // bar's overflow menu and VoiceOver read — a bare `Image` has none.
+                ToolbarItem(placement: .cancellationAction) {
                     Button {
                         dismiss()
                     } label: {
-                        Image(systemName: "chevron.left")
+                        Label("Back", systemImage: "chevron.left")
                             .font(CalorynTheme.toolbarIcon)
                             .foregroundStyle(CalorynTheme.textPrimary)
                     }
@@ -95,6 +99,19 @@ private struct CalorynPlainListStyleModifier: ViewModifier {
         // the colour, so the same list reads correctly on a page (#F6F5F1) and in a sheet
         // (#FFFFFF). Rows still need `.listRowBackground(Color.clear)` — hiding the scroll
         // background does not stop a row drawing its own.
+    }
+}
+
+extension ToolbarItemPlacement {
+    /// Where a sheet's or edit screen's Save goes. Pinned trailing on iOS 27, which Apple
+    /// names for a Done or Save: the item never moves into the overflow menu when iPhone
+    /// Duo's vertical bar runs out of room. The ordinary confirmation slot before that.
+    static var calorynConfirmation: ToolbarItemPlacement {
+        if #available(iOS 27.0, *) {
+            .topBarPinnedTrailing
+        } else {
+            .confirmationAction
+        }
     }
 }
 

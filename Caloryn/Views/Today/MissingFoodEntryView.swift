@@ -121,14 +121,14 @@ struct MissingFoodEntryView: View {
                     Button {
                         dismiss()
                     } label: {
-                        Image(systemName: "xmark")
+                        Label("Close", systemImage: "xmark")
                             .font(CalorynTheme.toolbarIcon)
                             .foregroundStyle(CalorynTheme.textPrimary)
                     }
                     .accessibilityLabel("Close")
                 }
 
-                ToolbarItem(placement: .confirmationAction) {
+                ToolbarItem(placement: .calorynConfirmation) {
                     Button {
                         save()
                     } label: {

@@ -235,7 +235,9 @@ struct MyFoodsView: View {
                 Label("Create Meal", systemImage: "fork.knife")
             }
         } label: {
-            Image(systemName: "plus")
+            // A `Label`, so the vertical bar on iPhone Duo can present the menu by its symbol
+            // and still name it in its overflow.
+            Label("Create Food", systemImage: "plus")
                 .font(CalorynTheme.toolbarIcon)
                 .foregroundStyle(CalorynTheme.textPrimary)
         }

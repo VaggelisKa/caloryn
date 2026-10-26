@@ -55,7 +55,7 @@ struct MealFormView: View {
                     }
                 }
 
-                ToolbarItem(placement: .confirmationAction) {
+                ToolbarItem(placement: .calorynConfirmation) {
                     Button {
                         saveMeal()
                     } label: {

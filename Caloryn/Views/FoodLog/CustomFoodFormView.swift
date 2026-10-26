@@ -103,7 +103,7 @@ struct CustomFoodFormView: View {
                     }
                 }
 
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .calorynConfirmation) {
                     Button {
                         saveFood()
                     } label: {

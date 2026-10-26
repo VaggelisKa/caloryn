@@ -151,7 +151,7 @@ struct GoalEditView: View {
         .navigationBarTitleDisplayMode(.inline)
         .scrollDismissesKeyboard(.interactively)
         .toolbar {
-            ToolbarItem(placement: .confirmationAction) {
+            ToolbarItem(placement: .calorynConfirmation) {
                 Button {
                     if draft.disablesAppleHealthAdjustment {
                         AppleHealthAdjustmentSettings.disable()

@@ -69,7 +69,7 @@ struct ProfileEditView: View {
         .navigationTitle("Edit profile")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .confirmationAction) {
+            ToolbarItem(placement: .calorynConfirmation) {
                 Button {
                     draft.apply(to: profile)
                     dismiss()

@@ -71,7 +71,7 @@ struct RecipeFormView: View {
                     }
                 }
 
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .calorynConfirmation) {
                     Button {
                         saveRecipe()
                     } label: {
