@@ -85,6 +85,11 @@ bug, not noise.
 
 - SourceKit reports phantom `No such module 'Testing'` / `Cannot find type` errors from
   a stale index. **Trust the build.**
+- **iPhone Duo** (iOS 27.1 sim) boots closed: compact width with a vertical bar; the open
+  inner display is the only regular-width iPhone. Toolbar items need a title *and* a symbol
+  (`Label`, drawn symbol-only) or the vertical bar cannot host them. `xcodebuild test`
+  hangs on it after the tests pass — stop it, the PNGs are in `<bundle>/Data/`. Folding is
+  Device Hub only; `devicectl device appResize` reaches the inner sizes. `docs/design/iphone-duo.md`.
 - New source files need no pbxproj edit (synchronized groups, objectVersion 77). Adding
   a package or target does.
 - Keep `Package.resolved` tracked — it's under the gitignored `project.xcworkspace` and
@@ -93,5 +98,5 @@ bug, not noise.
 
 ## Further reading
 
-`docs/testing/snapshot-testing.md` · `docs/testing/mutation-testing.md` · `docs/theme.md` · issue #90
-(open defects the suite surfaced).
+`docs/testing/snapshot-testing.md` · `docs/testing/mutation-testing.md` · `docs/theme.md` ·
+`docs/design/iphone-duo.md` · issue #90 (open defects the suite surfaced).
