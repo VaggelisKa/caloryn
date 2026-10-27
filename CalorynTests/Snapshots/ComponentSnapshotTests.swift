@@ -365,6 +365,54 @@ final class ComponentSnapshotTests: XCTestCase {
         assertAppearances(of: badges, layout: .fixed(width: 390, height: 72))
     }
 
+    func testTodayTargetsPanelAcrossAppearances() {
+        let panel = targetsPanel(size: CGSize(width: 400, height: 300))
+
+        assertAppearances(of: panel, layout: .fixed(width: 400, height: 300))
+    }
+
+    func testTodayTargetsPanelStacksItsHeaderAtLargestAccessibilitySize() {
+        let panel = targetsPanel(size: CGSize(width: 400, height: 1_500))
+
+        assertSnapshot(
+            of: panel,
+            as: .image(
+                precision: precision,
+                perceptualPrecision: perceptualPrecision,
+                layout: .fixed(width: 400, height: 1_500),
+                traits: .referenceAccessibility
+            )
+        )
+    }
+
+    func testCalorieHeroAskedForThreeColumnsStacksAtLargestAccessibilitySize() {
+        let size = CGSize(width: 669, height: 1_400)
+
+        assertRevealedSnapshots(
+            of: heroes(columns: .three, sizeClass: .regular, size: size),
+            size: size,
+            traits: ["accessibility": .referenceAccessibility]
+        )
+    }
+
+    func testCalorieHeroWithTheLegendUnderTheNumberOnAPhoneAcrossAppearances() {
+        let size = CGSize(width: 402, height: 520)
+
+        assertRevealedAppearances(of: heroes(columns: .two, sizeClass: .compact, size: size), size: size)
+    }
+
+    func testCalorieHeroInARegularWidthDashboardColumnAcrossAppearances() {
+        let size = CGSize(width: 380, height: 520)
+
+        assertRevealedAppearances(of: heroes(columns: .two, sizeClass: .regular, size: size), size: size)
+    }
+
+    func testCalorieHeroInThreeColumnsOnTheInnerDisplayAcrossAppearances() {
+        let size = CGSize(width: 669, height: 440)
+
+        assertRevealedAppearances(of: heroes(columns: .three, sizeClass: .regular, size: size), size: size)
+    }
+
     func testPastedFoodConfirmationAcrossAppearances() {
         let confirmation = PastedFoodConfirmation(
             draft: LogLinkDraft(
@@ -440,6 +488,57 @@ final class ComponentSnapshotTests: XCTestCase {
         )
     }
 
+    private func assertRevealedAppearances(
+        of view: some View,
+        size: CGSize,
+        fileID: StaticString = #fileID,
+        file filePath: StaticString = #filePath,
+        testName: String = #function,
+        line: UInt = #line,
+        column: UInt = #column
+    ) {
+        assertRevealedSnapshots(
+            of: view,
+            size: size,
+            traits: ["light": .reference, "dark": .referenceDark],
+            fileID: fileID,
+            file: filePath,
+            testName: testName,
+            line: line,
+            column: column
+        )
+    }
+
+    private func assertRevealedSnapshots(
+        of view: some View,
+        size: CGSize,
+        traits: [String: UITraitCollection],
+        fileID: StaticString = #fileID,
+        file filePath: StaticString = #filePath,
+        testName: String = #function,
+        line: UInt = #line,
+        column: UInt = #column
+    ) {
+        let host = UIHostingController(rootView: view)
+        let stage = UIWindow(frame: CGRect(origin: .zero, size: size))
+        stage.rootViewController = host
+        stage.isHidden = false
+        RunLoop.main.run(until: Date(timeIntervalSinceNow: 1.5))
+        stage.rootViewController = nil
+
+        assertSnapshots(
+            of: host as UIViewController,
+            as: traits.mapValues { traits in
+                .image(precision: precision, perceptualPrecision: perceptualPrecision, size: size, traits: traits)
+            },
+            fileID: fileID,
+            file: filePath,
+            testName: testName,
+            line: line,
+            column: column
+        )
+    }
+
     private var precision: Float { 1.0 }
     private var perceptualPrecision: Float { 0.98 }
 
@@ -455,6 +554,54 @@ final class ComponentSnapshotTests: XCTestCase {
             .padding(16)
             .frame(width: 390, height: 140)
             .background(CalorynTheme.backgroundPrimary)
+    }
+
+    private func targetsPanel(size: CGSize) -> some View {
+        let rows = NutritionDetailsSections(
+            metrics: [
+                TrackedNutrientMetric(nutrient: .protein, value: 82, target: 120, goalKind: .minimum),
+                TrackedNutrientMetric(nutrient: .carbs, value: 164, target: 210, goalKind: .target),
+                TrackedNutrientMetric(nutrient: .fat, value: 71, target: 65, goalKind: .maximum),
+                TrackedNutrientMetric(nutrient: .fiber, value: 12, target: 30, goalKind: .minimum),
+            ],
+            details: [],
+            locale: Locale(identifier: "en_US")
+        ).targets
+
+        return TodayTargetsPanel(rows: rows, onDetailsRequested: {})
+            .padding(CalorynTheme.pagePadding)
+            .frame(width: size.width, height: size.height, alignment: .top)
+            .background(CalorynTheme.backgroundPrimary)
+    }
+
+    private func heroes(
+        columns: TodayDashboardLayout.HeroColumns,
+        sizeClass: UserInterfaceSizeClass,
+        size: CGSize
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 32) {
+            CalorieHeroView(
+                summary: TodayHeroSummary(
+                    mealTotals: [.breakfast: 382, .lunch: 463, .snack: 118],
+                    budget: CalorieBudget(consumed: 963, target: 2_000),
+                    locale: Locale(identifier: "en_US")
+                ),
+                columns: columns
+            )
+            CalorieHeroView(
+                summary: TodayHeroSummary(
+                    mealTotals: [.breakfast: 382, .lunch: 463, .dinner: 1_377, .snack: 118],
+                    budget: CalorieBudget(consumed: 2_340, target: 2_000),
+                    locale: Locale(identifier: "en_US")
+                ),
+                columns: columns
+            )
+        }
+        .padding(.horizontal, CalorynTheme.pagePadding)
+        .padding(.vertical, 24)
+        .environment(\.horizontalSizeClass, sizeClass)
+        .frame(width: size.width, height: size.height, alignment: .top)
+        .background(CalorynTheme.backgroundPrimary)
     }
 
     private func dayPlateStrip(dayCount: Int, columnCount: Int, plateSize: CGFloat) -> HistoryDayPlateStrip {

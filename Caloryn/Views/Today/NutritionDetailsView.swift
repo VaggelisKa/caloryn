@@ -18,7 +18,6 @@ struct NutritionDetailsView: View {
     }
 
     @ScaledMetric(relativeTo: .largeTitle) private var numberSize: CGFloat = 52
-    @ScaledMetric(relativeTo: .subheadline) private var barHeight: CGFloat = 8
     @ScaledMetric(relativeTo: .footnote) private var chipHeight: CGFloat = 30
 
     private var summary: NutritionDetailsSummary {
@@ -33,9 +32,7 @@ struct NutritionDetailsView: View {
     }
 
     private var allNutrientMetrics: [TrackedNutrientMetric] {
-        TrackedNutrient.allCases.map { nutrient in
-            metric(for: nutrient, value: nutrient.value(in: entries))
-        }
+        TrackedNutrientMetric.metrics(in: entries, targets: nutrientTargets, goalKinds: nutrientGoalKinds)
     }
 
     private var produceSummary: ProduceVarietySummary {
@@ -213,63 +210,8 @@ struct NutritionDetailsView: View {
         VStack(alignment: .leading, spacing: 12) {
             sectionTitle("Against your targets")
 
-            ForEach(rows) { row in
-                VStack(alignment: .leading, spacing: 5) {
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(row.name)
-                            .font(TodayPlateFont.detailsRow)
-                            .foregroundStyle(CalorynTheme.textPrimary)
-                            .lineLimit(1)
-                            .layoutPriority(1)
-
-                        Spacer(minLength: 0)
-
-                        targetFigures(row)
-                            .multilineTextAlignment(.trailing)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .contentTransition(.numericText())
-                    }
-
-                    progressBar(row.progress)
-                }
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(row.accessibilityLabel)
-            }
+            NutrientTargetRowsView(rows: rows)
         }
-    }
-
-    private func targetFigures(_ row: NutritionDetailsSections.TargetRow) -> Text {
-        let value = Text(row.valueText)
-            .font(TodayPlateFont.detailsRowValue)
-            .fontWeight(row.isOverMaximum ? .bold : .semibold)
-            .foregroundStyle(CalorynTheme.textPrimary)
-        let target = Text(row.targetText)
-            .font(TodayPlateFont.detailsRow)
-            .foregroundStyle(CalorynTheme.textSecondary)
-
-        guard let overText = row.overText else {
-            return Text("\(value) \(target)")
-        }
-        let over = Text(", \(overText)")
-            .font(TodayPlateFont.detailsRowValue)
-            .foregroundStyle(CalorynTheme.textPrimary)
-        return Text("\(value) \(target)\(over)")
-    }
-
-    private func progressBar(_ progress: Double) -> some View {
-        GeometryReader { geo in
-            ZStack(alignment: .leading) {
-                Capsule()
-                    .fill(CalorynTheme.fillTrack)
-
-                Capsule()
-                    .fill(CalorynTheme.dataPrimary)
-                    .frame(width: geo.size.width * progress)
-            }
-        }
-        .frame(height: barHeight)
-        .clipShape(Capsule())
-        .accessibilityHidden(true)
     }
 
     private var produceSection: some View {
@@ -389,15 +331,6 @@ struct NutritionDetailsView: View {
                 .foregroundStyle(CalorynTheme.textSecondary)
                 .lineLimit(1)
         }
-    }
-
-    private func metric(for nutrient: TrackedNutrient, value: Double) -> TrackedNutrientMetric {
-        TrackedNutrientMetric(
-            nutrient: nutrient,
-            value: value,
-            target: nutrientTargets[nutrient],
-            goalKind: nutrientTargets[nutrient] == nil ? nil : nutrientGoalKinds[nutrient, default: nutrient.defaultGoalKind]
-        )
     }
 }
 
