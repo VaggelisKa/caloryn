@@ -3,6 +3,43 @@ import XCTest
 
 @MainActor
 final class TrackedNutrientTests: XCTestCase {
+    func testMetricsSumEachNutrientAcrossTheEntries() {
+        let food = makeTestFoodItem(proteinPer100g: 10, fatPer100g: 4)
+        let entries = [
+            makeTestEntry(foodItem: food, portionGrams: 100),
+            makeTestEntry(foodItem: food, portionGrams: 50),
+        ]
+
+        let metrics = TrackedNutrientMetric.metrics(in: entries, targets: [:], goalKinds: [:])
+
+        XCTAssertEqual(metrics.map(\.nutrient), TrackedNutrient.allCases)
+        XCTAssertEqual(metrics.first { $0.nutrient == .protein }?.value ?? 0, 15, accuracy: 0.001)
+        XCTAssertEqual(metrics.first { $0.nutrient == .fat }?.value ?? 0, 6, accuracy: 0.001)
+    }
+
+    func testMetricsLeaveTheGoalKindEmptyWithoutATarget() {
+        let metrics = TrackedNutrientMetric.metrics(in: [], targets: [:], goalKinds: [.protein: .maximum])
+        let protein = metrics.first { $0.nutrient == .protein }
+
+        XCTAssertNil(protein?.target)
+        XCTAssertNil(protein?.goalKind)
+    }
+
+    func testMetricsFallBackToTheNutrientsDefaultGoalKind() {
+        let metrics = TrackedNutrientMetric.metrics(in: [], targets: [.fat: 65, .sugars: 50], goalKinds: [:])
+
+        XCTAssertEqual(metrics.first { $0.nutrient == .fat }?.goalKind, .target)
+        XCTAssertEqual(metrics.first { $0.nutrient == .sugars }?.goalKind, .maximum)
+    }
+
+    func testMetricsUseTheStoredGoalKindOverTheDefault() {
+        let metrics = TrackedNutrientMetric.metrics(in: [], targets: [.protein: 120], goalKinds: [.protein: .target])
+        let protein = metrics.first { $0.nutrient == .protein }
+
+        XCTAssertEqual(protein?.target, 120)
+        XCTAssertEqual(protein?.goalKind, .target)
+    }
+
     func testSelectedNutrientsRemoveDuplicatesAndPadToMinimumSelection() {
         XCTAssertEqual(
             TrackedNutrient.selected(from: "fiber,fiber"),
