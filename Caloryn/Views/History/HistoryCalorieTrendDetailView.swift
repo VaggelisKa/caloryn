@@ -4,16 +4,19 @@ import Charts
 struct HistoryCalorieTrendDetailView: View {
     let range: HistoryRange
     let summary: HistoryPeriodSummary
+    let presentation: HistoryDetailPresentation
 
     @State private var selectedPointID: String?
 
     init(
         range: HistoryRange,
         summary: HistoryPeriodSummary,
-        initialSelectedPointID: String? = nil
+        initialSelectedPointID: String? = nil,
+        presentation: HistoryDetailPresentation = .pushed
     ) {
         self.range = range
         self.summary = summary
+        self.presentation = presentation
         _selectedPointID = State(initialValue: initialSelectedPointID)
     }
 
@@ -26,6 +29,10 @@ struct HistoryCalorieTrendDetailView: View {
 
         ScrollView {
             VStack(alignment: .leading, spacing: 26) {
+                if presentation == .inline {
+                    HistoryDetailPaneTitle("Calorie trend")
+                }
+
                 HistoryCalorieTrendRangeSummary(
                     projection: projection
                 )
@@ -48,8 +55,7 @@ struct HistoryCalorieTrendDetailView: View {
         }
         .historyDebugScrollAnchor()
         .calorynPageCanvas()
-        .calorynDrillDownNavigation()
-        .calorynInlineTitle("Calorie trend")
+        .historyDetailChrome("Calorie trend", presentation: presentation)
         .accessibilityIdentifier("history.calorieTrend.details")
     }
 }

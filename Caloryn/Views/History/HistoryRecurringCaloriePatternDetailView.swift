@@ -2,20 +2,27 @@ import SwiftUI
 
 struct HistoryRecurringCaloriePatternDetailView: View {
     let pattern: HistoryRecurringCaloriePattern
+    let presentation: HistoryDetailPresentation
 
     @State private var expandedDayIDs: Set<Date>
 
     init(
         pattern: HistoryRecurringCaloriePattern,
-        initiallyExpandedDayIDs: Set<Date> = []
+        initiallyExpandedDayIDs: Set<Date> = [],
+        presentation: HistoryDetailPresentation = .pushed
     ) {
         self.pattern = pattern
+        self.presentation = presentation
         _expandedDayIDs = State(initialValue: initiallyExpandedDayIDs)
     }
 
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 26) {
+                if presentation == .inline {
+                    HistoryDetailPaneTitle("Pattern details")
+                }
+
                 HistoryPatternContextHeader(pattern: pattern)
                 HistoryPatternEvidence(pattern: pattern)
 
@@ -45,8 +52,7 @@ struct HistoryRecurringCaloriePatternDetailView: View {
         }
         .historyDebugScrollAnchor()
         .calorynPageCanvas()
-        .calorynDrillDownNavigation()
-        .calorynInlineTitle("Pattern details")
+        .historyDetailChrome("Pattern details", presentation: presentation)
         .accessibilityIdentifier("history.recurringPattern.details")
     }
 

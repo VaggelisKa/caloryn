@@ -6,6 +6,8 @@ struct HistoryView: View {
     @Environment(AppRouter.self) private var router
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     @Query(sort: \FoodLogEntry.date, order: .reverse) private var allEntries: [FoodLogEntry]
     @Query(sort: \UserProfile.updatedAt, order: .reverse) private var profiles: [UserProfile]
@@ -16,6 +18,9 @@ struct HistoryView: View {
     @State private var analyticsDayStart = Calendar.current.startOfDay(for: .now)
     @State private var hasLoadedAnalytics = false
     @State private var isContentVisible = false
+    @State private var pageSize: CGSize = .zero
+    @State private var detailSelection = HistoryDetailSelection()
+    @State private var inlineDetailSeed: HistoryDrillDownRoute?
 
     #if DEBUG
     @State private var debugLaunch = HistoryDebugLaunch.current
@@ -79,82 +84,43 @@ struct HistoryView: View {
         )
     }
 
+    private var split: RegularWidthSplit {
+        RegularWidthSplit(
+            isRegularWidth: horizontalSizeClass == .regular,
+            isRegularHeight: verticalSizeClass == .regular,
+            pageSize: pageSize
+        )
+    }
+
     var body: some View {
+        let split = split
+
         NavigationStack(path: $navigationPath) {
-            ScrollView {
-                let state = historyState
-                let history = state.analytics
-                let patternDiscovery = HistoryPatternDiscovery(analytics: history)
-                let overview = HistoryOverviewSummary(
-                    range: state.range,
-                    loggedDayCount: history.current.loggedDayCount,
-                    totalDayCount: history.current.totalDayCount,
-                    averageCaloriesPerLoggedDay: history.current.averageCaloriesPerLoggedDay,
-                    averageTargetPerLoggedDay: history.current.averageTargetPerLoggedDay,
-                    onTrackLoggedDayCount: history.current.onTrackLoggedDayCount,
-                    onTrackDayDelta: history.goalComparison.onTrackDayDelta
-                )
-
-                VStack(alignment: .leading, spacing: 26) {
-                    if hasLoadedAnalytics {
-                        VStack(alignment: .leading, spacing: 22) {
-                            rangePicker
-
-                            crossfading(on: state.range) {
-                                VStack(alignment: .leading, spacing: 26) {
-                                    HistoryOverviewSection(
-                                        range: state.range,
-                                        summary: history.current,
-                                        overview: overview,
-                                        today: analyticsDayStart
-                                    )
-
-                                    if let recurringPattern = state.recurringPattern {
-                                        HistoryRecurringCaloriePatternCard(
-                                            pattern: recurringPattern,
-                                            action: { openPatternDetails(recurringPattern) }
-                                        )
-                                    }
-
-                                    if overview.hasLoggedDays {
-                                        HistoryOnTrackSection(overview: overview)
-                                    }
-
-                                    if state.range.days >= HistoryRange.month.days {
-                                        HistoryWeeklyRollupSection(projection: patternDiscovery.weeklyConsistency)
-                                    }
-
-                                    HistoryCalorieTrendSection(
-                                        projection: patternDiscovery.calorieTrend,
-                                        drillDownAction: patternDiscovery.calorieTrend.canDrillDown
-                                            ? { openCalorieTrendDetail(range: state.range, summary: history.current) }
-                                            : nil
-                                    )
-
-                                    if history.macroPatterns.contains(where: { $0.current.loggedDays > 0 }) {
-                                        HistoryMacroPatternsSection(
-                                            range: state.range,
-                                            projection: patternDiscovery.macroPatterns
-                                        )
-                                    }
-                                }
-                            }
-                        }
+            Group {
+                if split.showsColumns {
+                    SplitColumns(split: split) {
+                        historyPage(showsDetailInline: true)
+                    } secondary: {
+                        inlineDetailPane
                     }
+                } else {
+                    historyPage(showsDetailInline: false)
                 }
-                .opacity(isContentVisible ? 1 : 0)
-                .padding(.horizontal, CalorynTheme.pagePadding)
-                .padding(.top, 4)
-                .padding(.bottom, 28)
             }
-            .historyDebugScrollAnchor()
-            .calorynPageCanvas()
+            .onGeometryChange(for: CGSize.self) { proxy in
+                proxy.size
+            } action: { pageSize = $0 }
             .calorynLargeTitle("History")
             .navigationDestination(for: HistoryDrillDownRoute.self) { route in
                 destination(for: route)
             }
         }
         .calorynPageCanvas()
+        .onChange(of: split.showsColumns) { _, showsColumns in
+            guard showsColumns, let route = navigationPath.last else { return }
+            showInline(route)
+            navigationPath = []
+        }
         .task(id: isSelectedTab ? analyticsRefreshID : nil) {
             guard isSelectedTab else { return }
             refreshAnalytics(for: historyState.range)
@@ -179,6 +145,138 @@ struct HistoryView: View {
         ) { _ in
             followCalendarRollover()
         }
+    }
+
+    private func historyPage(showsDetailInline: Bool) -> some View {
+        ScrollView {
+            let state = historyState
+            let history = state.analytics
+            let patternDiscovery = HistoryPatternDiscovery(analytics: history)
+            let overview = HistoryOverviewSummary(
+                range: state.range,
+                loggedDayCount: history.current.loggedDayCount,
+                totalDayCount: history.current.totalDayCount,
+                averageCaloriesPerLoggedDay: history.current.averageCaloriesPerLoggedDay,
+                averageTargetPerLoggedDay: history.current.averageTargetPerLoggedDay,
+                onTrackLoggedDayCount: history.current.onTrackLoggedDayCount,
+                onTrackDayDelta: history.goalComparison.onTrackDayDelta
+            )
+            let selectedDetail = showsDetailInline ? currentPane.detail : nil
+
+            VStack(alignment: .leading, spacing: 26) {
+                if hasLoadedAnalytics {
+                    VStack(alignment: .leading, spacing: 22) {
+                        rangePicker
+
+                        crossfading(on: state.range) {
+                            VStack(alignment: .leading, spacing: 26) {
+                                HistoryOverviewSection(
+                                    range: state.range,
+                                    summary: history.current,
+                                    overview: overview,
+                                    today: analyticsDayStart
+                                )
+
+                                if let recurringPattern = state.recurringPattern {
+                                    HistoryRecurringCaloriePatternCard(
+                                        pattern: recurringPattern,
+                                        action: { openPatternDetails(recurringPattern) }
+                                    )
+                                    .historyDetailSource(
+                                        isSelected: selectedDetail == .recurringPattern,
+                                        outset: 0
+                                    )
+                                }
+
+                                if overview.hasLoggedDays {
+                                    HistoryOnTrackSection(overview: overview)
+                                }
+
+                                if state.range.days >= HistoryRange.month.days {
+                                    HistoryWeeklyRollupSection(projection: patternDiscovery.weeklyConsistency)
+                                }
+
+                                HistoryCalorieTrendSection(
+                                    projection: patternDiscovery.calorieTrend,
+                                    drillDownAction: patternDiscovery.calorieTrend.canDrillDown
+                                        ? { openCalorieTrendDetail(range: state.range, summary: history.current) }
+                                        : nil
+                                )
+                                .historyDetailSource(
+                                    isSelected: selectedDetail == .calorieTrend,
+                                    outset: 12
+                                )
+
+                                if history.macroPatterns.contains(where: { $0.current.loggedDays > 0 }) {
+                                    HistoryMacroPatternsSection(
+                                        range: state.range,
+                                        projection: patternDiscovery.macroPatterns
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .opacity(isContentVisible ? 1 : 0)
+            .padding(.horizontal, CalorynTheme.pagePadding)
+            .padding(.top, 4)
+            .padding(.bottom, 28)
+        }
+        .historyDebugScrollAnchor()
+        .calorynPageCanvas()
+    }
+
+    private var currentPane: HistoryDetailSelection.Pane {
+        let state = historyState
+        return detailSelection.pane(
+            range: state.range,
+            canDrillIntoCalorieTrend: HistoryPatternDiscovery(analytics: state.analytics).calorieTrend.canDrillDown,
+            hasRecurringPattern: state.recurringPattern != nil
+        )
+    }
+
+    private var inlineDetailPane: some View {
+        let state = historyState
+        let pane = currentPane
+
+        return ZStack(alignment: .topLeading) {
+            if hasLoadedAnalytics {
+                switch pane {
+                case .calorieTrend(let range):
+                    HistoryCalorieTrendDetailView(
+                        range: range,
+                        summary: state.analytics.current,
+                        initialSelectedPointID: inlineTrendSeed(for: range)?.initialSelectedPointID,
+                        presentation: .inline
+                    )
+                case .recurringPattern:
+                    if let pattern = state.recurringPattern {
+                        HistoryRecurringCaloriePatternDetailView(
+                            pattern: pattern,
+                            initiallyExpandedDayIDs: inlinePatternSeed?.initiallyExpandedDayIDs ?? [],
+                            presentation: .inline
+                        )
+                    }
+                case .empty:
+                    HistoryDetailEmptyPane()
+                }
+            }
+        }
+        .id(pane)
+        .transition(.opacity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .opacity(isContentVisible ? 1 : 0)
+    }
+
+    private func inlineTrendSeed(for range: HistoryRange) -> HistoryCalorieTrendSnapshot? {
+        guard case .calorieTrend(let snapshot) = inlineDetailSeed, snapshot.range == range else { return nil }
+        return snapshot
+    }
+
+    private var inlinePatternSeed: HistoryRecurringCaloriePatternSnapshot? {
+        guard case .recurringPattern(let snapshot) = inlineDetailSeed else { return nil }
+        return snapshot
     }
 
     private func followCalendarRollover() {
@@ -222,6 +320,7 @@ struct HistoryView: View {
 
     private func selectRange(_ range: HistoryRange) {
         guard range != historyState.range else { return }
+        inlineDetailSeed = nil
         withAnimation(changeAnimation) {
             refreshAnalytics(for: range)
         }
@@ -232,15 +331,35 @@ struct HistoryView: View {
             range: range,
             summary: summary
         )
-        navigationPath.append(.calorieTrend(snapshot))
+        open(.calorieTrend(snapshot))
     }
 
     private func openPatternDetails(_ pattern: HistoryRecurringCaloriePattern) {
-        navigationPath.append(
+        open(
             .recurringPattern(
                 HistoryRecurringCaloriePatternSnapshot(pattern: pattern)
             )
         )
+    }
+
+    private func open(_ route: HistoryDrillDownRoute) {
+        if split.showsColumns {
+            withAnimation(changeAnimation) {
+                showInline(route)
+            }
+        } else {
+            navigationPath.append(route)
+        }
+    }
+
+    private func showInline(_ route: HistoryDrillDownRoute) {
+        inlineDetailSeed = route
+        switch route {
+        case .calorieTrend:
+            detailSelection.choose(.calorieTrend)
+        case .recurringPattern:
+            detailSelection.choose(.recurringPattern)
+        }
     }
 
     #if DEBUG
@@ -262,14 +381,14 @@ struct HistoryView: View {
                 )
                 snapshot.initialSelectedPointID = projection.points.last(where: \.isLogged)?.id
             }
-            navigationPath.append(.calorieTrend(snapshot))
+            open(.calorieTrend(snapshot))
         case .recurringPattern, .recurringPatternExpanded:
             guard let pattern = state.recurringPattern else { return }
             var snapshot = HistoryRecurringCaloriePatternSnapshot(pattern: pattern)
             if drillDown == .recurringPatternExpanded, let first = pattern.supportingDays.first {
                 snapshot.initiallyExpandedDayIDs = [first.id]
             }
-            navigationPath.append(.recurringPattern(snapshot))
+            open(.recurringPattern(snapshot))
         }
     }
     #endif
