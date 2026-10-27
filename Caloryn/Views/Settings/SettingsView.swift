@@ -53,49 +53,57 @@ struct SettingsView: View {
             pageSize: pageSize
         )
 
-        NavigationStack {
-            Group {
-                if split.showsColumns {
-                    SplitColumns(split: split) {
+        Group {
+            if split.showsColumns {
+                SplitColumns(split: split) {
+                    NavigationStack {
                         sectionList(index)
-                    } secondary: {
+                            .calorynPageCanvas()
+                            .calorynLargeTitle("Settings")
+                    }
+                } secondary: {
+                    let selected = index.selection(resolving: chosenSection)
+
+                    NavigationStack {
                         List {
-                            section(index.selection(resolving: chosenSection))
+                            section(selected)
                         }
                         .calorynGroupedListStyle()
+                        .calorynPageCanvas()
+                        .toolbar(.hidden, for: .navigationBar)
+                        .editDestinations(profile: profile, isEditingGoal: $isEditingGoal, isEditingProfile: $isEditingProfile)
                     }
-                } else {
+                    .id(selected)
+                }
+            } else {
+                NavigationStack {
                     List {
                         ForEach(index.sections) { section($0) }
                     }
                     .calorynGroupedListStyle()
+                    .calorynPageCanvas()
+                    .calorynLargeTitle("Settings")
+                    .editDestinations(profile: profile, isEditingGoal: $isEditingGoal, isEditingProfile: $isEditingProfile)
                 }
             }
-            .onGeometryChange(for: CGSize.self) { proxy in
-                proxy.size
-            } action: { pageSize = $0 }
-            .calorynPageCanvas()
-            .calorynLargeTitle("Settings")
-            .navigationDestination(isPresented: $isEditingGoal) {
-                if let profile {
-                    GoalEditView(profile: profile)
-                }
+        }
+        .onGeometryChange(for: CGSize.self) { proxy in
+            proxy.size
+        } action: { pageSize = $0 }
+        .calorynPageCanvas()
+        .onChange(of: chosenSection) {
+            isEditingGoal = false
+            isEditingProfile = false
+        }
+        .sheet(isPresented: $showExportSheet) {
+            if let url = exportURL {
+                ShareSheet(url: url)
             }
-            .navigationDestination(isPresented: $isEditingProfile) {
-                if let profile {
-                    ProfileEditView(profile: profile)
-                }
-            }
-            .sheet(isPresented: $showExportSheet) {
-                if let url = exportURL {
-                    ShareSheet(url: url)
-                }
-            }
-            .alert("Restart Required", isPresented: $showRestartAlert) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text("iCloud sync changes will take effect the next time you open the app.")
-            }
+        }
+        .alert("Restart Required", isPresented: $showRestartAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("iCloud sync changes will take effect the next time you open the app.")
         }
     }
 
@@ -501,5 +509,25 @@ private struct SettingsThemeRow: View {
         .fixedSize()
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Theme")
+    }
+}
+
+private extension View {
+    func editDestinations(
+        profile: UserProfile?,
+        isEditingGoal: Binding<Bool>,
+        isEditingProfile: Binding<Bool>
+    ) -> some View {
+        self
+            .navigationDestination(isPresented: isEditingGoal) {
+                if let profile {
+                    GoalEditView(profile: profile)
+                }
+            }
+            .navigationDestination(isPresented: isEditingProfile) {
+                if let profile {
+                    ProfileEditView(profile: profile)
+                }
+            }
     }
 }
