@@ -257,6 +257,21 @@ struct TrackedNutrientMetric: Identifiable {
 
     var id: String { nutrient.id }
 
+    static func metrics(
+        in entries: [FoodLogEntry],
+        targets: [TrackedNutrient: Double],
+        goalKinds: [TrackedNutrient: NutrientGoalKind]
+    ) -> [TrackedNutrientMetric] {
+        TrackedNutrient.allCases.map { nutrient in
+            TrackedNutrientMetric(
+                nutrient: nutrient,
+                value: nutrient.value(in: entries),
+                target: targets[nutrient],
+                goalKind: targets[nutrient] == nil ? nil : goalKinds[nutrient, default: nutrient.defaultGoalKind]
+            )
+        }
+    }
+
     var formattedValue: String {
         formattedValue(locale: .current)
     }

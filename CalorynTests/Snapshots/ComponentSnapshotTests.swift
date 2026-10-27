@@ -365,6 +365,25 @@ final class ComponentSnapshotTests: XCTestCase {
         assertAppearances(of: badges, layout: .fixed(width: 390, height: 72))
     }
 
+    func testTodayTargetsPanelAcrossAppearances() {
+        let rows = NutritionDetailsSections(
+            metrics: [
+                TrackedNutrientMetric(nutrient: .protein, value: 82, target: 120, goalKind: .minimum),
+                TrackedNutrientMetric(nutrient: .carbs, value: 164, target: 210, goalKind: .target),
+                TrackedNutrientMetric(nutrient: .fat, value: 71, target: 65, goalKind: .maximum),
+                TrackedNutrientMetric(nutrient: .fiber, value: 12, target: 30, goalKind: .minimum),
+            ],
+            details: [],
+            locale: Locale(identifier: "en_US")
+        ).targets
+        let panel = TodayTargetsPanel(rows: rows, onDetailsRequested: {})
+            .padding(CalorynTheme.pagePadding)
+            .frame(width: 400, height: 300, alignment: .top)
+            .background(CalorynTheme.backgroundPrimary)
+
+        assertAppearances(of: panel, layout: .fixed(width: 400, height: 300))
+    }
+
     func testCalorieHeroWithTheLegendUnderTheNumberOnAPhoneAcrossAppearances() {
         let size = CGSize(width: 402, height: 520)
 
