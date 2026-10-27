@@ -18,9 +18,22 @@ struct TodayDashboardLayout: Equatable {
         case besideHero
     }
 
-    static let threeColumnHeroWidth: CGFloat = 624
-    static let targetsBesideHeroMinimumWidth: CGFloat = 976
-    static let clusterBesideTargetsMinimumWidth: CGFloat = 520
+    static let heroDonutSize: CGFloat = 168
+    static let heroColumnSpacing: CGFloat = 18
+    static let heroFiguresColumnWidth: CGFloat = 200
+    static let heroLegendColumnWidth: CGFloat = 220
+    static let heroBesideTargetsSpacing: CGFloat = 32
+    static let targetsBesideHeroMinimumPanelWidth: CGFloat = 320
+    static let trailingClusterWidth: CGFloat = 240
+    static let clusterBesideTargetsSpacing: CGFloat = 24
+    static let clusterBesideTargetsMinimumPanelWidth: CGFloat = 256
+
+    static let threeColumnHeroWidth: CGFloat =
+        heroDonutSize + heroFiguresColumnWidth + heroLegendColumnWidth + 2 * heroColumnSpacing
+    static let targetsBesideHeroMinimumWidth: CGFloat =
+        threeColumnHeroWidth + heroBesideTargetsSpacing + targetsBesideHeroMinimumPanelWidth
+    static let clusterBesideTargetsMinimumWidth: CGFloat =
+        clusterBesideTargetsMinimumPanelWidth + clusterBesideTargetsSpacing + trailingClusterWidth
 
     let breakpoint: Breakpoint
     let heroColumns: HeroColumns
@@ -56,7 +69,7 @@ struct TodayDashboardLayout: Equatable {
         }
 
         heroColumns = contentWidth >= Self.threeColumnHeroWidth ? .three : .two
-        detailsPlacement = if heroColumns == .three, contentWidth >= Self.targetsBesideHeroMinimumWidth {
+        detailsPlacement = if contentWidth >= Self.targetsBesideHeroMinimumWidth {
             .besideHero
         } else if contentWidth >= Self.clusterBesideTargetsMinimumWidth {
             .besideEachOtherBelowHero

@@ -4,6 +4,8 @@ import Testing
 
 @Suite("Today dashboard layout")
 struct TodayDashboardLayoutTests {
+    private static let pageMargins = 2 * CalorynTheme.pagePadding
+
     private func layout(
         regularWidth: Bool = true,
         regularHeight: Bool = true,
@@ -14,7 +16,7 @@ struct TodayDashboardLayoutTests {
         TodayDashboardLayout(
             isRegularWidth: regularWidth,
             isRegularHeight: regularHeight,
-            contentWidth: page.width - 40,
+            contentWidth: page.width - Self.pageMargins,
             isWiderThanTall: page.width > page.height,
             isLargeText: largeText,
             hasTargets: hasTargets
@@ -110,13 +112,50 @@ struct TodayDashboardLayoutTests {
 
     @Test("The hero takes three columns from exactly their width, and not a point less")
     func threeColumnThreshold() {
-        let width = TodayDashboardLayout.threeColumnHeroWidth
-        let fits = layout(page: CGSize(width: width + 40, height: 1_000))
-        let short = layout(page: CGSize(width: width + 39, height: 1_000))
+        let width = TodayDashboardLayout.threeColumnHeroWidth + Self.pageMargins
+        let fits = layout(page: CGSize(width: width, height: 1_000))
+        let short = layout(page: CGSize(width: width - 1, height: 1_000))
 
         #expect(fits.heroColumns == .three)
         #expect(short.heroColumns == .two)
         #expect(short.detailsPlacement == .besideEachOtherBelowHero)
+    }
+
+    @Test("The targets move beside the hero from exactly their combined width, and not a point less")
+    func besideHeroThreshold() {
+        let width = TodayDashboardLayout.targetsBesideHeroMinimumWidth + Self.pageMargins
+        let fits = layout(page: CGSize(width: width, height: 1_400))
+        let short = layout(page: CGSize(width: width - 1, height: 1_400))
+
+        #expect(fits.detailsPlacement == .besideHero)
+        #expect(short.detailsPlacement == .besideEachOtherBelowHero)
+        #expect(short.heroColumns == .three)
+    }
+
+    @Test("The cluster sits beside the targets from exactly their combined width, and not a point less")
+    func clusterBesideTargetsThreshold() {
+        let width = TodayDashboardLayout.clusterBesideTargetsMinimumWidth + Self.pageMargins
+        let fits = layout(page: CGSize(width: width, height: 1_000))
+        let short = layout(page: CGSize(width: width - 1, height: 1_000))
+
+        #expect(fits.detailsPlacement == .besideEachOtherBelowHero)
+        #expect(fits.heroColumns == .two)
+        #expect(short.detailsPlacement == .belowHero)
+    }
+
+    @Test("The thresholds are built from the widths the hero and the cluster are drawn at")
+    func thresholdsComeFromTheDrawnWidths() {
+        #expect(
+            TodayDashboardLayout.threeColumnHeroWidth == TodayDashboardLayout.heroDonutSize
+                + TodayDashboardLayout.heroFiguresColumnWidth
+                + TodayDashboardLayout.heroLegendColumnWidth
+                + 2 * TodayDashboardLayout.heroColumnSpacing
+        )
+        #expect(TodayDashboardLayout.threeColumnHeroWidth < TodayDashboardLayout.targetsBesideHeroMinimumWidth)
+        #expect(
+            TodayDashboardLayout.clusterBesideTargetsMinimumWidth
+                > TodayDashboardLayout.trailingClusterWidth + TodayDashboardLayout.clusterBesideTargetsSpacing
+        )
     }
 
     @Test("Below the cluster width the details stack under the hero")
@@ -128,14 +167,23 @@ struct TodayDashboardLayoutTests {
         #expect(narrow.detailsPlacement == .belowHero)
     }
 
-    @Test("Accessibility text keeps the stacking hero and stacks the details too")
+    @Test("Large text (xxxLarge and up) keeps the stacking hero and stacks the details too")
     func largeTextStacks() {
-        let inner = layout(page: CGSize(width: 1032, height: 1376), largeText: true)
+        let iPad = layout(page: CGSize(width: 1032, height: 1376), largeText: true)
 
-        #expect(inner.breakpoint == .narrowRegular)
-        #expect(inner.heroColumns == .two)
-        #expect(inner.showsTargetsPanel)
-        #expect(inner.detailsPlacement == .belowHero)
+        #expect(iPad.breakpoint == .narrowRegular)
+        #expect(iPad.heroColumns == .two)
+        #expect(iPad.showsTargetsPanel)
+        #expect(iPad.detailsPlacement == .belowHero)
+    }
+
+    @Test("Large text on a wide-regular page keeps the split and stacks its column")
+    func largeTextWideRegular() {
+        let landscape = layout(page: CGSize(width: 951, height: 669), largeText: true)
+
+        #expect(landscape.breakpoint == .wideRegular)
+        #expect(landscape.heroColumns == .two)
+        #expect(landscape.detailsPlacement == .belowHero)
     }
 
     @Test("Without nutrient targets there is no panel to promote")
