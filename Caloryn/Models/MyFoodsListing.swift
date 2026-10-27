@@ -84,6 +84,10 @@ struct MyFoodsListing {
             && mealTemplateCount == 0
     }
 
+    var selectableFoods: [FoodItem] {
+        favorites + nonFavoriteRecipes + nonFavoriteManualEntries
+    }
+
     var showsFavoritesDisclosure: Bool {
         favorites.count > FavoriteFoodLogging.collapsedFavoriteLimit
     }
