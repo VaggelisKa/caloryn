@@ -6,6 +6,8 @@ enum UITestConfiguration {
 
     static let seedFlag = "-uitest-seed"
 
+    static let holdCloudImportFlag = "-uitest-hold-cloud-import"
+
     enum Fixture: String {
         case empty
         case profileOnly
@@ -20,6 +22,10 @@ enum UITestConfiguration {
 
     static var isActive: Bool {
         arguments.contains(resetFlag)
+    }
+
+    static var holdsCloudImport: Bool {
+        arguments.contains(holdCloudImportFlag)
     }
 
     static var fixture: Fixture? {

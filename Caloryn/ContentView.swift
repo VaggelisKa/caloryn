@@ -3,10 +3,16 @@ import SwiftData
 
 struct ContentView: View {
     @Query private var profiles: [UserProfile]
+    @Environment(CloudSyncActivity.self) private var cloudSync
     @AppStorage("themePreference") private var themePreferenceRaw = ThemePreference.system.rawValue
 
-    private var hasCompletedOnboarding: Bool {
-        !profiles.isEmpty
+    private var phase: FirstLaunchSyncGate.Phase {
+        FirstLaunchSyncGate.phase(
+            hasLocalProfile: !profiles.isEmpty,
+            syncsWithCloud: cloudSync.syncsWithCloud,
+            initialImportSettled: cloudSync.initialImportSettled,
+            waitExpired: cloudSync.waitExpired
+        )
     }
 
     private var colorScheme: ColorScheme? {
@@ -15,11 +21,15 @@ struct ContentView: View {
 
     var body: some View {
         Group {
-            if hasCompletedOnboarding {
+            switch phase {
+            case .main:
                 MainTabView()
                     .transition(.opacity)
-            } else {
+            case .onboarding:
                 OnboardingContainerView()
+                    .transition(.opacity)
+            case .awaitingCloudImport:
+                CloudSyncWaitView()
                     .transition(.opacity)
             }
         }
@@ -30,7 +40,7 @@ struct ContentView: View {
         // Switches take `accentControl` instead: ink is near-white in dark mode, and the
         // switch's white knob vanished on an ink track.
         .toggleStyle(CalorynToggleStyle())
-        .animation(.smooth(duration: 0.4), value: hasCompletedOnboarding)
+        .animation(.smooth(duration: 0.4), value: phase)
         .background {
             WidgetSnapshotBridge()
             DailyReminderBridge()
@@ -43,4 +53,5 @@ struct ContentView: View {
     ContentView()
         .modelContainer(for: [UserProfile.self, FoodItem.self, FoodLogEntry.self, RecipeIngredient.self, MealTemplate.self, MealTemplateItem.self], inMemory: true)
         .environment(AppRouter())
+        .environment(CloudSyncActivity.disabled)
 }

@@ -60,7 +60,7 @@ Recipes add a related `RecipeIngredient` model so recipe nutrition is stored fro
 ## How It Works
 
 - App entry starts in [`Caloryn/CalorynApp.swift`](Caloryn/CalorynApp.swift), where the SwiftData `ModelContainer` is configured with optional CloudKit sync.
-- On first launch, users complete onboarding; afterwards the app opens into the main tab flow in [`Caloryn/ContentView.swift`](Caloryn/ContentView.swift).
+- On first launch, users complete onboarding (when iCloud sync is on, a fresh install first waits briefly for the initial CloudKit import so a profile from another device is not duplicated); afterwards the app opens into the main tab flow in [`Caloryn/ContentView.swift`](Caloryn/ContentView.swift).
 - Daily logging lives in [`Caloryn/Views/Today/TodayView.swift`](Caloryn/Views/Today/TodayView.swift), with detailed nutrition totals in [`Caloryn/Views/Today/NutritionDetailsView.swift`](Caloryn/Views/Today/NutritionDetailsView.swift).
 - Reusable manual foods and recipes live in [`Caloryn/Views/MyFoods/MyFoodsView.swift`](Caloryn/Views/MyFoods/MyFoodsView.swift).
 - Food lookup is handled by [`Caloryn/Services/FoodSearchService.swift`](Caloryn/Services/FoodSearchService.swift), which applies the bounded provider policy documented in [`docs/adr/0002-food-provider-failover.md`](docs/adr/0002-food-provider-failover.md).
