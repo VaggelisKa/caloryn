@@ -24,6 +24,7 @@ struct MainTabView: View {
                 SettingsView()
             }
         }
+        .tabViewStyle(.sidebarAdaptable)
         .calorynPageCanvas()
     }
 }
