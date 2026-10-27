@@ -2,6 +2,7 @@ import SwiftUI
 
 struct CalorieHeroView: View {
     let summary: TodayHeroSummary
+    var columns: TodayDashboardLayout.HeroColumns = .two
     var onDetailsRequested: (() -> Void)? = nil
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -14,14 +15,16 @@ struct CalorieHeroView: View {
     @State private var isRevealed = false
 
     private static let donutSize: CGFloat = 168
+    private static let columnSpacing: CGFloat = 18
+    private static let threeColumnFiguresWidth: CGFloat = 200
+    private static let threeColumnLegendWidth: CGFloat = 220
 
-    /// The number column's width at regular width — iPhone Duo's open inner display, where
-    /// the hero is offered 630pt or more. Left to fill, the legend put each value 400pt from
-    /// its name; a first cap of 320pt still left 190pt of air and read as sparse. 220pt is
-    /// the column on the widest phone (a 440pt Pro Max gives it 214pt), so the hero keeps the
-    /// proportions the board drew and sits on the leading edge with the page's own margin.
-    /// Compact widths keep filling: the column is 176pt on a 402pt phone and a cap would
-    /// only cost accessibility sizes room.
+    /// The number column's width at regular width when the legend stays under the number —
+    /// the dashboard column of a split Today, or a regular-width page too narrow for three
+    /// columns. Left to fill, the legend put each value 400pt from its name; a first cap of
+    /// 320pt still left 190pt of air and read as sparse. 220pt is the column on the widest
+    /// phone (a 440pt Pro Max gives it 214pt). Compact widths keep filling: the column is
+    /// 176pt on a 402pt phone and a cap would only cost accessibility sizes room.
     private static let regularWidthNumberColumnWidth: CGFloat = 220
 
     private var numberColumnMaxWidth: CGFloat {
@@ -51,11 +54,26 @@ struct CalorieHeroView: View {
     }
 
     private var heroVisual: some View {
-        layout {
-            CalorieDonutView(summary: summary.donut, size: Self.donutSize)
+        Group {
+            switch columns {
+            case .two:
+                layout {
+                    CalorieDonutView(summary: summary.donut, size: Self.donutSize)
 
-            numberColumn
-                .frame(maxWidth: numberColumnMaxWidth, alignment: .leading)
+                    numberColumn
+                        .frame(maxWidth: numberColumnMaxWidth, alignment: .leading)
+                }
+            case .three:
+                HStack(alignment: .center, spacing: Self.columnSpacing) {
+                    CalorieDonutView(summary: summary.donut, size: Self.donutSize)
+
+                    figures
+                        .frame(width: Self.threeColumnFiguresWidth, alignment: .leading)
+
+                    legend
+                        .frame(width: Self.threeColumnLegendWidth, alignment: .leading)
+                }
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape([.interaction, .accessibility], .rect)
@@ -68,6 +86,15 @@ struct CalorieHeroView: View {
     }
 
     private var numberColumn: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            figures
+
+            legend
+                .padding(.top, 10)
+        }
+    }
+
+    private var figures: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(displayed.headlineText)
                 .font(CalorynTheme.heroNumber(size: numberSize))
@@ -91,9 +118,6 @@ struct CalorieHeroView: View {
                 .lineLimit(2)
                 .minimumScaleFactor(0.8)
                 .contentTransition(textTransition)
-
-            legend
-                .padding(.top, 10)
         }
         .animation(accessibilityReduceMotion ? nil : .smooth(duration: 0.35), value: displayed)
     }
@@ -104,6 +128,7 @@ struct CalorieHeroView: View {
                 legendRow(entry)
             }
         }
+        .animation(accessibilityReduceMotion ? nil : .smooth(duration: 0.35), value: displayed)
     }
 
     private func legendRow(_ entry: CalorieDonutSummary.LegendEntry) -> some View {

@@ -365,6 +365,24 @@ final class ComponentSnapshotTests: XCTestCase {
         assertAppearances(of: badges, layout: .fixed(width: 390, height: 72))
     }
 
+    func testCalorieHeroWithTheLegendUnderTheNumberOnAPhoneAcrossAppearances() {
+        let size = CGSize(width: 402, height: 520)
+
+        assertRevealedAppearances(of: heroes(columns: .two, sizeClass: .compact, size: size), size: size)
+    }
+
+    func testCalorieHeroInARegularWidthDashboardColumnAcrossAppearances() {
+        let size = CGSize(width: 380, height: 520)
+
+        assertRevealedAppearances(of: heroes(columns: .two, sizeClass: .regular, size: size), size: size)
+    }
+
+    func testCalorieHeroInThreeColumnsOnTheInnerDisplayAcrossAppearances() {
+        let size = CGSize(width: 669, height: 440)
+
+        assertRevealedAppearances(of: heroes(columns: .three, sizeClass: .regular, size: size), size: size)
+    }
+
     func testPastedFoodConfirmationAcrossAppearances() {
         let confirmation = PastedFoodConfirmation(
             draft: LogLinkDraft(
@@ -440,6 +458,46 @@ final class ComponentSnapshotTests: XCTestCase {
         )
     }
 
+    private func assertRevealedAppearances(
+        of view: some View,
+        size: CGSize,
+        fileID: StaticString = #fileID,
+        file filePath: StaticString = #filePath,
+        testName: String = #function,
+        line: UInt = #line,
+        column: UInt = #column
+    ) {
+        let host = UIHostingController(rootView: view)
+        let stage = UIWindow(frame: CGRect(origin: .zero, size: size))
+        stage.rootViewController = host
+        stage.isHidden = false
+        RunLoop.main.run(until: Date(timeIntervalSinceNow: 1.5))
+        stage.rootViewController = nil
+
+        assertSnapshots(
+            of: host as UIViewController,
+            as: [
+                "light": .image(
+                    precision: precision,
+                    perceptualPrecision: perceptualPrecision,
+                    size: size,
+                    traits: .reference
+                ),
+                "dark": .image(
+                    precision: precision,
+                    perceptualPrecision: perceptualPrecision,
+                    size: size,
+                    traits: .referenceDark
+                ),
+            ],
+            fileID: fileID,
+            file: filePath,
+            testName: testName,
+            line: line,
+            column: column
+        )
+    }
+
     private var precision: Float { 1.0 }
     private var perceptualPrecision: Float { 0.98 }
 
@@ -455,6 +513,35 @@ final class ComponentSnapshotTests: XCTestCase {
             .padding(16)
             .frame(width: 390, height: 140)
             .background(CalorynTheme.backgroundPrimary)
+    }
+
+    private func heroes(
+        columns: TodayDashboardLayout.HeroColumns,
+        sizeClass: UserInterfaceSizeClass,
+        size: CGSize
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 32) {
+            CalorieHeroView(
+                summary: TodayHeroSummary(
+                    mealTotals: [.breakfast: 382, .lunch: 463, .snack: 118],
+                    budget: CalorieBudget(consumed: 963, target: 2_000)
+                ),
+                columns: columns
+            )
+            CalorieHeroView(
+                summary: TodayHeroSummary(
+                    mealTotals: [.breakfast: 382, .lunch: 463, .dinner: 1_377, .snack: 118],
+                    budget: CalorieBudget(consumed: 2_340, target: 2_000)
+                ),
+                columns: columns
+            )
+        }
+        .padding(.horizontal, CalorynTheme.pagePadding)
+        .padding(.vertical, 24)
+        .environment(\.horizontalSizeClass, sizeClass)
+        .environment(\.locale, Locale(identifier: "en_US"))
+        .frame(width: size.width, height: size.height, alignment: .top)
+        .background(CalorynTheme.backgroundPrimary)
     }
 
     private func dayPlateStrip(dayCount: Int, columnCount: Int, plateSize: CGFloat) -> HistoryDayPlateStrip {
