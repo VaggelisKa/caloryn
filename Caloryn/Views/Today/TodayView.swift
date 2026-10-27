@@ -115,9 +115,7 @@ private struct TodayDayView: View {
 
         NavigationStack {
             Group {
-                if layout.arrangesSplitAroundFold {
-                    dashboardAndMeals(dashboard, layout: layout, projection: projection)
-                } else if layout.showsMealsBesideDashboard {
+                if layout.showsMealsBesideDashboard {
                     dashboardBesideMeals(dashboard, layout: layout, projection: projection)
                 } else {
                     dashboardOverMeals(dashboard, layout: layout, projection: projection)
@@ -255,58 +253,14 @@ private struct TodayDayView: View {
         .animation(reduceMotion ? nil : .smooth(duration: 0.3), value: projection.today.map(\.id))
     }
 
-    /// Wide-regular: the dashboard is one region and the meals the other. The split
-    /// arrangement puts them side by side on the flat display, and rearranges them around
-    /// the fold when iPhone Duo is partially open — the axes are left unconstrained so a
-    /// horizontal fold (the laptop pose) can stack them instead. Same content, order and
-    /// controls as the narrow-regular page; both regions scroll on their own.
-    ///
-    /// The arrangement view is iOS 27.1; before it the same two regions sit in an `HStack`.
-    /// The SDK has to know it too: Swift 6.4 is Xcode 27.1, and CI builds with Xcode 26.6.
-    @ViewBuilder
-    private func dashboardAndMeals(
-        _ dashboard: DashboardContent,
-        layout: TodayDashboardLayout,
-        projection: DayFoodLogProjection<FoodLogEntry>
-    ) -> some View {
-        #if compiler(>=6.4)
-        if #available(iOS 27.1, *) {
-            ArrangementView {
-                dashboardColumn(dashboard, layout: layout)
-                    // Enough for the hero: a 168pt donut beside its number column needs about
-                    // 380pt. The targets panel makes the column taller than a stacked region,
-                    // so it scrolls. No maximum, so the divider can still land on the fold in
-                    // the book pose.
-                    .splitArrangementLayoutRatio(
-                        minHorizontal: 0.36,
-                        idealHorizontal: TodayDashboardLayout.dashboardColumnFraction,
-                        minVertical: 0.38,
-                        idealVertical: 0.42
-                    )
-            } secondary: {
-                mealsList(projection: projection, layout: layout, canCopyYesterday: dashboard.canCopyYesterday)
-            }
-            .arrangementViewStyle(.split)
-        } else {
-            dashboardBesideMeals(dashboard, layout: layout, projection: projection)
-        }
-        #else
-        dashboardBesideMeals(dashboard, layout: layout, projection: projection)
-        #endif
-    }
-
-    /// The split without the arrangement view: a fixed 40/60 `HStack`. Also the split of a page
-    /// taller than wide, which has no fold to arrange around, and which an arrangement view would
-    /// stack instead, clipping the dashboard.
     private func dashboardBesideMeals(
         _ dashboard: DashboardContent,
         layout: TodayDashboardLayout,
         projection: DayFoodLogProjection<FoodLogEntry>
     ) -> some View {
-        HStack(alignment: .top, spacing: 0) {
+        SplitColumns(split: layout.split) {
             dashboardColumn(dashboard, layout: layout)
-                .containerRelativeFrame(.horizontal) { width, _ in width * TodayDashboardLayout.dashboardColumnFraction }
-
+        } secondary: {
             mealsList(projection: projection, layout: layout, canCopyYesterday: dashboard.canCopyYesterday)
         }
     }
