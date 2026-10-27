@@ -46,7 +46,7 @@ private extension FirstLaunchSyncGate.CloudEvent {
         case .setup:
             self = .setupFinished(succeeded: event.succeeded)
         case .import:
-            self = .importFinished
+            self = .importFinished(succeeded: event.succeeded)
         case .export:
             self = .exportFinished
         @unknown default:

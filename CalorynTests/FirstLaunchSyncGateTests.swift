@@ -64,9 +64,10 @@ final class FirstLaunchSyncGateTests: XCTestCase {
         )
     }
 
-    func testOnlyAFinishedImportOrAFailedSetupSettlesTheGate() {
-        XCTAssertTrue(FirstLaunchSyncGate.settlesInitialImport(.importFinished))
+    func testOnlyASuccessfulImportOrAFailedSetupSettlesTheGate() {
+        XCTAssertTrue(FirstLaunchSyncGate.settlesInitialImport(.importFinished(succeeded: true)))
         XCTAssertTrue(FirstLaunchSyncGate.settlesInitialImport(.setupFinished(succeeded: false)))
+        XCTAssertFalse(FirstLaunchSyncGate.settlesInitialImport(.importFinished(succeeded: false)))
         XCTAssertFalse(FirstLaunchSyncGate.settlesInitialImport(.setupFinished(succeeded: true)))
         XCTAssertFalse(FirstLaunchSyncGate.settlesInitialImport(.exportFinished))
     }
@@ -79,7 +80,10 @@ final class FirstLaunchSyncGateTests: XCTestCase {
         activity.record(.setupFinished(succeeded: true))
         XCTAssertFalse(activity.initialImportSettled)
 
-        activity.record(.importFinished)
+        activity.record(.importFinished(succeeded: false))
+        XCTAssertFalse(activity.initialImportSettled)
+
+        activity.record(.importFinished(succeeded: true))
         XCTAssertTrue(activity.initialImportSettled)
 
         activity.record(.exportFinished)

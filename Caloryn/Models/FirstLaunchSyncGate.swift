@@ -9,7 +9,7 @@ enum FirstLaunchSyncGate {
 
     enum CloudEvent: Equatable {
         case setupFinished(succeeded: Bool)
-        case importFinished
+        case importFinished(succeeded: Bool)
         case exportFinished
     }
 
@@ -34,8 +34,8 @@ enum FirstLaunchSyncGate {
         switch event {
         case .setupFinished(let succeeded):
             return !succeeded
-        case .importFinished:
-            return true
+        case .importFinished(let succeeded):
+            return succeeded
         case .exportFinished:
             return false
         }
