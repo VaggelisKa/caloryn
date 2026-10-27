@@ -11,6 +11,17 @@ final class RegularWidthScreensTests: XCTestCase {
 
     private var window: UIWindow?
 
+    // SwiftUI builds its accessibility tree only while accessibility automation is on. A
+    // simulator that has run UI tests has it on; CI's fresh one does not, and every element
+    // then reads as missing.
+    override class func setUp() {
+        super.setUp()
+        guard let library = dlopen("/usr/lib/libAccessibility.dylib", RTLD_NOW),
+              let setter = dlsym(library, "_AXSSetAutomationEnabled") else { return }
+        typealias SetAutomationEnabled = @convention(c) (Int32) -> Void
+        unsafeBitCast(setter, to: SetAutomationEnabled.self)(1)
+    }
+
     override func tearDown() {
         window?.isHidden = true
         window = nil
