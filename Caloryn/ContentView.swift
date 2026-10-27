@@ -5,14 +5,13 @@ struct ContentView: View {
     @Query private var profiles: [UserProfile]
     @Environment(CloudSyncActivity.self) private var cloudSync
     @AppStorage("themePreference") private var themePreferenceRaw = ThemePreference.system.rawValue
-    @State private var waitExpired = false
 
     private var phase: FirstLaunchSyncGate.Phase {
         FirstLaunchSyncGate.phase(
             hasLocalProfile: !profiles.isEmpty,
             syncsWithCloud: cloudSync.syncsWithCloud,
             initialImportSettled: cloudSync.initialImportSettled,
-            waitExpired: waitExpired
+            waitExpired: cloudSync.waitExpired
         )
     }
 
@@ -42,12 +41,6 @@ struct ContentView: View {
         // switch's white knob vanished on an ink track.
         .toggleStyle(CalorynToggleStyle())
         .animation(.smooth(duration: 0.4), value: phase)
-        .task(id: phase) {
-            guard phase == .awaitingCloudImport, let ceiling = cloudSync.waitCeiling else { return }
-            try? await Task.sleep(for: ceiling)
-            guard !Task.isCancelled else { return }
-            waitExpired = true
-        }
         .background {
             WidgetSnapshotBridge()
             DailyReminderBridge()

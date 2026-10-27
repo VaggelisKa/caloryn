@@ -1,3 +1,4 @@
+import CoreData
 import XCTest
 @testable import Caloryn
 
@@ -91,8 +92,52 @@ final class FirstLaunchSyncGateTests: XCTestCase {
     }
 
     @MainActor
-    func testADisabledActivityNeverSyncs() {
-        XCTAssertFalse(CloudSyncActivity.disabled.syncsWithCloud)
-        XCTAssertFalse(CloudSyncActivity.disabled.initialImportSettled)
+    func testTheWaitExpiresAfterTheCeiling() async throws {
+        let activity = CloudSyncActivity(syncsWithCloud: true, waitCeiling: .milliseconds(20))
+        XCTAssertFalse(activity.waitExpired)
+
+        try await Task.sleep(for: .milliseconds(200))
+        XCTAssertTrue(activity.waitExpired)
+        XCTAssertFalse(activity.initialImportSettled)
+    }
+
+    @MainActor
+    func testADisabledActivityStartsNoCountdown() async throws {
+        let activity = CloudSyncActivity(syncsWithCloud: false, waitCeiling: .milliseconds(20))
+        XCTAssertFalse(activity.syncsWithCloud)
+
+        try await Task.sleep(for: .milliseconds(200))
+        XCTAssertFalse(activity.waitExpired)
+        XCTAssertFalse(activity.initialImportSettled)
+    }
+
+    func testAnEventStillInProgressIsIgnored() {
+        XCTAssertNil(CloudSyncActivity.cloudEvent(type: .import, endDate: nil, succeeded: false))
+        XCTAssertNil(CloudSyncActivity.cloudEvent(type: .setup, endDate: nil, succeeded: false))
+    }
+
+    func testFinishedEventsMapToTheirOutcome() {
+        let now = Date()
+        XCTAssertEqual(
+            CloudSyncActivity.cloudEvent(type: .setup, endDate: now, succeeded: false),
+            .setupFinished(succeeded: false)
+        )
+        XCTAssertEqual(
+            CloudSyncActivity.cloudEvent(type: .import, endDate: now, succeeded: true),
+            .importFinished(succeeded: true)
+        )
+        XCTAssertEqual(
+            CloudSyncActivity.cloudEvent(type: .import, endDate: now, succeeded: false),
+            .importFinished(succeeded: false)
+        )
+        XCTAssertEqual(
+            CloudSyncActivity.cloudEvent(type: .export, endDate: now, succeeded: true),
+            .exportFinished
+        )
+    }
+
+    func testANotificationWithoutAnEventIsIgnored() {
+        let notification = Notification(name: NSPersistentCloudKitContainer.eventChangedNotification)
+        XCTAssertNil(CloudSyncActivity.cloudEvent(from: notification))
     }
 }

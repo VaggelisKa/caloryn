@@ -21,7 +21,7 @@ struct CalorynApp: App {
         let syncsWithCloud = !usesEphemeralStore && iCloudEnabled
         #if DEBUG
         cloudSync = UITestConfiguration.holdsCloudImport
-            ? CloudSyncActivity(syncsWithCloud: true, waitCeiling: nil)
+            ? .heldOpenForUITests()
             : CloudSyncActivity(syncsWithCloud: syncsWithCloud)
         #else
         cloudSync = CloudSyncActivity(syncsWithCloud: syncsWithCloud)
