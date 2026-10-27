@@ -524,6 +524,7 @@ final class ComponentSnapshotTests: XCTestCase {
         stage.rootViewController = host
         stage.isHidden = false
         RunLoop.main.run(until: Date(timeIntervalSinceNow: 1.5))
+        waitUntilFramesSettle(in: stage, deadline: Date(timeIntervalSinceNow: 5))
         stage.rootViewController = nil
 
         assertSnapshots(
@@ -537,6 +538,22 @@ final class ComponentSnapshotTests: XCTestCase {
             line: line,
             column: column
         )
+    }
+
+    private func waitUntilFramesSettle(in window: UIWindow, deadline: Date) {
+        var previous = rendered(window)
+        while Date() < deadline {
+            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.25))
+            let current = rendered(window)
+            if current == previous { return }
+            previous = current
+        }
+    }
+
+    private func rendered(_ window: UIWindow) -> Data {
+        UIGraphicsImageRenderer(bounds: window.bounds).pngData { context in
+            window.layer.render(in: context.cgContext)
+        }
     }
 
     private var precision: Float { 1.0 }
