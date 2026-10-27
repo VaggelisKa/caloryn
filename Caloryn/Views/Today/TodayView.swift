@@ -25,6 +25,7 @@ private struct TodayDayView: View {
 
     private static let minimumHitTarget: CGFloat = 44
     private static let dayButtonSize: CGFloat = 36
+    private static let trailingClusterWidth: CGFloat = 240
 
     private struct FoodSearchPresentation: Identifiable {
         let id = UUID()
@@ -34,11 +35,7 @@ private struct TodayDayView: View {
         let startsWithScanner: Bool
     }
 
-    /// Whether the page is offered more width than height, read from its own proposal. The
-    /// split needs regular width *and* a landscape proposal: in portrait the open inner
-    /// display is 669×951pt, and a dashboard-over-meals split there clipped the Nutri-Score
-    /// chips under the top region while the single list had room for everything.
-    @State private var isWiderThanTall = false
+    @State private var pageSize: CGSize = .zero
 
     @State private var lastKnownToday: Date = Date().startOfDay
     @State private var showingNutritionDetails = false
@@ -96,6 +93,17 @@ private struct TodayDayView: View {
             loggedTodayCount: projection.today.count,
             loggedYesterdayCount: projection.yesterday.count
         )
+        let targetRows = horizontalSizeClass == .regular
+            ? targetRows(entries: projection.today, calorieTarget: calorieBudget.target)
+            : []
+        let layout = TodayDashboardLayout(
+            isRegularWidth: horizontalSizeClass == .regular,
+            isRegularHeight: verticalSizeClass == .regular,
+            contentWidth: pageSize.width - 2 * CalorynTheme.pagePadding,
+            isWiderThanTall: pageSize.width > pageSize.height,
+            isLargeText: dynamicTypeSize >= .xxxLarge,
+            hasTargets: !targetRows.isEmpty
+        )
 
         let dashboard = DashboardContent(
             entries: projection.today,
@@ -103,25 +111,21 @@ private struct TodayDayView: View {
             calorieBudget: calorieBudget,
             nutriscoreDistribution: nutriscoreDistribution,
             showsNutriscore: showNutriscore && hasNutriscoreData,
-            canCopyYesterday: canCopyYesterday
+            canCopyYesterday: canCopyYesterday,
+            targetRows: targetRows
         )
 
         NavigationStack {
             Group {
-                // Regular width *and* height is the open inner display of iPhone Duo (and
-                // nothing else on iPhone). Held landscape — flat, or partially folded like a
-                // book or a laptop — there is room for the dashboard beside the meals.
-                // Everything else keeps the single scrolling page: portrait on the inner
-                // display, every other iPhone, the closed Duo, and Split View on the open one.
-                if horizontalSizeClass == .regular, verticalSizeClass == .regular, isWiderThanTall {
-                    dashboardAndMeals(dashboard, projection: projection)
+                if layout.showsMealsBesideDashboard {
+                    dashboardAndMeals(dashboard, layout: layout, projection: projection)
                 } else {
-                    dashboardOverMeals(dashboard, projection: projection)
+                    dashboardOverMeals(dashboard, layout: layout, projection: projection)
                 }
             }
-            .onGeometryChange(for: Bool.self) { proxy in
-                proxy.size.width > proxy.size.height
-            } action: { isWiderThanTall = $0 }
+            .onGeometryChange(for: CGSize.self) { proxy in
+                proxy.size
+            } action: { pageSize = $0 }
             .calorynPageCanvas()
             .todayTitlelessBar()
             .sheet(item: $foodSearchPresentation) { presentation in
@@ -199,12 +203,16 @@ private struct TodayDayView: View {
         let nutriscoreDistribution: [(grade: String, count: Int)]
         let showsNutriscore: Bool
         let canCopyYesterday: Bool
+        let targetRows: [NutritionDetailsSections.TargetRow]
+
+        var hasCluster: Bool { showsNutriscore || canCopyYesterday }
     }
 
-    /// Compact width: one list, the dashboard as its first rows so the date scrolls away
-    /// with the day instead of staying pinned over it.
+    /// One list, the dashboard as its first rows so the date scrolls away with the day
+    /// instead of staying pinned over it.
     private func dashboardOverMeals(
         _ dashboard: DashboardContent,
+        layout: TodayDashboardLayout,
         projection: DayFoodLogProjection<FoodLogEntry>
     ) -> some View {
         List {
@@ -213,19 +221,26 @@ private struct TodayDayView: View {
                 .calorynClearRowBackground()
                 .listRowSeparator(.hidden)
 
-            dashboardSection(entries: dashboard.entries, calorieBudget: dashboard.calorieBudget)
-                .todayPlateRowLayout(top: 12, bottom: 4)
-                .calorynClearRowBackground()
-                .listRowSeparator(.hidden)
-
-            if dashboard.showsNutriscore {
-                nutriscoreSection(distribution: dashboard.nutriscoreDistribution)
-                    .todayPlateRowLayout(top: 10)
+            if layout.breakpoint == .compact {
+                dashboardSection(entries: dashboard.entries, calorieBudget: dashboard.calorieBudget)
+                    .todayPlateRowLayout(top: 12, bottom: 4)
                     .calorynClearRowBackground()
                     .listRowSeparator(.hidden)
-            } else if dashboard.canCopyYesterday {
-                copyYesterdayButton(yesterdayEntries: dashboard.yesterdayEntries)
-                    .todayPlateRowLayout(top: 10)
+
+                if dashboard.showsNutriscore {
+                    nutriscoreSection(distribution: dashboard.nutriscoreDistribution)
+                        .todayPlateRowLayout(top: 10)
+                        .calorynClearRowBackground()
+                        .listRowSeparator(.hidden)
+                } else if dashboard.canCopyYesterday {
+                    copyYesterdayButton(yesterdayEntries: dashboard.yesterdayEntries)
+                        .todayPlateRowLayout(top: 10)
+                        .calorynClearRowBackground()
+                        .listRowSeparator(.hidden)
+                }
+            } else {
+                regularBand(dashboard, layout: layout)
+                    .todayPlateRowLayout(top: 12, bottom: 12)
                     .calorynClearRowBackground()
                     .listRowSeparator(.hidden)
             }
@@ -240,27 +255,28 @@ private struct TodayDayView: View {
         .animation(reduceMotion ? nil : .smooth(duration: 0.3), value: projection.today.map(\.id))
     }
 
-    /// Regular width and height, landscape: the dashboard is one region and the meals the
-    /// other. The split arrangement puts them side by side on the flat display, and
-    /// rearranges them around the fold when iPhone Duo is partially open — the axes are left
-    /// unconstrained so a horizontal fold (the laptop pose) can stack them instead. Same
-    /// content, same order, same controls as the compact page; only the meals scroll on
-    /// their own.
+    /// Wide-regular: the dashboard is one region and the meals the other. The split
+    /// arrangement puts them side by side on the flat display, and rearranges them around
+    /// the fold when iPhone Duo is partially open — the axes are left unconstrained so a
+    /// horizontal fold (the laptop pose) can stack them instead. Same content, order and
+    /// controls as the narrow-regular page; both regions scroll on their own.
     ///
     /// The arrangement view is iOS 27.1; before it the same two regions sit in an `HStack`.
     /// The SDK has to know it too: Swift 6.4 is Xcode 27.1, and CI builds with Xcode 26.6.
     @ViewBuilder
     private func dashboardAndMeals(
         _ dashboard: DashboardContent,
+        layout: TodayDashboardLayout,
         projection: DayFoodLogProjection<FoodLogEntry>
     ) -> some View {
         #if compiler(>=6.4)
         if #available(iOS 27.1, *) {
             ArrangementView {
-                dashboardColumn(dashboard)
+                dashboardColumn(dashboard, layout: layout)
                     // Enough for the hero: a 168pt donut beside its number column needs about
-                    // 380pt, and the dashboard is about 340pt tall. No maximum, so the divider
-                    // can still land on the fold in the book pose.
+                    // 380pt. The targets panel makes the column taller than a stacked region,
+                    // so it scrolls. No maximum, so the divider can still land on the fold in
+                    // the book pose.
                     .splitArrangementLayoutRatio(
                         minHorizontal: 0.36,
                         idealHorizontal: 0.4,
@@ -272,20 +288,21 @@ private struct TodayDayView: View {
             }
             .arrangementViewStyle(.split)
         } else {
-            dashboardBesideMeals(dashboard, projection: projection)
+            dashboardBesideMeals(dashboard, layout: layout, projection: projection)
         }
         #else
-        dashboardBesideMeals(dashboard, projection: projection)
+        dashboardBesideMeals(dashboard, layout: layout, projection: projection)
         #endif
     }
 
     /// The split without the arrangement view: a fixed 40/60 `HStack`.
     private func dashboardBesideMeals(
         _ dashboard: DashboardContent,
+        layout: TodayDashboardLayout,
         projection: DayFoodLogProjection<FoodLogEntry>
     ) -> some View {
         HStack(alignment: .top, spacing: 0) {
-            dashboardColumn(dashboard)
+            dashboardColumn(dashboard, layout: layout)
                 .containerRelativeFrame(.horizontal) { width, _ in width * 0.4 }
 
             mealsList(projection: projection, canCopyYesterday: dashboard.canCopyYesterday)
@@ -293,29 +310,85 @@ private struct TodayDayView: View {
     }
 
     /// The dashboard rows as a page of their own, spaced as the list rows are.
-    private func dashboardColumn(_ dashboard: DashboardContent) -> some View {
+    private func dashboardColumn(_ dashboard: DashboardContent, layout: TodayDashboardLayout) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 dateNavigator
                     .padding(.top, 4)
 
-                dashboardSection(entries: dashboard.entries, calorieBudget: dashboard.calorieBudget)
+                regularBand(dashboard, layout: layout)
                     .padding(.top, 12)
-                    .padding(.bottom, 4)
-
-                if dashboard.showsNutriscore {
-                    nutriscoreSection(distribution: dashboard.nutriscoreDistribution)
-                        .padding(.top, 10)
-                } else if dashboard.canCopyYesterday {
-                    copyYesterdayButton(yesterdayEntries: dashboard.yesterdayEntries)
-                        .padding(.top, 10)
-                }
+                    .padding(.bottom, 20)
             }
             .padding(.horizontal, CalorynTheme.pagePadding)
             .frame(maxWidth: .infinity, alignment: .leading)
             .animation(.smooth(duration: 0.35), value: dashboard.showsNutriscore)
         }
         .scrollBounceBehavior(.basedOnSize)
+    }
+
+    @ViewBuilder
+    private func regularBand(_ dashboard: DashboardContent, layout: TodayDashboardLayout) -> some View {
+        let hero = dashboardSection(
+            entries: dashboard.entries,
+            calorieBudget: dashboard.calorieBudget,
+            columns: layout.heroColumns
+        )
+
+        switch layout.detailsPlacement {
+        case .besideHero:
+            HStack(alignment: .top, spacing: 32) {
+                hero
+                    .fixedSize(horizontal: true, vertical: false)
+
+                VStack(alignment: .leading, spacing: 20) {
+                    targetsPanel(dashboard, layout: layout)
+                    dashboardCluster(dashboard)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        case .besideEachOtherBelowHero:
+            VStack(alignment: .leading, spacing: 20) {
+                hero
+
+                HStack(alignment: .top, spacing: 24) {
+                    if layout.showsTargetsPanel {
+                        targetsPanel(dashboard, layout: layout)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+
+                        if dashboard.hasCluster {
+                            dashboardCluster(dashboard)
+                                .frame(width: Self.trailingClusterWidth, alignment: .leading)
+                                .padding(.top, 8)
+                        }
+                    } else {
+                        dashboardCluster(dashboard)
+                    }
+                }
+            }
+        case .belowHero:
+            VStack(alignment: .leading, spacing: 20) {
+                hero
+                targetsPanel(dashboard, layout: layout)
+                dashboardCluster(dashboard)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func targetsPanel(_ dashboard: DashboardContent, layout: TodayDashboardLayout) -> some View {
+        if layout.showsTargetsPanel {
+            TodayTargetsPanel(rows: dashboard.targetRows, onDetailsRequested: showNutritionDetails)
+        }
+    }
+
+    @ViewBuilder
+    private func dashboardCluster(_ dashboard: DashboardContent) -> some View {
+        if dashboard.showsNutriscore {
+            nutriscoreSection(distribution: dashboard.nutriscoreDistribution)
+        } else if dashboard.canCopyYesterday {
+            copyYesterdayButton(yesterdayEntries: dashboard.yesterdayEntries)
+        }
     }
 
     private func mealsList(
@@ -424,7 +497,8 @@ private struct TodayDayView: View {
 
     private func dashboardSection(
         entries: [FoodLogEntry],
-        calorieBudget: CalorieBudget
+        calorieBudget: CalorieBudget,
+        columns: TodayDashboardLayout.HeroColumns = .two
     ) -> some View {
         CalorieHeroView(
             summary: TodayHeroSummary(
@@ -434,13 +508,28 @@ private struct TodayDayView: View {
                     calories: \.calories
                 ),
                 budget: calorieBudget
-            )
-        ) {
-            withAnimation(.smooth(duration: 0.2)) {
-                showingNutritionDetails = true
-            }
-        }
+            ),
+            columns: columns,
+            onDetailsRequested: showNutritionDetails
+        )
         .accessibilityIdentifier("today.calorieRing")
+    }
+
+    private func showNutritionDetails() {
+        withAnimation(.smooth(duration: 0.2)) {
+            showingNutritionDetails = true
+        }
+    }
+
+    private func targetRows(entries: [FoodLogEntry], calorieTarget: Int) -> [NutritionDetailsSections.TargetRow] {
+        NutritionDetailsSections(
+            metrics: TrackedNutrientMetric.metrics(
+                in: entries,
+                targets: profile?.nutrientTargets(forCalorieTarget: calorieTarget) ?? [:],
+                goalKinds: profile?.nutrientGoalKinds ?? [:]
+            ),
+            details: []
+        ).targets
     }
 
     @ViewBuilder
