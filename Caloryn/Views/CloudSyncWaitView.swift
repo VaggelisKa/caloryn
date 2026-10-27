@@ -17,6 +17,28 @@ struct CloudSyncWaitView: View {
     }
 
     var body: some View {
+        GeometryReader { proxy in
+            ScrollView {
+                content
+                    .frame(minHeight: proxy.size.height)
+            }
+            .scrollBounceBehavior(.basedOnSize)
+        }
+        .calorynPageCanvas()
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("cloudSync.waiting")
+        .onAppear {
+            guard !reduceMotion else { return }
+            withAnimation(.linear(duration: 9).repeatForever(autoreverses: false)) {
+                isSpinning = true
+            }
+            withAnimation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true)) {
+                isBreathing = true
+            }
+        }
+    }
+
+    private var content: some View {
         VStack(spacing: 0) {
             Spacer(minLength: 24)
 
@@ -31,6 +53,7 @@ struct CloudSyncWaitView: View {
                         .foregroundStyle(CalorynTheme.textPrimary)
                         .multilineTextAlignment(.center)
                         .accessibilityAddTraits(.isHeader)
+                        .accessibilityLabel("Checking iCloud, in progress")
 
                     Text("If you have used Caloryn on another device, your profile and food log will appear in a moment.")
                         .font(CalorynTheme.bodyText)
@@ -43,19 +66,7 @@ struct CloudSyncWaitView: View {
 
             Spacer(minLength: 24)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .calorynPageCanvas()
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("cloudSync.waiting")
-        .onAppear {
-            guard !reduceMotion else { return }
-            withAnimation(.linear(duration: 9).repeatForever(autoreverses: false)) {
-                isSpinning = true
-            }
-            withAnimation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true)) {
-                isBreathing = true
-            }
-        }
+        .frame(maxWidth: .infinity)
     }
 }
 
