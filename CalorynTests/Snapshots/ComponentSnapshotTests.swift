@@ -455,6 +455,84 @@ final class ComponentSnapshotTests: XCTestCase {
         )
     }
 
+    func testSplitColumnsSideBySideOnATallPage() {
+        let split = RegularWidthSplit(
+            isRegularWidth: true,
+            isRegularHeight: true,
+            pageSize: CGSize(width: 1032, height: 1376)
+        )
+        let view = SplitColumns(split: split) {
+            CalorynTheme.dataPrimary
+        } secondary: {
+            CalorynTheme.backgroundSecondary
+        }
+        .frame(width: 520, height: 240)
+        .background(CalorynTheme.backgroundPrimary)
+
+        assertSnapshot(
+            of: view,
+            as: .image(
+                precision: precision,
+                perceptualPrecision: perceptualPrecision,
+                layout: .fixed(width: 520, height: 240),
+                traits: .reference
+            )
+        )
+    }
+
+    func testLibraryDetailPlaceholderBesideASelectedRowAcrossAppearances() {
+        let view = VStack(spacing: 0) {
+            Text("House Salad")
+                .font(CalorynTheme.bodyText)
+                .foregroundStyle(CalorynTheme.textPrimary)
+                .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+                .padding(.horizontal, 20)
+                .background(LibraryRowBackground(isSelected: true))
+
+            Text("Skyr")
+                .font(CalorynTheme.bodyText)
+                .foregroundStyle(CalorynTheme.textPrimary)
+                .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+                .padding(.horizontal, 20)
+                .background(LibraryRowBackground(isSelected: false))
+
+            LibraryDetailPlaceholder()
+        }
+        .frame(width: 400, height: 420)
+        .background(CalorynTheme.backgroundPrimary)
+
+        assertAppearances(of: view, layout: .fixed(width: 400, height: 420))
+    }
+
+    func testHistoryDetailEmptyPaneAcrossAppearances() {
+        let pane = HistoryDetailEmptyPane()
+            .frame(width: 560, height: 200)
+            .background(CalorynTheme.backgroundPrimary)
+
+        assertAppearances(of: pane, layout: .fixed(width: 560, height: 200))
+    }
+
+    func testHistoryDetailSourceSelectedAndNotAcrossAppearances() {
+        let view = VStack(alignment: .leading, spacing: 32) {
+            Text("Calorie trend")
+                .font(CalorynTheme.sectionHeaderTitle)
+                .foregroundStyle(CalorynTheme.textPrimary)
+                .frame(maxWidth: .infinity, minHeight: 60, alignment: .leading)
+                .historyDetailSource(isSelected: true, outset: 12)
+
+            Text("Friday dinners stood out")
+                .font(CalorynTheme.sectionHeaderTitle)
+                .foregroundStyle(CalorynTheme.textPrimary)
+                .frame(maxWidth: .infinity, minHeight: 60, alignment: .leading)
+                .historyDetailSource(isSelected: false, outset: 12)
+        }
+        .padding(28)
+        .frame(width: 390, height: 240, alignment: .top)
+        .background(CalorynTheme.backgroundPrimary)
+
+        assertAppearances(of: view, layout: .fixed(width: 390, height: 240))
+    }
+
     private func assertAppearances(
         of view: some View,
         layout: SwiftUISnapshotLayout,
