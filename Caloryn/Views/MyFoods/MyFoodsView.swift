@@ -3,6 +3,8 @@ import SwiftUI
 
 struct MyFoodsView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Query(
         filter: #Predicate<FoodItem> { $0.isCustom || $0.isRecipe },
         sort: \FoodItem.name
@@ -18,6 +20,9 @@ struct MyFoodsView: View {
     @State private var favoriteErrorMessage: String?
     @State private var mealErrorMessage: String?
     @State private var showsAllFavorites = false
+    @State private var pageSize: CGSize = .zero
+    @State private var selection = MyFoodsSelection()
+    @State private var loggingFood: FoodItem?
 
     private var listing: MyFoodsListing {
         MyFoodsListing(
@@ -27,9 +32,26 @@ struct MyFoodsView: View {
         )
     }
 
+    private var split: RegularWidthSplit {
+        RegularWidthSplit(
+            isRegularWidth: horizontalSizeClass == .regular,
+            isRegularHeight: verticalSizeClass == .regular,
+            pageSize: pageSize
+        )
+    }
+
     var body: some View {
+        let listing = listing
+        let selectableIDs = listing.selectableFoods.map(\.id)
+
         NavigationStack {
-            libraryContent
+            libraryContent(listing, selectedID: selection.selectedID(in: selectableIDs))
+            .onGeometryChange(for: CGSize.self) { proxy in
+                proxy.size
+            } action: { pageSize = $0 }
+            .onChange(of: selectableIDs, initial: true) { _, order in
+                selection.settle(on: order)
+            }
             .calorynPageCanvas()
             .calorynLargeTitle("My Foods")
             .toolbar {
@@ -67,6 +89,17 @@ struct MyFoodsView: View {
                 MealFormView(existingMeal: meal)
                 .presentationDragIndicator(.visible)
             }
+            .sheet(item: $loggingFood) { food in
+                NavigationStack {
+                    PortionPickerView(
+                        foodItem: food,
+                        mealType: .breakfast,
+                        logDate: Date().startOfDay,
+                        isNewFood: false
+                    )
+                }
+                .presentationDragIndicator(.visible)
+            }
             .alert("Couldn’t Update Favorite", isPresented: favoriteErrorIsPresented) {
                 Button("OK", role: .cancel) {
                     favoriteErrorMessage = nil
@@ -85,41 +118,65 @@ struct MyFoodsView: View {
     }
 
     @ViewBuilder
-    private var libraryContent: some View {
-        let listing = listing
+    private func libraryContent(_ listing: MyFoodsListing, selectedID: UUID?) -> some View {
+        let split = split
 
         if listing.isEmptyLibrary {
             emptyLibraryView
-        } else {
-            List {
-                if listing.showsFavoritesSection {
-                    favoritesSection(listing)
-                        .libraryHairlineSection()
-                }
-
-                if listing.showsMealsSection {
-                    mealsSection
-                        .libraryHairlineSection()
-                }
-
-                if listing.showsRecipesSection {
-                    recipesSection(listing)
-                        .libraryHairlineSection()
-                }
-
-                if listing.showsManualEntriesSection {
-                    manualEntriesSection(listing)
-                        .libraryHairlineSection()
-                }
-
-                if listing.showsEditedProductCatalogSection {
-                    editedProductCatalogSection(listing)
-                        .libraryHairlineSection()
-                }
+        } else if split.showsColumns {
+            SplitColumns(split: split) {
+                libraryList(listing, selectedID: selectedID)
+            } secondary: {
+                detailPane(for: listing.selectableFoods.first { $0.id == selectedID })
             }
-            .calorynPlainListStyle()
-            .listSectionSpacing(.compact)
+        } else {
+            libraryList(listing, selectedID: nil)
         }
+    }
+
+    @ViewBuilder
+    private func detailPane(for food: FoodItem?) -> some View {
+        if let food {
+            LibraryFoodDetailPane(
+                summary: LibraryFoodDetailSummary(food: food),
+                onToggleFavorite: { toggleFavorite(food) },
+                onAddToToday: { loggingFood = food },
+                onEdit: { openEditor(for: food) }
+            )
+        } else {
+            LibraryDetailPlaceholder()
+        }
+    }
+
+    private func libraryList(_ listing: MyFoodsListing, selectedID: UUID?) -> some View {
+        List {
+            if listing.showsFavoritesSection {
+                favoritesSection(listing, selectedID: selectedID)
+                    .libraryHairlineSection()
+            }
+
+            if listing.showsMealsSection {
+                mealsSection
+                    .libraryHairlineSection()
+            }
+
+            if listing.showsRecipesSection {
+                recipesSection(listing, selectedID: selectedID)
+                    .libraryHairlineSection()
+            }
+
+            if listing.showsManualEntriesSection {
+                manualEntriesSection(listing, selectedID: selectedID)
+                    .libraryHairlineSection()
+            }
+
+            if listing.showsEditedProductCatalogSection {
+                editedProductCatalogSection(listing)
+                    .libraryHairlineSection()
+            }
+        }
+        .calorynPlainListStyle()
+        .listSectionSpacing(.compact)
     }
 
     private var emptyLibraryView: some View {
@@ -163,10 +220,10 @@ struct MyFoodsView: View {
         }
     }
 
-    private func favoritesSection(_ listing: MyFoodsListing) -> some View {
+    private func favoritesSection(_ listing: MyFoodsListing, selectedID: UUID?) -> some View {
         Section {
             ForEach(listing.visibleFavorites) { food in
-                libraryButton(for: food)
+                libraryButton(for: food, selectedID: selectedID)
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         deleteButton(for: food)
                         favoriteButton(for: food)
@@ -230,10 +287,10 @@ struct MyFoodsView: View {
         .accessibilityIdentifier("myFoods.createMenu")
     }
 
-    private func manualEntriesSection(_ listing: MyFoodsListing) -> some View {
+    private func manualEntriesSection(_ listing: MyFoodsListing, selectedID: UUID?) -> some View {
         Section {
             ForEach(listing.nonFavoriteManualEntries) { food in
-                libraryButton(for: food)
+                libraryButton(for: food, selectedID: selectedID)
                     .swipeActions(edge: .leading, allowsFullSwipe: false) {
                         favoriteButton(for: food)
                     }
@@ -246,10 +303,10 @@ struct MyFoodsView: View {
         }
     }
 
-    private func recipesSection(_ listing: MyFoodsListing) -> some View {
+    private func recipesSection(_ listing: MyFoodsListing, selectedID: UUID?) -> some View {
         Section {
             ForEach(listing.nonFavoriteRecipes) { recipe in
-                libraryButton(for: recipe)
+                libraryButton(for: recipe, selectedID: selectedID)
                     .swipeActions(edge: .leading, allowsFullSwipe: false) {
                         favoriteButton(for: recipe)
                     }
@@ -286,12 +343,14 @@ struct MyFoodsView: View {
         }
     }
 
-    private func libraryButton(for food: FoodItem) -> some View {
-        Button {
-            if food.isRecipe {
-                editingRecipe = food
+    private func libraryButton(for food: FoodItem, selectedID: UUID?) -> some View {
+        let isSelected = food.id == selectedID
+
+        return Button {
+            if split.showsColumns {
+                selection.select(food.id, in: listing.selectableFoods.map(\.id))
             } else {
-                editingManualEntry = food
+                openEditor(for: food)
             }
         } label: {
             Group {
@@ -305,6 +364,16 @@ struct MyFoodsView: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("myFoods.food.\(food.name)")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .listRowBackground(LibraryRowBackground(isSelected: isSelected))
+    }
+
+    private func openEditor(for food: FoodItem) {
+        if food.isRecipe {
+            editingRecipe = food
+        } else {
+            editingManualEntry = food
+        }
     }
 
     private func manualEntryRow(for food: FoodItem) -> some View {

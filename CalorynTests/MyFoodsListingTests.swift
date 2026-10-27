@@ -125,6 +125,19 @@ struct MyFoodsListingTests {
         #expect(listing.nonFavoriteRecipes.map(\.name) == ["Soup"])
     }
 
+    @Test("Selectable foods run in list order: favorites, then recipes, then your own entries")
+    func selectableFoodsFollowListOrder() {
+        let listing = listing(foodItems: [
+            manualEntry(name: "Apple"),
+            recipe(name: "Chili"),
+            manualEntry(name: "Oats", favorite: true),
+            editedProduct(name: "Fixed Skyr", barcode: "5711953150388"),
+            recipe(name: "Soup"),
+        ])
+
+        #expect(listing.selectableFoods.map(\.name) == ["Oats", "Chili", "Soup", "Apple"])
+    }
+
     @Test("An empty library hides every section in favour of the whole-screen empty state")
     func emptyLibraryHidesEverySection() {
         let listing = listing(foodItems: [])
