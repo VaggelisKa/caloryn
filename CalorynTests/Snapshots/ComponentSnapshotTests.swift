@@ -543,14 +543,16 @@ final class ComponentSnapshotTests: XCTestCase {
             CalorieHeroView(
                 summary: TodayHeroSummary(
                     mealTotals: [.breakfast: 382, .lunch: 463, .snack: 118],
-                    budget: CalorieBudget(consumed: 963, target: 2_000)
+                    budget: CalorieBudget(consumed: 963, target: 2_000),
+                    locale: Locale(identifier: "en_US")
                 ),
                 columns: columns
             )
             CalorieHeroView(
                 summary: TodayHeroSummary(
                     mealTotals: [.breakfast: 382, .lunch: 463, .dinner: 1_377, .snack: 118],
-                    budget: CalorieBudget(consumed: 2_340, target: 2_000)
+                    budget: CalorieBudget(consumed: 2_340, target: 2_000),
+                    locale: Locale(identifier: "en_US")
                 ),
                 columns: columns
             )
@@ -558,7 +560,6 @@ final class ComponentSnapshotTests: XCTestCase {
         .padding(.horizontal, CalorynTheme.pagePadding)
         .padding(.vertical, 24)
         .environment(\.horizontalSizeClass, sizeClass)
-        .environment(\.locale, Locale(identifier: "en_US"))
         .frame(width: size.width, height: size.height, alignment: .top)
         .background(CalorynTheme.backgroundPrimary)
     }
