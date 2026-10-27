@@ -14,10 +14,6 @@ struct CalorieHeroView: View {
 
     @State private var isRevealed = false
 
-    private static let donutSize: CGFloat = 168
-    private static let columnSpacing: CGFloat = 18
-    private static let threeColumnFiguresWidth: CGFloat = 200
-    private static let threeColumnLegendWidth: CGFloat = 220
 
     /// The number column's width at regular width when the legend stays under the number —
     /// the dashboard column of a split Today, or a regular-width page too narrow for three
@@ -28,16 +24,24 @@ struct CalorieHeroView: View {
     private static let regularWidthNumberColumnWidth: CGFloat = 220
 
     private var numberColumnMaxWidth: CGFloat {
-        horizontalSizeClass == .regular ? Self.regularWidthNumberColumnWidth : .infinity
+        horizontalSizeClass == .regular && !isLargeText ? Self.regularWidthNumberColumnWidth : .infinity
     }
     private var displayed: TodayHeroSummary {
         isRevealed || accessibilityReduceMotion ? summary : summary.unrevealed
     }
 
-    private var layout: AnyLayout {
+    private var isLargeText: Bool {
         dynamicTypeSize >= .xxxLarge
-            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 18))
-            : AnyLayout(HStackLayout(alignment: .center, spacing: 18))
+    }
+
+    private var showsThreeColumns: Bool {
+        columns == .three && !isLargeText
+    }
+
+    private var layout: AnyLayout {
+        isLargeText
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: TodayDashboardLayout.heroColumnSpacing))
+            : AnyLayout(HStackLayout(alignment: .center, spacing: TodayDashboardLayout.heroColumnSpacing))
     }
 
     var body: some View {
@@ -54,25 +58,18 @@ struct CalorieHeroView: View {
     }
 
     private var heroVisual: some View {
-        Group {
-            switch columns {
-            case .two:
-                layout {
-                    CalorieDonutView(summary: summary.donut, size: Self.donutSize)
+        layout {
+            CalorieDonutView(summary: summary.donut, size: TodayDashboardLayout.heroDonutSize)
 
-                    numberColumn
-                        .frame(maxWidth: numberColumnMaxWidth, alignment: .leading)
-                }
-            case .three:
-                HStack(alignment: .center, spacing: Self.columnSpacing) {
-                    CalorieDonutView(summary: summary.donut, size: Self.donutSize)
+            if showsThreeColumns {
+                figures
+                    .frame(width: TodayDashboardLayout.heroFiguresColumnWidth, alignment: .leading)
 
-                    figures
-                        .frame(width: Self.threeColumnFiguresWidth, alignment: .leading)
-
-                    legend
-                        .frame(width: Self.threeColumnLegendWidth, alignment: .leading)
-                }
+                legend
+                    .frame(width: TodayDashboardLayout.heroLegendColumnWidth, alignment: .leading)
+            } else {
+                numberColumn
+                    .frame(maxWidth: numberColumnMaxWidth, alignment: .leading)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

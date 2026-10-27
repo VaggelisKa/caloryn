@@ -366,22 +366,33 @@ final class ComponentSnapshotTests: XCTestCase {
     }
 
     func testTodayTargetsPanelAcrossAppearances() {
-        let rows = NutritionDetailsSections(
-            metrics: [
-                TrackedNutrientMetric(nutrient: .protein, value: 82, target: 120, goalKind: .minimum),
-                TrackedNutrientMetric(nutrient: .carbs, value: 164, target: 210, goalKind: .target),
-                TrackedNutrientMetric(nutrient: .fat, value: 71, target: 65, goalKind: .maximum),
-                TrackedNutrientMetric(nutrient: .fiber, value: 12, target: 30, goalKind: .minimum),
-            ],
-            details: [],
-            locale: Locale(identifier: "en_US")
-        ).targets
-        let panel = TodayTargetsPanel(rows: rows, onDetailsRequested: {})
-            .padding(CalorynTheme.pagePadding)
-            .frame(width: 400, height: 300, alignment: .top)
-            .background(CalorynTheme.backgroundPrimary)
+        let panel = targetsPanel(size: CGSize(width: 400, height: 300))
 
         assertAppearances(of: panel, layout: .fixed(width: 400, height: 300))
+    }
+
+    func testTodayTargetsPanelStacksItsHeaderAtLargestAccessibilitySize() {
+        let panel = targetsPanel(size: CGSize(width: 400, height: 1_500))
+
+        assertSnapshot(
+            of: panel,
+            as: .image(
+                precision: precision,
+                perceptualPrecision: perceptualPrecision,
+                layout: .fixed(width: 400, height: 1_500),
+                traits: .referenceAccessibility
+            )
+        )
+    }
+
+    func testCalorieHeroAskedForThreeColumnsStacksAtLargestAccessibilitySize() {
+        let size = CGSize(width: 669, height: 1_400)
+
+        assertRevealedSnapshots(
+            of: heroes(columns: .three, sizeClass: .regular, size: size),
+            size: size,
+            traits: ["accessibility": .referenceAccessibility]
+        )
     }
 
     func testCalorieHeroWithTheLegendUnderTheNumberOnAPhoneAcrossAppearances() {
@@ -486,6 +497,28 @@ final class ComponentSnapshotTests: XCTestCase {
         line: UInt = #line,
         column: UInt = #column
     ) {
+        assertRevealedSnapshots(
+            of: view,
+            size: size,
+            traits: ["light": .reference, "dark": .referenceDark],
+            fileID: fileID,
+            file: filePath,
+            testName: testName,
+            line: line,
+            column: column
+        )
+    }
+
+    private func assertRevealedSnapshots(
+        of view: some View,
+        size: CGSize,
+        traits: [String: UITraitCollection],
+        fileID: StaticString = #fileID,
+        file filePath: StaticString = #filePath,
+        testName: String = #function,
+        line: UInt = #line,
+        column: UInt = #column
+    ) {
         let host = UIHostingController(rootView: view)
         let stage = UIWindow(frame: CGRect(origin: .zero, size: size))
         stage.rootViewController = host
@@ -495,20 +528,9 @@ final class ComponentSnapshotTests: XCTestCase {
 
         assertSnapshots(
             of: host as UIViewController,
-            as: [
-                "light": .image(
-                    precision: precision,
-                    perceptualPrecision: perceptualPrecision,
-                    size: size,
-                    traits: .reference
-                ),
-                "dark": .image(
-                    precision: precision,
-                    perceptualPrecision: perceptualPrecision,
-                    size: size,
-                    traits: .referenceDark
-                ),
-            ],
+            as: traits.mapValues { traits in
+                .image(precision: precision, perceptualPrecision: perceptualPrecision, size: size, traits: traits)
+            },
             fileID: fileID,
             file: filePath,
             testName: testName,
@@ -531,6 +553,24 @@ final class ComponentSnapshotTests: XCTestCase {
         view
             .padding(16)
             .frame(width: 390, height: 140)
+            .background(CalorynTheme.backgroundPrimary)
+    }
+
+    private func targetsPanel(size: CGSize) -> some View {
+        let rows = NutritionDetailsSections(
+            metrics: [
+                TrackedNutrientMetric(nutrient: .protein, value: 82, target: 120, goalKind: .minimum),
+                TrackedNutrientMetric(nutrient: .carbs, value: 164, target: 210, goalKind: .target),
+                TrackedNutrientMetric(nutrient: .fat, value: 71, target: 65, goalKind: .maximum),
+                TrackedNutrientMetric(nutrient: .fiber, value: 12, target: 30, goalKind: .minimum),
+            ],
+            details: [],
+            locale: Locale(identifier: "en_US")
+        ).targets
+
+        return TodayTargetsPanel(rows: rows, onDetailsRequested: {})
+            .padding(CalorynTheme.pagePadding)
+            .frame(width: size.width, height: size.height, alignment: .top)
             .background(CalorynTheme.backgroundPrimary)
     }
 
