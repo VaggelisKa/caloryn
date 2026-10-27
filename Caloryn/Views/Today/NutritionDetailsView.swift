@@ -157,7 +157,7 @@ struct NutritionDetailsView: View {
                     Button {
                         dismiss()
                     } label: {
-                        Image(systemName: "xmark")
+                        Label("Close", systemImage: "xmark")
                             .font(CalorynTheme.toolbarIcon)
                             .foregroundStyle(CalorynTheme.accent)
                     }

@@ -6,6 +6,7 @@ struct CalorieHeroView: View {
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     @ScaledMetric(relativeTo: .largeTitle) private var numberSize: CGFloat = 56
     @ScaledMetric(relativeTo: .footnote) private var legendKeySize: CGFloat = 12
@@ -13,6 +14,19 @@ struct CalorieHeroView: View {
     @State private var isRevealed = false
 
     private static let donutSize: CGFloat = 168
+
+    /// The number column's width at regular width — iPhone Duo's open inner display, where
+    /// the hero is offered 630pt or more. Left to fill, the legend put each value 400pt from
+    /// its name; a first cap of 320pt still left 190pt of air and read as sparse. 220pt is
+    /// the column on the widest phone (a 440pt Pro Max gives it 214pt), so the hero keeps the
+    /// proportions the board drew and sits on the leading edge with the page's own margin.
+    /// Compact widths keep filling: the column is 176pt on a 402pt phone and a cap would
+    /// only cost accessibility sizes room.
+    private static let regularWidthNumberColumnWidth: CGFloat = 220
+
+    private var numberColumnMaxWidth: CGFloat {
+        horizontalSizeClass == .regular ? Self.regularWidthNumberColumnWidth : .infinity
+    }
     private var displayed: TodayHeroSummary {
         isRevealed || accessibilityReduceMotion ? summary : summary.unrevealed
     }
@@ -41,7 +55,7 @@ struct CalorieHeroView: View {
             CalorieDonutView(summary: summary.donut, size: Self.donutSize)
 
             numberColumn
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: numberColumnMaxWidth, alignment: .leading)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape([.interaction, .accessibility], .rect)

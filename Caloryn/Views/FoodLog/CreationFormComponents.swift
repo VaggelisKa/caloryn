@@ -283,12 +283,17 @@ struct CreationFormAddButton: View {
     }
 }
 
+/// The sheet's close glyph. Glass comes from the toolbar on iOS 26.
+///
+/// These three are `Label`s rather than bare `Image`s: a toolbar draws a label as its
+/// symbol alone, but keeps the title for the overflow menu iPhone Duo's vertical bar
+/// spills into, and for VoiceOver. A custom view with no title cannot go vertical at all.
 struct CreationFormCloseButton: View {
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            Image(systemName: "xmark")
+            Label("Close", systemImage: "xmark")
                 .font(CalorynTheme.toolbarIcon)
                 .foregroundStyle(CalorynTheme.accent)
         }
@@ -305,7 +310,7 @@ struct CreationFormSaveGlyph: View {
             ProgressView()
                 .tint(CalorynTheme.accent)
         } else {
-            Image(systemName: "checkmark")
+            Label("Save", systemImage: "checkmark")
                 .font(CalorynTheme.toolbarIcon.weight(.semibold))
                 .foregroundStyle(isEnabled ? CalorynTheme.accent : CalorynTheme.textTertiary)
         }
@@ -316,9 +321,12 @@ struct CreationFormFavoriteGlyph: View {
     let isFavorite: Bool
 
     var body: some View {
-        Image(systemName: isFavorite ? "star.fill" : "star")
-            .font(CalorynTheme.toolbarIcon)
-            .foregroundStyle(CalorynTheme.accent)
+        Label(
+            isFavorite ? "Remove from Favorites" : "Add to Favorites",
+            systemImage: isFavorite ? "star.fill" : "star"
+        )
+        .font(CalorynTheme.toolbarIcon)
+        .foregroundStyle(CalorynTheme.accent)
     }
 }
 

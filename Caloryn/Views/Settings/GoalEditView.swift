@@ -188,7 +188,7 @@ struct GoalEditView: View {
         .calorynInlineTitle("Edit goal")
         .scrollDismissesKeyboard(.interactively)
         .toolbar {
-            ToolbarItem(placement: .confirmationAction) {
+            ToolbarItem(placement: .calorynConfirmation) {
                 Button {
                     draft.apply(to: profile)
                     dismiss()

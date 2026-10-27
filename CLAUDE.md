@@ -2,7 +2,9 @@
 
 SwiftUI + SwiftData iOS app. Deployment target **iOS 18.6**, built against the iOS 27 SDK —
 so `#available(iOS 26.0, *)` checks are live and their `else` branches ship. Do not delete
-them as dead code.
+them as dead code. **CI builds with Xcode 26.6 (Swift 6.3)**, so an iOS 27 API needs a
+`#if compiler(>=6.4)` (Xcode 27.1) guard around its `#available` check as well, or CI
+cannot compile it.
 
 ## Tests
 
@@ -102,6 +104,11 @@ class runs there; moving one into a named shard means adding it to both lists.
 
 - SourceKit reports phantom `No such module 'Testing'` / `Cannot find type` errors from
   a stale index. **Trust the build.**
+- **iPhone Duo** (iOS 27.1 sim) boots closed: compact width with a vertical bar; the open
+  inner display is the only regular-width iPhone. Toolbar items need a title *and* a symbol
+  (`Label`, drawn symbol-only) or the vertical bar cannot host them. `xcodebuild test`
+  hangs on it after the tests pass — stop it, the PNGs are in `<bundle>/Data/`. Folding is
+  Device Hub only; `devicectl device appResize` reaches the inner sizes. `docs/design/iphone-duo.md`.
 - New source files need no pbxproj edit (synchronized groups, objectVersion 77). Adding
   a package or target does.
 - Keep `Package.resolved` tracked — it's under the gitignored `project.xcworkspace` and
@@ -110,5 +117,5 @@ class runs there; moving one into a named shard means adding it to both lists.
 
 ## Further reading
 
-`docs/testing/coverage.md` · `docs/testing/snapshot-testing.md` · `docs/testing/mutation-testing.md` · `docs/theme.md` · issue #90
-(open defects the suite surfaced).
+`docs/testing/coverage.md` · `docs/testing/snapshot-testing.md` · `docs/testing/mutation-testing.md` ·
+`docs/theme.md` · `docs/design/iphone-duo.md` · issue #90 (open defects the suite surfaced).

@@ -118,7 +118,7 @@ struct PortionPickerView: View {
                     Button {
                         dismiss()
                     } label: {
-                        Image(systemName: "xmark")
+                        Label("Close", systemImage: "xmark")
                             .font(CalorynTheme.toolbarIcon)
                             .foregroundStyle(CalorynTheme.accent)
                     }
@@ -137,11 +137,13 @@ struct PortionPickerView: View {
                     .accessibilityIdentifier("portionPicker.delete")
                 }
             } else {
-                ToolbarItem(placement: .topBarLeading) {
+                // The leading slot on any axis, as `calorynDrillDownNavigation()` places its
+                // back button; a `Label`, so the vertical bar's overflow has a title.
+                ToolbarItem(placement: .cancellationAction) {
                     Button {
                         dismiss()
                     } label: {
-                        Image(systemName: "chevron.left")
+                        Label("Back", systemImage: "chevron.left")
                             .font(CalorynTheme.toolbarIcon)
                             .foregroundStyle(CalorynTheme.accent)
                     }
@@ -158,7 +160,7 @@ struct PortionPickerView: View {
                         BarcodeRecoveryAnalytics.record(path: .personalEdit, result: .started)
                         showingFoodEditor = true
                     } label: {
-                        Image(systemName: "pencil")
+                        Label("Edit Food Details", systemImage: "pencil")
                             .font(CalorynTheme.toolbarIcon)
                             .foregroundStyle(CalorynTheme.accent)
                     }

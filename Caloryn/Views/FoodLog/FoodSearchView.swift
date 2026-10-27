@@ -159,7 +159,7 @@ struct FoodSearchView: View {
                     Button {
                         dismiss()
                     } label: {
-                        Image(systemName: "xmark")
+                        Label("Close", systemImage: "xmark")
                             .font(CalorynTheme.toolbarIcon)
                             .foregroundStyle(CalorynTheme.accent)
                     }
@@ -203,7 +203,7 @@ struct FoodSearchView: View {
                             barcodeFlow.manualEntryOpened()
                             showingCustomFoodForm = true
                         } label: {
-                            Image(systemName: "plus")
+                            Label("Create Manual Entry", systemImage: "plus")
                                 .font(CalorynTheme.toolbarIcon)
                                 .foregroundStyle(CalorynTheme.accent)
                         }

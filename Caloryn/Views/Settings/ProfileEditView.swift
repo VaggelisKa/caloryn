@@ -56,7 +56,7 @@ struct ProfileEditView: View {
         .calorynDrillDownNavigation()
         .calorynInlineTitle("Edit profile")
         .toolbar {
-            ToolbarItem(placement: .confirmationAction) {
+            ToolbarItem(placement: .calorynConfirmation) {
                 Button {
                     draft.apply(to: profile)
                     dismiss()

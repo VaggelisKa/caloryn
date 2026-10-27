@@ -55,9 +55,9 @@ for entry in json.load(open(os.path.join(raw, "manifest.json"))):
 shutil.rmtree(raw)
 
 TOKENS = {
-    "page":  {"light": (254,253,250), "dark": (20,22,20)},
-    "card":  {"light": (255,255,255), "dark": (38,42,38)},
-    "sage":  {"light": (124,142,107), "dark": (150,171,131)},
+    "page":  {"light": (254,253,250), "dark": (20,22,20)},    # PageBackground #FEFDFA / #141614
+    "card":  {"light": (255,255,255), "dark": (38,42,38)},    # CardBackground #FFFFFF / #262A26
+    "sage":  {"light": (124,142,107), "dark": (150,171,131)}, # retired Sage #7C8E6B / #96AB83
 }
 SYSTEM = {
     "light": [(242,242,247)],

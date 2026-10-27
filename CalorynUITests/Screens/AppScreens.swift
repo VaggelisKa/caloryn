@@ -12,13 +12,21 @@ struct TabBar: Screen {
 
     @discardableResult
     func go(to destination: Destination) -> Self {
-        let tab = app.tabBars.buttons[destination.rawValue]
-        tap(tab)
+        tap(tab(destination))
         return self
     }
 
     var isVisible: Bool {
-        app.tabBars.firstMatch.waitForExistence(timeout: UITestCase.defaultTimeout)
+        tab(.today).waitForExistence(timeout: UITestCase.defaultTimeout)
+    }
+
+    /// A tab by its label, wherever the system draws the bar. A horizontal tab bar is a
+    /// `tabBars` element; iPhone Duo's outer display (and its inner display in landscape)
+    /// moves the tabs into a vertical bar that the `tabBars` query does not match, so the
+    /// fallback finds the same button by label alone.
+    private func tab(_ destination: Destination) -> XCUIElement {
+        let inBar = app.tabBars.buttons[destination.rawValue]
+        return inBar.exists ? inBar : app.buttons[destination.rawValue].firstMatch
     }
 }
 
