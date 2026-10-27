@@ -73,9 +73,16 @@ final class FirstLaunchSyncGateTests: XCTestCase {
         XCTAssertFalse(FirstLaunchSyncGate.settlesInitialImport(.exportFinished))
     }
 
+    private func isolatedDefaults(_ name: String = #function) -> UserDefaults {
+        let suite = "FirstLaunchSyncGateTests.\(name)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defaults.removePersistentDomain(forName: suite)
+        return defaults
+    }
+
     @MainActor
     func testCloudSyncActivitySettlesOnceAndStaysSettled() {
-        let activity = CloudSyncActivity(syncsWithCloud: true)
+        let activity = CloudSyncActivity(syncsWithCloud: true, defaults: isolatedDefaults())
         XCTAssertFalse(activity.initialImportSettled)
 
         activity.record(.setupFinished(succeeded: true))
@@ -93,22 +100,55 @@ final class FirstLaunchSyncGateTests: XCTestCase {
 
     @MainActor
     func testTheWaitExpiresAfterTheCeiling() async throws {
-        let activity = CloudSyncActivity(syncsWithCloud: true, waitCeiling: .milliseconds(20))
+        let defaults = isolatedDefaults()
+        let activity = CloudSyncActivity(syncsWithCloud: true, waitCeiling: .milliseconds(20), defaults: defaults)
         XCTAssertFalse(activity.waitExpired)
 
         try await Task.sleep(for: .milliseconds(200))
         XCTAssertTrue(activity.waitExpired)
         XCTAssertFalse(activity.initialImportSettled)
+        XCTAssertTrue(defaults.bool(forKey: CloudSyncActivity.waitSpentKey))
+    }
+
+    @MainActor
+    func testASettledImportSpendsTheWaitForLaterLaunches() {
+        let defaults = isolatedDefaults()
+        let activity = CloudSyncActivity(syncsWithCloud: true, defaults: defaults)
+        activity.record(.importFinished(succeeded: true))
+        XCTAssertTrue(defaults.bool(forKey: CloudSyncActivity.waitSpentKey))
+
+        let relaunched = CloudSyncActivity(syncsWithCloud: true, defaults: defaults)
+        XCTAssertTrue(relaunched.waitExpired)
+        XCTAssertFalse(relaunched.initialImportSettled)
+    }
+
+    @MainActor
+    func testASpentWaitStartsExpiredWithoutACountdown() async throws {
+        let defaults = isolatedDefaults()
+        defaults.set(true, forKey: CloudSyncActivity.waitSpentKey)
+        let activity = CloudSyncActivity(syncsWithCloud: true, waitCeiling: .seconds(60), defaults: defaults)
+        XCTAssertTrue(activity.waitExpired)
+        XCTAssertEqual(
+            FirstLaunchSyncGate.phase(
+                hasLocalProfile: false,
+                syncsWithCloud: activity.syncsWithCloud,
+                initialImportSettled: activity.initialImportSettled,
+                waitExpired: activity.waitExpired
+            ),
+            .onboarding
+        )
     }
 
     @MainActor
     func testADisabledActivityStartsNoCountdown() async throws {
-        let activity = CloudSyncActivity(syncsWithCloud: false, waitCeiling: .milliseconds(20))
+        let defaults = isolatedDefaults()
+        let activity = CloudSyncActivity(syncsWithCloud: false, waitCeiling: .milliseconds(20), defaults: defaults)
         XCTAssertFalse(activity.syncsWithCloud)
 
         try await Task.sleep(for: .milliseconds(200))
         XCTAssertFalse(activity.waitExpired)
         XCTAssertFalse(activity.initialImportSettled)
+        XCTAssertFalse(defaults.bool(forKey: CloudSyncActivity.waitSpentKey))
     }
 
     func testAnEventStillInProgressIsIgnored() {

@@ -10,24 +10,36 @@ final class CloudSyncActivity {
     private(set) var waitExpired = false
 
     @ObservationIgnored private var observer: (any NSObjectProtocol)?
+    @ObservationIgnored private let defaults: UserDefaults?
+
+    static let waitSpentKey = "firstLaunchCloudWaitSpent"
 
     static var disabled: CloudSyncActivity {
         CloudSyncActivity(syncsWithCloud: false)
     }
 
-    convenience init(syncsWithCloud: Bool, waitCeiling: Duration = FirstLaunchSyncGate.waitCeiling) {
-        self.init(syncsWithCloud: syncsWithCloud, ceiling: waitCeiling)
+    convenience init(
+        syncsWithCloud: Bool,
+        waitCeiling: Duration = FirstLaunchSyncGate.waitCeiling,
+        defaults: UserDefaults = .standard
+    ) {
+        self.init(syncsWithCloud: syncsWithCloud, ceiling: waitCeiling, defaults: defaults)
     }
 
     #if DEBUG
     static func heldOpenForUITests() -> CloudSyncActivity {
-        CloudSyncActivity(syncsWithCloud: true, ceiling: nil)
+        CloudSyncActivity(syncsWithCloud: true, ceiling: nil, defaults: nil)
     }
     #endif
 
-    private init(syncsWithCloud: Bool, ceiling: Duration?) {
+    private init(syncsWithCloud: Bool, ceiling: Duration?, defaults: UserDefaults?) {
         self.syncsWithCloud = syncsWithCloud
+        self.defaults = defaults
         guard syncsWithCloud else { return }
+        if defaults?.bool(forKey: Self.waitSpentKey) == true {
+            waitExpired = true
+            return
+        }
         observer = NotificationCenter.default.addObserver(
             forName: NSPersistentCloudKitContainer.eventChangedNotification,
             object: nil,
@@ -41,17 +53,27 @@ final class CloudSyncActivity {
         guard let ceiling else { return }
         Task { @MainActor [weak self] in
             try? await Task.sleep(for: ceiling)
-            self?.waitExpired = true
+            self?.expireWait()
         }
     }
 
     func record(_ event: FirstLaunchSyncGate.CloudEvent) {
         guard FirstLaunchSyncGate.settlesInitialImport(event) else { return }
         initialImportSettled = true
+        spendWait()
         if let observer {
             NotificationCenter.default.removeObserver(observer)
         }
         observer = nil
+    }
+
+    private func expireWait() {
+        waitExpired = true
+        spendWait()
+    }
+
+    private func spendWait() {
+        defaults?.set(true, forKey: Self.waitSpentKey)
     }
 
     nonisolated static func cloudEvent(from notification: Notification) -> FirstLaunchSyncGate.CloudEvent? {
