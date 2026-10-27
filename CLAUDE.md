@@ -68,7 +68,7 @@ exit code and looks green.
    `.swiftlint.yml` enforces the bans, but **a lint rule is a per-match regex and can
    never catch a *missing* modifier** — that is the whole class of bug here. Colour is
    only ever verified by looking: run `./scripts/theme-screenshots.sh`, which captures
-   all 24 surfaces in both appearances and prints a per-screen colour census. When
+   all 25 surfaces in both appearances and prints a per-screen colour census. When
    auditing for a missing modifier, scan **per struct, not per file** — a file-scoped
    grep hid three unthemed screens because their outer view in the same file was fine.
    And scan for screens the harness *cannot reach*: all seven onboarding steps were

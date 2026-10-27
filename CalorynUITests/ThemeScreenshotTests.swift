@@ -11,6 +11,7 @@ final class ThemeScreenshotTests: UITestCase {
     }
 
     private func captureAllSurfaces(appearance: Appearance) {
+        captureCloudSyncWait(appearance)
         captureOnboarding(appearance)
         captureTodayAndSearch(appearance)
         captureOverBudgetDay(appearance)
@@ -26,6 +27,16 @@ final class ThemeScreenshotTests: UITestCase {
         captureSettingsAndMyFoods(appearance)
         captureEmptyMyFoods(appearance)
         captureCreationSheets(appearance)
+    }
+
+    private func captureCloudSyncWait(_ appearance: Appearance) {
+        let app = launch(fixture: .empty, appearance: appearance, holdsCloudImport: true)
+        XCTAssertTrue(
+            app.otherElements["cloudSync.waiting"].awaitExistence(),
+            "The iCloud waiting screen never appeared, so it was not photographed"
+        )
+        sleep(1)
+        attach(app, "00-cloud-sync-wait", appearance)
     }
 
     private func captureOnboarding(_ appearance: Appearance) {
@@ -452,7 +463,8 @@ final class ThemeScreenshotTests: UITestCase {
     private func launch(
         fixture: Fixture,
         appearance: Appearance,
-        lookupFixture: String? = nil
+        lookupFixture: String? = nil,
+        holdsCloudImport: Bool = false
     ) -> XCUIApplication {
         // Setting this immediately before `launch()` is a race: on a simulator that was in
         // the other appearance, the app can come up before the change lands, and the whole
@@ -467,6 +479,9 @@ final class ThemeScreenshotTests: UITestCase {
         app.launchArguments += ["-uitest-reset", "-uitest-seed", fixture.rawValue]
         if let lookupFixture {
             app.launchEnvironment["CALORYN_LOOKUP_FIXTURE"] = lookupFixture
+        }
+        if holdsCloudImport {
+            app.launchArguments.append("-uitest-hold-cloud-import")
         }
         app.launch()
         self.app = app

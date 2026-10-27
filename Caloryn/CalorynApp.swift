@@ -5,6 +5,7 @@ import SwiftData
 @main
 struct CalorynApp: App {
     let sharedModelContainer: ModelContainer
+    let cloudSync: CloudSyncActivity
     @State private var router = AppRouter.shared
 
     init() {
@@ -17,6 +18,14 @@ struct CalorynApp: App {
         let usesEphemeralStore = false
         #endif
         let iCloudEnabled = UserDefaults.standard.object(forKey: "iCloudSyncEnabled") as? Bool ?? true
+        let syncsWithCloud = !usesEphemeralStore && iCloudEnabled
+        #if DEBUG
+        cloudSync = UITestConfiguration.holdsCloudImport
+            ? CloudSyncActivity(syncsWithCloud: true, waitCeiling: nil)
+            : CloudSyncActivity(syncsWithCloud: syncsWithCloud)
+        #else
+        cloudSync = CloudSyncActivity(syncsWithCloud: syncsWithCloud)
+        #endif
         let schema = Schema([
             UserProfile.self,
             FoodItem.self,
@@ -29,9 +38,7 @@ struct CalorynApp: App {
         let config = ModelConfiguration(
             schema: schema,
             isStoredInMemoryOnly: usesEphemeralStore,
-            cloudKitDatabase: usesEphemeralStore
-                ? .none
-                : (iCloudEnabled ? .automatic : .none)
+            cloudKitDatabase: syncsWithCloud ? .automatic : .none
         )
 
         do {
@@ -78,6 +85,7 @@ struct CalorynApp: App {
             ContentView()
                 .font(CalorynTheme.bodyText)
                 .environment(router)
+                .environment(cloudSync)
                 .onOpenURL(perform: router.handle)
         }
         .modelContainer(sharedModelContainer)
