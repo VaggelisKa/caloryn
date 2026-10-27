@@ -24,22 +24,18 @@ struct TodayDashboardLayout: Equatable {
     static let trailingClusterWidth: CGFloat = 240
     static let clusterBesideTargetsSpacing: CGFloat = 24
     static let clusterBesideTargetsMinimumPanelWidth: CGFloat = 256
-    static let dashboardColumnFraction: CGFloat = 0.4
-    static let dashboardColumnMinimumWidth: CGFloat = 380
     static let readableMealRowWidth: CGFloat = 672
 
     static let threeColumnHeroWidth: CGFloat =
         heroDonutSize + heroFiguresColumnWidth + heroLegendColumnWidth + 2 * heroColumnSpacing
     static let clusterBesideTargetsMinimumWidth: CGFloat =
         clusterBesideTargetsMinimumPanelWidth + clusterBesideTargetsSpacing + trailingClusterWidth
-    static let tallSplitMinimumPageWidth: CGFloat =
-        dashboardColumnMinimumWidth / dashboardColumnFraction
 
     let breakpoint: Breakpoint
     let heroColumns: HeroColumns
     let showsTargetsPanel: Bool
     let detailsPlacement: DetailsPlacement
-    let arrangesSplitAroundFold: Bool
+    let split: RegularWidthSplit
     let mealRowMaximumWidth: CGFloat
 
     var showsMealsBesideDashboard: Bool {
@@ -53,18 +49,17 @@ struct TodayDashboardLayout: Equatable {
         isLargeText: Bool,
         hasTargets: Bool
     ) {
-        let isWiderThanTall = pageSize.width > pageSize.height
-        let fitsTallSplit = pageSize.width >= Self.tallSplitMinimumPageWidth
+        let split = RegularWidthSplit(isRegularWidth: isRegularWidth, isRegularHeight: isRegularHeight, pageSize: pageSize)
         let breakpoint: Breakpoint = if !isRegularWidth {
             .compact
-        } else if isRegularHeight, isWiderThanTall || fitsTallSplit {
+        } else if split.showsColumns {
             .wideRegular
         } else {
             .narrowRegular
         }
         self.breakpoint = breakpoint
         showsTargetsPanel = breakpoint != .compact && hasTargets
-        arrangesSplitAroundFold = breakpoint == .wideRegular && isWiderThanTall
+        self.split = split
         mealRowMaximumWidth = isRegularWidth && !isLargeText ? Self.readableMealRowWidth : .infinity
 
         guard breakpoint == .narrowRegular, !isLargeText else {

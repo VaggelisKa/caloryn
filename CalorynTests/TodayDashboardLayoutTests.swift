@@ -61,7 +61,7 @@ struct TodayDashboardLayoutTests {
 
         #expect(inner.breakpoint == .wideRegular)
         #expect(inner.showsMealsBesideDashboard)
-        #expect(inner.arrangesSplitAroundFold)
+        #expect(inner.split.arrangesAroundFold)
         #expect(inner.heroColumns == .two)
         #expect(inner.showsTargetsPanel)
         #expect(inner.detailsPlacement == .belowHero)
@@ -72,7 +72,7 @@ struct TodayDashboardLayoutTests {
         let iPadLandscape = layout(page: CGSize(width: 1376, height: 1032))
 
         #expect(iPadLandscape.breakpoint == .wideRegular)
-        #expect(iPadLandscape.arrangesSplitAroundFold)
+        #expect(iPadLandscape.split.arrangesAroundFold)
         #expect(iPadLandscape.heroColumns == .two)
     }
 
@@ -82,7 +82,7 @@ struct TodayDashboardLayoutTests {
 
         #expect(iPad.breakpoint == .wideRegular)
         #expect(iPad.showsMealsBesideDashboard)
-        #expect(!iPad.arrangesSplitAroundFold)
+        #expect(!iPad.split.arrangesAroundFold)
         #expect(iPad.heroColumns == .two)
         #expect(iPad.detailsPlacement == .belowHero)
         #expect(iPad.showsTargetsPanel)
@@ -131,12 +131,12 @@ struct TodayDashboardLayoutTests {
 
     @Test("A page taller than wide splits from exactly the width that gives the dashboard its column, and not a point less")
     func tallSplitThreshold() {
-        let width = TodayDashboardLayout.tallSplitMinimumPageWidth
+        let width = RegularWidthSplit.tallSplitMinimumPageWidth
         let fits = layout(page: CGSize(width: width, height: 1_400))
         let short = layout(page: CGSize(width: width - 1, height: 1_400))
 
         #expect(fits.breakpoint == .wideRegular)
-        #expect(!fits.arrangesSplitAroundFold)
+        #expect(!fits.split.arrangesAroundFold)
         #expect(short.breakpoint == .narrowRegular)
         #expect(short.heroColumns == .three)
         #expect(short.detailsPlacement == .besideEachOtherBelowHero)
@@ -153,13 +153,13 @@ struct TodayDashboardLayoutTests {
     @Test("The tall split's dashboard column is never narrower than the inner display's landscape one")
     func tallSplitColumnMatchesTheInnerDisplay() {
         #expect(
-            TodayDashboardLayout.tallSplitMinimumPageWidth * TodayDashboardLayout.dashboardColumnFraction
-                == TodayDashboardLayout.dashboardColumnMinimumWidth
+            RegularWidthSplit.tallSplitMinimumPageWidth * RegularWidthSplit.primaryColumnFraction
+                == RegularWidthSplit.primaryColumnMinimumWidth
         )
         #expect(
-            951 * TodayDashboardLayout.dashboardColumnFraction >= TodayDashboardLayout.dashboardColumnMinimumWidth
+            951 * RegularWidthSplit.primaryColumnFraction >= RegularWidthSplit.primaryColumnMinimumWidth
         )
-        #expect(669 < TodayDashboardLayout.tallSplitMinimumPageWidth)
+        #expect(669 < RegularWidthSplit.tallSplitMinimumPageWidth)
     }
 
     @Test("Every regular-width page caps the meal rows at a readable width")
