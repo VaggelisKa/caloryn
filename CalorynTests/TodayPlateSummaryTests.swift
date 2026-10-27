@@ -20,7 +20,7 @@ struct TodayPlateSummaryTests {
         #expect(hero.headline == 1_037)
         #expect(hero.headlineText == "1,037")
         #expect(hero.caption == "kcal left of 2,000")
-        #expect(hero.eatenLine == "963 of 2,000 eaten")
+        #expect(hero.eatenLine == "963 eaten")
     }
 
     @Test("Over budget the hero signs the overshoot, so a glance cannot read it as kcal left")
@@ -37,7 +37,7 @@ struct TodayPlateSummaryTests {
         #expect(hero.headline == 340)
         #expect(hero.headlineText == "+340")
         #expect(hero.caption == "kcal over 2,000")
-        #expect(hero.eatenLine == "2,340 of 2,000 eaten")
+        #expect(hero.eatenLine == "2,340 eaten")
     }
 
     @Test("Figures are grouped for the reader's locale, so the caption agrees with the number")
@@ -68,7 +68,7 @@ struct TodayPlateSummaryTests {
         #expect(hero.isOver == false)
         #expect(hero.headlineText == "2,000")
         #expect(hero.caption == "kcal left of 2,000")
-        #expect(hero.eatenLine == "0 of 2,000 eaten")
+        #expect(hero.eatenLine == "0 eaten")
         #expect(hero.donut.legend.map { hero.legendValue(for: $0) } == ["0", "0", "0", "0"])
     }
 

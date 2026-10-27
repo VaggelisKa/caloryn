@@ -88,7 +88,7 @@ struct AuditCalorieSurfaceConsistencyTests {
             let targetText = budget.target.formatted(.number.locale(auditUS))
             #expect(hero.caption == (budget.isOver ? "kcal over \(targetText)" : "kcal left of \(targetText)"), "total \(total)")
             #expect(
-                hero.eatenLine == "\(budget.roundedConsumed.formatted(.number.locale(auditUS))) of \(targetText) eaten",
+                hero.eatenLine == "\(budget.roundedConsumed.formatted(.number.locale(auditUS))) eaten",
                 "total \(total)"
             )
             #expect(
@@ -150,7 +150,7 @@ struct AuditCalorieSurfaceConsistencyTests {
         #expect(hero.headline == 2_000)
         #expect(hero.donut.sectors == [.init(kind: .remaining, kcal: 2_000)])
         #expect(hero.legendValue(for: hero.donut.legend[0]) == "0")
-        #expect(hero.eatenLine == "0 of 2,000 eaten")
+        #expect(hero.eatenLine == "0 eaten")
     }
 
     @Test("A total summed in a different order still rounds the same on the donut as on the hero")

@@ -24,7 +24,7 @@ struct TodayHeroBudgetCoverageTests {
         #expect(summary.headline == 1_037)
         #expect(summary.headlineText == "1,037")
         #expect(summary.caption == "kcal left of 2,000")
-        #expect(summary.eatenLine == "963 of 2,000 eaten")
+        #expect(summary.eatenLine == "963 eaten")
         #expect(summary.donut.legend.map(summary.legendValue(for:)) == ["382", "463", "118", "not yet"])
         #expect(summary.donut.legend.map(summary.legendName(for:)) == ["Breakfast", "Lunch", "Snack", "Dinner"])
     }
@@ -36,7 +36,7 @@ struct TodayHeroBudgetCoverageTests {
         #expect(summary.isOver == false)
         #expect(summary.headline == 0)
         #expect(summary.caption == "kcal left of 2,000")
-        #expect(summary.eatenLine == "2,000 of 2,000 eaten")
+        #expect(summary.eatenLine == "2,000 eaten")
         #expect(summary.donut.hasOverSector == false)
     }
 
@@ -48,7 +48,7 @@ struct TodayHeroBudgetCoverageTests {
         #expect(summary.headline == 1)
         #expect(summary.headlineText == "+1")
         #expect(summary.caption == "kcal over 2,000")
-        #expect(summary.eatenLine == "2,001 of 2,000 eaten")
+        #expect(summary.eatenLine == "2,001 eaten")
         #expect(summary.donut.isOver)
         #expect(summary.donut.legend.map(summary.legendValue(for:)) == ["1,000", "not yet", "not yet", "1,000", "1"])
         #expect(summary.donut.legend.last.map(summary.legendName(for:)) == "Over")
@@ -61,7 +61,7 @@ struct TodayHeroBudgetCoverageTests {
         #expect(summary.isOver == false)
         #expect(summary.headline == 0)
         #expect(summary.caption == "kcal left of 2,000")
-        #expect(summary.eatenLine == "2,000 of 2,000 eaten")
+        #expect(summary.eatenLine == "2,000 eaten")
         #expect(summary.donut.isOver == false)
         #expect(summary.donut.legend.count == MealType.allCases.count)
     }
@@ -72,7 +72,7 @@ struct TodayHeroBudgetCoverageTests {
 
         #expect(summary.headline == 740)
         #expect(summary.headlineText == "+740")
-        #expect(summary.eatenLine == "2,740 of 2,000 eaten")
+        #expect(summary.eatenLine == "2,740 eaten")
         #expect(summary.donut.legend.last.map(summary.legendValue(for:)) == "740")
     }
 
@@ -82,7 +82,7 @@ struct TodayHeroBudgetCoverageTests {
 
         #expect(summary.headline == 1_800)
         #expect(summary.caption == "kcal left of 1,800")
-        #expect(summary.eatenLine == "0 of 1,800 eaten")
+        #expect(summary.eatenLine == "0 eaten")
         #expect(summary.donut.legend.map(summary.legendValue(for:)) == ["not yet", "not yet", "not yet", "not yet"])
     }
 
@@ -100,7 +100,7 @@ struct TodayHeroBudgetCoverageTests {
 
         #expect(summary.headlineText == "1.250")
         #expect(summary.caption == "kcal left of 2.500")
-        #expect(summary.eatenLine == "1.250 of 2.500 eaten")
+        #expect(summary.eatenLine == "1.250 eaten")
         #expect(summary.legendValue(for: summary.donut.legend[0]) == "1.250")
     }
 }

@@ -54,7 +54,7 @@ struct TodayHeroSummary: Equatable {
     }
 
     var eatenLine: String {
-        "\(grouped(ring.roundedConsumed)) of \(grouped(ring.target)) eaten"
+        "\(grouped(ring.roundedConsumed)) eaten"
     }
 
     func legendValue(for entry: CalorieDonutSummary.LegendEntry) -> String {
