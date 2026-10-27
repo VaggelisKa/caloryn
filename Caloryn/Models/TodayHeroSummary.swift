@@ -46,15 +46,15 @@ struct TodayHeroSummary: Equatable {
     }
 
     var headlineText: String {
-        grouped(headline)
+        isOver ? headline.formatted(.number.locale(locale).sign(strategy: .always())) : grouped(headline)
     }
 
     var caption: String {
-        isOver ? "kcal over" : "kcal left of \(grouped(ring.target))"
+        isOver ? "kcal over \(grouped(ring.target))" : "kcal left of \(grouped(ring.target))"
     }
 
     var eatenLine: String {
-        "\(grouped(ring.roundedConsumed)) of \(grouped(ring.target)) eaten"
+        "\(grouped(ring.roundedConsumed)) eaten"
     }
 
     func legendValue(for entry: CalorieDonutSummary.LegendEntry) -> String {

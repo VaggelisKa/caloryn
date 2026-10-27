@@ -42,7 +42,7 @@ struct WidgetPlateFigures: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(primaryValue.formatted())
+            Text(primaryValueText)
                 .font(numberFont.monospacedDigit())
                 .tracking(-0.5)
                 .foregroundStyle(CalorynTheme.textPrimary)
@@ -56,8 +56,10 @@ struct WidgetPlateFigures: View {
         }
     }
 
-    private var primaryValue: Int {
-        calories.isOver ? calories.overAmount : calories.remaining
+    private var primaryValueText: String {
+        calories.isOver
+            ? calories.overAmount.formatted(.number.sign(strategy: .always()))
+            : calories.remaining.formatted()
     }
 }
 

@@ -98,8 +98,7 @@ private struct TodayDayView: View {
         let layout = TodayDashboardLayout(
             isRegularWidth: horizontalSizeClass == .regular,
             isRegularHeight: verticalSizeClass == .regular,
-            contentWidth: pageSize.width - 2 * CalorynTheme.pagePadding,
-            isWiderThanTall: pageSize.width > pageSize.height,
+            pageSize: pageSize,
             isLargeText: dynamicTypeSize >= .xxxLarge,
             hasTargets: !targetRows.isEmpty
         )
@@ -116,8 +115,10 @@ private struct TodayDayView: View {
 
         NavigationStack {
             Group {
-                if layout.showsMealsBesideDashboard {
+                if layout.arrangesSplitAroundFold {
                     dashboardAndMeals(dashboard, layout: layout, projection: projection)
+                } else if layout.showsMealsBesideDashboard {
+                    dashboardBesideMeals(dashboard, layout: layout, projection: projection)
                 } else {
                     dashboardOverMeals(dashboard, layout: layout, projection: projection)
                 }
@@ -244,7 +245,7 @@ private struct TodayDayView: View {
                     .listRowSeparator(.hidden)
             }
 
-            mealRows(projection: projection, canCopyYesterday: dashboard.canCopyYesterday)
+            mealRows(projection: projection, layout: layout, canCopyYesterday: dashboard.canCopyYesterday)
         }
         .calorynPlainListStyle()
         .environment(\.defaultMinListRowHeight, 0)
@@ -278,12 +279,12 @@ private struct TodayDayView: View {
                     // the book pose.
                     .splitArrangementLayoutRatio(
                         minHorizontal: 0.36,
-                        idealHorizontal: 0.4,
+                        idealHorizontal: TodayDashboardLayout.dashboardColumnFraction,
                         minVertical: 0.38,
                         idealVertical: 0.42
                     )
             } secondary: {
-                mealsList(projection: projection, canCopyYesterday: dashboard.canCopyYesterday)
+                mealsList(projection: projection, layout: layout, canCopyYesterday: dashboard.canCopyYesterday)
             }
             .arrangementViewStyle(.split)
         } else {
@@ -294,7 +295,9 @@ private struct TodayDayView: View {
         #endif
     }
 
-    /// The split without the arrangement view: a fixed 40/60 `HStack`.
+    /// The split without the arrangement view: a fixed 40/60 `HStack`. Also the split of a page
+    /// taller than wide, which has no fold to arrange around, and which an arrangement view would
+    /// stack instead, clipping the dashboard.
     private func dashboardBesideMeals(
         _ dashboard: DashboardContent,
         layout: TodayDashboardLayout,
@@ -302,9 +305,9 @@ private struct TodayDayView: View {
     ) -> some View {
         HStack(alignment: .top, spacing: 0) {
             dashboardColumn(dashboard, layout: layout)
-                .containerRelativeFrame(.horizontal) { width, _ in width * 0.4 }
+                .containerRelativeFrame(.horizontal) { width, _ in width * TodayDashboardLayout.dashboardColumnFraction }
 
-            mealsList(projection: projection, canCopyYesterday: dashboard.canCopyYesterday)
+            mealsList(projection: projection, layout: layout, canCopyYesterday: dashboard.canCopyYesterday)
         }
     }
 
@@ -327,18 +330,12 @@ private struct TodayDayView: View {
     }
 
     private func regularBand(_ dashboard: DashboardContent, layout: TodayDashboardLayout) -> some View {
-        let isBesideHero = layout.detailsPlacement == .besideHero
-        let bandLayout = isBesideHero
-            ? AnyLayout(HStackLayout(alignment: .top, spacing: TodayDashboardLayout.heroBesideTargetsSpacing))
-            : AnyLayout(VStackLayout(alignment: .leading, spacing: 20))
-
-        return bandLayout {
+        VStack(alignment: .leading, spacing: 20) {
             dashboardSection(
                 entries: dashboard.entries,
                 calorieBudget: dashboard.calorieBudget,
                 columns: layout.heroColumns
             )
-            .fixedSize(horizontal: isBesideHero, vertical: false)
 
             if layout.showsTargetsPanel || dashboard.hasCluster {
                 dashboardDetails(dashboard, layout: layout)
@@ -378,10 +375,11 @@ private struct TodayDayView: View {
 
     private func mealsList(
         projection: DayFoodLogProjection<FoodLogEntry>,
+        layout: TodayDashboardLayout,
         canCopyYesterday: Bool
     ) -> some View {
         List {
-            mealRows(projection: projection, canCopyYesterday: canCopyYesterday)
+            mealRows(projection: projection, layout: layout, canCopyYesterday: canCopyYesterday)
         }
         .calorynPlainListStyle()
         .environment(\.defaultMinListRowHeight, 0)
@@ -392,6 +390,7 @@ private struct TodayDayView: View {
 
     private func mealRows(
         projection: DayFoodLogProjection<FoodLogEntry>,
+        layout: TodayDashboardLayout,
         canCopyYesterday: Bool
     ) -> some View {
         ForEach(dayMeals) { meal in
@@ -402,6 +401,7 @@ private struct TodayDayView: View {
                 snackIndex: snackIndex,
                 titleOverride: meal == .snack ? "Snacks" : nil,
                 canCopyYesterday: canCopyYesterday,
+                maximumRowWidth: layout.mealRowMaximumWidth,
                 onAdd: {
                     presentFoodSearch(mealType: meal, snackIndex: snackIndex)
                 },
