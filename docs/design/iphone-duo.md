@@ -73,8 +73,9 @@ the device — so the same rules serve iPad.
 | **narrow-regular** | regular width, unless wide-regular: the inner display in portrait (669×951), iPad in portrait, half an iPad in Split View, a regular-width iPhone held landscape (compact height, too short to split) | one list. The hero takes three columns (donut 168 + figures 200 + legend 220pt) once the content is 624pt wide. Under it the targets panel, with the Nutri-Score chips or Copy Yesterday as a 240pt trailing cluster; from 976pt of content (a 13" iPad in portrait) the panel and cluster sit beside the hero instead |
 | **wide-regular** | regular width *and* height, wider than tall: the inner display in landscape (951×669), a full iPad in landscape | the split arrangement (an `HStack` before iOS 27.1): the dashboard column is the date, the two-column hero, the targets panel and the cluster; the meals are the other region |
 
-Accessibility text sizes (xxxLarge and up) keep the stacking two-column hero and stack the
-panel and cluster under it. The panel only appears when the profile has nutrient targets.
+Large text (xxxLarge and up, one step below the accessibility sizes) keeps the stacking
+two-column hero, even when three columns are asked for, and stacks the panel, its header
+and the cluster under it. The panel only appears when the profile has nutrient targets.
 Height is in the wide-regular gate because a split on a closed Duo in landscape shows only
 the primary view; wider-than-tall because in portrait the dashboard-over-meals split
 clipped the Nutri-Score chips under the top region.
