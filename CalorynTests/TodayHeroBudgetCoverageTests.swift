@@ -46,7 +46,8 @@ struct TodayHeroBudgetCoverageTests {
 
         #expect(summary.isOver)
         #expect(summary.headline == 1)
-        #expect(summary.caption == "kcal over")
+        #expect(summary.headlineText == "+1")
+        #expect(summary.caption == "kcal over 2,000")
         #expect(summary.eatenLine == "2,001 of 2,000 eaten")
         #expect(summary.donut.isOver)
         #expect(summary.donut.legend.map(summary.legendValue(for:)) == ["1,000", "not yet", "not yet", "1,000", "1"])
@@ -65,12 +66,12 @@ struct TodayHeroBudgetCoverageTests {
         #expect(summary.donut.legend.count == MealType.allCases.count)
     }
 
-    @Test("Well over budget the headline is the overshoot")
+    @Test("Well over budget the headline is the signed overshoot")
     func wellOverBudget() {
         let summary = hero([.breakfast: 900, .dinner: 1_200, .snack: 640.4])
 
         #expect(summary.headline == 740)
-        #expect(summary.headlineText == "740")
+        #expect(summary.headlineText == "+740")
         #expect(summary.eatenLine == "2,740 of 2,000 eaten")
         #expect(summary.donut.legend.last.map(summary.legendValue(for:)) == "740")
     }

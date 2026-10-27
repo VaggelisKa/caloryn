@@ -23,7 +23,7 @@ struct TodayPlateSummaryTests {
         #expect(hero.eatenLine == "963 of 2,000 eaten")
     }
 
-    @Test("Over budget the hero counts up the overshoot and says so in the caption")
+    @Test("Over budget the hero signs the overshoot, so a glance cannot read it as kcal left")
     func heroOverBudget() {
         let hero = makeHero(
             mealTotals: [.breakfast: 382, .lunch: 463, .dinner: 1_377, .snack: 118],
@@ -35,7 +35,8 @@ struct TodayPlateSummaryTests {
 
         #expect(hero.isOver)
         #expect(hero.headline == 340)
-        #expect(hero.caption == "kcal over")
+        #expect(hero.headlineText == "+340")
+        #expect(hero.caption == "kcal over 2,000")
         #expect(hero.eatenLine == "2,340 of 2,000 eaten")
     }
 

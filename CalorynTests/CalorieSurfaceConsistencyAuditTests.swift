@@ -86,7 +86,7 @@ struct AuditCalorieSurfaceConsistencyTests {
             #expect(abs(ringTotal - expectedWhole) < 1e-6, "total \(total)")
 
             let targetText = budget.target.formatted(.number.locale(auditUS))
-            #expect(hero.caption == (budget.isOver ? "kcal over" : "kcal left of \(targetText)"), "total \(total)")
+            #expect(hero.caption == (budget.isOver ? "kcal over \(targetText)" : "kcal left of \(targetText)"), "total \(total)")
             #expect(
                 hero.eatenLine == "\(budget.roundedConsumed.formatted(.number.locale(auditUS))) of \(targetText) eaten",
                 "total \(total)"
@@ -171,7 +171,8 @@ struct AuditCalorieSurfaceConsistencyTests {
         #expect(hero.ring.roundedConsumed == 2_000)
         #expect(hero.isOver)
         #expect(hero.headline == 1)
-        #expect(hero.caption == "kcal over")
+        #expect(hero.headlineText == "+1")
+        #expect(hero.caption == "kcal over 1,999")
         #expect(hero.donut.eatenKcal == 2_000)
         #expect(hero.donut.overKcal == 1)
         #expect(hero.donut.legend.last == .over(kcal: 1))
