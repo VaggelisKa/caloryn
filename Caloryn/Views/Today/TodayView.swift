@@ -25,7 +25,6 @@ private struct TodayDayView: View {
 
     private static let minimumHitTarget: CGFloat = 44
     private static let dayButtonSize: CGFloat = 36
-    private static let trailingClusterWidth: CGFloat = 240
 
     private struct FoodSearchPresentation: Identifiable {
         let id = UUID()
@@ -327,58 +326,44 @@ private struct TodayDayView: View {
         .scrollBounceBehavior(.basedOnSize)
     }
 
-    @ViewBuilder
     private func regularBand(_ dashboard: DashboardContent, layout: TodayDashboardLayout) -> some View {
-        let hero = dashboardSection(
-            entries: dashboard.entries,
-            calorieBudget: dashboard.calorieBudget,
-            columns: layout.heroColumns
-        )
+        let isBesideHero = layout.detailsPlacement == .besideHero
+        let bandLayout = isBesideHero
+            ? AnyLayout(HStackLayout(alignment: .top, spacing: TodayDashboardLayout.heroBesideTargetsSpacing))
+            : AnyLayout(VStackLayout(alignment: .leading, spacing: 20))
 
-        switch layout.detailsPlacement {
-        case .besideHero:
-            HStack(alignment: .top, spacing: 32) {
-                hero
-                    .fixedSize(horizontal: true, vertical: false)
+        return bandLayout {
+            dashboardSection(
+                entries: dashboard.entries,
+                calorieBudget: dashboard.calorieBudget,
+                columns: layout.heroColumns
+            )
+            .fixedSize(horizontal: isBesideHero, vertical: false)
 
-                VStack(alignment: .leading, spacing: 20) {
-                    targetsPanel(dashboard, layout: layout)
-                    dashboardCluster(dashboard)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        case .besideEachOtherBelowHero:
-            VStack(alignment: .leading, spacing: 20) {
-                hero
-
-                HStack(alignment: .top, spacing: 24) {
-                    if layout.showsTargetsPanel {
-                        targetsPanel(dashboard, layout: layout)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-
-                        if dashboard.hasCluster {
-                            dashboardCluster(dashboard)
-                                .frame(width: Self.trailingClusterWidth, alignment: .leading)
-                                .padding(.top, 8)
-                        }
-                    } else {
-                        dashboardCluster(dashboard)
-                    }
-                }
-            }
-        case .belowHero:
-            VStack(alignment: .leading, spacing: 20) {
-                hero
-                targetsPanel(dashboard, layout: layout)
-                dashboardCluster(dashboard)
+            if layout.showsTargetsPanel || dashboard.hasCluster {
+                dashboardDetails(dashboard, layout: layout)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }
 
-    @ViewBuilder
-    private func targetsPanel(_ dashboard: DashboardContent, layout: TodayDashboardLayout) -> some View {
-        if layout.showsTargetsPanel {
-            TodayTargetsPanel(rows: dashboard.targetRows, onDetailsRequested: showNutritionDetails)
+    private func dashboardDetails(_ dashboard: DashboardContent, layout: TodayDashboardLayout) -> some View {
+        let isTrailingCluster = layout.detailsPlacement == .besideEachOtherBelowHero && layout.showsTargetsPanel
+        let detailsLayout = isTrailingCluster
+            ? AnyLayout(HStackLayout(alignment: .top, spacing: TodayDashboardLayout.clusterBesideTargetsSpacing))
+            : AnyLayout(VStackLayout(alignment: .leading, spacing: 20))
+
+        return detailsLayout {
+            if layout.showsTargetsPanel {
+                TodayTargetsPanel(rows: dashboard.targetRows, onDetailsRequested: showNutritionDetails)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            if dashboard.hasCluster {
+                dashboardCluster(dashboard)
+                    .frame(width: isTrailingCluster ? TodayDashboardLayout.trailingClusterWidth : nil, alignment: .leading)
+                    .padding(.top, isTrailingCluster ? 8 : 0)
+            }
         }
     }
 
