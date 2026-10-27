@@ -90,7 +90,7 @@ struct CalorieHeroView: View {
             figures
 
             legend
-                .padding(.top, 10)
+                .padding(.top, 12)
         }
     }
 
