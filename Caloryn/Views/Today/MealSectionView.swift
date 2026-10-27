@@ -10,6 +10,7 @@ struct MealSectionView: View {
     var snackIndex: Int
     var titleOverride: String?
     var canCopyYesterday: Bool
+    var maximumRowWidth: CGFloat
     var onAdd: () -> Void
     var onEdit: (FoodLogEntry) -> Void
     var onDelete: (FoodLogEntry) -> Void
@@ -22,6 +23,7 @@ struct MealSectionView: View {
         snackIndex: Int = 0,
         titleOverride: String? = nil,
         canCopyYesterday: Bool = false,
+        maximumRowWidth: CGFloat = .infinity,
         onAdd: @escaping () -> Void,
         onEdit: @escaping (FoodLogEntry) -> Void,
         onDelete: @escaping (FoodLogEntry) -> Void
@@ -31,6 +33,7 @@ struct MealSectionView: View {
         self.snackIndex = snackIndex
         self.titleOverride = titleOverride
         self.canCopyYesterday = canCopyYesterday
+        self.maximumRowWidth = maximumRowWidth
         self.onAdd = onAdd
         self.onEdit = onEdit
         self.onDelete = onDelete
@@ -64,6 +67,7 @@ struct MealSectionView: View {
                 addAccessibilityLabel: summary.addAccessibilityLabel,
                 onAdd: onAdd
             )
+            .frame(maxWidth: maximumRowWidth, alignment: .leading)
             .todayPlateRowLayout(top: Self.sectionSpacing, bottom: 8)
             .listRowSeparator(.hidden, edges: .top)
 
@@ -74,6 +78,7 @@ struct MealSectionView: View {
                     onEdit: onEdit,
                     onDelete: onDelete
                 )
+                .frame(maxWidth: maximumRowWidth, alignment: .leading)
                 .todayPlateRowLayout()
                 .listRowSeparator(.hidden, edges: .bottom)
             } else {
@@ -83,6 +88,7 @@ struct MealSectionView: View {
                         onEdit: onEdit,
                         onDelete: onDelete
                     )
+                    .frame(maxWidth: maximumRowWidth, alignment: .leading)
                     .todayPlateRowLayout()
                     .listRowSeparator(entry.id == entries.last?.id ? .hidden : .visible, edges: .bottom)
                 }

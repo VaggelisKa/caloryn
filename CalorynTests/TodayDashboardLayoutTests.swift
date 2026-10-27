@@ -16,8 +16,7 @@ struct TodayDashboardLayoutTests {
         TodayDashboardLayout(
             isRegularWidth: regularWidth,
             isRegularHeight: regularHeight,
-            contentWidth: page.width - Self.pageMargins,
-            isWiderThanTall: page.width > page.height,
+            pageSize: page,
             isLargeText: largeText,
             hasTargets: hasTargets
         )
@@ -32,6 +31,7 @@ struct TodayDashboardLayoutTests {
         #expect(!phone.showsTargetsPanel)
         #expect(phone.detailsPlacement == .belowHero)
         #expect(!phone.showsMealsBesideDashboard)
+        #expect(phone.mealRowMaximumWidth == .infinity)
     }
 
     @Test("Compact width stays compact however wide the proposal is")
@@ -52,6 +52,7 @@ struct TodayDashboardLayoutTests {
         #expect(inner.showsTargetsPanel)
         #expect(inner.detailsPlacement == .besideEachOtherBelowHero)
         #expect(!inner.showsMealsBesideDashboard)
+        #expect(inner.mealRowMaximumWidth > 669 - Self.pageMargins)
     }
 
     @Test("The open inner display in landscape splits the dashboard from the meals")
@@ -60,6 +61,7 @@ struct TodayDashboardLayoutTests {
 
         #expect(inner.breakpoint == .wideRegular)
         #expect(inner.showsMealsBesideDashboard)
+        #expect(inner.arrangesSplitAroundFold)
         #expect(inner.heroColumns == .two)
         #expect(inner.showsTargetsPanel)
         #expect(inner.detailsPlacement == .belowHero)
@@ -70,25 +72,31 @@ struct TodayDashboardLayoutTests {
         let iPadLandscape = layout(page: CGSize(width: 1376, height: 1032))
 
         #expect(iPadLandscape.breakpoint == .wideRegular)
+        #expect(iPadLandscape.arrangesSplitAroundFold)
         #expect(iPadLandscape.heroColumns == .two)
     }
 
-    @Test("A large iPad in portrait puts the targets beside the hero")
+    @Test("A large iPad in portrait splits too, side by side rather than around a fold")
     func largeTabletPortrait() {
         let iPad = layout(page: CGSize(width: 1032, height: 1376))
 
-        #expect(iPad.breakpoint == .narrowRegular)
-        #expect(iPad.heroColumns == .three)
-        #expect(iPad.detailsPlacement == .besideHero)
+        #expect(iPad.breakpoint == .wideRegular)
+        #expect(iPad.showsMealsBesideDashboard)
+        #expect(!iPad.arrangesSplitAroundFold)
+        #expect(iPad.heroColumns == .two)
+        #expect(iPad.detailsPlacement == .belowHero)
+        #expect(iPad.showsTargetsPanel)
     }
 
-    @Test("A smaller iPad in portrait keeps the targets under the hero")
+    @Test("A smaller iPad in portrait keeps one list, the targets under the hero and the meals at a readable width")
     func smallTabletPortrait() {
         let iPad = layout(page: CGSize(width: 834, height: 1194))
 
         #expect(iPad.breakpoint == .narrowRegular)
         #expect(iPad.heroColumns == .three)
         #expect(iPad.detailsPlacement == .besideEachOtherBelowHero)
+        #expect(iPad.mealRowMaximumWidth == TodayDashboardLayout.readableMealRowWidth)
+        #expect(iPad.mealRowMaximumWidth < 834 - Self.pageMargins)
     }
 
     @Test("Half of an iPad in Split View is narrow-regular with the wide hero")
@@ -121,15 +129,59 @@ struct TodayDashboardLayoutTests {
         #expect(short.detailsPlacement == .besideEachOtherBelowHero)
     }
 
-    @Test("The targets move beside the hero from exactly their combined width, and not a point less")
-    func besideHeroThreshold() {
-        let width = TodayDashboardLayout.targetsBesideHeroMinimumWidth + Self.pageMargins
+    @Test("A page taller than wide splits from exactly the width that gives the dashboard its column, and not a point less")
+    func tallSplitThreshold() {
+        let width = TodayDashboardLayout.tallSplitMinimumPageWidth
         let fits = layout(page: CGSize(width: width, height: 1_400))
         let short = layout(page: CGSize(width: width - 1, height: 1_400))
 
-        #expect(fits.detailsPlacement == .besideHero)
-        #expect(short.detailsPlacement == .besideEachOtherBelowHero)
+        #expect(fits.breakpoint == .wideRegular)
+        #expect(!fits.arrangesSplitAroundFold)
+        #expect(short.breakpoint == .narrowRegular)
         #expect(short.heroColumns == .three)
+        #expect(short.detailsPlacement == .besideEachOtherBelowHero)
+    }
+
+    @Test("A wide page with compact height stays one list, however wide")
+    func compactHeightNeverSplitsTall() {
+        let wide = layout(regularHeight: false, page: CGSize(width: 1_100, height: 1_200))
+
+        #expect(wide.breakpoint == .narrowRegular)
+        #expect(!wide.showsMealsBesideDashboard)
+    }
+
+    @Test("The tall split's dashboard column is never narrower than the inner display's landscape one")
+    func tallSplitColumnMatchesTheInnerDisplay() {
+        #expect(
+            TodayDashboardLayout.tallSplitMinimumPageWidth * TodayDashboardLayout.dashboardColumnFraction
+                == TodayDashboardLayout.dashboardColumnMinimumWidth
+        )
+        #expect(
+            951 * TodayDashboardLayout.dashboardColumnFraction >= TodayDashboardLayout.dashboardColumnMinimumWidth
+        )
+        #expect(669 < TodayDashboardLayout.tallSplitMinimumPageWidth)
+    }
+
+    @Test("Every regular-width page caps the meal rows at a readable width")
+    func mealRowsAreCappedAtRegularWidth() {
+        let pages = [
+            layout(page: CGSize(width: 669, height: 951)),
+            layout(page: CGSize(width: 951, height: 669)),
+            layout(page: CGSize(width: 1032, height: 1376)),
+            layout(page: CGSize(width: 1376, height: 1032)),
+            layout(regularHeight: false, page: CGSize(width: 956, height: 440)),
+        ]
+
+        for page in pages {
+            #expect(page.mealRowMaximumWidth == TodayDashboardLayout.readableMealRowWidth)
+        }
+    }
+
+    @Test("Large text lets the meal rows fill the width they are given")
+    func largeTextLeavesMealRowsUncapped() {
+        let iPad = layout(page: CGSize(width: 834, height: 1194), largeText: true)
+
+        #expect(iPad.mealRowMaximumWidth == .infinity)
     }
 
     @Test("The cluster sits beside the targets from exactly their combined width, and not a point less")
@@ -151,7 +203,6 @@ struct TodayDashboardLayoutTests {
                 + TodayDashboardLayout.heroLegendColumnWidth
                 + 2 * TodayDashboardLayout.heroColumnSpacing
         )
-        #expect(TodayDashboardLayout.threeColumnHeroWidth < TodayDashboardLayout.targetsBesideHeroMinimumWidth)
         #expect(
             TodayDashboardLayout.clusterBesideTargetsMinimumWidth
                 > TodayDashboardLayout.trailingClusterWidth + TodayDashboardLayout.clusterBesideTargetsSpacing
@@ -167,9 +218,19 @@ struct TodayDashboardLayoutTests {
         #expect(narrow.detailsPlacement == .belowHero)
     }
 
-    @Test("Large text (xxxLarge and up) keeps the stacking hero and stacks the details too")
-    func largeTextStacks() {
+    @Test("Large text (xxxLarge and up) on a large iPad in portrait still splits, with the stacking hero")
+    func largeTextTallSplit() {
         let iPad = layout(page: CGSize(width: 1032, height: 1376), largeText: true)
+
+        #expect(iPad.breakpoint == .wideRegular)
+        #expect(iPad.heroColumns == .two)
+        #expect(iPad.showsTargetsPanel)
+        #expect(iPad.detailsPlacement == .belowHero)
+    }
+
+    @Test("Large text on a narrow-regular page keeps the stacking hero and stacks the details too")
+    func largeTextNarrowRegularStacks() {
+        let iPad = layout(page: CGSize(width: 834, height: 1194), largeText: true)
 
         #expect(iPad.breakpoint == .narrowRegular)
         #expect(iPad.heroColumns == .two)
