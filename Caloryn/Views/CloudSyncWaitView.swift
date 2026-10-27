@@ -48,12 +48,12 @@ struct CloudSyncWaitView: View {
                     .scaleEffect(isBreathing ? 1.04 : 0.96)
 
                 VStack(spacing: 10) {
-                    Text("Looking for your data")
+                    Text("Getting everything ready")
                         .font(CalorynTheme.sectionTitle)
                         .foregroundStyle(CalorynTheme.textPrimary)
                         .multilineTextAlignment(.center)
                         .accessibilityAddTraits(.isHeader)
-                        .accessibilityLabel("Looking for your data, in progress")
+                        .accessibilityLabel("Getting everything ready, in progress")
 
                     Text("If you have used Caloryn on another device, your profile and food log will show up in a moment.")
                         .font(CalorynTheme.bodyText)
