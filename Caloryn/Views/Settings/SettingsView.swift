@@ -14,36 +14,66 @@ struct SettingsView: View {
     @AppStorage("showNutriscore") private var showNutriscore = true
     @AppStorage("iCloudSyncEnabled") private var iCloudSyncEnabled = true
 
+    @AppStorage("dailyReminderEnabled") private var isReminderEnabled = false
+    @AppStorage("dailyReminderMinutesFromMidnight") private var reminderMinutes = DailyReminderPlanner.defaultReminderMinutes
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
+
     @State private var showExportSheet = false
     @State private var exportURL: URL?
     @State private var showRestartAlert = false
     @State private var isEditingGoal = false
     @State private var isEditingProfile = false
+    @State private var pageSize: CGSize = .zero
+    @State private var chosenSection: SettingsSection?
 
     private var profile: UserProfile? { profiles.first }
 
-    var body: some View {
-        NavigationStack {
-            List {
-                if let profile {
-                    goalSection(profile)
-                        .listRowBackground(CalorynTheme.backgroundSecondary)
-                    profileSection(profile)
-                        .listRowBackground(CalorynTheme.backgroundSecondary)
-                }
+    private var sectionIndex: SettingsSectionIndex {
+        SettingsSectionIndex(
+            profile: profile.map { profile in
+                SettingsSectionIndex.Profile(
+                    dailyCalorieTarget: profile.dailyCalorieTarget,
+                    summary: profileSummary(profile)
+                )
+            },
+            theme: ThemePreference(rawValue: themePreferenceRaw) ?? .system,
+            isReminderEnabled: isReminderEnabled,
+            reminderMinutesFromMidnight: reminderMinutes,
+            isICloudSyncEnabled: iCloudSyncEnabled,
+            versionText: appVersion
+        )
+    }
 
-                appearanceSection
-                    .listRowBackground(CalorynTheme.backgroundSecondary)
-                DailyReminderSettingsSection()
-                    .listRowBackground(CalorynTheme.backgroundSecondary)
-                ChatbotLogSettingsSection()
-                    .listRowBackground(CalorynTheme.backgroundSecondary)
-                dataSection
-                    .listRowBackground(CalorynTheme.backgroundSecondary)
-                aboutSection
-                    .listRowBackground(CalorynTheme.backgroundSecondary)
+    var body: some View {
+        let index = sectionIndex
+        let split = RegularWidthSplit(
+            isRegularWidth: horizontalSizeClass == .regular,
+            isRegularHeight: verticalSizeClass == .regular,
+            pageSize: pageSize
+        )
+
+        NavigationStack {
+            Group {
+                if split.showsColumns {
+                    SplitColumns(split: split) {
+                        sectionList(index)
+                    } secondary: {
+                        List {
+                            section(index.selection(resolving: chosenSection))
+                        }
+                        .calorynGroupedListStyle()
+                    }
+                } else {
+                    List {
+                        ForEach(index.sections) { section($0) }
+                    }
+                    .calorynGroupedListStyle()
+                }
             }
-            .calorynGroupedListStyle()
+            .onGeometryChange(for: CGSize.self) { proxy in
+                proxy.size
+            } action: { pageSize = $0 }
             .calorynPageCanvas()
             .calorynLargeTitle("Settings")
             .navigationDestination(isPresented: $isEditingGoal) {
@@ -67,6 +97,62 @@ struct SettingsView: View {
                 Text("iCloud sync changes will take effect the next time you open the app.")
             }
         }
+    }
+
+    @ViewBuilder
+    private func section(_ section: SettingsSection) -> some View {
+        Group {
+            switch section {
+            case .goal:
+                if let profile {
+                    goalSection(profile)
+                }
+            case .profile:
+                if let profile {
+                    profileSection(profile)
+                }
+            case .appearance:
+                appearanceSection
+            case .reminder:
+                DailyReminderSettingsSection()
+            case .chatbotLog:
+                ChatbotLogSettingsSection()
+            case .data:
+                dataSection
+            case .about:
+                aboutSection
+            }
+        }
+        .listRowBackground(CalorynTheme.backgroundSecondary)
+    }
+
+    private func sectionList(_ index: SettingsSectionIndex) -> some View {
+        let selected = index.selection(resolving: chosenSection)
+
+        return ScrollView {
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(index.sections) { section in
+                    let isSelected = section == selected
+
+                    Button {
+                        chosenSection = section
+                    } label: {
+                        SettingsSectionIndexRow(
+                            title: section.title,
+                            summary: index.summary(for: section),
+                            isSelected: isSelected
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(isSelected ? .isSelected : [])
+                    .accessibilityIdentifier(section.accessibilityIdentifier)
+                }
+            }
+            .padding(.leading, CalorynTheme.pagePadding)
+            .padding(.trailing, CalorynTheme.pagePadding / 2)
+            .padding(.vertical, 12)
+        }
+        .scrollBounceBehavior(.basedOnSize)
     }
 
     private var appearanceSection: some View {
@@ -139,14 +225,18 @@ struct SettingsView: View {
         return CalorieDonutSummary(mealTotals: SettingsGoalPlate.mealTotals(entries), budget: budget)
     }
 
-    private func profileSection(_ profile: UserProfile) -> some View {
-        let summary = SettingsProfileSummary(
+    private func profileSummary(_ profile: UserProfile) -> SettingsProfileSummary {
+        SettingsProfileSummary(
             age: profile.age,
             sex: profile.sex,
             heightCm: profile.heightCm,
             weightKg: profile.weightKg,
             activityLevel: profile.activityLevel
         )
+    }
+
+    private func profileSection(_ profile: UserProfile) -> some View {
+        let summary = profileSummary(profile)
 
         return Section {
             SettingsValueRow(title: "Age", value: summary.ageText)
@@ -295,6 +385,39 @@ private struct SettingsGoalHeadline: View {
         // The hairline under the headline runs from the group's edge like every other row's,
         // not from the text beside the plate, where the system would start it.
         .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
+    }
+}
+
+private struct SettingsSectionIndexRow: View {
+    let title: String
+    let summary: String
+    let isSelected: Bool
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text(title)
+                .font(CalorynTheme.bodyText.weight(isSelected ? .bold : .medium))
+                .foregroundStyle(isSelected ? CalorynTheme.textOnAccent : CalorynTheme.textPrimary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            if !summary.isEmpty {
+                Text(summary)
+                    .font(CalorynTheme.cardSubtitle.monospacedDigit())
+                    .foregroundStyle(isSelected ? CalorynTheme.textOnAccent.opacity(0.75) : CalorynTheme.textSecondary)
+                    .lineLimit(1)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(minHeight: 48)
+        .background {
+            if isSelected {
+                RoundedRectangle(cornerRadius: CalorynTheme.smallCornerRadius, style: .continuous)
+                    .fill(CalorynTheme.accent)
+            }
+        }
+        .contentShape(RoundedRectangle(cornerRadius: CalorynTheme.smallCornerRadius, style: .continuous))
+        .accessibilityElement(children: .combine)
     }
 }
 
