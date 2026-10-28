@@ -66,7 +66,8 @@ final class RegularWidthScreensTests: XCTestCase {
             HistoryView().environment(router),
             fixture: .historyPattern,
             size: Self.tallTablet,
-            isRegular: true
+            isRegular: true,
+            readyWhen: "history.calorieTrend.card"
         )
 
         XCTAssertNotNil(screen.element("history.calorieTrend.card"))
@@ -80,7 +81,8 @@ final class RegularWidthScreensTests: XCTestCase {
             HistoryView().environment(router),
             fixture: .historyPattern,
             size: Self.phone,
-            isRegular: false
+            isRegular: false,
+            readyWhen: "history.calorieTrend.card"
         )
 
         XCTAssertNotNil(screen.element("history.calorieTrend.card"))
@@ -91,7 +93,8 @@ final class RegularWidthScreensTests: XCTestCase {
         _ view: some View,
         fixture: UITestConfiguration.Fixture,
         size: CGSize,
-        isRegular: Bool
+        isRegular: Bool,
+        readyWhen readyIdentifier: String? = nil
     ) throws -> HostedScreen {
         let container = try ModelContainer(
             for: Schema([
@@ -118,7 +121,14 @@ final class RegularWidthScreensTests: XCTestCase {
         self.window = window
         RunLoop.main.run(until: Date(timeIntervalSinceNow: 2))
 
-        return HostedScreen(root: controller.view)
+        let screen = HostedScreen(root: controller.view)
+        if let readyIdentifier {
+            let deadline = Date(timeIntervalSinceNow: 15)
+            while screen.element(readyIdentifier) == nil, Date() < deadline {
+                RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.1))
+            }
+        }
+        return screen
     }
 }
 
