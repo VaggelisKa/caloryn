@@ -602,7 +602,7 @@ final class ComponentSnapshotTests: XCTestCase {
         stage.rootViewController = host
         stage.isHidden = false
         RunLoop.main.run(until: Date(timeIntervalSinceNow: 1.5))
-        waitUntilFramesSettle(in: stage, deadline: Date(timeIntervalSinceNow: 5))
+        waitUntilFramesSettle(in: stage, deadline: Date(timeIntervalSinceNow: 10))
         stage.rootViewController = nil
 
         assertSnapshots(
@@ -619,11 +619,14 @@ final class ComponentSnapshotTests: XCTestCase {
     }
 
     private func waitUntilFramesSettle(in window: UIWindow, deadline: Date) {
+        let unchangedSamplesLongerThanTheReveal = 4
         var previous = rendered(window)
+        var unchangedSamples = 0
         while Date() < deadline {
             RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.25))
             let current = rendered(window)
-            if current == previous { return }
+            unchangedSamples = current == previous ? unchangedSamples + 1 : 0
+            if unchangedSamples == unchangedSamplesLongerThanTheReveal { return }
             previous = current
         }
     }
