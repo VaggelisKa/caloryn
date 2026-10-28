@@ -20,21 +20,16 @@ struct CalorynApp: App {
         let iCloudEnabled = UserDefaults.standard.object(forKey: "iCloudSyncEnabled") as? Bool ?? true
         let syncsWithCloud = !usesEphemeralStore && iCloudEnabled
         #if DEBUG
+        if CloudKitSchemaInitializer.isRequested {
+            CloudKitSchemaInitializer.run()
+        }
         cloudSync = UITestConfiguration.holdsCloudImport
             ? .heldOpenForUITests()
             : CloudSyncActivity(syncsWithCloud: syncsWithCloud)
         #else
         cloudSync = CloudSyncActivity(syncsWithCloud: syncsWithCloud)
         #endif
-        let schema = Schema([
-            UserProfile.self,
-            FoodItem.self,
-            FoodLogEntry.self,
-            RecipeIngredient.self,
-            DailyGoalSnapshot.self,
-            MealTemplate.self,
-            MealTemplateItem.self,
-        ])
+        let schema = Schema(CalorynModelSchema.models)
         let config = ModelConfiguration(
             schema: schema,
             isStoredInMemoryOnly: usesEphemeralStore,
