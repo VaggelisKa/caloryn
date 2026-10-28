@@ -109,6 +109,9 @@ class runs there; moving one into a named shard means adding it to both lists.
   (`Label`, drawn symbol-only) or the vertical bar cannot host them. `xcodebuild test`
   hangs on it after the tests pass — stop it, the PNGs are in `<bundle>/Data/`. Folding is
   Device Hub only; `devicectl device appResize` reaches the inner sizes. `docs/design/iphone-duo.md`.
+- **A `@Model` change breaks TestFlight sync** until the CloudKit schema is initialized and
+  deployed to Production; `CloudKitSchemaContractTests` fails until then.
+  `docs/cloudkit-schema.md`.
 - New source files need no pbxproj edit (synchronized groups, objectVersion 77). Adding
   a package or target does.
 - Keep `Package.resolved` tracked — it's under the gitignored `project.xcworkspace` and
