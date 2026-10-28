@@ -95,9 +95,10 @@ the primary view.
 **iPad.** `MainTabView` uses `.sidebarAdaptable`: a top tab bar with a sidebar toggle in
 portrait, the sidebar in landscape; an iPhone, the Duo included, keeps its tab bar. Sheets
 need nothing: Nutrition Details presents as a centred sheet about 580pt wide. The app
-is still iPhone-only (`TARGETED_DEVICE_FAMILY = 1`); the iPad captures were taken with
-`TARGETED_DEVICE_FAMILY=1,2` passed to `xcodebuild` and nothing committed. Shipping on
-iPad is its own decision.
+and its widget extension target iPhone and iPad (`TARGETED_DEVICE_FAMILY = "1,2"`). With
+`1` the build installs on an iPad but runs in the scaled iPhone compatibility window, and
+none of this layout is reachable. The simulator shows the same window, so check the setting
+before trusting an iPad capture.
 
 ## Looking at it
 
