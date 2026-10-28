@@ -88,15 +88,27 @@ struct TodayDashboardLayoutTests {
         #expect(iPad.showsTargetsPanel)
     }
 
-    @Test("A smaller iPad in portrait keeps one list, the targets under the hero and the meals at a readable width")
-    func smallTabletPortrait() {
+    @Test("An 11-inch iPad in portrait puts the dashboard beside the meals")
+    func elevenInchTabletPortrait() {
         let iPad = layout(page: CGSize(width: 834, height: 1194))
+
+        #expect(iPad.breakpoint == .wideRegular)
+        #expect(iPad.showsMealsBesideDashboard)
+        #expect(!iPad.split.arrangesAroundFold)
+        #expect(iPad.heroColumns == .two)
+        #expect(iPad.detailsPlacement == .belowHero)
+        #expect(iPad.showsTargetsPanel)
+    }
+
+    @Test("An iPad mini in portrait keeps one list, the targets under the hero and the meals at a readable width")
+    func miniTabletPortrait() {
+        let iPad = layout(page: CGSize(width: 744, height: 1133))
 
         #expect(iPad.breakpoint == .narrowRegular)
         #expect(iPad.heroColumns == .three)
         #expect(iPad.detailsPlacement == .besideEachOtherBelowHero)
         #expect(iPad.mealRowMaximumWidth == TodayDashboardLayout.readableMealRowWidth)
-        #expect(iPad.mealRowMaximumWidth < 834 - Self.pageMargins)
+        #expect(iPad.mealRowMaximumWidth < 744 - Self.pageMargins)
     }
 
     @Test("Half of an iPad in Split View is narrow-regular with the wide hero")
@@ -153,7 +165,7 @@ struct TodayDashboardLayoutTests {
     @Test("The tall split's dashboard column is never narrower than the inner display's landscape one")
     func tallSplitColumnMatchesTheInnerDisplay() {
         #expect(
-            RegularWidthSplit.tallSplitMinimumPageWidth * RegularWidthSplit.primaryColumnFraction
+            RegularWidthSplit.primaryColumnWidth(forPageWidth: RegularWidthSplit.tallSplitMinimumPageWidth)
                 == RegularWidthSplit.primaryColumnMinimumWidth
         )
         #expect(
@@ -230,7 +242,7 @@ struct TodayDashboardLayoutTests {
 
     @Test("Large text on a narrow-regular page keeps the stacking hero and stacks the details too")
     func largeTextNarrowRegularStacks() {
-        let iPad = layout(page: CGSize(width: 834, height: 1194), largeText: true)
+        let iPad = layout(page: CGSize(width: 744, height: 1133), largeText: true)
 
         #expect(iPad.breakpoint == .narrowRegular)
         #expect(iPad.heroColumns == .two)

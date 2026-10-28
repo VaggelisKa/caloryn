@@ -53,7 +53,7 @@ struct SplitColumns<Primary: View, Secondary: View>: View {
     private var sideBySide: some View {
         HStack(alignment: .top, spacing: 0) {
             primary
-                .containerRelativeFrame(.horizontal) { width, _ in width * RegularWidthSplit.primaryColumnFraction }
+                .containerRelativeFrame(.horizontal) { width, _ in RegularWidthSplit.primaryColumnWidth(forPageWidth: width) }
 
             secondary
         }
