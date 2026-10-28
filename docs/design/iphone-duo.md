@@ -70,18 +70,22 @@ the device — so the same rules serve iPad.
 | Breakpoint | When | Today shows |
 |---|---|---|
 | **compact** | compact width: every iPhone in portrait, the closed Duo, narrow iPad windows | unchanged: one list with the date, the two-column hero (legend under the number), a full-width Nutri-Score or Copy Yesterday row, then the meals |
-| **narrow-regular** | regular width, unless wide-regular: the inner display in portrait (669×951), an 11" iPad in portrait, half an iPad in Split View, a regular-width iPhone held landscape (compact height, too short to split) | one list. The hero takes three columns (donut 168 + figures 200 + legend 220pt) once the content is 624pt wide. Under it the targets panel, with the Nutri-Score chips or Copy Yesterday as a 240pt trailing cluster |
-| **wide-regular** | regular width *and* height, and either wider than tall (the inner display in landscape, 951×669; a full iPad in landscape) or at least 950pt wide (a 13" iPad in portrait) | the dashboard column (40%) beside the meals. It holds the date, the two-column hero, the targets panel and the cluster. Wider than tall, the two sit in the split arrangement (an `HStack` before iOS 27.1). Taller than wide, they always sit in the `HStack`: with no fold to arrange around, an arrangement view would stack them and clip the dashboard |
+| **narrow-regular** | regular width, unless wide-regular: the inner display in portrait (669×951), an iPad mini in portrait (744pt), half an iPad in Split View, a regular-width iPhone held landscape (compact height, too short to split) | one list. The hero takes three columns (donut 168 + figures 200 + legend 220pt) once the content is 624pt wide. Under it the targets panel, with the Nutri-Score chips or Copy Yesterday as a 240pt trailing cluster |
+| **wide-regular** | regular width *and* height, and either wider than tall (the inner display in landscape, 951×669; a full iPad in landscape) or at least 820pt wide (an 11" or 13" iPad in portrait) | the dashboard column (40%, never under 380pt) beside the meals. It holds the date, the two-column hero, the targets panel and the cluster. Wider than tall, the two sit in the split arrangement (an `HStack` before iOS 27.1). Taller than wide, they always sit in the `HStack`: with no fold to arrange around, an arrangement view would stack them and clip the dashboard |
 
 At regular width the meal rows stop at 672pt, the system's readable width, leading-aligned with
 their separators. The inner display never reaches it (629pt of content in portrait, about 530
-in the landscape split). An 11" iPad in portrait, a Split View half and a regular-width iPhone
+in the landscape split). An iPad mini in portrait, a Split View half and a regular-width iPhone
 in landscape do, and so does the landscape split's meal column with the iPad sidebar hidden.
 Large text lifts the cap.
 
-The 950pt for a tall split is the width at which the 40% column is 380pt: the column the inner
-display's landscape split gives the dashboard, the narrowest one that has been signed off. An 11"
-iPad in portrait (834pt) would get 334pt and a squeezed hero, so it keeps the single list. In
+The dashboard column is 40% of the page but never under 380pt: the column the inner display's
+landscape split gives it, the narrowest one that has been signed off. A tall split needs 820pt,
+that 380pt plus 440pt for the meals, the width of the widest iPhone page. That takes in every 11"
+iPad in portrait (820pt Air, 834pt Pro), whose dashboard sits at the 380pt floor, and leaves the
+iPad mini (744pt) on the single list. Until then the gate was 950pt, the width at which a plain 40%
+reaches 380pt, and an 11" iPad in portrait kept the single list with its meal rows stopping short
+of a blank strip, unlike the 13" layout the App Store screenshots show. In
 #207 a 13" iPad in portrait put the panel and cluster beside a three-column hero instead, over
 meal rows about 990pt wide. That read as a phone list stretched across a tablet, and the split
 replaced it.
