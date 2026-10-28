@@ -87,6 +87,14 @@ exit code and looks green.
    constraint, a trap a reader would otherwise "fix" into a bug. The comments still in the
    codebase are that set; keep them accurate when you touch their code, and do not add to
    them for anything a name or a test could say.
+9. **A `@Model` change ships with a CloudKit Production deploy.** Production never learns
+   a field on its own and rejects a whole upload batch over one it does not know, so
+   TestFlight sync dies silently — it had no schema at all until 2026-10-28. In the same
+   PR: delete and re-record `CalorynTests/CloudKit/ModelSchema.ckdb`, import it into
+   Development (console → Import Schema, or `cktool import-schema`), deploy to Production
+   **only after the user approves the diff** (fields can never be removed), then export
+   Production over `ProductionSchema.ckdb`. `CloudKitSchemaContractTests` fails until all
+   three are done. `docs/cloudkit-schema.md`.
 
 ## CI
 
@@ -109,9 +117,6 @@ class runs there; moving one into a named shard means adding it to both lists.
   (`Label`, drawn symbol-only) or the vertical bar cannot host them. `xcodebuild test`
   hangs on it after the tests pass — stop it, the PNGs are in `<bundle>/Data/`. Folding is
   Device Hub only; `devicectl device appResize` reaches the inner sizes. `docs/design/iphone-duo.md`.
-- **A `@Model` change breaks TestFlight sync** until the CloudKit schema is initialized and
-  deployed to Production; `CloudKitSchemaContractTests` fails until then.
-  `docs/cloudkit-schema.md`.
 - New source files need no pbxproj edit (synchronized groups, objectVersion 77). Adding
   a package or target does.
 - Keep `Package.resolved` tracked — it's under the gitignored `project.xcworkspace` and
