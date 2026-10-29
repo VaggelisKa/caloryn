@@ -125,7 +125,9 @@ struct HistoryRecurringCaloriePatternDetailSummary: Equatable {
         HistoryRecurringCaloriePatternWording.patternDaysName(
             kind: kind,
             weekdayName: weekdayName,
-            outcome: outcome
+            outcome: outcome,
+            supportingDayCount: supportingDayCount,
+            cohortDayCount: cohortDayCount
         )
     }
 

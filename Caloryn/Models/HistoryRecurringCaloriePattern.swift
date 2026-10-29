@@ -115,11 +115,17 @@ enum HistoryRecurringCaloriePatternWording {
     static func patternDaysName(
         kind: HistoryRecurringCaloriePatternKind,
         weekdayName: String,
-        outcome: HistoryRecurringCalorieOutcome
+        outcome: HistoryRecurringCalorieOutcome,
+        supportingDayCount: Int,
+        cohortDayCount: Int
     ) -> String {
         switch kind {
-        case .weekdayMeal: weekdayPlural(weekdayName)
-        case .mealOnly: outcome.goalDaysText
+        case .weekdayMeal:
+            supportingDayCount == cohortDayCount
+                ? weekdayPlural(weekdayName)
+                : "\(outcome.direction)-goal \(weekdayPlural(weekdayName))"
+        case .mealOnly:
+            outcome.goalDaysText
         }
     }
 
@@ -199,7 +205,7 @@ struct HistoryRecurringCaloriePattern: Identifiable {
             return HistoryRecurringCaloriePatternPhrase(runs: [
                 .plain("\(mealName) \(verb) "),
                 .emphasised(patternAverage),
-                .plain(" kcal on \(weekdayPlural) vs "),
+                .plain(" kcal on \(patternDaysName) vs "),
                 .emphasised(otherAverage),
                 .plain(" other days"),
             ])
@@ -232,6 +238,16 @@ struct HistoryRecurringCaloriePattern: Identifiable {
 
     private var weekdayPlural: String {
         HistoryRecurringCaloriePatternWording.weekdayPlural(weekdayName)
+    }
+
+    private var patternDaysName: String {
+        HistoryRecurringCaloriePatternWording.patternDaysName(
+            kind: kind,
+            weekdayName: weekdayName,
+            outcome: outcome,
+            supportingDayCount: supportingDays.count,
+            cohortDayCount: cohortDayCount
+        )
     }
 
     private static func weekdayName(for weekday: Int?) -> String {

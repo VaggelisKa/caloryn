@@ -17,6 +17,19 @@ struct HistoryRecurringCaloriePatternDetailSummaryTests {
     }
 
     @Test(
+        "given only some logged weekdays matched, when leading the detail, then the matching weekdays are named by their side of goal",
+        arguments: [
+            (HistoryRecurringCalorieOutcome.above, "Dinner is the difference: 800 kcal on over-goal Fridays, 500 on other days."),
+            (.below, "Dinner is the difference: 800 kcal on under-goal Fridays, 500 on other days.")
+        ]
+    )
+    func aPartialWeekdayPatternLeadsWithItsSideOfGoal(outcome: HistoryRecurringCalorieOutcome, expected: String) {
+        let summary = makeSummary(kind: .weekdayMeal, outcome: outcome, supportingDayCount: 4, cohortDayCount: 5)
+
+        #expect(summary.differenceLead == expected)
+    }
+
+    @Test(
         "given a meal-only pattern, when leading the detail, then the pattern days are named by their side of goal",
         arguments: [
             (HistoryRecurringCalorieOutcome.above, "Dinner is the difference: 800 kcal on over-goal days, 500 on other days."),
@@ -99,6 +112,36 @@ struct HistoryRecurringCaloriePatternDetailSummaryTests {
         #expect(bars.map(\.isPatternDays) == [true, false])
     }
 
+    @Test(
+        "given only some logged weekdays matched, when comparing the meal, then the first bar is the matching weekdays and the other bar is every other day",
+        arguments: [
+            (HistoryRecurringCalorieOutcome.above, "Over-goal Fridays"),
+            (.below, "Under-goal Fridays")
+        ]
+    )
+    func aPartialWeekdayBarNamesItsSideOfGoal(outcome: HistoryRecurringCalorieOutcome, expected: String) {
+        let bars = makeSummary(outcome: outcome, supportingDayCount: 4, cohortDayCount: 5).mealBars
+
+        #expect(bars.map(\.label) == [expected, "Other days"])
+    }
+
+    @Test("given only some logged weekdays matched, when counting the outcome, then the weekday is still set against every other weekday")
+    func aPartialWeekdayOutcomeComparesWeekdays() {
+        let summary = makeSummary(
+            kind: .weekdayMeal,
+            weekdayName: "Friday",
+            supportingDayCount: 4,
+            cohortDayCount: 5,
+            outcomeComparisonCount: 2,
+            outcomeComparisonDayCount: 25
+        )
+
+        #expect(summary.outcomeStats == [
+            .init(value: "4 of 5", label: "Fridays"),
+            .init(value: "2 of 25", label: "other days")
+        ])
+    }
+
     @Test("given a smaller meal on the pattern's days, when comparing the meal, then the other days fill their bar instead")
     func aSmallerMealScalesToTheOtherDays() {
         let bars = makeSummary(
@@ -123,17 +166,23 @@ struct HistoryRecurringCaloriePatternDetailSummaryTests {
     @Test(
         "given each kind of pattern, when titling the day list, then it names the days it lists",
         arguments: [
-            (HistoryRecurringCaloriePatternKind.weekdayMeal, HistoryRecurringCalorieOutcome.above, "Fridays"),
-            (.mealOnly, .above, "Over-goal days"),
-            (.mealOnly, .below, "Under-goal days")
+            (HistoryRecurringCaloriePatternKind.weekdayMeal, HistoryRecurringCalorieOutcome.above, 4, "Fridays"),
+            (.weekdayMeal, .below, 4, "Fridays"),
+            (.weekdayMeal, .above, 5, "Over-goal Fridays"),
+            (.weekdayMeal, .below, 5, "Under-goal Fridays"),
+            (.mealOnly, .above, 4, "Over-goal days"),
+            (.mealOnly, .below, 4, "Under-goal days")
         ]
     )
     func theDayListNamesItsDays(
         kind: HistoryRecurringCaloriePatternKind,
         outcome: HistoryRecurringCalorieOutcome,
+        cohortDayCount: Int,
         expected: String
     ) {
-        #expect(makeSummary(kind: kind, outcome: outcome).daysListTitle == expected)
+        let summary = makeSummary(kind: kind, outcome: outcome, supportingDayCount: 4, cohortDayCount: cohortDayCount)
+
+        #expect(summary.daysListTitle == expected)
     }
 
     @Test("given a supporting day, when summarising it, then the logged total is emphasised against the day's own goal")

@@ -48,18 +48,43 @@ struct HistoryRecurringCaloriePatternCoverageTests {
         #expect(pattern.headline == expected)
     }
 
-    @Test("given a weekday pattern, when comparing its meal, then both rounded averages are stated and emphasised")
+    @Test("given every logged weekday matched, when comparing its meal, then both rounded averages are stated and emphasised against plain weekdays")
     func weekdayMealComparison() {
         let pattern = makePattern(
             kind: .weekdayMeal,
             outcome: .above,
             weekday: 6,
             mealType: .dinner,
+            supportingDayCount: 4,
+            cohortDayCount: 4,
             supportingMealAverage: 799.6,
             comparisonMealAverage: 500.4
         )
 
         #expect(pattern.mealComparison.plainText == "Dinner averages 800 kcal on Fridays vs 500 other days")
+        #expect(pattern.mealComparison.runs.filter(\.isEmphasised).map(\.text) == ["800", "500"])
+    }
+
+    @Test(
+        "given only some logged weekdays matched, when comparing its meal, then the average covers the matching weekdays and says so",
+        arguments: [
+            (HistoryRecurringCalorieOutcome.above, "Dinner averages 800 kcal on over-goal Fridays vs 500 other days"),
+            (.below, "Dinner averages 800 kcal on under-goal Fridays vs 500 other days")
+        ]
+    )
+    func partialWeekdayMealComparison(outcome: HistoryRecurringCalorieOutcome, expected: String) {
+        let pattern = makePattern(
+            kind: .weekdayMeal,
+            outcome: outcome,
+            weekday: 6,
+            mealType: .dinner,
+            supportingDayCount: 4,
+            cohortDayCount: 5,
+            supportingMealAverage: 800,
+            comparisonMealAverage: 500
+        )
+
+        #expect(pattern.mealComparison.plainText == expected)
         #expect(pattern.mealComparison.runs.filter(\.isEmphasised).map(\.text) == ["800", "500"])
     }
 
@@ -80,10 +105,15 @@ struct HistoryRecurringCaloriePatternCoverageTests {
 
     @Test("given a snack pattern, when comparing it, then snacks are named in the plural and the verb agrees")
     func snackComparisonIsPlural() {
-        let weekday = makePattern(kind: .weekdayMeal, weekday: 7, mealType: .snack)
+        let weekday = makePattern(kind: .weekdayMeal, weekday: 7, mealType: .snack, supportingDayCount: 4, cohortDayCount: 4)
+        let partialWeekday = makePattern(kind: .weekdayMeal, weekday: 7, mealType: .snack, supportingDayCount: 4, cohortDayCount: 5)
         let mealOnly = makePattern(kind: .mealOnly, weekday: nil, mealType: .snack)
 
         #expect(weekday.mealComparison.plainText == "Snacks average \(1_300.formatted()) kcal on Saturdays vs 500 other days")
+        #expect(
+            partialWeekday.mealComparison.plainText
+                == "Snacks average \(1_300.formatted()) kcal on over-goal Saturdays vs 500 other days"
+        )
         #expect(mealOnly.mealComparison.plainText == "Snacks average \(1_300.formatted()) kcal on those days vs 500 on others")
     }
 
