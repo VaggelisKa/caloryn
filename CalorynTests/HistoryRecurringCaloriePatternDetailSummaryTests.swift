@@ -4,47 +4,54 @@ import Testing
 
 @Suite("History recurring pattern detail summary")
 struct HistoryRecurringCaloriePatternDetailSummaryTests {
-    @Test("given a weekday pattern, when leading the detail, then the meal is the difference between that weekday and other days")
+    @Test("given every logged weekday matched, when leading the detail, then it states the card's meal averages with both numbers emphasised")
     func aWeekdayPatternLeadsWithTheMeal() {
         let summary = makeSummary(
             kind: .weekdayMeal,
             weekdayName: "Friday",
+            supportingDayCount: 4,
+            cohortDayCount: 4,
             supportingMealAverage: 800.4,
             comparisonMealAverage: 499.6
         )
 
-        #expect(summary.differenceLead == "Dinner is the difference: 800 kcal on Fridays, 500 on other days.")
+        #expect(summary.mealLead.plainText == "Dinner averages 800 kcal on Fridays, 500 on other days.")
+        #expect(summary.mealLead.runs.filter(\.isEmphasised).map(\.text) == ["800", "500"])
     }
 
     @Test(
         "given only some logged weekdays matched, when leading the detail, then the matching weekdays are named by their side of goal",
         arguments: [
-            (HistoryRecurringCalorieOutcome.above, "Dinner is the difference: 800 kcal on over-goal Fridays, 500 on other days."),
-            (.below, "Dinner is the difference: 800 kcal on under-goal Fridays, 500 on other days.")
+            (HistoryRecurringCalorieOutcome.above, "Dinner averages 800 kcal on over-goal Fridays, 500 on other days."),
+            (.below, "Dinner averages 800 kcal on under-goal Fridays, 500 on other days.")
         ]
     )
     func aPartialWeekdayPatternLeadsWithItsSideOfGoal(outcome: HistoryRecurringCalorieOutcome, expected: String) {
         let summary = makeSummary(kind: .weekdayMeal, outcome: outcome, supportingDayCount: 4, cohortDayCount: 5)
 
-        #expect(summary.differenceLead == expected)
+        #expect(summary.mealLead.plainText == expected)
     }
 
     @Test(
         "given a meal-only pattern, when leading the detail, then the pattern days are named by their side of goal",
         arguments: [
-            (HistoryRecurringCalorieOutcome.above, "Dinner is the difference: 800 kcal on over-goal days, 500 on other days."),
-            (.below, "Dinner is the difference: 800 kcal on under-goal days, 500 on other days.")
+            (HistoryRecurringCalorieOutcome.above, "Dinner averages 800 kcal on over-goal days, 500 on other days."),
+            (.below, "Dinner averages 800 kcal on under-goal days, 500 on other days.")
         ]
     )
     func aMealOnlyPatternLeadsWithItsSideOfGoal(outcome: HistoryRecurringCalorieOutcome, expected: String) {
-        #expect(makeSummary(kind: .mealOnly, outcome: outcome).differenceLead == expected)
+        #expect(makeSummary(kind: .mealOnly, outcome: outcome).mealLead.plainText == expected)
     }
 
     @Test("given snacks, when leading the detail, then they are plural and the verb agrees")
     func snacksLeadInThePlural() {
         #expect(
-            makeSummary(mealType: .snack).differenceLead
-                == "Snacks are the difference: 800 kcal on Fridays, 500 on other days."
+            makeSummary(mealType: .snack).mealLead.plainText
+                == "Snacks average 800 kcal on Fridays, 500 on other days."
+        )
+        #expect(
+            makeSummary(kind: .mealOnly, mealType: .snack).mealLead.plainText
+                == "Snacks average 800 kcal on over-goal days, 500 on other days."
         )
     }
 
