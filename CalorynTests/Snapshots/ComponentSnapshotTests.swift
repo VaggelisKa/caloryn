@@ -526,7 +526,7 @@ final class ComponentSnapshotTests: XCTestCase {
                 .frame(maxWidth: .infinity, minHeight: 60, alignment: .leading)
                 .historyDetailSource(isSelected: true, outset: 12)
 
-            Text("Friday dinners stood out")
+            Text("Fridays run over goal")
                 .font(CalorynTheme.sectionHeaderTitle)
                 .foregroundStyle(CalorynTheme.textPrimary)
                 .frame(maxWidth: .infinity, minHeight: 60, alignment: .leading)
