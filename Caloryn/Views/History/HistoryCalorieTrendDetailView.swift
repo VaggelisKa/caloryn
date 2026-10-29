@@ -69,11 +69,7 @@ private struct HistoryCalorieTrendRangeSummary: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 12) {
-                ForEach(projection.rangeStats.stats) { stat in
-                    HistoryDetailMetric(value: stat.value, label: stat.label)
-                }
-            }
+            HistoryDetailMetricRow(stats: projection.rangeStats.stats)
 
             HistoryHairline()
 
@@ -107,25 +103,49 @@ private struct HistoryFurthestFromGoalLine: View {
     }
 }
 
+private struct HistoryDetailMetricRow: View {
+    let stats: [HistoryCalorieTrendStat]
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    var body: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 12) {
+                metrics
+            }
+        } else {
+            HStack(alignment: .top, spacing: 12) {
+                metrics
+            }
+        }
+    }
+
+    private var metrics: some View {
+        ForEach(stats) { stat in
+            HistoryDetailMetric(stat: stat)
+        }
+    }
+}
+
 private struct HistoryDetailMetric: View {
-    let value: String
-    let label: String
+    let stat: HistoryCalorieTrendStat
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(value)
+            Text(stat.value)
                 .font(CalorynTheme.compactNumber)
                 .foregroundStyle(CalorynTheme.textPrimary)
                 .lineLimit(1)
-                .minimumScaleFactor(0.6)
+                .minimumScaleFactor(0.75)
 
-            Text(label)
+            Text(stat.label)
                 .font(CalorynTheme.caption)
                 .foregroundStyle(CalorynTheme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(stat.spokenLabel)
     }
 }
 
@@ -187,7 +207,7 @@ private struct HistoryCalorieTrendInteractiveChart: View {
                     }
                 }
 
-                RuleMark(y: .value("Target", projection.dailyCalorieTarget))
+                RuleMark(y: .value("Goal", projection.dailyCalorieTarget))
                     .lineStyle(StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [4, 3]))
                     .foregroundStyle(CalorynTheme.dataReference)
             }
@@ -412,18 +432,15 @@ private struct HistoryMealShareRow: View {
 
 private struct HistoryDetailRow: View {
     let title: String
-    var titleColor: Color = CalorynTheme.textPrimary
-    var titleFont: Font = CalorynTheme.cardSubtitle
     var caption: String?
     let value: String
-    var valueColor: Color = CalorynTheme.textPrimary
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(titleFont)
-                    .foregroundStyle(titleColor)
+                    .font(CalorynTheme.cardSubtitle)
+                    .foregroundStyle(CalorynTheme.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
 
@@ -438,7 +455,7 @@ private struct HistoryDetailRow: View {
 
             Text(value)
                 .font(CalorynTheme.cardSubtitle.weight(.semibold).monospacedDigit())
-                .foregroundStyle(valueColor)
+                .foregroundStyle(CalorynTheme.textPrimary)
         }
         .padding(.vertical, 10)
         .accessibilityElement(children: .combine)
@@ -605,17 +622,7 @@ private struct HistoryCalorieTrendSelectedWeek: View {
                     )
                 )
 
-                HStack(alignment: .top, spacing: 12) {
-                    HistoryDetailMetric(
-                        value: breakdown.onTrackRatioText,
-                        label: "days on track"
-                    )
-
-                    HistoryDetailMetric(
-                        value: breakdown.coverageRatioText,
-                        label: "days logged"
-                    )
-                }
+                HistoryDetailMetricRow(stats: breakdown.stats)
 
                 if let furthestFromGoal = breakdown.furthestFromGoal {
                     HistoryFurthestFromGoalLine(furthest: furthestFromGoal)

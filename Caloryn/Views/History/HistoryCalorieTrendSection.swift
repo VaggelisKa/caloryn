@@ -14,18 +14,7 @@ struct HistoryCalorieTrendSection: View {
     }
 
     private var summary: HistoryCalorieTrendCardSummary {
-        HistoryCalorieTrendCardSummary(
-            range: projection.range,
-            dailyCalorieTarget: projection.dailyCalorieTarget,
-            totalDayCount: projection.totalDayCount,
-            loggedDayCount: projection.loggedDayCount,
-            onTrackLoggedDayCount: projection.onTrackLoggedDayCount,
-            hasLoggedData: projection.hasLoggedData,
-            averageCaloriesPerLoggedDay: projection.averageCaloriesPerLoggedDay,
-            averageTargetPerLoggedDay: projection.averageTargetPerLoggedDay,
-            totalCalories: projection.totalCalories,
-            loggedDayTargetTotal: projection.loggedDayTargetTotal
-        )
+        projection.cardSummary
     }
 
     private var layout: HistoryCalorieTrendChartLayout {
@@ -119,7 +108,7 @@ struct HistoryCalorieTrendSection: View {
                 }
             }
 
-            RuleMark(y: .value("Target", projection.dailyCalorieTarget))
+            RuleMark(y: .value("Goal", projection.dailyCalorieTarget))
                 .lineStyle(StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [4, 3]))
                 .foregroundStyle(CalorynTheme.dataReference)
         }

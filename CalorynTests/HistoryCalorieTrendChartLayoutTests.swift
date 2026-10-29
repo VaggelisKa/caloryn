@@ -186,7 +186,7 @@ struct HistoryCalorieTrendChartLayoutTests {
     }
 
     @Test(
-        "given a range, when choosing the axis label size, then only ranges labelling every slot use the dense size",
+        "given a range, when choosing the axis label size, then only the 14-day and 90-day ranges use the dense size",
         arguments: [
             (HistoryRange.week, false),
             (.twoWeeks, true),
@@ -194,7 +194,7 @@ struct HistoryCalorieTrendChartLayoutTests {
             (.quarter, true)
         ]
     )
-    func denseAxisLabelsFollowTheLabelledSlots(range: HistoryRange, isDense: Bool) {
+    func onlyTheTwoWeekAndQuarterRangesUseDenseAxisLabels(range: HistoryRange, isDense: Bool) {
         let layout = HistoryCalorieTrendChartLayout(range: range, surface: .card, pointCount: 30)
 
         #expect(layout.usesDenseAxisLabels == isDense)

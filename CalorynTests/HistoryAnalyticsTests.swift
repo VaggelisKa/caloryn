@@ -290,7 +290,7 @@ final class HistoryAnalyticsTests: XCTestCase {
 
         XCTAssertEqual(
             projection.furthestFromGoal?.text,
-            "Furthest from goal: \(endDate.formatted(pattern: "EEE d MMM", in: .current)), +600"
+            "Furthest from goal: \(endDate.shortFormatted(in: .current)), 600 kcal over"
         )
     }
 

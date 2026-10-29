@@ -327,13 +327,12 @@ struct HistoryPatternDiscoveryTests {
         #expect(abs(projection.totalCalories - 4_400) < 0.001)
         #expect(projection.loggedDayTargetTotal == 4_000)
         #expect(projection.totalTargetDelta == 400)
-        #expect(projection.totalDifferenceText == "+400 over target")
-        #expect(projection.rangeStats.totalDelta == .init(value: "+400", label: "kcal over goal"))
-        #expect(projection.averageDifferenceText == "+200 over target")
+        #expect(projection.rangeStats.totalDelta == .init(value: "400", label: "kcal over goal in total"))
+        #expect(projection.rangeStats.totalDelta.spokenLabel == "400 kcal over goal in total")
     }
 
-    @Test("given logged days that land exactly on their targets, when projecting the calorie trend, then the totals read as on target")
-    func totalsOnTargetReadAsOnTarget() {
+    @Test("given logged days that land exactly on their goals, when projecting the calorie trend, then the total reads as off goal by nothing")
+    func totalsOnGoalReadAsOnGoal() {
         let dates = days(fromJanuary: 26, count: 3)
         let entries = [
             makeCalorieEntry(date: janDate(26), calories: 2_000),
@@ -347,36 +346,14 @@ struct HistoryPatternDiscoveryTests {
         )
 
         #expect(projection.totalTargetDelta == 0)
-        #expect(projection.rangeStats.totalDelta == .init(value: "0", label: "kcal off goal"))
-        #expect(projection.totalDifferenceText == "On target")
-        #expect(projection.averageDifferenceText == "On target")
-    }
-
-    @Test("given no logged days, when describing calorie differences, then both difference texts say there are no logged days")
-    func differenceTextsReportNoLoggedDays() {
-        let projection = HistoryCalorieTrendProjection(
-            range: .week,
-            summary: makeSummary(dates: days(fromJanuary: 26, count: 7)),
-            today: janDate(31)
+        #expect(
+            projection.rangeStats.totalDelta
+                == .init(value: "0", label: "kcal off goal in total", spokenLabel: "Right on goal in total")
         )
-
-        #expect(projection.averageDifferenceText == "No logged days")
-        #expect(projection.totalDifferenceText == "No logged days")
+        #expect(projection.cardSummary.totalSupport?.text == "Right on goal in total")
     }
 
-    @Test(
-        "given a calorie difference, when describing it as a period difference, then over, under, and on target are distinguished",
-        arguments: [
-            (300, "+300 over target"),
-            (-300, "300 under target"),
-            (0, "On target")
-        ]
-    )
-    func differenceTextDistinguishesDirection(difference: Int, expected: String) {
-        #expect(HistoryCalorieTrendProjection.differenceText(difference) == expected)
-    }
-
-    @Test("given logged days under target, when summarising the range, then the three stats read average, on-track share and total shortfall")
+    @Test("given logged days under goal, when summarising the range, then the three stats read average, on-track share of logged days and total shortfall")
     func rangeStatsReadAverageShareAndShortfall() {
         let dates = days(fromJanuary: 26, count: 7)
         let entries = [
@@ -392,10 +369,16 @@ struct HistoryPatternDiscoveryTests {
         )
 
         #expect(projection.rangeStats.stats == [
-            .init(value: 1_883.formatted(), label: "kcal / day avg"),
-            .init(value: "2 of 3", label: "days on track"),
-            .init(value: "\u{2212}350", label: "kcal under goal")
+            .init(value: 1_883.formatted(), label: "kcal a day on average"),
+            .init(value: "2 of 3", label: "logged days on track"),
+            .init(value: "350", label: "kcal under goal in total")
         ])
+        #expect(projection.rangeStats.stats.map(\.spokenLabel) == [
+            "\(1_883.formatted()) kcal a day on average",
+            "2 of 3 logged days on track",
+            "350 kcal under goal in total"
+        ])
+        #expect(projection.cardSummary.totalSupport?.text == "350 kcal under goal in total")
     }
 
     @Test("given every logged day has a saved daily goal, when projecting the calorie trend, then no estimated-target note is shown")
@@ -486,7 +469,6 @@ struct HistoryPatternDiscoveryTests {
         #expect(second.targetDelta == 0)
         #expect(second.status == .onTrack)
         #expect(projection.averageTargetPerLoggedDay == 1_900)
-        #expect(projection.averageDifferenceText == "+100 over target")
     }
 
     @Test(
@@ -518,10 +500,10 @@ struct HistoryPatternDiscoveryTests {
             today: janDate(31)
         )
 
-        #expect(projection.furthestFromGoal?.text == "Furthest from goal: \(dayTitle(27)), +50")
+        #expect(projection.furthestFromGoal?.text == "Furthest from goal: \(dayTitle(27)), 50 kcal over")
     }
 
-    @Test("given one logged day far over target, when finding the day furthest from goal, then that day is named with a signed overage")
+    @Test("given one logged day far over target, when finding the day furthest from goal, then that day is named with the amount over")
     func furthestNamesTheDayOverTarget() {
         let dates = days(fromJanuary: 26, count: 5)
         let entries = [
@@ -538,11 +520,11 @@ struct HistoryPatternDiscoveryTests {
 
         #expect(
             projection.furthestFromGoal?.text
-                == "Furthest from goal: \(dayTitle(28)), +600"
+                == "Furthest from goal: \(dayTitle(28)), 600 kcal over"
         )
     }
 
-    @Test("given one logged day far under target, when finding the day furthest from goal, then that day is named with a signed shortfall")
+    @Test("given one logged day far under target, when finding the day furthest from goal, then that day is named with the amount under")
     func furthestNamesTheDayUnderTarget() {
         let dates = days(fromJanuary: 26, count: 5)
         let entries = [
@@ -558,7 +540,7 @@ struct HistoryPatternDiscoveryTests {
 
         #expect(
             projection.furthestFromGoal?.text
-                == "Furthest from goal: \(dayTitle(27)), \u{2212}800"
+                == "Furthest from goal: \(dayTitle(27)), 800 kcal under"
         )
     }
 
@@ -578,7 +560,7 @@ struct HistoryPatternDiscoveryTests {
 
         #expect(
             projection.furthestFromGoal?.text
-                == "Furthest from goal: \(dayTitle(26)), +300"
+                == "Furthest from goal: \(dayTitle(26)), 300 kcal over"
         )
     }
 
@@ -599,7 +581,7 @@ struct HistoryPatternDiscoveryTests {
         #expect(projection.furthestFromGoal == nil)
     }
 
-    @Test("given a 90-day range with one week far off target, when finding the week furthest from goal, then that week is named with its signed per-day delta")
+    @Test("given a 90-day range with one week far off target, when finding the week furthest from goal, then that week is named with its distance per day")
     func furthestWeekNamesTheWeek() {
         let dates = days(fromJanuary: 5, count: 14)
         let entries = [
@@ -615,7 +597,7 @@ struct HistoryPatternDiscoveryTests {
 
         #expect(
             projection.furthestFromGoal?.text
-                == "Furthest from goal: week of \(janDate(12).startOfWeek.dayMonthFormatted), +500 kcal/day"
+                == "Furthest from goal: week of \(janDate(12).startOfWeek.dayMonthFormatted), 500 kcal a day over"
         )
     }
 
@@ -822,7 +804,7 @@ struct HistoryPatternDiscoveryTests {
     }
 
     private func dayTitle(_ day: Int) -> String {
-        janDate(day).formatted(pattern: "EEE d MMM", in: .current)
+        janDate(day).shortFormatted(in: .current)
     }
 
     private func janDate(_ day: Int) -> Date {

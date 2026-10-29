@@ -67,8 +67,12 @@ final class NonFiniteNumberSafetyTests: XCTestCase {
         XCTAssertNotNil(day)
         XCTAssertEqual(day?.calorieDifference, -2_000)
         let projection = HistoryPatternDiscovery(analytics: analytics, today: date).calorieTrend
-        XCTAssertFalse(projection.totalDifferenceText.isEmpty)
-        XCTAssertFalse(projection.averageDifferenceText.isEmpty)
+        XCTAssertEqual(projection.cardSummary.totalSupport?.text, "\(2_000.formatted()) kcal under goal in total")
+        XCTAssertEqual(projection.rangeStats.average.value, "0")
+        XCTAssertEqual(
+            projection.furthestFromGoal?.text,
+            "Furthest from goal: \(date.shortFormatted(in: analytics.calendar)), \(2_000.formatted()) kcal under"
+        )
     }
 
     func testHistoryAnalyticsRendersADayWhoseCaloriesExceedTheIntegerRange() {
@@ -81,8 +85,15 @@ final class NonFiniteNumberSafetyTests: XCTestCase {
         )
 
         let projection = HistoryPatternDiscovery(analytics: analytics, today: date).calorieTrend
+        let overage = (CalorieDomain.maximum - 2_000).formatted()
         XCTAssertEqual(projection.totalTargetDelta, CalorieDomain.maximum - 2_000)
-        XCTAssertFalse(projection.totalDifferenceText.isEmpty)
+        XCTAssertEqual(projection.cardSummary.totalSupport?.text, "\(overage) kcal over goal in total")
+        XCTAssertEqual(projection.rangeStats.totalDelta, HistoryCalorieTrendStat(value: overage, label: "kcal over goal in total"))
+        XCTAssertEqual(projection.rangeStats.average.value, Int.max.formatted())
+        XCTAssertEqual(
+            projection.furthestFromGoal?.text,
+            "Furthest from goal: \(date.shortFormatted(in: analytics.calendar)), \(overage) kcal over"
+        )
     }
 
     func testCalorieTrendLookupIgnoresANonFiniteChartIndex() {

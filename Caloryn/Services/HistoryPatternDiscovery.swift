@@ -157,16 +157,6 @@ struct HistoryCalorieTrendProjection {
         return largestReference * 1.15
     }
 
-    var averageDifferenceText: String {
-        guard hasLoggedData else { return "No logged days" }
-        return Self.differenceText(averageCaloriesPerLoggedDay.roundedCalories - averageTargetPerLoggedDay)
-    }
-
-    var totalDifferenceText: String {
-        guard hasLoggedData else { return "No logged days" }
-        return Self.differenceText(totalCalories.roundedCalories - loggedDayTargetTotal)
-    }
-
     var totalTargetDelta: Int {
         totalCalories.roundedCalories - loggedDayTargetTotal
     }
@@ -185,8 +175,21 @@ struct HistoryCalorieTrendProjection {
         )
     }
 
+    var cardSummary: HistoryCalorieTrendCardSummary {
+        HistoryCalorieTrendCardSummary(
+            range: range,
+            dailyCalorieTarget: dailyCalorieTarget,
+            totalDayCount: totalDayCount,
+            loggedDayCount: loggedDayCount,
+            hasLoggedData: hasLoggedData,
+            averageCaloriesPerLoggedDay: averageCaloriesPerLoggedDay,
+            totalCalories: totalCalories,
+            loggedDayTargetTotal: loggedDayTargetTotal
+        )
+    }
+
     func dayText(for date: Date) -> String {
-        Self.dayText(for: date, calendar: calendar)
+        date.shortFormatted(in: calendar)
     }
 
     func weekStartText(for date: Date) -> String {
@@ -213,12 +216,6 @@ struct HistoryCalorieTrendProjection {
         }
     }
 
-    static func differenceText(_ difference: Int) -> String {
-        if difference > 0 { return "+\(difference.formatted()) over target" }
-        if difference < 0 { return "\(abs(difference).formatted()) under target" }
-        return "On target"
-    }
-
     private static func furthestFromGoal(
         range: HistoryRange,
         summary: HistoryPeriodSummary,
@@ -237,7 +234,7 @@ struct HistoryCalorieTrendProjection {
             return HistoryCalorieTrendFurthestFromGoal(
                 periodText: "week of \(week.startDate.dayMonthFormatted(in: calendar))",
                 calorieDifference: weeklyDelta(week, target: week.targetPerLoggedDay),
-                unit: "kcal/day"
+                period: .week
             )
 
         case .week, .twoWeeks, .month:
@@ -249,15 +246,11 @@ struct HistoryCalorieTrendProjection {
             }
 
             return HistoryCalorieTrendFurthestFromGoal(
-                periodText: dayText(for: day.date, calendar: calendar),
+                periodText: day.date.shortFormatted(in: calendar),
                 calorieDifference: day.calorieDifference,
-                unit: nil
+                period: .day
             )
         }
-    }
-
-    private static func dayText(for date: Date, calendar: Calendar) -> String {
-        date.formatted(pattern: "EEE d MMM", in: calendar)
     }
 
     private static func dayAxisLabel(for date: Date, range: HistoryRange, calendar: Calendar) -> String {
