@@ -4,99 +4,89 @@ import Testing
 
 @Suite("History overview summary")
 struct HistoryOverviewSummaryTests {
-    @Test("given logged days, when stating the average, then it is whole kcal a day")
+    @Test("given logged days, when stating the average, then it is whole kcal a day on average")
     func theHeadlineIsTheRoundedDailyAverage() {
         let summary = makeSummary(averageCaloriesPerLoggedDay: 1_952.6)
 
         #expect(summary.hasLoggedDays)
         #expect(summary.averageValueText == 1_953.formatted())
-        #expect(summary.averageUnitText == "kcal a day")
+        #expect(summary.averageUnitText == "kcal / day on average")
     }
 
-    @Test("given an average under the goal, when supporting it, then the gap and the coverage are stated")
-    func underTheGoalStatesTheGapAndCoverage() {
+    @Test("given an average over the goal, when supporting it, then only the overshoot against the goal is stated")
+    func overTheGoalStatesTheOvershoot() {
         let summary = makeSummary(
-            loggedDayCount: 6,
-            totalDayCount: 7,
-            averageCaloriesPerLoggedDay: 1_953,
+            loggedDayCount: 29,
+            totalDayCount: 30,
+            averageCaloriesPerLoggedDay: 2_110,
             averageTargetPerLoggedDay: 2_000
         )
 
-        #expect(summary.supportText == "47 under your \(2_000.formatted()) goal, 6 of 7 days logged")
+        #expect(summary.supportText == "110 over your \(2_000.formatted()) goal")
+        #expect(summary.goalGap == .init(emphasis: "110 over", remainder: " your \(2_000.formatted()) goal"))
     }
 
-    @Test("given an average over the goal, when supporting it, then the overshoot is stated")
-    func overTheGoalStatesTheOvershoot() {
-        let summary = makeSummary(averageCaloriesPerLoggedDay: 2_133, averageTargetPerLoggedDay: 2_000)
+    @Test("given an average under the goal, when supporting it, then only the gap to the goal is stated")
+    func underTheGoalStatesTheGap() {
+        let summary = makeSummary(averageCaloriesPerLoggedDay: 1_800, averageTargetPerLoggedDay: 2_000)
 
-        #expect(summary.supportText.hasPrefix("133 over your \(2_000.formatted()) goal"))
+        #expect(summary.supportText == "200 under your \(2_000.formatted()) goal")
+        #expect(summary.goalGap?.emphasis == "200 under")
     }
 
     @Test("given an average that rounds to the goal, when supporting it, then it reads as right on it")
     func onTheGoalReadsAsRightOnIt() {
         let summary = makeSummary(averageCaloriesPerLoggedDay: 2_000.4, averageTargetPerLoggedDay: 2_000)
 
-        #expect(summary.supportText.hasPrefix("Right on your \(2_000.formatted()) goal"))
+        #expect(summary.supportText == "Right on your \(2_000.formatted()) goal")
+        #expect(summary.goalGap?.emphasis == "Right on")
     }
 
-    @Test("given nothing logged, when heading the page, then it says so instead of a zero average")
+    @Test("given logged days, when stating coverage, then it counts logged days out of the range")
+    func coverageCountsLoggedDaysOutOfTheRange() {
+        #expect(makeSummary(loggedDayCount: 29, totalDayCount: 30).loggedDaysText == "29 of 30 days logged")
+        #expect(makeSummary(loggedDayCount: 1, totalDayCount: 7).loggedDaysText == "1 of 7 days logged")
+        #expect(makeSummary(loggedDayCount: 1, totalDayCount: 1).loggedDaysText == "1 of 1 day logged")
+    }
+
+    @Test("given nothing logged, when heading the page, then it says so instead of a zero average or a coverage count")
     func anEmptyRangeHasNoAverage() {
         let summary = makeSummary(loggedDayCount: 0, totalDayCount: 30, averageCaloriesPerLoggedDay: 0)
 
         #expect(summary.hasLoggedDays == false)
         #expect(summary.emptyHeadlineText == "Nothing logged")
+        #expect(summary.goalGap == nil)
+        #expect(summary.loggedDaysText == nil)
         #expect(summary.supportText == "No days logged in the last 30 days.")
         #expect(summary.accessibilityLabel == "Nothing logged. No days logged in the last 30 days.")
     }
 
     @Test("given logged days, when spoken, then the headline and its support are one sentence")
     func theHeadlineIsSpokenWithItsSupport() {
-        let summary = makeSummary(
-            loggedDayCount: 6,
-            totalDayCount: 7,
-            averageCaloriesPerLoggedDay: 1_953,
-            averageTargetPerLoggedDay: 2_000
+        let summary = makeSummary(averageCaloriesPerLoggedDay: 2_110, averageTargetPerLoggedDay: 2_000)
+
+        #expect(
+            summary.accessibilityLabel
+                == "\(2_110.formatted()) kcal a day on average. 110 over your \(2_000.formatted()) goal."
         )
-
-        #expect(summary.accessibilityLabel.hasPrefix("\(1_953.formatted()) kcal a day on average. 47 under"))
     }
 
-    @Test(
-        "given the change from the period before, when comparing, then small counts read as words",
-        arguments: [
-            (1, "one more than last week"),
-            (-1, "one fewer than last week"),
-            (0, "the same as last week"),
-            (-12, "12 fewer than last week")
-        ]
-    )
-    func theComparisonReadsAsWords(delta: Int, expected: String) {
-        let summary = makeSummary(loggedDayCount: 6, onTrackDayDelta: delta)
+    @Test("given logged days by status, when breaking them down, then on track, over and under are counted in that order")
+    func loggedDaysAreBrokenDownByStatus() {
+        let breakdown = makeSummary(onTrackDayCount: 25, overDayCount: 4, underDayCount: 0).loggedDays
 
-        #expect(summary.onTrackSupportText == "of 6 logged days, \(expected)")
+        #expect(breakdown.title == "Logged days")
+        #expect(breakdown.columns.map(\.valueText) == ["25", "4", "0"])
+        #expect(breakdown.columns.map(\.label) == ["on track", "over", "under"])
+        #expect(breakdown.accessibilityLabel == "Logged days: 25 on track, 4 over, 0 under")
     }
 
-    @Test(
-        "given each range, when naming the period before, then it matches the range's length",
-        arguments: [
-            (HistoryRange.week, "last week"),
-            (.twoWeeks, "the two weeks before"),
-            (.month, "the 30 days before"),
-            (.quarter, "the 90 days before")
-        ]
-    )
-    func thePreviousPeriodMatchesTheRange(range: HistoryRange, expected: String) {
-        let summary = makeSummary(range: range, onTrackDayDelta: 0)
+    @Test("given logged days by status, when drawing the bar, then each status with days takes its share")
+    func theBarSplitsByShare() {
+        let breakdown = makeSummary(onTrackDayCount: 25, overDayCount: 4, underDayCount: 0).loggedDays
 
-        #expect(summary.onTrackSupportText.hasSuffix(expected))
-    }
-
-    @Test("given a single logged day, when counting, then the day is singular")
-    func aSingleLoggedDayIsSingular() {
-        let summary = makeSummary(loggedDayCount: 1, onTrackLoggedDayCount: 1, onTrackDayDelta: 1)
-
-        #expect(summary.onTrackValueText == "1")
-        #expect(summary.onTrackSupportText == "of 1 logged day, one more than last week")
+        #expect(breakdown.barSegments.map(\.status) == [.onTrack, .over])
+        #expect(breakdown.barSegments.map { breakdown.share(of: $0) } == [25.0 / 29.0, 4.0 / 29.0])
     }
 
     @Test("given the range chips, when titling them, then only the first carries the unit")
@@ -209,22 +199,22 @@ struct HistoryOverviewSummaryTests {
     }
 
     private func makeSummary(
-        range: HistoryRange = .week,
         loggedDayCount: Int = 6,
         totalDayCount: Int = 7,
         averageCaloriesPerLoggedDay: Double = 2_000,
         averageTargetPerLoggedDay: Int = 2_000,
-        onTrackLoggedDayCount: Int = 4,
-        onTrackDayDelta: Int = 0
+        onTrackDayCount: Int = 4,
+        overDayCount: Int = 1,
+        underDayCount: Int = 1
     ) -> HistoryOverviewSummary {
         HistoryOverviewSummary(
-            range: range,
             loggedDayCount: loggedDayCount,
             totalDayCount: totalDayCount,
             averageCaloriesPerLoggedDay: averageCaloriesPerLoggedDay,
             averageTargetPerLoggedDay: averageTargetPerLoggedDay,
-            onTrackLoggedDayCount: onTrackLoggedDayCount,
-            onTrackDayDelta: onTrackDayDelta
+            onTrackDayCount: onTrackDayCount,
+            overDayCount: overDayCount,
+            underDayCount: underDayCount
         )
     }
 
