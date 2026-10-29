@@ -77,3 +77,40 @@ struct HistoryCalorieTrendCardSummary: Equatable {
         "Detailed calorie trend for \(range.label). \(loggedDayCount) of \(totalDayCount) days logged."
     }
 }
+
+struct HistoryCalorieTrendRangeStats: Equatable {
+    struct Stat: Identifiable, Equatable {
+        let value: String
+        let label: String
+
+        var id: String { label }
+    }
+
+    let averageCaloriesPerLoggedDay: Double
+    let loggedDayCount: Int
+    let onTrackLoggedDayCount: Int
+    let totalTargetDelta: Int
+
+    var average: Stat {
+        Stat(value: averageCaloriesPerLoggedDay.rounded().truncatedSafely.formatted(), label: "kcal / day avg")
+    }
+
+    var onTrack: Stat {
+        Stat(value: "\(onTrackLoggedDayCount) of \(loggedDayCount)", label: "days on track")
+    }
+
+    var totalDelta: Stat {
+        let label = if totalTargetDelta > 0 {
+            "kcal over goal"
+        } else if totalTargetDelta < 0 {
+            "kcal under goal"
+        } else {
+            "kcal off goal"
+        }
+        return Stat(value: HistoryCalorieDelta.signedText(totalTargetDelta), label: label)
+    }
+
+    var stats: [Stat] {
+        [average, onTrack, totalDelta]
+    }
+}

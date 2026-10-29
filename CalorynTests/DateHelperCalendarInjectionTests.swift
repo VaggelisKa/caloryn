@@ -321,7 +321,7 @@ struct HistoryCalendarInjectionTests {
         for (point, day) in zip(projection.points, analytics.current.days) {
             #expect(point.xAxisLabel == day.date.weekdayInitial(in: cal))
             #expect(point.accessibilityLabel == day.date.shortFormatted(in: cal))
-            #expect(projection.dayText(for: day.date) == day.date.shortFormatted(in: cal))
+            #expect(projection.dayText(for: day.date) == day.date.formatted(pattern: "EEE d MMM", in: cal))
         }
 
         #expect(projection.points.map(\.xAxisLabel) == ["M", "T", "W", "T", "F", "S", "S"])

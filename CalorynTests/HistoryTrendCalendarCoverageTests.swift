@@ -69,11 +69,12 @@ struct HistoryTrendCalendarCoverageTests {
         #expect(projection.totalCalories == 2_600 + 1_950 + 1_500)
     }
 
-    @Test("given a swing on the short day, when naming the biggest swing, then the day is named in the injected calendar")
-    func theBiggestSwingIsNamedInTheCalendar() {
+    @Test("given a swing on the short day, when naming the day furthest from goal, then the day is named in the injected calendar")
+    func theFurthestDayIsNamedInTheCalendar() {
         let projection = HistoryCalorieTrendProjection(range: .week, summary: springWeek().current)
 
-        #expect(projection.biggestInconsistencyText == "Biggest swing: Sun, 8 Mar, 600 kcal over")
+        #expect(projection.furthestFromGoal?.periodText == "Sun 8 Mar")
+        #expect(projection.furthestFromGoal?.text == "Furthest from goal: Sun 8 Mar, +600")
     }
 
     @Test("given an instant that is already the next day in UTC, when labelling it for the drill-down, then the injected calendar's day is used")
@@ -81,7 +82,7 @@ struct HistoryTrendCalendarCoverageTests {
         let projection = HistoryCalorieTrendProjection(range: .week, summary: springWeek().current)
         let instant = Date(timeIntervalSince1970: 1_773_021_600)
 
-        #expect(projection.dayText(for: instant) == "Sun, 8 Mar")
+        #expect(projection.dayText(for: instant) == "Sun 8 Mar")
         #expect(projection.weekStartText(for: instant) == "8 Mar")
     }
 
@@ -101,24 +102,14 @@ struct HistoryTrendCalendarCoverageTests {
         #expect(dstWeek.accessibilityValue == "2400 average calories per logged day, Over")
     }
 
-    @Test("given a 90-day range with one week far over, when naming the biggest swing, then that week is named by its Monday in the calendar")
-    func theBiggestWeeklySwingIsNamedInTheCalendar() {
+    @Test("given a 90-day range with one week far over, when naming the week furthest from goal, then that week is named by its Monday in the calendar")
+    func theFurthestWeekIsNamedInTheCalendar() {
         let projection = HistoryCalorieTrendProjection(range: .quarter, summary: springQuarter().current)
 
-        #expect(projection.biggestInconsistencyText == "Biggest swing: week of 9 Mar, 400 kcal/day over")
+        #expect(projection.furthestFromGoal?.text == "Furthest from goal: week of 9 Mar, +400 kcal/day")
     }
 
-    @Test("given the 90-day range, when comparing a value with the average, then the label names the 90-day average")
-    func theQuarterAverageLabel() {
-        let projection = HistoryCalorieTrendProjection(range: .quarter, summary: springQuarter().current)
-
-        #expect(projection.averageDeltaText(value: 2_400, unit: "kcal") == "133 kcal above 90-day average")
-        #expect(projection.averageDeltaText(value: 2_267, unit: "kcal") == "Matches 90-day average")
-        #expect(projection.averageDeltaText(value: 2_000, unit: "kcal") == "267 kcal below 90-day average")
-        #expect(projection.averageDeltaText(value: 2_267.5, unit: "kcal") == "1 kcal above 90-day average")
-    }
-
-    @Test("given a week in Auckland across its autumn change, when labelling daily points, then initials, spoken dates and the biggest swing name Auckland's days")
+    @Test("given a week in Auckland across its autumn change, when labelling daily points, then initials, spoken dates and the furthest day name Auckland's days")
     func dailyLabelsUseTheInjectedCalendarRatherThanTheHost() {
         let projection = HistoryCalorieTrendProjection(range: .week, summary: aucklandAutumnWeek().current)
 
@@ -129,7 +120,7 @@ struct HistoryTrendCalendarCoverageTests {
         #expect(projection.points[4].id == "day-2026-04-04T11:00:00Z")
         #expect(projection.points[5].id == "day-2026-04-05T12:00:00Z")
         #expect(projection.points[4].value == 2_600)
-        #expect(projection.biggestInconsistencyText == "Biggest swing: Sun, 5 Apr, 600 kcal over")
+        #expect(projection.furthestFromGoal?.text == "Furthest from goal: Sun 5 Apr, +600")
     }
 
     @Test("given 7 and 30 days in Auckland, when laying out plates, then weekday and day-of-month labels are Auckland's")
@@ -179,7 +170,7 @@ struct HistoryTrendCalendarCoverageTests {
         let overWeek = try #require(projection.points.first { $0.accessibilityLabel == "W10, week of 30 Mar" })
         #expect(overWeek.id == "week-2026-03-29T11:00:00Z")
         #expect(overWeek.value == 2_400)
-        #expect(projection.biggestInconsistencyText == "Biggest swing: week of 30 Mar, 400 kcal/day over")
+        #expect(projection.furthestFromGoal?.text == "Furthest from goal: week of 30 Mar, +400 kcal/day")
     }
 
     @Test("given a 30-day range across the spring change, when laying out plates, then each is labelled by its local day of the month")
