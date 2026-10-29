@@ -174,7 +174,7 @@ struct HistoryRecurringCaloriePatternDayRow: Equatable {
     var totals: HistoryRecurringCaloriePatternPhrase {
         HistoryRecurringCaloriePatternPhrase(runs: [
             .emphasised(loggedText),
-            .plain(" of \(dailyCalorieTarget.formatted()) goal"),
+            .plain(" of \(dailyCalorieTarget.formatted()) kcal goal"),
         ])
     }
 

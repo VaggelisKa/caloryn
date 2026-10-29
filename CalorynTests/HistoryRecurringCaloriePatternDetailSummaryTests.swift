@@ -192,11 +192,11 @@ struct HistoryRecurringCaloriePatternDetailSummaryTests {
         #expect(summary.daysListTitle == expected)
     }
 
-    @Test("given a supporting day, when summarising it, then the logged total is emphasised against the day's own goal")
+    @Test("given a supporting day, when summarising it, then the logged total is emphasised against the day's own goal in kcal, as VoiceOver reads it")
     func aSupportingDayEmphasisesItsTotal() {
         let row = makeRow(totalCalories: 2_800.4, dailyCalorieTarget: 2_000)
 
-        #expect(row.totals.plainText == "\(2_800.formatted()) of \(2_000.formatted()) goal")
+        #expect(row.totals.plainText == "\(2_800.formatted()) of \(2_000.formatted()) kcal goal")
         #expect(row.totals.runs.filter(\.isEmphasised).map(\.text) == [2_800.formatted()])
         #expect(row.accessibilityLabel.hasPrefix("Mon, 3 Feb, \(2_800.formatted()) of \(2_000.formatted()) kcal goal"))
     }
