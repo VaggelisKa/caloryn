@@ -179,7 +179,7 @@ struct HistoryRecurringCaloriePattern: Identifiable {
     var headline: String {
         switch kind {
         case .weekdayMeal:
-            return "\(weekdayPlural) run \(outcome.direction)"
+            return "\(weekdayPlural) run \(outcome.goalText)"
         case .mealOnly:
             let verb = HistoryRecurringCaloriePatternWording.agreeing(
                 with: mealType,

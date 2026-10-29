@@ -6,10 +6,10 @@ import Testing
 @Suite("History recurring calorie pattern coverage")
 struct HistoryRecurringCaloriePatternCoverageTests {
     @Test(
-        "given a weekday pattern, when headlining it, then it states which way that weekday runs",
+        "given a weekday pattern, when headlining it, then it states which side of goal that weekday runs",
         arguments: [
-            (HistoryRecurringCalorieOutcome.above, "Fridays run over"),
-            (.below, "Fridays run under")
+            (HistoryRecurringCalorieOutcome.above, "Fridays run over goal"),
+            (.below, "Fridays run under goal")
         ]
     )
     func weekdayHeadline(outcome: HistoryRecurringCalorieOutcome, expected: String) {
