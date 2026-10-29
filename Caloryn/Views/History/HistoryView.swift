@@ -385,7 +385,7 @@ struct HistoryView: View {
         case .recurringPattern, .recurringPatternExpanded:
             guard let pattern = state.recurringPattern else { return }
             var snapshot = HistoryRecurringCaloriePatternSnapshot(pattern: pattern)
-            if drillDown == .recurringPatternExpanded, let first = pattern.supportingDays.first {
+            if drillDown == .recurringPatternExpanded, let first = pattern.supportingDaysNewestFirst.first {
                 snapshot.initiallyExpandedDayIDs = [first.id]
             }
             open(.recurringPattern(snapshot))
