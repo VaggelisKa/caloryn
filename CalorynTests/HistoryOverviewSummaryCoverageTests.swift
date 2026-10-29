@@ -23,7 +23,7 @@ struct HistoryOverviewSummaryCoverageTests {
     func aSingleStatusFillsTheBar() {
         let breakdown = makeSummary(loggedDayCount: 1, onTrackDayCount: 0, overDayCount: 0, underDayCount: 1).loggedDays
 
-        #expect(breakdown.accessibilityLabel == "Logged days: 0 on track, 0 over, 1 under")
+        #expect(breakdown.accessibilityLabel == "0 on track, 0 over, 1 under")
         #expect(breakdown.barSegments.map(\.status) == [.under])
         #expect(breakdown.barSegments.map { breakdown.share(of: $0) } == [1])
     }
@@ -32,7 +32,7 @@ struct HistoryOverviewSummaryCoverageTests {
     func noLoggedDaysLeaveAnEmptyTrack() {
         let breakdown = makeSummary(loggedDayCount: 0, onTrackDayCount: 0, overDayCount: 0, underDayCount: 0).loggedDays
 
-        #expect(breakdown.accessibilityLabel == "Logged days: 0 on track, 0 over, 0 under")
+        #expect(breakdown.accessibilityLabel == "0 on track, 0 over, 0 under")
         #expect(breakdown.barSegments.isEmpty)
         #expect(breakdown.columns.allSatisfy { breakdown.share(of: $0) == 0 })
     }

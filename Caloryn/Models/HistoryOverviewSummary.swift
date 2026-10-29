@@ -116,8 +116,7 @@ struct HistoryLoggedDaysBreakdown: Equatable {
     }
 
     var accessibilityLabel: String {
-        let counts = columns.map { "\($0.valueText) \($0.label)" }
-        return "\(title): \(counts.joined(separator: ", "))"
+        columns.map { "\($0.valueText) \($0.label)" }.joined(separator: ", ")
     }
 }
 

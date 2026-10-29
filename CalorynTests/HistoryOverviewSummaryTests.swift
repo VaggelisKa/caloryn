@@ -78,7 +78,7 @@ struct HistoryOverviewSummaryTests {
         #expect(breakdown.title == "Logged days")
         #expect(breakdown.columns.map(\.valueText) == ["25", "4", "0"])
         #expect(breakdown.columns.map(\.label) == ["on track", "over", "under"])
-        #expect(breakdown.accessibilityLabel == "Logged days: 25 on track, 4 over, 0 under")
+        #expect(breakdown.accessibilityLabel == "25 on track, 4 over, 0 under")
     }
 
     @Test("given logged days by status, when drawing the bar, then each status with days takes its share")
