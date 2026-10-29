@@ -7,7 +7,7 @@ import Testing
 struct HistoryTrendCalendarCoverageTests {
     @Test("given a week across the spring change, when projecting the trend, then axis initials and spoken dates follow the injected calendar")
     func dailyPointLabelsFollowTheCalendar() {
-        let projection = HistoryCalorieTrendProjection(range: .week, summary: springWeek().current)
+        let projection = HistoryCalorieTrendProjection(range: .week, summary: springWeek().current, today: Self.date(2026, 3, 10))
 
         #expect(projection.calendar == Self.newYork)
         #expect(projection.points.map(\.xAxisLabel) == ["W", "T", "F", "S", "S", "M", "T"])
@@ -19,7 +19,7 @@ struct HistoryTrendCalendarCoverageTests {
 
     @Test("given 30 days across the spring change, when labelling the axis, then only Mondays are named, by day and month in the injected calendar")
     func monthAxisLabelsOnlyMondays() {
-        let projection = HistoryCalorieTrendProjection(range: .month, summary: springMonth().current)
+        let projection = HistoryCalorieTrendProjection(range: .month, summary: springMonth().current, today: Self.date(2026, 3, 20))
         let labelled = projection.points.filter { !$0.xAxisLabel.isEmpty }
 
         #expect(projection.points.count == 30)
@@ -37,14 +37,14 @@ struct HistoryTrendCalendarCoverageTests {
             endDate: Self.date(2026, 3, 10),
             calendar: Self.newYork
         )
-        let projection = HistoryCalorieTrendProjection(range: .twoWeeks, summary: analytics.current)
+        let projection = HistoryCalorieTrendProjection(range: .twoWeeks, summary: analytics.current, today: Self.date(2026, 3, 10))
 
         #expect(projection.points.map(\.xAxisLabel) == ["W", "T", "F", "S", "S", "M", "T", "W", "T", "F", "S", "S", "M", "T"])
     }
 
     @Test("given days either side of the spring change, when identifying their points, then each is keyed by its own UTC midnight")
     func dailyPointIdsShiftWithTheOffset() {
-        let projection = HistoryCalorieTrendProjection(range: .week, summary: springWeek().current)
+        let projection = HistoryCalorieTrendProjection(range: .week, summary: springWeek().current, today: Self.date(2026, 3, 10))
 
         #expect(projection.points[3].id == "day-2026-03-07T05:00:00Z")
         #expect(projection.points[4].id == "day-2026-03-08T05:00:00Z")
@@ -53,7 +53,7 @@ struct HistoryTrendCalendarCoverageTests {
 
     @Test("given logged days across the spring change, when projecting the trend, then values, deltas and spoken values describe each local day")
     func dailyPointValuesDescribeLocalDays() {
-        let projection = HistoryCalorieTrendProjection(range: .week, summary: springWeek().current)
+        let projection = HistoryCalorieTrendProjection(range: .week, summary: springWeek().current, today: Self.date(2026, 3, 10))
         let sunday = projection.points[4]
         let monday = projection.points[5]
 
@@ -71,29 +71,29 @@ struct HistoryTrendCalendarCoverageTests {
 
     @Test("given a swing on the short day, when naming the day furthest from goal, then the day is named in the injected calendar")
     func theFurthestDayIsNamedInTheCalendar() {
-        let projection = HistoryCalorieTrendProjection(range: .week, summary: springWeek().current)
+        let projection = HistoryCalorieTrendProjection(range: .week, summary: springWeek().current, today: Self.date(2026, 3, 10))
 
-        #expect(projection.furthestFromGoal?.periodText == "Sun 8 Mar")
-        #expect(projection.furthestFromGoal?.text == "Furthest from goal: Sun 8 Mar, +600")
+        #expect(projection.furthestFromGoal?.periodText == "Sun, 8 Mar")
+        #expect(projection.furthestFromGoal?.text == "Furthest from goal: Sun, 8 Mar, 600 kcal over")
     }
 
     @Test("given an instant that is already the next day in UTC, when labelling it for the drill-down, then the injected calendar's day is used")
     func drillDownLabelsUseTheCalendar() {
-        let projection = HistoryCalorieTrendProjection(range: .week, summary: springWeek().current)
+        let projection = HistoryCalorieTrendProjection(range: .week, summary: springWeek().current, today: Self.date(2026, 3, 10))
         let instant = Date(timeIntervalSince1970: 1_773_021_600)
 
-        #expect(projection.dayText(for: instant) == "Sun 8 Mar")
+        #expect(projection.dayText(for: instant) == "Sun, 8 Mar")
         #expect(projection.weekStartText(for: instant) == "8 Mar")
     }
 
-    @Test("given a 90-day range across the spring change, when projecting the trend, then every other week counting back from the newest is labelled by its Monday")
+    @Test("given a 90-day range across the spring change, when projecting the trend, then every other week counting back from this week is labelled by its Monday")
     func weeklyPointLabelsFollowTheCalendar() throws {
-        let projection = HistoryCalorieTrendProjection(range: .quarter, summary: springQuarter().current)
+        let projection = HistoryCalorieTrendProjection(range: .quarter, summary: springQuarter().current, today: Self.date(2026, 4, 30))
 
         #expect(projection.points.count == 14)
         #expect(
             projection.points.map(\.xAxisLabel)
-                == ["", "2 Feb", "", "16 Feb", "", "2 Mar", "", "16 Mar", "", "30 Mar", "", "13 Apr", "", "27 Apr"]
+                == ["", "2 Feb", "", "16 Feb", "", "2 Mar", "", "16 Mar", "", "30 Mar", "", "13 Apr", "", "This week"]
         )
         #expect(projection.points.first?.accessibilityLabel == "Week of 26 Jan")
         let dstWeek = try #require(projection.points.first { $0.accessibilityLabel == "Week of 9 Mar" })
@@ -107,14 +107,14 @@ struct HistoryTrendCalendarCoverageTests {
 
     @Test("given a 90-day range with one week far over, when naming the week furthest from goal, then that week is named by its Monday in the calendar")
     func theFurthestWeekIsNamedInTheCalendar() {
-        let projection = HistoryCalorieTrendProjection(range: .quarter, summary: springQuarter().current)
+        let projection = HistoryCalorieTrendProjection(range: .quarter, summary: springQuarter().current, today: Self.date(2026, 4, 30))
 
-        #expect(projection.furthestFromGoal?.text == "Furthest from goal: week of 9 Mar, +400 kcal/day")
+        #expect(projection.furthestFromGoal?.text == "Furthest from goal: week of 9 Mar, 400 kcal a day over")
     }
 
     @Test("given a week in Auckland across its autumn change, when labelling daily points, then initials, spoken dates and the furthest day name Auckland's days")
     func dailyLabelsUseTheInjectedCalendarRatherThanTheHost() {
-        let projection = HistoryCalorieTrendProjection(range: .week, summary: aucklandAutumnWeek().current)
+        let projection = HistoryCalorieTrendProjection(range: .week, summary: aucklandAutumnWeek().current, today: Self.aucklandDate(2026, 4, 7))
 
         #expect(projection.points.map(\.xAxisLabel) == ["W", "T", "F", "S", "S", "M", "T"])
         #expect(projection.points.map(\.accessibilityLabel) == [
@@ -123,7 +123,7 @@ struct HistoryTrendCalendarCoverageTests {
         #expect(projection.points[4].id == "day-2026-04-04T11:00:00Z")
         #expect(projection.points[5].id == "day-2026-04-05T12:00:00Z")
         #expect(projection.points[4].value == 2_600)
-        #expect(projection.furthestFromGoal?.text == "Furthest from goal: Sun 5 Apr, +600")
+        #expect(projection.furthestFromGoal?.text == "Furthest from goal: Sun, 5 Apr, 600 kcal over")
     }
 
     @Test("given 7 and 30 days in Auckland, when laying out plates, then weekday and day-of-month labels are Auckland's")
@@ -166,14 +166,14 @@ struct HistoryTrendCalendarCoverageTests {
             endDate: Self.aucklandDate(2026, 4, 30),
             calendar: Self.auckland
         )
-        let projection = HistoryCalorieTrendProjection(range: .quarter, summary: analytics.current)
+        let projection = HistoryCalorieTrendProjection(range: .quarter, summary: analytics.current, today: Self.aucklandDate(2026, 4, 30))
 
         #expect(projection.points.count == 14)
         #expect(projection.points.first?.accessibilityLabel == "Week of 26 Jan")
         let overWeek = try #require(projection.points.first { $0.accessibilityLabel == "Week of 30 Mar" })
         #expect(overWeek.id == "week-2026-03-29T11:00:00Z")
         #expect(overWeek.value == 2_400)
-        #expect(projection.furthestFromGoal?.text == "Furthest from goal: week of 30 Mar, +400 kcal/day")
+        #expect(projection.furthestFromGoal?.text == "Furthest from goal: week of 30 Mar, 400 kcal a day over")
     }
 
     @Test("given a 30-day range across the spring change, when laying out plates, then each is labelled by its local day of the month")

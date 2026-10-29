@@ -70,13 +70,9 @@ struct MealThemeMappingTests {
 @MainActor
 @Suite("Theme font rules")
 struct CalorynThemeFontRuleTests {
-    @Test(
-        "The trend chart switches to the dense axis label only past a week of points",
-        arguments: [(1, false), (6, false), (7, false), (8, true), (14, true), (90, true)]
-    )
-    func trendAxisDensity(pointCount: Int, isDense: Bool) {
+    @Test("The chart axis label is the dense one exactly when asked for", arguments: [false, true])
+    func axisLabelDensity(isDense: Bool) {
         let expected = isDense ? CalorynTheme.denseChartXAxisLabel : CalorynTheme.chartXAxisLabel
-        #expect(CalorynTheme.trendChartXAxisLabel(pointCount: pointCount) == expected)
         #expect(CalorynTheme.weeklyChartXAxisLabel(isDense: isDense) == expected)
     }
 

@@ -51,11 +51,23 @@ final class CalorieOverflowSafetyTests: XCTestCase {
             range: .week,
             endDate: date
         )
-        let trend = HistoryPatternDiscovery(analytics: analytics).calorieTrend
+        let trend = HistoryPatternDiscovery(analytics: analytics, today: date).calorieTrend
+        let shortfall = (CalorieDomain.maximum + 2_000).formatted()
 
         XCTAssertEqual(trend.totalTargetDelta, -CalorieDomain.maximum - 2_000)
-        XCTAssertFalse(trend.totalDifferenceText.isEmpty)
-        XCTAssertFalse(trend.averageDifferenceText.isEmpty)
+        XCTAssertEqual(trend.cardSummary.totalSupport?.text, "\(shortfall) kcal under goal in total")
+        XCTAssertEqual(trend.rangeStats.stats, [
+            HistoryCalorieTrendStat(value: (-CalorieDomain.maximum).formatted(), label: "kcal a day on average"),
+            HistoryCalorieTrendStat(value: "0 of 1", label: "logged days on track"),
+            HistoryCalorieTrendStat(value: shortfall, label: "kcal under goal in total")
+        ])
+        XCTAssertEqual(
+            trend.furthestFromGoal?.text,
+            "Furthest from goal: \(date.shortFormatted(in: analytics.calendar)), \(shortfall) kcal under"
+        )
+        XCTAssertTrue(
+            trend.cardSummary.chartAccessibilityLabel.contains("Average \((-CalorieDomain.maximum).formatted()) calories")
+        )
     }
 
     func testHistoryHeadlineSurvivesADayWhoseDifferenceIsTheMostNegativePossible() {
@@ -72,12 +84,20 @@ final class CalorieOverflowSafetyTests: XCTestCase {
             range: .week,
             endDate: date
         )
-        let trend = HistoryPatternDiscovery(analytics: analytics).calorieTrend
+        let trend = HistoryPatternDiscovery(analytics: analytics, today: date).calorieTrend
 
-        XCTAssertNotNil(trend.furthestFromGoal)
+        XCTAssertEqual(
+            trend.furthestFromGoal?.text,
+            "Furthest from goal: \(date.shortFormatted(in: analytics.calendar)), \((CalorieDomain.maximum + 2_000).formatted()) kcal under"
+        )
+        XCTAssertEqual(
+            trend.cardSummary.totalSupport?.text,
+            "\((CalorieDomain.maximum + 4_000).formatted()) kcal under goal in total"
+        )
+        XCTAssertEqual(trend.rangeStats.onTrack.value, "1 of 2")
     }
 
-    func testHistoryPeriodTotalsSurviveATargetPastTheCalorieDomain() {
+    func testHistoryPeriodTotalsSurviveATargetPastTheCalorieDomain() throws {
         let date = makeTestDate(year: 2026, month: 1, day: 30)
         let entries = (0 ..< 20).compactMap { offset in
             Calendar.current.date(byAdding: .day, value: -offset, to: date)
@@ -92,10 +112,20 @@ final class CalorieOverflowSafetyTests: XCTestCase {
 
         XCTAssertEqual(analytics.current.loggedDayTargetTotal, 20 * CalorieDomain.maximum)
         XCTAssertEqual(analytics.current.averageTargetPerLoggedDay, CalorieDomain.maximum)
-        XCTAssertFalse(HistoryPatternDiscovery(analytics: analytics).calorieTrend.totalDifferenceText.isEmpty)
+        let trend = HistoryPatternDiscovery(analytics: analytics, today: date).calorieTrend
+        let shortfall = (20 * CalorieDomain.maximum - 40_000).formatted()
+        let earliest = try XCTUnwrap(Calendar.current.date(byAdding: .day, value: -19, to: date))
+
+        XCTAssertEqual(trend.cardSummary.totalSupport?.text, "\(shortfall) kcal under goal in total")
+        XCTAssertEqual(trend.rangeStats.totalDelta, HistoryCalorieTrendStat(value: shortfall, label: "kcal under goal in total"))
+        XCTAssertEqual(trend.rangeStats.average.value, 2_000.formatted())
+        XCTAssertEqual(
+            trend.furthestFromGoal?.text,
+            "Furthest from goal: \(earliest.shortFormatted(in: analytics.calendar)), \((CalorieDomain.maximum - 2_000).formatted()) kcal under"
+        )
     }
 
-    func testHistoryWeeklyRollupsSurviveATargetPastTheCalorieDomain() {
+    func testHistoryWeeklyRollupsSurviveATargetPastTheCalorieDomain() throws {
         let date = makeTestDate(year: 2026, month: 1, day: 30)
         let entries = (0 ..< 60).compactMap { offset in
             Calendar.current.date(byAdding: .day, value: -offset, to: date)
@@ -107,12 +137,19 @@ final class CalorieOverflowSafetyTests: XCTestCase {
             range: .quarter,
             endDate: date
         )
-        let trend = HistoryPatternDiscovery(analytics: analytics).calorieTrend
+        let trend = HistoryPatternDiscovery(analytics: analytics, today: date).calorieTrend
 
         XCTAssertFalse(trend.points.isEmpty)
         for point in trend.points {
             XCTAssertGreaterThanOrEqual(point.targetDelta, -2 * CalorieDomain.maximum)
         }
+        let furthest = try XCTUnwrap(trend.furthestFromGoal?.text)
+        XCTAssertTrue(furthest.hasPrefix("Furthest from goal: week of "))
+        XCTAssertTrue(furthest.hasSuffix(", \((CalorieDomain.maximum - 2_000).formatted()) kcal a day under"))
+        XCTAssertEqual(
+            trend.cardSummary.totalSupport?.text,
+            "\((60 * CalorieDomain.maximum - 120_000).formatted()) kcal under goal in total"
+        )
     }
 
     func testReminderRemainingSurvivesAConsumedTotalPastTheNegativeIntegerRange() {

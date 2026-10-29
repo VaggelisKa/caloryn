@@ -44,30 +44,39 @@ struct HistoryCalorieTrendBreakdownTests {
         let line = HistoryCalorieTrendGoalLine(calories: 2_300, target: 2_000, period: .week)
 
         #expect(line.valueText == 2_300.formatted())
-        #expect(line.goalText == "kcal / day of \(2_000.formatted()) goal")
+        #expect(line.goalText == "kcal a day of \(2_000.formatted()) goal")
     }
 
     @Test(
-        "given a calorie difference, when signing it, then over is plus, under is a true minus and zero is bare",
-        arguments: [(800, "+800"), (-400, "\u{2212}400"), (0, "0")]
+        "given a period exactly on goal, when naming it as furthest from goal, then there is nothing to name",
+        arguments: [HistoryCalorieTrendPeriod.day, .week]
     )
-    func differencesAreSigned(difference: Int, expected: String) {
-        #expect(HistoryCalorieDelta.signedText(difference) == expected)
+    func aPeriodOnGoalIsNeverFurthest(period: HistoryCalorieTrendPeriod) {
+        #expect(HistoryCalorieTrendFurthestFromGoal(periodText: "Fri, 23 Oct", calorieDifference: 0, period: period) == nil)
     }
 
-    @Test("given a period exactly on goal, when naming it as furthest from goal, then there is nothing to name")
-    func aPeriodOnGoalIsNeverFurthest() {
-        #expect(HistoryCalorieTrendFurthestFromGoal(periodText: "Fri 23 Oct", calorieDifference: 0, unit: nil) == nil)
-    }
+    @Test(
+        "given a day or a week off goal, when naming it as furthest from goal, then an unsigned amount, its unit and a direction follow the period",
+        arguments: [
+            ("Fri, 23 Oct", 800, HistoryCalorieTrendPeriod.day, ", 800 kcal over"),
+            ("Fri, 23 Oct", -1_200, .day, ", \(1_200.formatted()) kcal under"),
+            ("week of 12 Jan", 500, .week, ", 500 kcal a day over"),
+            ("week of 12 Jan", -350, .week, ", 350 kcal a day under")
+        ]
+    )
+    func theFurthestLineReadsAmountUnitAndDirection(
+        periodText: String,
+        difference: Int,
+        period: HistoryCalorieTrendPeriod,
+        suffix: String
+    ) throws {
+        let furthest = try #require(
+            HistoryCalorieTrendFurthestFromGoal(periodText: periodText, calorieDifference: difference, period: period)
+        )
 
-    @Test("given a day and a week, when naming them as furthest from goal, then only the week carries a per-day unit")
-    func theFurthestLineCarriesItsUnit() throws {
-        let day = try #require(HistoryCalorieTrendFurthestFromGoal(periodText: "Fri 23 Oct", calorieDifference: 800, unit: nil))
-        let week = try #require(HistoryCalorieTrendFurthestFromGoal(periodText: "week of 12 Jan", calorieDifference: 500, unit: "kcal/day"))
-
-        #expect(day.text == "Furthest from goal: Fri 23 Oct, +800")
-        #expect(day.periodText == "Fri 23 Oct")
-        #expect(week.text == "Furthest from goal: week of 12 Jan, +500 kcal/day")
+        #expect(furthest.periodText == periodText)
+        #expect(furthest.suffix == suffix)
+        #expect(furthest.text == "Furthest from goal: " + periodText + suffix)
     }
 
     @Test("given a meal with no calories, when rendering its row, then it reads as absent rather than as zero")
@@ -95,13 +104,13 @@ struct HistoryCalorieTrendBreakdownTests {
         #expect(titles == ["Breakfast", "Lunch", "Snacks", "Dinner"])
     }
 
-    @Test("given a day over target, when titling the food list, then it reads as an explanation")
+    @Test("given a day over goal, when titling the food list, then it reads as an explanation")
     func overTargetTheFoodsExplainTheOverage() {
         #expect(makeDay(calorieDifference: 320).foodSectionTitle == "Top contributors")
     }
 
     @Test(
-        "given a day at or under target, when titling the food list, then it is just a list",
+        "given a day at or under goal, when titling the food list, then it is just a list",
         arguments: [0, -1, -450]
     )
     func atOrUnderTargetTheFoodsAreJustAList(difference: Int) {
@@ -142,12 +151,12 @@ struct HistoryCalorieTrendBreakdownTests {
         #expect(HistoryCalorieTrendDayBreakdown.entryCountText(count) == expected)
     }
 
-    @Test("given a day with nothing logged, when describing it, then the day's own target is named")
-    func anUnloggedDayNamesItsOwnTarget() {
-        let breakdown = makeDay(isLogged: false, dailyCalorieTarget: 950)
+    @Test("given a day with nothing logged, when describing it, then the day's own goal is named")
+    func anUnloggedDayNamesItsOwnGoal() {
+        let breakdown = makeDay(isLogged: false, dailyCalorieTarget: 2_000)
 
         #expect(breakdown.isLogged == false)
-        #expect(breakdown.unloggedText == "No food logged. Target was 950 kcal.")
+        #expect(breakdown.unloggedText == "No food logged. Goal was \(2_000.formatted()) kcal.")
     }
 
     @Test("given a week with nothing logged, when describing it, then it says so rather than showing zeroes")
@@ -168,35 +177,38 @@ struct HistoryCalorieTrendBreakdownTests {
     func theWeeksTwoRatiosCountDifferentDenominators() {
         let breakdown = makeWeek(loggedDays: 5, totalDays: 7, onTrackDays: 3)
 
-        #expect(breakdown.onTrackRatioText == "3 of 5")
-        #expect(breakdown.coverageRatioText == "5 of 7")
+        #expect(breakdown.stats == [
+            .init(value: "3 of 5", label: "logged days on track"),
+            .init(value: "5 of 7", label: "days logged")
+        ])
+        #expect(breakdown.stats.map(\.spokenLabel) == ["3 of 5 logged days on track", "5 of 7 days logged"])
     }
 
-    @Test("given logged days, when naming the day furthest from goal, then distance from target wins regardless of direction")
+    @Test("given logged days, when naming the day furthest from goal, then distance from goal wins regardless of direction")
     func theFurthestDayIgnoresDirection() {
         let breakdown = makeWeek(swings: [
-            .init(dateText: "Mon 3 Feb", calorieDifference: 300),
-            .init(dateText: "Tue 4 Feb", calorieDifference: -900),
-            .init(dateText: "Wed 5 Feb", calorieDifference: 120)
+            .init(dateText: "Mon, 3 Feb", calorieDifference: 300),
+            .init(dateText: "Tue, 4 Feb", calorieDifference: -900),
+            .init(dateText: "Wed, 5 Feb", calorieDifference: 120)
         ])
 
-        #expect(breakdown.furthestSwing?.dateText == "Tue 4 Feb")
-        #expect(breakdown.furthestFromGoal?.text == "Furthest from goal: Tue 4 Feb, \u{2212}900")
+        #expect(breakdown.furthestSwing?.dateText == "Tue, 4 Feb")
+        #expect(breakdown.furthestFromGoal?.text == "Furthest from goal: Tue, 4 Feb, 900 kcal under")
     }
 
     @Test("given two equally distant days, when naming the furthest, then the earlier day wins")
     func anExactTieNamesTheEarlierDay() {
         let breakdown = makeWeek(swings: [
-            .init(dateText: "Mon 3 Feb", calorieDifference: 400),
-            .init(dateText: "Tue 4 Feb", calorieDifference: -400)
+            .init(dateText: "Mon, 3 Feb", calorieDifference: 400),
+            .init(dateText: "Tue, 4 Feb", calorieDifference: -400)
         ])
 
-        #expect(breakdown.furthestSwing?.dateText == "Mon 3 Feb")
+        #expect(breakdown.furthestSwing?.dateText == "Mon, 3 Feb")
     }
 
-    @Test("given every day exactly on target, when naming the furthest from goal, then the line is hidden")
+    @Test("given every day exactly on goal, when naming the furthest from goal, then the line is hidden")
     func aWeekWhereEveryDayHitTargetHidesTheLine() {
-        let breakdown = makeWeek(swings: [.init(dateText: "Mon 3 Feb", calorieDifference: 0)])
+        let breakdown = makeWeek(swings: [.init(dateText: "Mon, 3 Feb", calorieDifference: 0)])
 
         #expect(breakdown.furthestFromGoal == nil)
     }

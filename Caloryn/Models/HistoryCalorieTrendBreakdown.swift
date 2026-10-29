@@ -6,12 +6,23 @@ enum HistoryMealLabel {
     }
 }
 
-enum HistoryCalorieDelta {
-    static func signedText(_ difference: Int) -> String {
-        if difference > 0 { return "+\(difference.magnitude.formatted())" }
-        if difference < 0 { return "\u{2212}\(difference.magnitude.formatted())" }
-        return "0"
+enum HistoryCalorieTrendPeriod: Equatable {
+    case day
+    case week
+}
+
+struct HistoryCalorieTrendStat: Identifiable, Equatable {
+    let value: String
+    let label: String
+    let spokenLabel: String
+
+    init(value: String, label: String, spokenLabel: String? = nil) {
+        self.value = value
+        self.label = label
+        self.spokenLabel = spokenLabel ?? "\(value) \(label)"
     }
+
+    var id: String { label }
 }
 
 struct HistoryCalorieTrendFurthestFromGoal: Equatable {
@@ -19,35 +30,28 @@ struct HistoryCalorieTrendFurthestFromGoal: Equatable {
 
     let periodText: String
     let calorieDifference: Int
-    let unit: String?
+    let period: HistoryCalorieTrendPeriod
 
-    init?(periodText: String, calorieDifference: Int, unit: String?) {
+    init?(periodText: String, calorieDifference: Int, period: HistoryCalorieTrendPeriod) {
         guard calorieDifference != 0 else { return nil }
         self.periodText = periodText
         self.calorieDifference = calorieDifference
-        self.unit = unit
+        self.period = period
     }
 
-    var deltaText: String {
-        let signed = HistoryCalorieDelta.signedText(calorieDifference)
-        guard let unit else { return signed }
-        return "\(signed) \(unit)"
+    var suffix: String {
+        let unit = period == .day ? "kcal" : "kcal a day"
+        let direction = calorieDifference > 0 ? "over" : "under"
+        return ", \(calorieDifference.magnitude.formatted()) \(unit) \(direction)"
     }
-
-    var suffix: String { ", \(deltaText)" }
 
     var text: String { Self.prefix + periodText + suffix }
 }
 
 struct HistoryCalorieTrendGoalLine: Equatable {
-    enum Period: Equatable {
-        case day
-        case week
-    }
-
     let calories: Double
     let target: Int
-    let period: Period
+    let period: HistoryCalorieTrendPeriod
 
     var valueText: String {
         calories.rounded().truncatedSafely.formatted()
@@ -58,7 +62,7 @@ struct HistoryCalorieTrendGoalLine: Equatable {
         case .day:
             "of \(target.formatted()) kcal goal"
         case .week:
-            "kcal / day of \(target.formatted()) goal"
+            "kcal a day of \(target.formatted()) goal"
         }
     }
 }
@@ -133,7 +137,7 @@ struct HistoryCalorieTrendDayBreakdown {
     }
 
     var unloggedText: String {
-        "No food logged. Target was \(dailyCalorieTarget.formatted()) kcal."
+        "No food logged. Goal was \(dailyCalorieTarget.formatted()) kcal."
     }
 
     static func entryCountText(_ count: Int) -> String {
@@ -176,9 +180,17 @@ struct HistoryCalorieTrendWeekBreakdown {
 
     var emptyText: String { "No food logged in this week." }
 
-    var onTrackRatioText: String { "\(onTrackDays) of \(loggedDays)" }
+    var onTrack: HistoryCalorieTrendStat {
+        HistoryCalorieTrendStat(value: "\(onTrackDays) of \(loggedDays)", label: "logged days on track")
+    }
 
-    var coverageRatioText: String { "\(loggedDays) of \(totalDays)" }
+    var coverage: HistoryCalorieTrendStat {
+        HistoryCalorieTrendStat(value: "\(loggedDays) of \(totalDays)", label: "days logged")
+    }
+
+    var stats: [HistoryCalorieTrendStat] {
+        [onTrack, coverage]
+    }
 
     var furthestSwing: DaySwing? {
         loggedDaySwings.max { abs($0.calorieDifference) < abs($1.calorieDifference) }
@@ -189,7 +201,7 @@ struct HistoryCalorieTrendWeekBreakdown {
         return HistoryCalorieTrendFurthestFromGoal(
             periodText: furthestSwing.dateText,
             calorieDifference: furthestSwing.calorieDifference,
-            unit: nil
+            period: .day
         )
     }
 
