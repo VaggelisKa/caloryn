@@ -1,100 +1,141 @@
 import Foundation
 
 struct HistoryRecurringCaloriePatternDetailSummary: Equatable {
-    static let minusSign = "−"
+    struct Stat: Equatable, Identifiable {
+        let value: String
+        let label: String
+
+        var id: String { label }
+    }
+
+    struct MealBar: Equatable, Identifiable {
+        let label: String
+        let valueText: String
+        let ratio: Double
+        let isPatternDays: Bool
+
+        var id: Bool { isPatternDays }
+    }
 
     let kind: HistoryRecurringCaloriePatternKind
-    let outcomeTargetText: String
+    let outcome: HistoryRecurringCalorieOutcome
     let weekdayName: String
     let mealType: MealType
     let supportingDayCount: Int
     let cohortDayCount: Int
     let outcomeComparisonCount: Int
     let outcomeComparisonDayCount: Int
-    let mealComparisonDayCount: Int
-    let mealDifferenceCalories: Double
+    let eligibleDayCount: Int
+    let windowDayCount: Int
+    let supportingMealAverageCalories: Double
+    let comparisonMealAverageCalories: Double
 
     init(
         kind: HistoryRecurringCaloriePatternKind,
-        outcomeTargetText: String,
+        outcome: HistoryRecurringCalorieOutcome,
         weekdayName: String,
         mealType: MealType,
         supportingDayCount: Int,
         cohortDayCount: Int,
         outcomeComparisonCount: Int,
         outcomeComparisonDayCount: Int,
-        mealComparisonDayCount: Int,
-        mealDifferenceCalories: Double
+        eligibleDayCount: Int,
+        windowDayCount: Int,
+        supportingMealAverageCalories: Double,
+        comparisonMealAverageCalories: Double
     ) {
         self.kind = kind
-        self.outcomeTargetText = outcomeTargetText
+        self.outcome = outcome
         self.weekdayName = weekdayName
         self.mealType = mealType
         self.supportingDayCount = supportingDayCount
         self.cohortDayCount = cohortDayCount
         self.outcomeComparisonCount = outcomeComparisonCount
         self.outcomeComparisonDayCount = outcomeComparisonDayCount
-        self.mealComparisonDayCount = mealComparisonDayCount
-        self.mealDifferenceCalories = mealDifferenceCalories
+        self.eligibleDayCount = eligibleDayCount
+        self.windowDayCount = windowDayCount
+        self.supportingMealAverageCalories = supportingMealAverageCalories
+        self.comparisonMealAverageCalories = comparisonMealAverageCalories
     }
 
-    var supportingTitle: String {
+    var mealTitle: String {
+        HistoryRecurringCaloriePatternWording.mealName(for: mealType)
+    }
+
+    var differenceLead: String {
+        let verb = HistoryRecurringCaloriePatternWording.agreeing(with: mealType, singular: "is", plural: "are")
+        let patternAverage = HistoryRecurringCaloriePatternWording.calories(supportingMealAverageCalories)
+        let otherAverage = HistoryRecurringCaloriePatternWording.calories(comparisonMealAverageCalories)
+        return "\(mealTitle) \(verb) the difference: \(patternAverage) kcal on \(patternDaysName), \(otherAverage) on other days."
+    }
+
+    var basisText: String {
+        let dayUnit = eligibleDayCount == 1 ? "day" : "days"
+        return "Last \(windowDayCount) days · \(eligibleDayCount) logged \(dayUnit)"
+    }
+
+    var outcomeTitle: String { outcome.goalTitle }
+
+    var outcomeStats: [Stat] {
         switch kind {
         case .weekdayMeal:
-            "Logged \(weekdayName)s"
+            [
+                Stat(
+                    value: "\(supportingDayCount) of \(cohortDayCount)",
+                    label: HistoryRecurringCaloriePatternWording.weekdayPlural(weekdayName)
+                ),
+                Stat(
+                    value: "\(outcomeComparisonCount) of \(outcomeComparisonDayCount)",
+                    label: "other days"
+                ),
+            ]
         case .mealOnly:
-            "\(outcomeTargetText.capitalized) days"
+            [
+                Stat(
+                    value: "\(supportingDayCount) of \(eligibleDayCount)",
+                    label: "logged days"
+                ),
+            ]
         }
     }
 
-    var supportingValue: String {
-        switch kind {
-        case .weekdayMeal:
-            "\(supportingDayCount) of \(cohortDayCount)"
-        case .mealOnly:
-            "\(supportingDayCount)"
-        }
+    var mealBars: [MealBar] {
+        let peak = max(supportingMealAverageCalories, comparisonMealAverageCalories)
+        return [
+            MealBar(
+                label: daysListTitle,
+                valueText: kcalText(supportingMealAverageCalories),
+                ratio: ratio(supportingMealAverageCalories, of: peak),
+                isPatternDays: true
+            ),
+            MealBar(
+                label: "Other days",
+                valueText: kcalText(comparisonMealAverageCalories),
+                ratio: ratio(comparisonMealAverageCalories, of: peak),
+                isPatternDays: false
+            ),
+        ]
     }
 
-    var supportingDetail: String {
-        switch kind {
-        case .weekdayMeal:
-            outcomeTargetText
-        case .mealOnly:
-            "supporting logged days"
-        }
+    var daysListTitle: String {
+        patternDaysName.prefix(1).uppercased() + patternDaysName.dropFirst()
     }
 
-    var comparisonTitle: String { "Other logged days" }
-
-    var comparisonValue: String {
-        switch kind {
-        case .weekdayMeal:
-            "\(outcomeComparisonCount) of \(outcomeComparisonDayCount)"
-        case .mealOnly:
-            "\(mealComparisonDayCount)"
-        }
+    private var patternDaysName: String {
+        HistoryRecurringCaloriePatternWording.patternDaysName(
+            kind: kind,
+            weekdayName: weekdayName,
+            outcome: outcome
+        )
     }
 
-    var comparisonDetail: String {
-        switch kind {
-        case .weekdayMeal:
-            outcomeTargetText
-        case .mealOnly:
-            "comparison logged days"
-        }
+    private func kcalText(_ calories: Double) -> String {
+        "\(HistoryRecurringCaloriePatternWording.calories(calories)) kcal"
     }
 
-    var mealComparisonTitle: String { "\(mealType.displayName) comparison" }
-
-    var mealDifferenceText: String {
-        let magnitude = abs(mealDifferenceCalories).rounded().truncatedSafely.formatted()
-        let sign = mealDifferenceCalories >= 0 ? "+" : Self.minusSign
-        return "\(sign)\(magnitude) kcal"
-    }
-
-    var mealDifferenceCaption: String {
-        "Average difference versus other eligible logged days"
+    private func ratio(_ value: Double, of peak: Double) -> Double {
+        guard peak > 0 else { return 0 }
+        return min(1, max(0, value / peak))
     }
 }
 
@@ -122,18 +163,21 @@ struct HistoryRecurringCaloriePatternDayRow: Equatable {
         self.isExpanded = isExpanded
     }
 
-    var mealName: String { HistoryMealLabel.rowTitle(for: mealType) }
+    var mealName: String { HistoryRecurringCaloriePatternWording.mealName(for: mealType) }
 
-    var totalsText: String {
-        "\(totalCalories.rounded().truncatedSafely.formatted()) kcal logged, \(dailyCalorieTarget.formatted()) kcal target"
+    var totals: HistoryRecurringCaloriePatternPhrase {
+        HistoryRecurringCaloriePatternPhrase(runs: [
+            .emphasised(loggedText),
+            .plain(" of \(dailyCalorieTarget.formatted()) goal"),
+        ])
     }
 
     var mealCaloriesText: String {
-        mealCalories.rounded().truncatedSafely.kcalFormatted
+        "\(HistoryRecurringCaloriePatternWording.calories(mealCalories)) kcal"
     }
 
     var accessibilityLabel: String {
-        "\(dateText), \(totalCalories.rounded().truncatedSafely.formatted()) kcal logged, \(dailyCalorieTarget.formatted()) kcal target, \(mealName), \(mealCaloriesText)"
+        "\(dateText), \(loggedText) of \(dailyCalorieTarget.formatted()) kcal goal, \(mealName), \(mealCaloriesText)"
     }
 
     var accessibilityValue: String {
@@ -150,5 +194,9 @@ struct HistoryRecurringCaloriePatternDayRow: Equatable {
 
     var expandedEmptyText: String {
         "No \(mealName.lowercased()) calories were logged."
+    }
+
+    private var loggedText: String {
+        HistoryRecurringCaloriePatternWording.calories(totalCalories)
     }
 }

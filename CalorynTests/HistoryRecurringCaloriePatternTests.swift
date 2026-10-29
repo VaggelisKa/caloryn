@@ -316,7 +316,7 @@ final class HistoryRecurringCaloriePatternTests: XCTestCase {
         XCTAssertEqual(pattern.outcome, .below)
         XCTAssertEqual(pattern.mealType, .dinner)
         XCTAssertTrue(pattern.supportingDays.allSatisfy { $0.mealCalories == 0 })
-        XCTAssertTrue(pattern.headline.contains("Dinners"))
+        XCTAssertEqual(pattern.headline, "Dinner is smaller on under-goal days")
     }
 
     func testMaterialityAveragesPerDayHistoricalTargetShares() throws {

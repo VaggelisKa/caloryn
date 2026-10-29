@@ -47,14 +47,85 @@ enum HistoryRecurringCalorieOutcome: String, CaseIterable {
         }
     }
 
-    var targetText: String {
-        "\(rawValue) target"
+    var direction: String {
+        switch self {
+        case .above: "over"
+        case .below: "under"
+        }
+    }
+
+    var goalText: String {
+        "\(direction) goal"
+    }
+
+    var goalTitle: String {
+        "\(direction.capitalized) goal"
+    }
+
+    var goalDaysText: String {
+        "\(direction)-goal days"
     }
 }
 
 enum HistoryRecurringCaloriePatternKind: String {
     case weekdayMeal
     case mealOnly
+}
+
+struct HistoryRecurringCaloriePatternPhrase: Equatable {
+    struct Run: Equatable {
+        let text: String
+        let isEmphasised: Bool
+    }
+
+    let runs: [Run]
+
+    var plainText: String {
+        runs.map(\.text).joined()
+    }
+}
+
+extension HistoryRecurringCaloriePatternPhrase.Run {
+    static func plain(_ text: String) -> Self {
+        Self(text: text, isEmphasised: false)
+    }
+
+    static func emphasised(_ text: String) -> Self {
+        Self(text: text, isEmphasised: true)
+    }
+}
+
+enum HistoryRecurringCaloriePatternWording {
+    static func mealName(for mealType: MealType) -> String {
+        HistoryMealLabel.rowTitle(for: mealType)
+    }
+
+    static func agreeing(
+        with mealType: MealType,
+        singular: String,
+        plural: String
+    ) -> String {
+        mealType == .snack ? plural : singular
+    }
+
+    static func weekdayPlural(_ weekdayName: String) -> String {
+        "\(weekdayName)s"
+    }
+
+    static func patternDaysName(
+        kind: HistoryRecurringCaloriePatternKind,
+        weekdayName: String,
+        outcome: HistoryRecurringCalorieOutcome
+    ) -> String {
+        switch kind {
+        case .weekdayMeal: weekdayPlural(weekdayName)
+        case .mealOnly: outcome.goalDaysText
+        }
+    }
+
+    static func calories(_ value: Double) -> String {
+        value.rounded().truncatedSafely.formatted()
+    }
 }
 
 struct HistoryRecurringCaloriePattern: Identifiable {
@@ -85,30 +156,74 @@ struct HistoryRecurringCaloriePattern: Identifiable {
         date.shortFormatted(in: calendar)
     }
 
+    var supportingDaysNewestFirst: [HistoryRecurringCaloriePatternDay] {
+        supportingDays.sorted { $0.date > $1.date }
+    }
+
+    var windowDayCount: Int {
+        let start = calendar.startOfDay(for: windowStart)
+        let end = calendar.startOfDay(for: windowEnd)
+        return (calendar.dateComponents([.day], from: start, to: end).day ?? 0) + 1
+    }
+
+    var mealName: String {
+        HistoryRecurringCaloriePatternWording.mealName(for: mealType)
+    }
+
     var headline: String {
         switch kind {
         case .weekdayMeal:
-            "\(weekdayName) \(mealPlural.lowercased()) stood out"
+            return "\(weekdayPlural) run \(outcome.direction)"
         case .mealOnly:
-            "\(mealPlural) stood out on \(outcome.targetText) days"
+            let verb = HistoryRecurringCaloriePatternWording.agreeing(
+                with: mealType,
+                singular: "is",
+                plural: "are"
+            )
+            let size = mealDifferenceCalories < 0 ? "smaller" : "bigger"
+            return "\(mealName) \(verb) \(size) on \(outcome.goalDaysText)"
         }
     }
 
-    var comparisonText: String {
-        let roundedDifference = abs(mealDifferenceCalories).rounded().truncatedSafely
-        let direction = mealDifferenceCalories > 0 ? "more" : "less"
-        let mealName = mealType == .snack ? "Snacks" : mealType.displayName
+    var mealComparison: HistoryRecurringCaloriePatternPhrase {
+        let verb = HistoryRecurringCaloriePatternWording.agreeing(
+            with: mealType,
+            singular: "averages",
+            plural: "average"
+        )
+        let patternAverage = HistoryRecurringCaloriePatternWording.calories(supportingMealAverageCalories)
+        let otherAverage = HistoryRecurringCaloriePatternWording.calories(comparisonMealAverageCalories)
 
         switch kind {
         case .weekdayMeal:
-            return "\(supportingDays.count) of \(cohortDayCount) logged \(weekdayPlural) were \(outcome.targetText). \(mealName) averaged \(roundedDifference.formatted()) kcal \(direction) than on your other eligible logged days."
+            return HistoryRecurringCaloriePatternPhrase(runs: [
+                .plain("\(mealName) \(verb) "),
+                .emphasised(patternAverage),
+                .plain(" kcal on \(weekdayPlural) vs "),
+                .emphasised(otherAverage),
+                .plain(" other days"),
+            ])
         case .mealOnly:
-            return "Across \(supportingDays.count) \(outcome.targetText) logged days, \(mealName.lowercased()) averaged \(roundedDifference.formatted()) kcal \(direction) than on your other eligible logged days."
+            return HistoryRecurringCaloriePatternPhrase(runs: [
+                .plain("\(mealName) \(verb) "),
+                .emphasised(patternAverage),
+                .plain(" kcal on those days vs "),
+                .emphasised(otherAverage),
+                .plain(" on others"),
+            ])
         }
     }
 
-    var basisText: String {
-        "Based on \(eligibleDayCount) logged days in the last 30 days"
+    var frequencyText: String {
+        switch kind {
+        case .weekdayMeal:
+            let share = supportingDays.count == cohortDayCount
+                ? "All \(cohortDayCount)"
+                : "\(supportingDays.count) of \(cohortDayCount)"
+            return "\(share) \(weekdayPlural) \(outcome.goalText)"
+        case .mealOnly:
+            return "Across \(supportingDays.count) \(outcome.goalDaysText)"
+        }
     }
 
     var weekdayName: String {
@@ -116,16 +231,7 @@ struct HistoryRecurringCaloriePattern: Identifiable {
     }
 
     private var weekdayPlural: String {
-        "\(weekdayName)s"
-    }
-
-    private var mealPlural: String {
-        switch mealType {
-        case .breakfast: "Breakfasts"
-        case .lunch: "Lunches"
-        case .dinner: "Dinners"
-        case .snack: "Snacks"
-        }
+        HistoryRecurringCaloriePatternWording.weekdayPlural(weekdayName)
     }
 
     private static func weekdayName(for weekday: Int?) -> String {
