@@ -270,7 +270,7 @@ final class HistoryAnalyticsTests: XCTestCase {
         XCTAssertEqual(lastPoint.accessibilityValue, "2200 calories, Over")
     }
 
-    func testPatternDiscoverySurfacesBiggestDailyCalorieSwing() {
+    func testPatternDiscoverySurfacesTheDayFurthestFromGoal() {
         let profile = makeProfile()
         let endDate = makeTestDate(year: 2026, month: 1, day: 30)
         let entries = [
@@ -289,8 +289,8 @@ final class HistoryAnalyticsTests: XCTestCase {
         let projection = HistoryPatternDiscovery(analytics: analytics).calorieTrend
 
         XCTAssertEqual(
-            projection.biggestInconsistencyText,
-            "Biggest swing: \(endDate.shortFormatted), 600 kcal over"
+            projection.furthestFromGoal?.text,
+            "Furthest from goal: \(endDate.formatted(pattern: "EEE d MMM", in: .current)), +600"
         )
     }
 

@@ -45,15 +45,11 @@ struct HistoryCalorieTrendCardSummaryTests {
         )
     }
 
-    @Test("given fractional totals, when showing them, then they are rounded to whole calories")
-    func statValuesAreRoundedForDisplay() {
-        let summary = makeSummary(
-            averageCaloriesPerLoggedDay: 949.6,
-            totalCalories: 950.4
-        )
+    @Test("given a fractional average, when showing it, then it is rounded to whole calories")
+    func theAverageIsRoundedForDisplay() {
+        let summary = makeSummary(averageCaloriesPerLoggedDay: 949.6)
 
         #expect(summary.averageValueText == "950")
-        #expect(summary.totalValueText == "950")
     }
 
     @Test("given the on-track count, when showing it, then it is out of logged days, not calendar days")
@@ -68,22 +64,32 @@ struct HistoryCalorieTrendCardSummaryTests {
     }
 
     @Test(
-        "given a logged total, when supporting the section title, then it is set against the same days' goals",
+        "given a logged total, when supporting the section title, then only its distance from the same days' goals is told",
         arguments: [
-            (12_800.0, 12_000, "\(12_800.formatted()) kcal logged, 800 over your goals"),
-            (11_500.0, 12_000, "\(11_500.formatted()) kcal logged, 500 under your goals"),
-            (12_000.4, 12_000, "\(12_000.formatted()) kcal logged, right on your goals")
+            (15_200.0, 12_000, "+\(3_200.formatted()) kcal", " over goal in total"),
+            (10_800.0, 12_000, "\(1_200.formatted()) kcal", " under goal in total"),
+            (12_000.4, 12_000, "Right on goal", " in total")
         ]
     )
-    func theSupportLineComparesTheTotalWithItsGoals(total: Double, goals: Int, expected: String) {
-        let summary = makeSummary(totalCalories: total, loggedDayTargetTotal: goals)
+    func theSupportLineTellsTheDistanceFromGoal(total: Double, goals: Int, emphasis: String, remainder: String) {
+        let support = makeSummary(totalCalories: total, loggedDayTargetTotal: goals).totalSupport
 
-        #expect(summary.totalSupportText == expected)
+        #expect(support?.emphasis == emphasis)
+        #expect(support?.remainder == remainder)
+        #expect(support?.text == emphasis + remainder)
+    }
+
+    @Test("given a large logged total, when supporting the section title, then the total itself is not repeated")
+    func theSupportLineDropsTheCumulativeTotal() {
+        let support = makeSummary(totalCalories: 61_200, loggedDayTargetTotal: 58_000).totalSupport
+
+        #expect(support?.text == "+\(3_200.formatted()) kcal over goal in total")
+        #expect(support?.text.contains(61_200.formatted()) == false)
     }
 
     @Test("given nothing logged, when supporting the section title, then there is no line")
     func anEmptyRangeHasNoSupportLine() {
-        #expect(makeSummary(loggedDayCount: 0, hasLoggedData: false).totalSupportText == nil)
+        #expect(makeSummary(loggedDayCount: 0, hasLoggedData: false).totalSupport == nil)
     }
 
     private func makeSummary(
