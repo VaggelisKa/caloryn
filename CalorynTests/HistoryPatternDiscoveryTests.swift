@@ -45,7 +45,7 @@ struct HistoryPatternDiscoveryTests {
     }
 
     @Test("given the 90-day range, when projecting the calorie trend, then points are calendar weeks rather than days")
-    func quarterRangeProjectsWeeklyPoints() {
+    func quarterRangeProjectsWeeklyPoints() throws {
         let analytics = HistoryAnalytics(
             entries: [],
             profile: nil,
@@ -57,8 +57,22 @@ struct HistoryPatternDiscoveryTests {
 
         #expect(projection.totalDayCount == 90)
         #expect(projection.points.count == 14)
-        #expect(projection.points.first?.xAxisLabel == "W1")
-        #expect(projection.points.last?.xAxisLabel == "W14")
+        let lastWeekStart = try #require(analytics.current.weeklyRollups.last?.startDate)
+        #expect(projection.points.last?.xAxisLabel == lastWeekStart.dayMonthFormatted(in: analytics.calendar))
+        #expect(projection.points.first?.xAxisLabel == "")
+    }
+
+    @Test("given a 90-day range ending this week, when projecting the calorie trend, then the current week is labelled This week")
+    func quarterTrendLabelsTheCurrentWeek() {
+        let dates = days(fromJanuary: 5, count: 14)
+
+        let projection = HistoryCalorieTrendProjection(
+            range: .quarter,
+            summary: makeSummary(dates: dates, entries: []),
+            today: janDate(14)
+        )
+
+        #expect(projection.points.map(\.xAxisLabel) == [janDate(5).startOfWeek.dayMonthFormatted, "This week"])
     }
 
     @Test("given a 90-day range with two logged weeks, when projecting the calorie trend, then each week point carries its average per logged day")
@@ -82,13 +96,13 @@ struct HistoryPatternDiscoveryTests {
         #expect(abs(firstWeek.value - 2_200) < 0.001)
         #expect(firstWeek.targetDelta == 200)
         #expect(firstWeek.status == .over)
-        #expect(firstWeek.xAxisLabel == "W1")
-        #expect(firstWeek.accessibilityLabel == "W1, week of \(janDate(5).startOfWeek.dayMonthFormatted)")
+        #expect(firstWeek.xAxisLabel == janDate(5).startOfWeek.dayMonthFormatted)
+        #expect(firstWeek.accessibilityLabel == "Week of \(janDate(5).startOfWeek.dayMonthFormatted)")
         #expect(firstWeek.accessibilityValue == "2200 average calories per logged day, Over")
 
         let secondWeek = try #require(projection.points.last)
         #expect(abs(secondWeek.value - 2_600) < 0.001)
-        #expect(secondWeek.xAxisLabel == "W2")
+        #expect(secondWeek.xAxisLabel == janDate(12).startOfWeek.dayMonthFormatted)
     }
 
     @Test("given a 90-day range week with nothing logged, when projecting the calorie trend, then the week point reads as not logged")

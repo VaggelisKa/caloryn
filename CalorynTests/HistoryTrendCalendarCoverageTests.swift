@@ -86,14 +86,17 @@ struct HistoryTrendCalendarCoverageTests {
         #expect(projection.weekStartText(for: instant) == "8 Mar")
     }
 
-    @Test("given a 90-day range across the spring change, when projecting the trend, then week points are labelled from the oldest and named by their Monday")
+    @Test("given a 90-day range across the spring change, when projecting the trend, then every other week counting back from the newest is labelled by its Monday")
     func weeklyPointLabelsFollowTheCalendar() throws {
         let projection = HistoryCalorieTrendProjection(range: .quarter, summary: springQuarter().current)
 
         #expect(projection.points.count == 14)
-        #expect(projection.points.map(\.xAxisLabel) == (1...14).map { "W\($0)" })
-        #expect(projection.points.first?.accessibilityLabel == "W1, week of 26 Jan")
-        let dstWeek = try #require(projection.points.first { $0.accessibilityLabel == "W7, week of 9 Mar" })
+        #expect(
+            projection.points.map(\.xAxisLabel)
+                == ["", "2 Feb", "", "16 Feb", "", "2 Mar", "", "16 Mar", "", "30 Mar", "", "13 Apr", "", "27 Apr"]
+        )
+        #expect(projection.points.first?.accessibilityLabel == "Week of 26 Jan")
+        let dstWeek = try #require(projection.points.first { $0.accessibilityLabel == "Week of 9 Mar" })
         #expect(dstWeek.id == "week-2026-03-09T04:00:00Z")
         #expect(dstWeek.isLogged)
         #expect(dstWeek.value == 2_400)
@@ -166,8 +169,8 @@ struct HistoryTrendCalendarCoverageTests {
         let projection = HistoryCalorieTrendProjection(range: .quarter, summary: analytics.current)
 
         #expect(projection.points.count == 14)
-        #expect(projection.points.first?.accessibilityLabel == "W1, week of 26 Jan")
-        let overWeek = try #require(projection.points.first { $0.accessibilityLabel == "W10, week of 30 Mar" })
+        #expect(projection.points.first?.accessibilityLabel == "Week of 26 Jan")
+        let overWeek = try #require(projection.points.first { $0.accessibilityLabel == "Week of 30 Mar" })
         #expect(overWeek.id == "week-2026-03-29T11:00:00Z")
         #expect(overWeek.value == 2_400)
         #expect(projection.furthestFromGoal?.text == "Furthest from goal: week of 30 Mar, +400 kcal/day")

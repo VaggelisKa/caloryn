@@ -68,7 +68,7 @@ struct HistoryCalorieTrendProjection {
     let furthestFromGoal: HistoryCalorieTrendFurthestFromGoal?
     let points: [HistoryCalorieTrendPoint]
 
-    init(range: HistoryRange, summary: HistoryPeriodSummary) {
+    init(range: HistoryRange, summary: HistoryPeriodSummary, today: Date = .now) {
         let calendar = summary.calendar
         self.range = range
         self.calendar = calendar
@@ -91,6 +91,7 @@ struct HistoryCalorieTrendProjection {
 
         switch range {
         case .quarter:
+            let weekAxis = HistoryWeeklyConsistencyProjection(summary: summary, today: today).chart.weeks
             points = summary.weeklyRollups.enumerated().map { offset, week in
                 let averageCalories = week.averageCaloriesPerLoggedDay
                 let status = HistoryGoalStatus.calorieStatus(
@@ -98,7 +99,7 @@ struct HistoryCalorieTrendProjection {
                     loggedCount: week.loggedDays,
                     targetCalories: week.targetPerLoggedDay
                 )
-                let label = "W\(offset + 1)"
+                let startText = week.startDate.dayMonthFormatted(in: calendar)
 
                 return HistoryCalorieTrendPoint(
                     id: "week-\(week.id.ISO8601Format())",
@@ -107,8 +108,8 @@ struct HistoryCalorieTrendProjection {
                     targetDelta: averageCalories.roundedCalories - week.targetPerLoggedDay,
                     status: status,
                     isLogged: week.loggedDays > 0,
-                    xAxisLabel: label,
-                    accessibilityLabel: "\(label), week of \(week.startDate.dayMonthFormatted(in: calendar))",
+                    xAxisLabel: weekAxis[offset].axisLabel ?? "",
+                    accessibilityLabel: "Week of \(startText)",
                     accessibilityValue: week.loggedDays == 0
                         ? "No calories logged"
                         : "\(averageCalories.rounded().truncatedSafely) average calories per logged day, \(status.label)",
