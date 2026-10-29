@@ -4,52 +4,26 @@ import Charts
 struct HistoryWeeklyRollupSection: View {
     let projection: HistoryWeeklyConsistencyProjection
 
-    private struct ChartWeek: Identifiable {
-        let index: Double
-        let label: String
-        let week: HistoryWeekSummary
-
-        var id: Date { week.id }
-    }
-
-    private var layout: HistoryWeeklyConsistencyChart {
-        HistoryWeeklyConsistencyChart(weekCount: projection.weeks.count)
-    }
-
-    private var chartWeeks: [ChartWeek] {
-        projection.weeks.enumerated().map { offset, week in
-            ChartWeek(
-                index: Double(offset),
-                label: HistoryWeeklyConsistencyChart.label(forOffset: offset),
-                week: week
-            )
-        }
-    }
-
     var body: some View {
-        let layout = layout
+        let chart = projection.chart
 
         return VStack(alignment: .leading, spacing: 10) {
-            VStack(alignment: .leading, spacing: 4) {
-                HistorySectionTitle("Weekly consistency")
-
-                if let headlineText = projection.headlineText {
-                    Text(headlineText)
-                        .font(CalorynTheme.cardSubtitle)
-                        .foregroundStyle(CalorynTheme.textSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
+            HistorySectionTitle("Weekly consistency")
 
             Chart {
-                ForEach(chartWeeks) { chartWeek in
+                ForEach(chart.weeks) { week in
                     BarMark(
-                        x: .value("Week", chartWeek.index),
-                        y: .value("On Track", chartWeek.week.onTrackRatio * 100),
-                        width: .fixed(layout.barWidth)
+                        x: .value("Week", Double(week.index)),
+                        y: .value("On Track", week.onTrackPercentage),
+                        width: .fixed(chart.barWidth)
                     )
-                    .foregroundStyle(chartWeek.week.consistencyTint)
+                    .foregroundStyle(
+                        HistoryTheme.color(
+                            for: .weeklyConsistency(onTrackDays: week.onTrackDays, loggedDays: week.loggedDays)
+                        )
+                    )
                     .cornerRadius(4)
+                    .accessibilityLabel(week.accessibilityLabel)
                 }
             }
             .chartYAxis {
@@ -66,12 +40,12 @@ struct HistoryWeeklyRollupSection: View {
                 }
             }
             .chartXAxis {
-                AxisMarks(values: layout.indices) { value in
+                AxisMarks(values: chart.indices) { value in
                     AxisValueLabel(centered: false) {
                         if let index = value.as(Double.self),
-                           let label = layout.label(forChartValue: index) {
+                           let label = chart.label(forChartValue: index) {
                             Text(label)
-                                .font(CalorynTheme.weeklyChartXAxisLabel(isDense: layout.isDense))
+                                .font(CalorynTheme.weeklyChartXAxisLabel(isDense: chart.isDense))
                                 .foregroundStyle(.clear)
                                 .accessibilityHidden(true)
                         }
@@ -82,16 +56,34 @@ struct HistoryWeeklyRollupSection: View {
                 GeometryReader { geometry in
                     if let plotFrame = proxy.plotFrame {
                         let plotRect = geometry[plotFrame]
+                        let slotWidth = chart.axis.hitTargetWidth(plotWidth: plotRect.width)
 
-                        ForEach(chartWeeks) { chartWeek in
-                            if let xPosition = proxy.position(forX: chartWeek.index) {
-                                Text(chartWeek.label)
-                                    .font(CalorynTheme.weeklyChartXAxisLabel(isDense: layout.isDense))
-                                    .foregroundStyle(CalorynTheme.textSecondary)
-                                    .position(
-                                        x: plotRect.minX + xPosition,
-                                        y: plotRect.maxY + 11
-                                    )
+                        ForEach(chart.weeks) { week in
+                            if let xPosition = proxy.position(forX: Double(week.index)) {
+                                if chart.showsCounts,
+                                   let yPosition = proxy.position(forY: week.onTrackPercentage) {
+                                    Text(week.countText)
+                                        .font(CalorynTheme.microCaptionEmphasized.monospacedDigit())
+                                        .foregroundStyle(CalorynTheme.textPrimary)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.7)
+                                        .frame(width: slotWidth)
+                                        .position(
+                                            x: plotRect.minX + xPosition,
+                                            y: plotRect.minY + yPosition - 9
+                                        )
+                                }
+
+                                if let axisLabel = week.axisLabel {
+                                    Text(axisLabel)
+                                        .font(CalorynTheme.weeklyChartXAxisLabel(isDense: chart.isDense))
+                                        .foregroundStyle(CalorynTheme.textSecondary)
+                                        .fixedSize()
+                                        .position(
+                                            x: plotRect.minX + xPosition,
+                                            y: plotRect.maxY + 11
+                                        )
+                                }
                             }
                         }
                     }
@@ -100,9 +92,9 @@ struct HistoryWeeklyRollupSection: View {
                 .accessibilityHidden(true)
             }
             .chartYScale(domain: 0 ... 100)
-            .chartXScale(domain: layout.xAxisDomain)
+            .chartXScale(domain: chart.xAxisDomain)
             .frame(height: 170)
-            .padding(.top, 4)
+            .padding(.top, chart.showsCounts ? 18 : 4)
             .accessibilityLabel(
                 HistoryWeeklyConsistencyChart.accessibilityLabel(
                     loggedDayCount: projection.loggedDayCount,

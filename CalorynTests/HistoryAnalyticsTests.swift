@@ -344,16 +344,16 @@ final class HistoryAnalyticsTests: XCTestCase {
         )
     }
 
-    func testPatternDiscoverySurfacesBestWeeklyConsistency() {
+    func testPatternDiscoveryCountsEachWeeksOnTrackDays() {
         let profile = makeProfile()
         let endDate = makeTestDate(year: 2026, month: 1, day: 30)
         let previousWeek = makeTestDate(year: 2026, month: 1, day: 19)
-        let bestWeek = makeTestDate(year: 2026, month: 1, day: 26)
+        let currentWeek = makeTestDate(year: 2026, month: 1, day: 26)
         let entries = [
             makeEntry(date: previousWeek, calories: 2_000),
             makeEntry(date: previousWeek.tomorrow, calories: 2_300),
-            makeEntry(date: bestWeek, calories: 2_000),
-            makeEntry(date: bestWeek.tomorrow, calories: 2_000)
+            makeEntry(date: currentWeek, calories: 2_000),
+            makeEntry(date: currentWeek.tomorrow, calories: 2_000)
         ]
 
         let analytics = HistoryAnalytics(
@@ -363,12 +363,9 @@ final class HistoryAnalyticsTests: XCTestCase {
             endDate: endDate
         )
 
-        let projection = HistoryPatternDiscovery(analytics: analytics).weeklyConsistency
+        let weeks = HistoryPatternDiscovery(analytics: analytics).weeklyConsistency.chart.weeks
 
-        XCTAssertEqual(
-            projection.headlineText,
-            "Best week had 2 of 2 logged days on track."
-        )
+        XCTAssertEqual(weeks.suffix(2).map(\.countText), ["1/2", "2/2"])
     }
 
     private func makeProfile() -> UserProfile {

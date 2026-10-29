@@ -32,31 +32,29 @@ struct HistoryWeeklyConsistencyProjection {
     let weeks: [HistoryWeekSummary]
     let loggedDayCount: Int
     let totalDayCount: Int
+    let calendar: Calendar
+    let today: Date
 
-    init(summary: HistoryPeriodSummary) {
+    init(summary: HistoryPeriodSummary, today: Date = .now) {
         weeks = summary.weeklyRollups
         loggedDayCount = summary.loggedDayCount
         totalDayCount = summary.totalDayCount
+        calendar = summary.calendar
+        self.today = today
     }
 
-    var bestWeek: HistoryWeekSummary? {
-        weeks
-            .filter { $0.loggedDays > 0 }
-            .max {
-                if $0.onTrackRatio == $1.onTrackRatio {
-                    return $0.loggedDays < $1.loggedDays
-                }
-                return $0.onTrackRatio < $1.onTrackRatio
-            }
-    }
-
-    var headlineText: String? {
-        guard let bestWeek else { return nil }
-        return "Best week had \(bestWeek.onTrackDays) of \(bestWeek.loggedDays) logged \(dayLabel(for: bestWeek.loggedDays)) on track."
-    }
-
-    private func dayLabel(for count: Int) -> String {
-        count == 1 ? "day" : "days"
+    var chart: HistoryWeeklyConsistencyChart {
+        HistoryWeeklyConsistencyChart(
+            tallies: weeks.map { week in
+                HistoryWeeklyConsistencyChart.Tally(
+                    startDate: week.startDate,
+                    onTrackDays: week.onTrackDays,
+                    loggedDays: week.loggedDays
+                )
+            },
+            calendar: calendar,
+            today: today
+        )
     }
 }
 

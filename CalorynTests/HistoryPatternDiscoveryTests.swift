@@ -723,80 +723,48 @@ struct HistoryPatternDiscoveryTests {
         #expect(projection.totalDayCount == 14)
     }
 
-    @Test("given nothing logged in the range, when projecting weekly consistency, then there is no best week and no headline")
-    func weeklyConsistencyWithoutLoggedDaysHasNoBestWeek() {
+    @Test("given nothing logged in the range, when projecting weekly consistency, then every week reads 0/0 with an empty bar")
+    func weeklyConsistencyWithoutLoggedDaysShowsEmptyWeeks() {
         let projection = HistoryWeeklyConsistencyProjection(
-            summary: makeSummary(dates: days(fromJanuary: 5, count: 14))
+            summary: makeSummary(dates: days(fromJanuary: 5, count: 14)),
+            today: janDate(14)
         )
 
-        #expect(projection.weeks.count == 2)
-        #expect(projection.bestWeek == nil)
-        #expect(projection.headlineText == nil)
+        #expect(projection.chart.weeks.map(\.countText) == ["0/0", "0/0"])
+        #expect(projection.chart.weeks.map(\.onTrackPercentage) == [0, 0])
     }
 
-    @Test("given two logged weeks with different on-track ratios, when projecting weekly consistency, then the higher ratio wins")
-    func bestWeekIsTheHighestOnTrackRatio() {
+    @Test("given a partial week and a full one, when projecting weekly consistency, then each bar carries its own on-track and logged counts")
+    func eachWeekCarriesItsOwnCounts() {
         let dates = days(fromJanuary: 5, count: 14)
         let entries = [
             makeCalorieEntry(date: janDate(5), calories: 2_000),
             makeCalorieEntry(date: janDate(6), calories: 2_600),
-            makeCalorieEntry(date: janDate(12), calories: 2_000),
-            makeCalorieEntry(date: janDate(13), calories: 2_000)
-        ]
-
-        let projection = HistoryWeeklyConsistencyProjection(
-            summary: makeSummary(dates: dates, entries: entries)
-        )
-
-        #expect(projection.bestWeek?.startDate == janDate(12).startOfWeek)
-        #expect(projection.headlineText == "Best week had 2 of 2 logged days on track.")
-    }
-
-    @Test("given two fully on-track weeks with different logged-day counts, when projecting weekly consistency, then the better covered week wins")
-    func bestWeekTieBreaksOnLoggedDays() {
-        let dates = days(fromJanuary: 5, count: 14)
-        let entries = [
-            makeCalorieEntry(date: janDate(5), calories: 2_000),
-            makeCalorieEntry(date: janDate(6), calories: 2_000),
             makeCalorieEntry(date: janDate(12), calories: 2_000),
             makeCalorieEntry(date: janDate(13), calories: 2_000),
             makeCalorieEntry(date: janDate(14), calories: 2_000)
         ]
 
         let projection = HistoryWeeklyConsistencyProjection(
-            summary: makeSummary(dates: dates, entries: entries)
+            summary: makeSummary(dates: dates, entries: entries),
+            today: janDate(14)
         )
 
-        #expect(projection.bestWeek?.startDate == janDate(12).startOfWeek)
-        #expect(projection.headlineText == "Best week had 3 of 3 logged days on track.")
+        #expect(projection.chart.weeks.map(\.countText) == ["1/2", "3/3"])
+        #expect(projection.chart.weeks.map(\.onTrackPercentage) == [50, 100])
     }
 
-    @Test("given the best week has a single logged day, when projecting weekly consistency, then the headline uses the singular day label")
-    func singleLoggedDayHeadlineUsesSingularLabel() {
-        let dates = days(fromJanuary: 5, count: 7)
-        let entries = [makeCalorieEntry(date: janDate(5), calories: 2_000)]
-
+    @Test("given the range ends this week, when projecting weekly consistency, then the older week shows its start date and the last reads This week")
+    func theWeekContainingTodayReadsThisWeek() {
         let projection = HistoryWeeklyConsistencyProjection(
-            summary: makeSummary(dates: dates, entries: entries)
+            summary: makeSummary(dates: days(fromJanuary: 5, count: 14)),
+            today: janDate(14)
         )
 
-        #expect(projection.headlineText == "Best week had 1 of 1 logged day on track.")
-    }
-
-    @Test("given the best week has logged days that were not on track, when projecting weekly consistency, then the headline reports the on-track share")
-    func headlineReportsOnTrackShareOfLoggedDays() {
-        let dates = days(fromJanuary: 5, count: 7)
-        let entries = [
-            makeCalorieEntry(date: janDate(5), calories: 2_000),
-            makeCalorieEntry(date: janDate(6), calories: 2_000),
-            makeCalorieEntry(date: janDate(7), calories: 2_600)
-        ]
-
-        let projection = HistoryWeeklyConsistencyProjection(
-            summary: makeSummary(dates: dates, entries: entries)
-        )
-
-        #expect(projection.headlineText == "Best week had 2 of 3 logged days on track.")
+        #expect(projection.chart.weeks.map(\.axisLabel) == [
+            janDate(5).dayMonthFormatted(in: .current),
+            "This week"
+        ])
     }
 
     @Test("given no macro patterns, when discovering the least consistent macro, then nothing is reported")
@@ -871,7 +839,6 @@ struct HistoryPatternDiscoveryTests {
         #expect(discovery.calorieTrend.points.count == 7)
         #expect(discovery.calorieTrend.dailyCalorieTarget == 2_000)
         #expect(discovery.weeklyConsistency.totalDayCount == 7)
-        #expect(discovery.weeklyConsistency.bestWeek == nil)
     }
 
     @Test("given a logged week, when discovering patterns, then the calorie trend and weekly consistency describe the same logged days")
@@ -896,7 +863,7 @@ struct HistoryPatternDiscoveryTests {
         #expect(discovery.weeklyConsistency.loggedDayCount == 3)
         #expect(discovery.calorieTrend.totalDayCount == discovery.weeklyConsistency.totalDayCount)
         #expect(discovery.calorieTrend.onTrackLoggedDayCount == 2)
-        #expect(discovery.weeklyConsistency.headlineText == "Best week had 2 of 3 logged days on track.")
+        #expect(discovery.weeklyConsistency.chart.weeks.last?.countText == "2/3")
     }
 
     private func janDate(_ day: Int) -> Date {
