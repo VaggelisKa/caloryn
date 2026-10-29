@@ -4,6 +4,7 @@ import Charts
 struct HistoryCalorieTrendDetailView: View {
     let range: HistoryRange
     let summary: HistoryPeriodSummary
+    let today: Date
     let presentation: HistoryDetailPresentation
 
     @State private var selectedPointID: String?
@@ -11,11 +12,13 @@ struct HistoryCalorieTrendDetailView: View {
     init(
         range: HistoryRange,
         summary: HistoryPeriodSummary,
+        today: Date,
         initialSelectedPointID: String? = nil,
         presentation: HistoryDetailPresentation = .pushed
     ) {
         self.range = range
         self.summary = summary
+        self.today = today
         self.presentation = presentation
         _selectedPointID = State(initialValue: initialSelectedPointID)
     }
@@ -23,7 +26,8 @@ struct HistoryCalorieTrendDetailView: View {
     var body: some View {
         let projection = HistoryCalorieTrendProjection(
             range: range,
-            summary: summary
+            summary: summary,
+            today: today
         )
         let selectedPoint = projection.points.first { $0.id == selectedPointID }
 
@@ -652,7 +656,8 @@ private struct HistoryCalorieTrendSelectedWeek: View {
     return NavigationStack {
         HistoryCalorieTrendDetailView(
             range: history.range,
-            summary: history.current
+            summary: history.current,
+            today: .now
         )
     }
 }
@@ -663,7 +668,8 @@ private struct HistoryCalorieTrendSelectedWeek: View {
     return NavigationStack {
         HistoryCalorieTrendDetailView(
             range: history.range,
-            summary: history.current
+            summary: history.current,
+            today: .now
         )
     }
 }

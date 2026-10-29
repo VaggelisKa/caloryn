@@ -178,7 +178,7 @@ struct HistoryCalorieTrendSection: View {
     let history = HistoryPreviewFixtures.analytics(for: .mostlyOnTrack)
 
     return HistoryCalorieTrendSection(
-        projection: HistoryPatternDiscovery(analytics: history).calorieTrend
+        projection: HistoryPatternDiscovery(analytics: history, today: .now).calorieTrend
     )
     .padding()
     .calorynPageCanvas()
@@ -188,7 +188,7 @@ struct HistoryCalorieTrendSection: View {
     let history = HistoryPreviewFixtures.analytics(for: .empty)
 
     return HistoryCalorieTrendSection(
-        projection: HistoryPatternDiscovery(analytics: history).calorieTrend
+        projection: HistoryPatternDiscovery(analytics: history, today: .now).calorieTrend
     )
     .padding()
     .calorynPageCanvas()

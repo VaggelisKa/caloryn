@@ -5,13 +5,14 @@ struct HistoryPatternDiscovery {
     let macroPatterns: HistoryMacroPatternsProjection
     let weeklyConsistency: HistoryWeeklyConsistencyProjection
 
-    init(analytics: HistoryAnalytics) {
+    init(analytics: HistoryAnalytics, today: Date) {
         calorieTrend = HistoryCalorieTrendProjection(
             range: analytics.range,
-            summary: analytics.current
+            summary: analytics.current,
+            today: today
         )
         macroPatterns = HistoryMacroPatternsProjection(patterns: analytics.macroPatterns)
-        weeklyConsistency = HistoryWeeklyConsistencyProjection(summary: analytics.current)
+        weeklyConsistency = HistoryWeeklyConsistencyProjection(summary: analytics.current, today: today)
     }
 }
 
@@ -68,7 +69,7 @@ struct HistoryCalorieTrendProjection {
     let furthestFromGoal: HistoryCalorieTrendFurthestFromGoal?
     let points: [HistoryCalorieTrendPoint]
 
-    init(range: HistoryRange, summary: HistoryPeriodSummary, today: Date = .now) {
+    init(range: HistoryRange, summary: HistoryPeriodSummary, today: Date) {
         let calendar = summary.calendar
         self.range = range
         self.calendar = calendar

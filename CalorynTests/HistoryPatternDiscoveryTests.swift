@@ -9,7 +9,8 @@ struct HistoryPatternDiscoveryTests {
     func emptyRangeHasNoPoints() {
         let projection = HistoryCalorieTrendProjection(
             range: .week,
-            summary: makeSummary(dates: [])
+            summary: makeSummary(dates: []),
+            today: janDate(31)
         )
 
         #expect(projection.points.isEmpty)
@@ -37,14 +38,14 @@ struct HistoryPatternDiscoveryTests {
             endDate: janDate(30)
         )
 
-        let projection = HistoryPatternDiscovery(analytics: analytics).calorieTrend
+        let projection = HistoryPatternDiscovery(analytics: analytics, today: janDate(30)).calorieTrend
 
         #expect(projection.points.count == expectedPoints)
         #expect(projection.totalDayCount == expectedPoints)
         #expect(projection.points.allSatisfy { $0.isLogged == false })
     }
 
-    @Test("given the 90-day range, when projecting the calorie trend, then points are calendar weeks rather than days")
+    @Test("given the 90-day range, when projecting the calorie trend, then points are calendar weeks and the one holding the analytics day reads This week")
     func quarterRangeProjectsWeeklyPoints() throws {
         let analytics = HistoryAnalytics(
             entries: [],
@@ -53,12 +54,13 @@ struct HistoryPatternDiscoveryTests {
             endDate: janDate(30)
         )
 
-        let projection = HistoryPatternDiscovery(analytics: analytics).calorieTrend
+        let projection = HistoryPatternDiscovery(analytics: analytics, today: janDate(30)).calorieTrend
 
         #expect(projection.totalDayCount == 90)
         #expect(projection.points.count == 14)
         let lastWeekStart = try #require(analytics.current.weeklyRollups.last?.startDate)
-        #expect(projection.points.last?.xAxisLabel == lastWeekStart.dayMonthFormatted(in: analytics.calendar))
+        #expect(projection.points.last?.xAxisLabel == "This week")
+        #expect(projection.points.last?.accessibilityLabel == "Week of \(lastWeekStart.dayMonthFormatted(in: analytics.calendar))")
         #expect(projection.points.first?.xAxisLabel == "")
     }
 
@@ -86,7 +88,8 @@ struct HistoryPatternDiscoveryTests {
 
         let projection = HistoryCalorieTrendProjection(
             range: .quarter,
-            summary: makeSummary(dates: dates, entries: entries)
+            summary: makeSummary(dates: dates, entries: entries),
+            today: janDate(31)
         )
 
         #expect(projection.points.count == 2)
@@ -112,7 +115,8 @@ struct HistoryPatternDiscoveryTests {
 
         let projection = HistoryCalorieTrendProjection(
             range: .quarter,
-            summary: makeSummary(dates: dates, entries: entries)
+            summary: makeSummary(dates: dates, entries: entries),
+            today: janDate(31)
         )
 
         let emptyWeek = try #require(projection.points.last)
@@ -129,7 +133,8 @@ struct HistoryPatternDiscoveryTests {
 
         let projection = HistoryCalorieTrendProjection(
             range: .week,
-            summary: makeSummary(dates: dates, entries: entries)
+            summary: makeSummary(dates: dates, entries: entries),
+            today: janDate(31)
         )
 
         let firstPoint = try #require(projection.points.first)
@@ -147,7 +152,8 @@ struct HistoryPatternDiscoveryTests {
 
         let projection = HistoryCalorieTrendProjection(
             range: .week,
-            summary: makeSummary(dates: dates, entries: entries)
+            summary: makeSummary(dates: dates, entries: entries),
+            today: janDate(31)
         )
 
         let lastPoint = try #require(projection.points.last)
@@ -174,7 +180,8 @@ struct HistoryPatternDiscoveryTests {
 
         let projection = HistoryCalorieTrendProjection(
             range: .week,
-            summary: makeSummary(dates: dates, entries: entries)
+            summary: makeSummary(dates: dates, entries: entries),
+            today: janDate(31)
         )
 
         let point = try #require(projection.points.first)
@@ -195,7 +202,8 @@ struct HistoryPatternDiscoveryTests {
     func dayPointsUseWeekdayInitials(day: Int, expectedLabel: String) throws {
         let projection = HistoryCalorieTrendProjection(
             range: .week,
-            summary: makeSummary(dates: days(fromJanuary: day, count: 1))
+            summary: makeSummary(dates: days(fromJanuary: day, count: 1)),
+            today: janDate(31)
         )
 
         let point = try #require(projection.points.first)
@@ -209,7 +217,8 @@ struct HistoryPatternDiscoveryTests {
 
         let projection = HistoryCalorieTrendProjection(
             range: .week,
-            summary: makeSummary(dates: dates, entries: entries)
+            summary: makeSummary(dates: dates, entries: entries),
+            today: janDate(31)
         )
 
         #expect(projection.loggedPointCount == 1)
@@ -227,7 +236,8 @@ struct HistoryPatternDiscoveryTests {
 
         let projection = HistoryCalorieTrendProjection(
             range: .week,
-            summary: makeSummary(dates: dates, entries: entries)
+            summary: makeSummary(dates: dates, entries: entries),
+            today: janDate(31)
         )
 
         #expect(projection.loggedPointCount == 2)
@@ -245,7 +255,8 @@ struct HistoryPatternDiscoveryTests {
 
         let projection = HistoryCalorieTrendProjection(
             range: .quarter,
-            summary: makeSummary(dates: dates, entries: entries)
+            summary: makeSummary(dates: dates, entries: entries),
+            today: janDate(31)
         )
 
         #expect(projection.loggedDayCount == 3)
@@ -258,7 +269,8 @@ struct HistoryPatternDiscoveryTests {
         let dates = days(fromJanuary: 26, count: 3)
         let projection = HistoryCalorieTrendProjection(
             range: .week,
-            summary: makeSummary(dates: dates)
+            summary: makeSummary(dates: dates),
+            today: janDate(31)
         )
 
         #expect(projection.point(for: 0)?.xAxisLabel == "M")
@@ -280,7 +292,8 @@ struct HistoryPatternDiscoveryTests {
 
         let projection = HistoryCalorieTrendProjection(
             range: .week,
-            summary: makeSummary(dates: dates, entries: entries)
+            summary: makeSummary(dates: dates, entries: entries),
+            today: janDate(31)
         )
 
         #expect(abs(projection.yAxisUpperBound - 2_500 * 1.15) < 0.001)
@@ -290,7 +303,8 @@ struct HistoryPatternDiscoveryTests {
     func yAxisUpperBoundFallsBackToTarget() {
         let projection = HistoryCalorieTrendProjection(
             range: .week,
-            summary: makeSummary(dates: days(fromJanuary: 26, count: 3))
+            summary: makeSummary(dates: days(fromJanuary: 26, count: 3)),
+            today: janDate(31)
         )
 
         #expect(abs(projection.yAxisUpperBound - 2_000 * 1.15) < 0.001)
@@ -306,7 +320,8 @@ struct HistoryPatternDiscoveryTests {
 
         let projection = HistoryCalorieTrendProjection(
             range: .week,
-            summary: makeSummary(dates: dates, entries: entries)
+            summary: makeSummary(dates: dates, entries: entries),
+            today: janDate(31)
         )
 
         #expect(abs(projection.totalCalories - 4_400) < 0.001)
@@ -327,7 +342,8 @@ struct HistoryPatternDiscoveryTests {
 
         let projection = HistoryCalorieTrendProjection(
             range: .week,
-            summary: makeSummary(dates: dates, entries: entries)
+            summary: makeSummary(dates: dates, entries: entries),
+            today: janDate(31)
         )
 
         #expect(projection.totalTargetDelta == 0)
@@ -340,7 +356,8 @@ struct HistoryPatternDiscoveryTests {
     func differenceTextsReportNoLoggedDays() {
         let projection = HistoryCalorieTrendProjection(
             range: .week,
-            summary: makeSummary(dates: days(fromJanuary: 26, count: 7))
+            summary: makeSummary(dates: days(fromJanuary: 26, count: 7)),
+            today: janDate(31)
         )
 
         #expect(projection.averageDifferenceText == "No logged days")
@@ -370,7 +387,8 @@ struct HistoryPatternDiscoveryTests {
 
         let projection = HistoryCalorieTrendProjection(
             range: .week,
-            summary: makeSummary(dates: dates, entries: entries)
+            summary: makeSummary(dates: dates, entries: entries),
+            today: janDate(31)
         )
 
         #expect(projection.rangeStats.stats == [
@@ -391,7 +409,8 @@ struct HistoryPatternDiscoveryTests {
                 dates: dates,
                 entries: entries,
                 snapshotTargets: [janDate(26): 2_000]
-            )
+            ),
+            today: janDate(31)
         )
 
         #expect(projection.hasEstimatedTargets == false)
@@ -412,7 +431,8 @@ struct HistoryPatternDiscoveryTests {
                 dates: dates,
                 entries: entries,
                 snapshotTargets: [janDate(26): 2_000]
-            )
+            ),
+            today: janDate(31)
         )
 
         #expect(projection.hasEstimatedTargets)
@@ -433,7 +453,8 @@ struct HistoryPatternDiscoveryTests {
                 dates: dates,
                 entries: entries,
                 snapshotTargets: [janDate(26): 2_000]
-            )
+            ),
+            today: janDate(31)
         )
 
         #expect(projection.hasEstimatedTargets == false)
@@ -454,7 +475,8 @@ struct HistoryPatternDiscoveryTests {
                 dates: dates,
                 entries: entries,
                 snapshotTargets: [janDate(26): 1_800, janDate(27): 2_000]
-            )
+            ),
+            today: janDate(31)
         )
 
         let first = try #require(projection.points.first)
@@ -474,7 +496,8 @@ struct HistoryPatternDiscoveryTests {
     func noLoggedDataReportsNoFurthestPeriod(range: HistoryRange) {
         let projection = HistoryCalorieTrendProjection(
             range: range,
-            summary: makeSummary(dates: days(fromJanuary: 5, count: 14))
+            summary: makeSummary(dates: days(fromJanuary: 5, count: 14)),
+            today: janDate(31)
         )
 
         #expect(projection.furthestFromGoal == nil)
@@ -491,7 +514,8 @@ struct HistoryPatternDiscoveryTests {
 
         let projection = HistoryCalorieTrendProjection(
             range: .week,
-            summary: makeSummary(dates: dates, entries: entries)
+            summary: makeSummary(dates: dates, entries: entries),
+            today: janDate(31)
         )
 
         #expect(projection.furthestFromGoal?.text == "Furthest from goal: \(dayTitle(27)), +50")
@@ -508,7 +532,8 @@ struct HistoryPatternDiscoveryTests {
 
         let projection = HistoryCalorieTrendProjection(
             range: .week,
-            summary: makeSummary(dates: dates, entries: entries)
+            summary: makeSummary(dates: dates, entries: entries),
+            today: janDate(31)
         )
 
         #expect(
@@ -527,7 +552,8 @@ struct HistoryPatternDiscoveryTests {
 
         let projection = HistoryCalorieTrendProjection(
             range: .week,
-            summary: makeSummary(dates: dates, entries: entries)
+            summary: makeSummary(dates: dates, entries: entries),
+            today: janDate(31)
         )
 
         #expect(
@@ -546,7 +572,8 @@ struct HistoryPatternDiscoveryTests {
 
         let projection = HistoryCalorieTrendProjection(
             range: .week,
-            summary: makeSummary(dates: dates, entries: entries)
+            summary: makeSummary(dates: dates, entries: entries),
+            today: janDate(31)
         )
 
         #expect(
@@ -565,7 +592,8 @@ struct HistoryPatternDiscoveryTests {
 
         let projection = HistoryCalorieTrendProjection(
             range: .quarter,
-            summary: makeSummary(dates: dates, entries: entries)
+            summary: makeSummary(dates: dates, entries: entries),
+            today: janDate(31)
         )
 
         #expect(projection.furthestFromGoal == nil)
@@ -581,7 +609,8 @@ struct HistoryPatternDiscoveryTests {
 
         let projection = HistoryCalorieTrendProjection(
             range: .quarter,
-            summary: makeSummary(dates: dates, entries: entries)
+            summary: makeSummary(dates: dates, entries: entries),
+            today: janDate(31)
         )
 
         #expect(
@@ -601,7 +630,8 @@ struct HistoryPatternDiscoveryTests {
 
         let projection = HistoryCalorieTrendProjection(
             range: .week,
-            summary: makeSummary(dates: dates, entries: entries)
+            summary: makeSummary(dates: dates, entries: entries),
+            today: janDate(31)
         )
 
         let selection = try #require(projection.points.first?.selection)
@@ -624,7 +654,8 @@ struct HistoryPatternDiscoveryTests {
 
         let projection = HistoryCalorieTrendProjection(
             range: .quarter,
-            summary: makeSummary(dates: dates, entries: entries)
+            summary: makeSummary(dates: dates, entries: entries),
+            today: janDate(31)
         )
 
         let selection = try #require(projection.points.first?.selection)
@@ -646,7 +677,8 @@ struct HistoryPatternDiscoveryTests {
 
         let projection = HistoryCalorieTrendProjection(
             range: .quarter,
-            summary: makeSummary(dates: dates, entries: entries)
+            summary: makeSummary(dates: dates, entries: entries),
+            today: janDate(31)
         )
 
         let selection = try #require(projection.points.first?.selection)
@@ -659,7 +691,8 @@ struct HistoryPatternDiscoveryTests {
 
         let projection = HistoryCalorieTrendProjection(
             range: .quarter,
-            summary: makeSummary(dates: dates)
+            summary: makeSummary(dates: dates),
+            today: janDate(31)
         )
 
         let selection = try #require(projection.points.first?.selection)
@@ -737,7 +770,7 @@ struct HistoryPatternDiscoveryTests {
             endDate: janDate(30)
         )
 
-        let patterns = HistoryPatternDiscovery(analytics: analytics).macroPatterns.patterns
+        let patterns = HistoryPatternDiscovery(analytics: analytics, today: janDate(30)).macroPatterns.patterns
 
         #expect(patterns.map(\.nutrient) == [.protein, .carbs, .fat])
         for pattern in patterns {
@@ -755,7 +788,7 @@ struct HistoryPatternDiscoveryTests {
             endDate: janDate(30)
         )
 
-        let discovery = HistoryPatternDiscovery(analytics: analytics)
+        let discovery = HistoryPatternDiscovery(analytics: analytics, today: janDate(30))
 
         #expect(discovery.macroPatterns.patterns.isEmpty)
         #expect(discovery.calorieTrend.points.count == 7)
@@ -779,7 +812,7 @@ struct HistoryPatternDiscoveryTests {
             endDate: janDate(30)
         )
 
-        let discovery = HistoryPatternDiscovery(analytics: analytics)
+        let discovery = HistoryPatternDiscovery(analytics: analytics, today: janDate(30))
 
         #expect(discovery.calorieTrend.loggedDayCount == 3)
         #expect(discovery.weeklyConsistency.loggedDayCount == 3)

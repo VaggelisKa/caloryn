@@ -66,7 +66,7 @@ final class NonFiniteNumberSafetyTests: XCTestCase {
         let day = analytics.current.days.first(where: \.isLogged)
         XCTAssertNotNil(day)
         XCTAssertEqual(day?.calorieDifference, -2_000)
-        let projection = HistoryPatternDiscovery(analytics: analytics).calorieTrend
+        let projection = HistoryPatternDiscovery(analytics: analytics, today: date).calorieTrend
         XCTAssertFalse(projection.totalDifferenceText.isEmpty)
         XCTAssertFalse(projection.averageDifferenceText.isEmpty)
     }
@@ -80,7 +80,7 @@ final class NonFiniteNumberSafetyTests: XCTestCase {
             endDate: date
         )
 
-        let projection = HistoryPatternDiscovery(analytics: analytics).calorieTrend
+        let projection = HistoryPatternDiscovery(analytics: analytics, today: date).calorieTrend
         XCTAssertEqual(projection.totalTargetDelta, CalorieDomain.maximum - 2_000)
         XCTAssertFalse(projection.totalDifferenceText.isEmpty)
     }
@@ -93,7 +93,7 @@ final class NonFiniteNumberSafetyTests: XCTestCase {
             range: .week,
             endDate: date
         )
-        let trend = HistoryPatternDiscovery(analytics: analytics).calorieTrend
+        let trend = HistoryPatternDiscovery(analytics: analytics, today: date).calorieTrend
 
         XCTAssertNotNil(trend.point(for: 0))
         XCTAssertNil(trend.point(for: .nan))

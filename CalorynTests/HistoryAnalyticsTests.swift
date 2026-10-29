@@ -250,7 +250,7 @@ final class HistoryAnalyticsTests: XCTestCase {
             endDate: endDate
         )
 
-        let projection = HistoryPatternDiscovery(analytics: analytics).calorieTrend
+        let projection = HistoryPatternDiscovery(analytics: analytics, today: endDate).calorieTrend
 
         XCTAssertEqual(projection.points.count, 7)
         XCTAssertEqual(projection.loggedPointCount, 2)
@@ -286,7 +286,7 @@ final class HistoryAnalyticsTests: XCTestCase {
             endDate: endDate
         )
 
-        let projection = HistoryPatternDiscovery(analytics: analytics).calorieTrend
+        let projection = HistoryPatternDiscovery(analytics: analytics, today: endDate).calorieTrend
 
         XCTAssertEqual(
             projection.furthestFromGoal?.text,
@@ -311,7 +311,7 @@ final class HistoryAnalyticsTests: XCTestCase {
             endDate: endDate
         )
 
-        let projection = HistoryPatternDiscovery(analytics: analytics).calorieTrend
+        let projection = HistoryPatternDiscovery(analytics: analytics, today: endDate).calorieTrend
         let selectedWeek = try XCTUnwrap(projection.points.last)
         let foods = projection.topFoods(for: selectedWeek.selection)
 
@@ -336,7 +336,7 @@ final class HistoryAnalyticsTests: XCTestCase {
             endDate: endDate
         )
 
-        let protein = HistoryPatternDiscovery(analytics: analytics).macroPatterns.patterns.first { $0.nutrient == .protein }
+        let protein = HistoryPatternDiscovery(analytics: analytics, today: endDate).macroPatterns.patterns.first { $0.nutrient == .protein }
 
         XCTAssertEqual(protein?.current.hitDays, 1)
         XCTAssertEqual(protein?.current.loggedDays, 3)
@@ -361,7 +361,7 @@ final class HistoryAnalyticsTests: XCTestCase {
             endDate: endDate
         )
 
-        let weeks = HistoryPatternDiscovery(analytics: analytics).weeklyConsistency.chart.weeks
+        let weeks = HistoryPatternDiscovery(analytics: analytics, today: endDate).weeklyConsistency.chart.weeks
 
         XCTAssertEqual(weeks.suffix(2).map(\.countText), ["1/2", "2/2"])
     }

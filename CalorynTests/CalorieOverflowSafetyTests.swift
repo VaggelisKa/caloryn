@@ -51,7 +51,7 @@ final class CalorieOverflowSafetyTests: XCTestCase {
             range: .week,
             endDate: date
         )
-        let trend = HistoryPatternDiscovery(analytics: analytics).calorieTrend
+        let trend = HistoryPatternDiscovery(analytics: analytics, today: date).calorieTrend
 
         XCTAssertEqual(trend.totalTargetDelta, -CalorieDomain.maximum - 2_000)
         XCTAssertFalse(trend.totalDifferenceText.isEmpty)
@@ -72,7 +72,7 @@ final class CalorieOverflowSafetyTests: XCTestCase {
             range: .week,
             endDate: date
         )
-        let trend = HistoryPatternDiscovery(analytics: analytics).calorieTrend
+        let trend = HistoryPatternDiscovery(analytics: analytics, today: date).calorieTrend
 
         XCTAssertNotNil(trend.furthestFromGoal)
     }
@@ -92,7 +92,7 @@ final class CalorieOverflowSafetyTests: XCTestCase {
 
         XCTAssertEqual(analytics.current.loggedDayTargetTotal, 20 * CalorieDomain.maximum)
         XCTAssertEqual(analytics.current.averageTargetPerLoggedDay, CalorieDomain.maximum)
-        XCTAssertFalse(HistoryPatternDiscovery(analytics: analytics).calorieTrend.totalDifferenceText.isEmpty)
+        XCTAssertFalse(HistoryPatternDiscovery(analytics: analytics, today: date).calorieTrend.totalDifferenceText.isEmpty)
     }
 
     func testHistoryWeeklyRollupsSurviveATargetPastTheCalorieDomain() {
@@ -107,7 +107,7 @@ final class CalorieOverflowSafetyTests: XCTestCase {
             range: .quarter,
             endDate: date
         )
-        let trend = HistoryPatternDiscovery(analytics: analytics).calorieTrend
+        let trend = HistoryPatternDiscovery(analytics: analytics, today: date).calorieTrend
 
         XCTAssertFalse(trend.points.isEmpty)
         for point in trend.points {
