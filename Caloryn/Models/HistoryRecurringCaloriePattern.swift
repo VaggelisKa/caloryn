@@ -69,6 +69,8 @@ struct HistoryRecurringCaloriePattern: Identifiable {
     let outcomeComparisonDayCount: Int
     let mealComparisonDayCount: Int
     let eligibleDayCount: Int
+    let supportingMealAverageCalories: Double
+    let comparisonMealAverageCalories: Double
     let mealDifferenceCalories: Double
     let targetRelativeMealDifference: Double
     let rateSeparation: Double
@@ -294,6 +296,8 @@ struct HistoryRecurringCaloriePatternEngine {
                     outcomeComparisonDayCount: outcomeBaseline.count,
                     mealComparisonDayCount: mealComparison.count,
                     eligibleDayCount: days.count,
+                    supportingMealAverageCalories: mealDifference.supportingAverage,
+                    comparisonMealAverageCalories: mealDifference.comparisonAverage,
                     mealDifferenceCalories: mealDifference.calorieDifference,
                     targetRelativeMealDifference: mealDifference.targetRelativeDifference,
                     rateSeparation: rateSeparation,
@@ -357,6 +361,8 @@ struct HistoryRecurringCaloriePatternEngine {
                 outcomeComparisonDayCount: comparison.count,
                 mealComparisonDayCount: comparison.count,
                 eligibleDayCount: days.count,
+                supportingMealAverageCalories: mealDifference.supportingAverage,
+                comparisonMealAverageCalories: mealDifference.comparisonAverage,
                 mealDifferenceCalories: mealDifference.calorieDifference,
                 targetRelativeMealDifference: mealDifference.targetRelativeDifference,
                 rateSeparation: 1,
@@ -383,8 +389,8 @@ struct HistoryRecurringCaloriePatternEngine {
         // Stable meal raw values resolve exact ties before direction/materiality
         // are tested, so a weaker second-place meal cannot rescue a candidate.
         let differences = MealType.allCases.map { meal -> MealDifference in
-            let calorieDifference = average(supporting.map { $0.calories(for: meal) })
-                - average(comparison.map { $0.calories(for: meal) })
+            let supportingAverage = average(supporting.map { $0.calories(for: meal) })
+            let comparisonAverage = average(comparison.map { $0.calories(for: meal) })
 
             // Average per-day meal/target shares rather than dividing aggregate
             // calories by a current or blended target. This gives every exact
@@ -397,7 +403,8 @@ struct HistoryRecurringCaloriePatternEngine {
 
             return MealDifference(
                 meal: meal,
-                calorieDifference: calorieDifference,
+                supportingAverage: supportingAverage,
+                comparisonAverage: comparisonAverage,
                 targetRelativeDifference: targetRelativeDifference
             )
         }
@@ -538,8 +545,13 @@ private extension HistoryRecurringCaloriePatternEngine {
 
     struct MealDifference {
         let meal: MealType
-        let calorieDifference: Double
+        let supportingAverage: Double
+        let comparisonAverage: Double
         let targetRelativeDifference: Double
+
+        var calorieDifference: Double {
+            supportingAverage - comparisonAverage
+        }
     }
 
     struct Candidate {

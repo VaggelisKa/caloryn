@@ -72,6 +72,29 @@ struct HistoryRecurringCaloriePatternCoverageTests {
         #expect(mealOnly.comparisonText.contains("logged days, snacks averaged 200 kcal more"))
     }
 
+    @Test("given a discovered pattern, when reading its meal averages, then the difference is the supporting average less the comparison one")
+    func mealDifferenceIsTheGapBetweenTheTwoAverages() throws {
+        let fridays = [2, 9, 16, 23, 30].map { Self.date(2026, 1, $0) }
+        let others = [3, 5, 6, 7, 8].map { Self.date(2026, 1, $0) }
+        var entries = fridays.prefix(4).flatMap { day(on: $0, breakfast: 700, lunch: 700, dinner: 900) }
+        entries += day(on: fridays[4], breakfast: 350, lunch: 350, dinner: 1_300)
+        entries += others.flatMap { day(on: $0, breakfast: 750, lunch: 750, dinner: 500) }
+
+        let pattern = try #require(discover(
+            entries,
+            exactTargets: fridays + others,
+            policy: HistoryRecurringCaloriePatternPolicy(minimumMealOnlyGroupCount: 100)
+        ))
+
+        #expect(pattern.id == "weekdayMeal|6|above|dinner")
+        #expect(pattern.supportingMealAverageCalories == 900)
+        #expect(abs(pattern.comparisonMealAverageCalories - (1_300 + 5 * 500) / 6.0) < 0.000_001)
+        #expect(
+            pattern.mealDifferenceCalories
+                == pattern.supportingMealAverageCalories - pattern.comparisonMealAverageCalories
+        )
+    }
+
     @Test("given a pattern, when stating its basis, then it counts the eligible logged days in the 30-day window")
     func basisText() {
         #expect(makePattern(eligibleDayCount: 11).basisText == "Based on 11 logged days in the last 30 days")
@@ -403,6 +426,8 @@ struct HistoryRecurringCaloriePatternCoverageTests {
             outcomeComparisonDayCount: outcomeComparisonDayCount,
             mealComparisonDayCount: mealComparisonDayCount,
             eligibleDayCount: eligibleDayCount,
+            supportingMealAverageCalories: 500 + mealDifferenceCalories,
+            comparisonMealAverageCalories: 500,
             mealDifferenceCalories: mealDifferenceCalories,
             targetRelativeMealDifference: mealDifferenceCalories / 2_000,
             rateSeparation: 1,
