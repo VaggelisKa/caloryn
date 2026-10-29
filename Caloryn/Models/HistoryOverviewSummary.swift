@@ -40,7 +40,7 @@ struct HistoryOverviewSummary: Equatable {
         averageCaloriesPerLoggedDay.rounded().truncatedSafely.formatted()
     }
 
-    var averageUnitText: String { "kcal / day on average" }
+    var averageUnitText: String { "kcal a day on average" }
 
     var emptyHeadlineText: String { "Nothing logged" }
 
@@ -69,7 +69,7 @@ struct HistoryOverviewSummary: Equatable {
 
     var averageAccessibilityLabel: String {
         guard hasLoggedDays else { return emptyHeadlineText }
-        return "\(averageValueText) kcal a day on average"
+        return "\(averageValueText) \(averageUnitText)"
     }
 
     var accessibilityLabel: String {

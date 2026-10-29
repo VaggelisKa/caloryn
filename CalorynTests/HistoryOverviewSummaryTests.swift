@@ -10,7 +10,7 @@ struct HistoryOverviewSummaryTests {
 
         #expect(summary.hasLoggedDays)
         #expect(summary.averageValueText == 1_953.formatted())
-        #expect(summary.averageUnitText == "kcal / day on average")
+        #expect(summary.averageUnitText == "kcal a day on average")
     }
 
     @Test("given an average over the goal, when supporting it, then only the overshoot against the goal is stated")
