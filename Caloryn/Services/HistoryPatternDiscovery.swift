@@ -135,7 +135,7 @@ struct HistoryCalorieTrendProjection {
                     targetDelta: day.calorieDifference,
                     status: day.status,
                     isLogged: day.isLogged,
-                    xAxisLabel: day.date.weekdayInitial(in: calendar),
+                    xAxisLabel: Self.dayAxisLabel(for: day.date, range: range, calendar: calendar),
                     accessibilityLabel: day.date.shortFormatted(in: calendar),
                     accessibilityValue: day.isLogged
                         ? "\(day.calories.rounded().truncatedSafely) calories, \(day.status.label)"
@@ -282,6 +282,12 @@ struct HistoryCalorieTrendProjection {
 
             return "Biggest swing: \(day.date.shortFormatted(in: calendar)), \(deltaText(day.calorieDifference, unit: "kcal"))"
         }
+    }
+
+    private static func dayAxisLabel(for date: Date, range: HistoryRange, calendar: Calendar) -> String {
+        guard range == .month else { return date.weekdayInitial(in: calendar) }
+        let isMonday = calendar.component(.weekday, from: date) == 2
+        return isMonday ? date.dayMonthFormatted(in: calendar) : ""
     }
 
     private static func weeklyDelta(_ week: HistoryWeekSummary, target: Int) -> Int {

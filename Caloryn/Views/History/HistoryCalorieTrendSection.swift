@@ -83,8 +83,8 @@ struct HistoryCalorieTrendSection: View {
                 }
             }
 
-            if let totalSupportText = summary.totalSupportText {
-                Text(totalSupportText)
+            if let totalSupport = summary.totalSupport {
+                Text("\(Text(totalSupport.emphasis).fontWeight(.semibold).foregroundStyle(CalorynTheme.textPrimary))\(totalSupport.remainder)")
                     .font(CalorynTheme.cardSubtitle.monospacedDigit())
                     .foregroundStyle(CalorynTheme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -129,7 +129,7 @@ struct HistoryCalorieTrendSection: View {
                     if let index = value.as(Double.self),
                        let chartPoint = projection.point(for: index) {
                         Text(chartPoint.xAxisLabel)
-                            .font(CalorynTheme.trendChartXAxisLabel(pointCount: projection.points.count))
+                            .font(CalorynTheme.weeklyChartXAxisLabel(isDense: layout.usesDenseAxisLabels))
                             .foregroundStyle(.clear)
                             .accessibilityHidden(true)
                     }
@@ -144,7 +144,7 @@ struct HistoryCalorieTrendSection: View {
                     ForEach(projection.points) { chartPoint in
                         if let xPosition = proxy.position(forX: chartPoint.index) {
                             Text(chartPoint.xAxisLabel)
-                                .font(CalorynTheme.trendChartXAxisLabel(pointCount: projection.points.count))
+                                .font(CalorynTheme.weeklyChartXAxisLabel(isDense: layout.usesDenseAxisLabels))
                                 .foregroundStyle(CalorynTheme.textSecondary)
                                 .position(
                                     x: plotRect.minX + xPosition,

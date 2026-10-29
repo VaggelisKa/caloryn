@@ -17,6 +17,31 @@ struct HistoryTrendCalendarCoverageTests {
         #expect(projection.points.map(\.index) == [0, 1, 2, 3, 4, 5, 6])
     }
 
+    @Test("given 30 days across the spring change, when labelling the axis, then only Mondays are named, by day and month in the injected calendar")
+    func monthAxisLabelsOnlyMondays() {
+        let projection = HistoryCalorieTrendProjection(range: .month, summary: springMonth().current)
+        let labelled = projection.points.filter { !$0.xAxisLabel.isEmpty }
+
+        #expect(projection.points.count == 30)
+        #expect(labelled.map(\.xAxisLabel) == ["23 Feb", "2 Mar", "9 Mar", "16 Mar"])
+        #expect(labelled.map(\.index) == [4, 11, 18, 25])
+        #expect(labelled.map(\.accessibilityLabel) == ["Mon, 23 Feb", "Mon, 2 Mar", "Mon, 9 Mar", "Mon, 16 Mar"])
+    }
+
+    @Test("given 14 days, when labelling the axis, then every day keeps its weekday initial")
+    func twoWeekAxisLabelsEveryDay() {
+        let analytics = HistoryAnalytics(
+            entries: [],
+            profile: nil,
+            range: .twoWeeks,
+            endDate: Self.date(2026, 3, 10),
+            calendar: Self.newYork
+        )
+        let projection = HistoryCalorieTrendProjection(range: .twoWeeks, summary: analytics.current)
+
+        #expect(projection.points.map(\.xAxisLabel) == ["W", "T", "F", "S", "S", "M", "T", "W", "T", "F", "S", "S", "M", "T"])
+    }
+
     @Test("given days either side of the spring change, when identifying their points, then each is keyed by its own UTC midnight")
     func dailyPointIdsShiftWithTheOffset() {
         let projection = HistoryCalorieTrendProjection(range: .week, summary: springWeek().current)
@@ -255,6 +280,16 @@ struct HistoryTrendCalendarCoverageTests {
             profile: Self.makeProfile(),
             range: .week,
             endDate: Self.date(2026, 3, 10),
+            calendar: Self.newYork
+        )
+    }
+
+    private func springMonth() -> HistoryAnalytics {
+        HistoryAnalytics(
+            entries: [],
+            profile: Self.makeProfile(),
+            range: .month,
+            endDate: Self.date(2026, 3, 20),
             calendar: Self.newYork
         )
     }
