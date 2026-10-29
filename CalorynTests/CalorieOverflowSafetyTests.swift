@@ -57,7 +57,7 @@ final class CalorieOverflowSafetyTests: XCTestCase {
         XCTAssertEqual(trend.totalTargetDelta, -CalorieDomain.maximum - 2_000)
         XCTAssertEqual(trend.cardSummary.totalSupport?.text, "\(shortfall) kcal under goal in total")
         XCTAssertEqual(trend.rangeStats.stats, [
-            HistoryCalorieTrendStat(value: Int.min.formatted(), label: "kcal a day on average"),
+            HistoryCalorieTrendStat(value: (-CalorieDomain.maximum).formatted(), label: "kcal a day on average"),
             HistoryCalorieTrendStat(value: "0 of 1", label: "logged days on track"),
             HistoryCalorieTrendStat(value: shortfall, label: "kcal under goal in total")
         ])
@@ -66,7 +66,7 @@ final class CalorieOverflowSafetyTests: XCTestCase {
             "Furthest from goal: \(date.shortFormatted(in: analytics.calendar)), \(shortfall) kcal under"
         )
         XCTAssertTrue(
-            trend.cardSummary.chartAccessibilityLabel.contains("Average \(Int.min.formatted()) calories")
+            trend.cardSummary.chartAccessibilityLabel.contains("Average \((-CalorieDomain.maximum).formatted()) calories")
         )
     }
 

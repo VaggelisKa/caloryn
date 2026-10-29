@@ -89,7 +89,7 @@ final class NonFiniteNumberSafetyTests: XCTestCase {
         XCTAssertEqual(projection.totalTargetDelta, CalorieDomain.maximum - 2_000)
         XCTAssertEqual(projection.cardSummary.totalSupport?.text, "\(overage) kcal over goal in total")
         XCTAssertEqual(projection.rangeStats.totalDelta, HistoryCalorieTrendStat(value: overage, label: "kcal over goal in total"))
-        XCTAssertEqual(projection.rangeStats.average.value, Int.max.formatted())
+        XCTAssertEqual(projection.rangeStats.average.value, CalorieDomain.maximum.formatted())
         XCTAssertEqual(
             projection.furthestFromGoal?.text,
             "Furthest from goal: \(date.shortFormatted(in: analytics.calendar)), \(overage) kcal over"

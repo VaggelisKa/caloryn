@@ -53,7 +53,7 @@ struct HistoryCalorieTrendCardSummary: Equatable {
             return "Calorie trend for \(range.label). 0 of \(totalDayCount) days logged. \(goal)"
         }
 
-        let average = averageCaloriesPerLoggedDay.rounded().truncatedSafely.formatted()
+        let average = averageCaloriesPerLoggedDay.roundedCalories.formatted()
         return "Calorie trend for \(range.label). \(loggedDayCount) of \(totalDayCount) days logged. Average \(average) calories per logged day. \(goal)"
     }
 
@@ -74,7 +74,7 @@ struct HistoryCalorieTrendRangeStats: Equatable {
 
     var average: HistoryCalorieTrendStat {
         HistoryCalorieTrendStat(
-            value: averageCaloriesPerLoggedDay.rounded().truncatedSafely.formatted(),
+            value: averageCaloriesPerLoggedDay.roundedCalories.formatted(),
             label: "kcal a day on average"
         )
     }
