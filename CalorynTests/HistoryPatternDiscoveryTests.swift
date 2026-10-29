@@ -18,7 +18,7 @@ struct HistoryPatternDiscoveryTests {
         #expect(projection.canDrillDown == false)
         #expect(projection.totalDayCount == 0)
         #expect(projection.loggedDayCount == 0)
-        #expect(projection.biggestInconsistencyText == nil)
+        #expect(projection.furthestFromGoal == nil)
     }
 
     @Test(
@@ -45,7 +45,7 @@ struct HistoryPatternDiscoveryTests {
     }
 
     @Test("given the 90-day range, when projecting the calorie trend, then points are calendar weeks rather than days")
-    func quarterRangeProjectsWeeklyPoints() {
+    func quarterRangeProjectsWeeklyPoints() throws {
         let analytics = HistoryAnalytics(
             entries: [],
             profile: nil,
@@ -57,8 +57,22 @@ struct HistoryPatternDiscoveryTests {
 
         #expect(projection.totalDayCount == 90)
         #expect(projection.points.count == 14)
-        #expect(projection.points.first?.xAxisLabel == "W1")
-        #expect(projection.points.last?.xAxisLabel == "W14")
+        let lastWeekStart = try #require(analytics.current.weeklyRollups.last?.startDate)
+        #expect(projection.points.last?.xAxisLabel == lastWeekStart.dayMonthFormatted(in: analytics.calendar))
+        #expect(projection.points.first?.xAxisLabel == "")
+    }
+
+    @Test("given a 90-day range ending this week, when projecting the calorie trend, then the current week is labelled This week")
+    func quarterTrendLabelsTheCurrentWeek() {
+        let dates = days(fromJanuary: 5, count: 14)
+
+        let projection = HistoryCalorieTrendProjection(
+            range: .quarter,
+            summary: makeSummary(dates: dates, entries: []),
+            today: janDate(14)
+        )
+
+        #expect(projection.points.map(\.xAxisLabel) == [janDate(5).startOfWeek.dayMonthFormatted, "This week"])
     }
 
     @Test("given a 90-day range with two logged weeks, when projecting the calorie trend, then each week point carries its average per logged day")
@@ -82,13 +96,13 @@ struct HistoryPatternDiscoveryTests {
         #expect(abs(firstWeek.value - 2_200) < 0.001)
         #expect(firstWeek.targetDelta == 200)
         #expect(firstWeek.status == .over)
-        #expect(firstWeek.xAxisLabel == "W1")
-        #expect(firstWeek.accessibilityLabel == "W1, week of \(janDate(5).startOfWeek.dayMonthFormatted)")
+        #expect(firstWeek.xAxisLabel == janDate(5).startOfWeek.dayMonthFormatted)
+        #expect(firstWeek.accessibilityLabel == "Week of \(janDate(5).startOfWeek.dayMonthFormatted)")
         #expect(firstWeek.accessibilityValue == "2200 average calories per logged day, Over")
 
         let secondWeek = try #require(projection.points.last)
         #expect(abs(secondWeek.value - 2_600) < 0.001)
-        #expect(secondWeek.xAxisLabel == "W2")
+        #expect(secondWeek.xAxisLabel == janDate(12).startOfWeek.dayMonthFormatted)
     }
 
     @Test("given a 90-day range week with nothing logged, when projecting the calorie trend, then the week point reads as not logged")
@@ -299,7 +313,7 @@ struct HistoryPatternDiscoveryTests {
         #expect(projection.loggedDayTargetTotal == 4_000)
         #expect(projection.totalTargetDelta == 400)
         #expect(projection.totalDifferenceText == "+400 over target")
-        #expect(projection.totalTargetDeltaText == "400 kcal over target total")
+        #expect(projection.rangeStats.totalDelta == .init(value: "+400", label: "kcal over goal"))
         #expect(projection.averageDifferenceText == "+200 over target")
     }
 
@@ -317,7 +331,7 @@ struct HistoryPatternDiscoveryTests {
         )
 
         #expect(projection.totalTargetDelta == 0)
-        #expect(projection.totalTargetDeltaText == "On target total")
+        #expect(projection.rangeStats.totalDelta == .init(value: "0", label: "kcal off goal"))
         #expect(projection.totalDifferenceText == "On target")
         #expect(projection.averageDifferenceText == "On target")
     }
@@ -334,23 +348,6 @@ struct HistoryPatternDiscoveryTests {
     }
 
     @Test(
-        "given a target difference, when describing it for a chart selection, then the wording follows the sign",
-        arguments: [
-            (0, "On target"),
-            (250, "250 kcal over target"),
-            (-250, "250 kcal under target")
-        ]
-    )
-    func targetDeltaTextFollowsSign(difference: Int, expected: String) {
-        let projection = HistoryCalorieTrendProjection(
-            range: .week,
-            summary: makeSummary(dates: days(fromJanuary: 26, count: 1))
-        )
-
-        #expect(projection.targetDeltaText(difference, unit: "kcal") == expected)
-    }
-
-    @Test(
         "given a calorie difference, when describing it as a period difference, then over, under, and on target are distinguished",
         arguments: [
             (300, "+300 over target"),
@@ -362,62 +359,25 @@ struct HistoryPatternDiscoveryTests {
         #expect(HistoryCalorieTrendProjection.differenceText(difference) == expected)
     }
 
-    @Test(
-        "given a difference with a unit, when describing it as a delta, then the unit and direction are included",
-        arguments: [
-            (600, "600 kcal over"),
-            (-600, "600 kcal under"),
-            (0, "On target")
+    @Test("given logged days under target, when summarising the range, then the three stats read average, on-track share and total shortfall")
+    func rangeStatsReadAverageShareAndShortfall() {
+        let dates = days(fromJanuary: 26, count: 7)
+        let entries = [
+            makeCalorieEntry(date: janDate(26), calories: 2_000),
+            makeCalorieEntry(date: janDate(27), calories: 1_600),
+            makeCalorieEntry(date: janDate(28), calories: 2_050)
         ]
-    )
-    func deltaTextIncludesUnitAndDirection(difference: Int, expected: String) {
-        #expect(HistoryCalorieTrendProjection.deltaText(difference, unit: "kcal") == expected)
-    }
-
-    @Test("given no logged days, when comparing a value with the period average, then no comparison is offered")
-    func averageDeltaTextIsUnavailableWithoutLoggedDays() {
-        let projection = HistoryCalorieTrendProjection(
-            range: .week,
-            summary: makeSummary(dates: days(fromJanuary: 26, count: 7))
-        )
-
-        #expect(projection.averageDeltaText(value: 2_000, unit: "kcal") == nil)
-    }
-
-    @Test("given logged days, when comparing a value with the period average, then above, below, and matching are distinguished")
-    func averageDeltaTextComparesWithPeriodAverage() {
-        let dates = days(fromJanuary: 26, count: 3)
-        let entries = [makeCalorieEntry(date: janDate(26), calories: 2_000)]
 
         let projection = HistoryCalorieTrendProjection(
             range: .week,
             summary: makeSummary(dates: dates, entries: entries)
         )
 
-        #expect(projection.averageDeltaText(value: 2_000, unit: "kcal") == "Matches 7-day average")
-        #expect(projection.averageDeltaText(value: 2_300, unit: "kcal") == "300 kcal above 7-day average")
-        #expect(projection.averageDeltaText(value: 1_700, unit: "kcal") == "300 kcal below 7-day average")
-    }
-
-    @Test(
-        "given a selected History range, when comparing a value with the period average, then the range is named in the comparison",
-        arguments: [
-            (HistoryRange.week, "Matches 7-day average"),
-            (HistoryRange.twoWeeks, "Matches 14-day average"),
-            (HistoryRange.month, "Matches 30-day average"),
-            (HistoryRange.quarter, "Matches 90-day average")
-        ]
-    )
-    func averageDeltaTextNamesTheRange(range: HistoryRange, expected: String) {
-        let dates = days(fromJanuary: 5, count: 14)
-        let entries = [makeCalorieEntry(date: janDate(5), calories: 2_000)]
-
-        let projection = HistoryCalorieTrendProjection(
-            range: range,
-            summary: makeSummary(dates: dates, entries: entries)
-        )
-
-        #expect(projection.averageDeltaText(value: 2_000, unit: "kcal") == expected)
+        #expect(projection.rangeStats.stats == [
+            .init(value: 1_883.formatted(), label: "kcal / day avg"),
+            .init(value: "2 of 3", label: "days on track"),
+            .init(value: "\u{2212}350", label: "kcal under goal")
+        ])
     }
 
     @Test("given every logged day has a saved daily goal, when projecting the calorie trend, then no estimated-target note is shown")
@@ -508,20 +468,20 @@ struct HistoryPatternDiscoveryTests {
     }
 
     @Test(
-        "given nothing logged in the range, when discovering the biggest swing, then no inconsistency is reported",
+        "given nothing logged in the range, when finding the period furthest from goal, then there is none",
         arguments: [HistoryRange.week, .twoWeeks, .month, .quarter]
     )
-    func noLoggedDataReportsNoBiggestSwing(range: HistoryRange) {
+    func noLoggedDataReportsNoFurthestPeriod(range: HistoryRange) {
         let projection = HistoryCalorieTrendProjection(
             range: range,
             summary: makeSummary(dates: days(fromJanuary: 5, count: 14))
         )
 
-        #expect(projection.biggestInconsistencyText == nil)
+        #expect(projection.furthestFromGoal == nil)
     }
 
-    @Test("given every logged day is on track, when discovering the biggest swing, then the range is reported as stable")
-    func allOnTrackDaysReportStability() {
+    @Test("given every logged day is on track, when finding the day furthest from goal, then the furthest of them is still named")
+    func allOnTrackDaysStillNameTheFurthest() {
         let dates = days(fromJanuary: 26, count: 5)
         let entries = [
             makeCalorieEntry(date: janDate(26), calories: 2_000),
@@ -534,11 +494,11 @@ struct HistoryPatternDiscoveryTests {
             summary: makeSummary(dates: dates, entries: entries)
         )
 
-        #expect(projection.biggestInconsistencyText == "Most stable: logged days stayed near target")
+        #expect(projection.furthestFromGoal?.text == "Furthest from goal: \(dayTitle(27)), +50")
     }
 
-    @Test("given one logged day far over target, when discovering the biggest swing, then that day is named with its overage")
-    func biggestSwingNamesTheDayOverTarget() {
+    @Test("given one logged day far over target, when finding the day furthest from goal, then that day is named with a signed overage")
+    func furthestNamesTheDayOverTarget() {
         let dates = days(fromJanuary: 26, count: 5)
         let entries = [
             makeCalorieEntry(date: janDate(26), calories: 2_000),
@@ -552,13 +512,13 @@ struct HistoryPatternDiscoveryTests {
         )
 
         #expect(
-            projection.biggestInconsistencyText
-                == "Biggest swing: \(janDate(28).shortFormatted), 600 kcal over"
+            projection.furthestFromGoal?.text
+                == "Furthest from goal: \(dayTitle(28)), +600"
         )
     }
 
-    @Test("given one logged day far under target, when discovering the biggest swing, then that day is named with its shortfall")
-    func biggestSwingNamesTheDayUnderTarget() {
+    @Test("given one logged day far under target, when finding the day furthest from goal, then that day is named with a signed shortfall")
+    func furthestNamesTheDayUnderTarget() {
         let dates = days(fromJanuary: 26, count: 5)
         let entries = [
             makeCalorieEntry(date: janDate(26), calories: 2_000),
@@ -571,12 +531,12 @@ struct HistoryPatternDiscoveryTests {
         )
 
         #expect(
-            projection.biggestInconsistencyText
-                == "Biggest swing: \(janDate(27).shortFormatted), 800 kcal under"
+            projection.furthestFromGoal?.text
+                == "Furthest from goal: \(dayTitle(27)), \u{2212}800"
         )
     }
 
-    @Test("given two logged days with equally large opposite swings, when discovering the biggest swing, then the earlier day is reported")
+    @Test("given two logged days with equally large opposite swings, when finding the day furthest from goal, then the earlier day is reported")
     func equalSwingsReportTheEarlierDay() {
         let dates = days(fromJanuary: 26, count: 5)
         let entries = [
@@ -590,17 +550,17 @@ struct HistoryPatternDiscoveryTests {
         )
 
         #expect(
-            projection.biggestInconsistencyText
-                == "Biggest swing: \(janDate(26).shortFormatted), 300 kcal over"
+            projection.furthestFromGoal?.text
+                == "Furthest from goal: \(dayTitle(26)), +300"
         )
     }
 
-    @Test("given a 90-day range where every logged week stays near target, when discovering the biggest swing, then the weeks are reported as stable")
-    func allOnTrackWeeksReportStability() {
+    @Test("given a 90-day range where every logged week lands exactly on goal, when finding the week furthest from goal, then the line is hidden")
+    func weeksExactlyOnGoalHideTheFurthestLine() {
         let dates = days(fromJanuary: 5, count: 14)
         let entries = [
             makeCalorieEntry(date: janDate(5), calories: 2_000),
-            makeCalorieEntry(date: janDate(12), calories: 2_050)
+            makeCalorieEntry(date: janDate(12), calories: 2_000)
         ]
 
         let projection = HistoryCalorieTrendProjection(
@@ -608,11 +568,11 @@ struct HistoryPatternDiscoveryTests {
             summary: makeSummary(dates: dates, entries: entries)
         )
 
-        #expect(projection.biggestInconsistencyText == "Most stable: logged weeks stayed near target")
+        #expect(projection.furthestFromGoal == nil)
     }
 
-    @Test("given a 90-day range with one week far off target, when discovering the biggest swing, then that week is named with its per-day delta")
-    func biggestWeeklySwingNamesTheWeek() {
+    @Test("given a 90-day range with one week far off target, when finding the week furthest from goal, then that week is named with its signed per-day delta")
+    func furthestWeekNamesTheWeek() {
         let dates = days(fromJanuary: 5, count: 14)
         let entries = [
             makeCalorieEntry(date: janDate(5), calories: 2_000),
@@ -625,8 +585,8 @@ struct HistoryPatternDiscoveryTests {
         )
 
         #expect(
-            projection.biggestInconsistencyText
-                == "Biggest swing: week of \(janDate(12).startOfWeek.dayMonthFormatted), 500 kcal/day over"
+            projection.furthestFromGoal?.text
+                == "Furthest from goal: week of \(janDate(12).startOfWeek.dayMonthFormatted), +500 kcal/day"
         )
     }
 
@@ -723,136 +683,67 @@ struct HistoryPatternDiscoveryTests {
         #expect(projection.totalDayCount == 14)
     }
 
-    @Test("given nothing logged in the range, when projecting weekly consistency, then there is no best week and no headline")
-    func weeklyConsistencyWithoutLoggedDaysHasNoBestWeek() {
+    @Test("given nothing logged in the range, when projecting weekly consistency, then every week reads 0/0 with an empty bar")
+    func weeklyConsistencyWithoutLoggedDaysShowsEmptyWeeks() {
         let projection = HistoryWeeklyConsistencyProjection(
-            summary: makeSummary(dates: days(fromJanuary: 5, count: 14))
+            summary: makeSummary(dates: days(fromJanuary: 5, count: 14)),
+            today: janDate(14)
         )
 
-        #expect(projection.weeks.count == 2)
-        #expect(projection.bestWeek == nil)
-        #expect(projection.headlineText == nil)
+        #expect(projection.chart.weeks.map(\.countText) == ["0/0", "0/0"])
+        #expect(projection.chart.weeks.map(\.onTrackPercentage) == [0, 0])
     }
 
-    @Test("given two logged weeks with different on-track ratios, when projecting weekly consistency, then the higher ratio wins")
-    func bestWeekIsTheHighestOnTrackRatio() {
+    @Test("given a partial week and a full one, when projecting weekly consistency, then each bar carries its own on-track and logged counts")
+    func eachWeekCarriesItsOwnCounts() {
         let dates = days(fromJanuary: 5, count: 14)
         let entries = [
             makeCalorieEntry(date: janDate(5), calories: 2_000),
             makeCalorieEntry(date: janDate(6), calories: 2_600),
-            makeCalorieEntry(date: janDate(12), calories: 2_000),
-            makeCalorieEntry(date: janDate(13), calories: 2_000)
-        ]
-
-        let projection = HistoryWeeklyConsistencyProjection(
-            summary: makeSummary(dates: dates, entries: entries)
-        )
-
-        #expect(projection.bestWeek?.startDate == janDate(12).startOfWeek)
-        #expect(projection.headlineText == "Best week had 2 of 2 logged days on track.")
-    }
-
-    @Test("given two fully on-track weeks with different logged-day counts, when projecting weekly consistency, then the better covered week wins")
-    func bestWeekTieBreaksOnLoggedDays() {
-        let dates = days(fromJanuary: 5, count: 14)
-        let entries = [
-            makeCalorieEntry(date: janDate(5), calories: 2_000),
-            makeCalorieEntry(date: janDate(6), calories: 2_000),
             makeCalorieEntry(date: janDate(12), calories: 2_000),
             makeCalorieEntry(date: janDate(13), calories: 2_000),
             makeCalorieEntry(date: janDate(14), calories: 2_000)
         ]
 
         let projection = HistoryWeeklyConsistencyProjection(
-            summary: makeSummary(dates: dates, entries: entries)
+            summary: makeSummary(dates: dates, entries: entries),
+            today: janDate(14)
         )
 
-        #expect(projection.bestWeek?.startDate == janDate(12).startOfWeek)
-        #expect(projection.headlineText == "Best week had 3 of 3 logged days on track.")
+        #expect(projection.chart.weeks.map(\.countText) == ["1/2", "3/3"])
+        #expect(projection.chart.weeks.map(\.onTrackPercentage) == [50, 100])
     }
 
-    @Test("given the best week has a single logged day, when projecting weekly consistency, then the headline uses the singular day label")
-    func singleLoggedDayHeadlineUsesSingularLabel() {
-        let dates = days(fromJanuary: 5, count: 7)
-        let entries = [makeCalorieEntry(date: janDate(5), calories: 2_000)]
-
+    @Test("given the range ends this week, when projecting weekly consistency, then the older week shows its start date and the last reads This week")
+    func theWeekContainingTodayReadsThisWeek() {
         let projection = HistoryWeeklyConsistencyProjection(
-            summary: makeSummary(dates: dates, entries: entries)
+            summary: makeSummary(dates: days(fromJanuary: 5, count: 14)),
+            today: janDate(14)
         )
 
-        #expect(projection.headlineText == "Best week had 1 of 1 logged day on track.")
+        #expect(projection.chart.weeks.map(\.axisLabel) == [
+            janDate(5).dayMonthFormatted(in: .current),
+            "This week"
+        ])
     }
 
-    @Test("given the best week has logged days that were not on track, when projecting weekly consistency, then the headline reports the on-track share")
-    func headlineReportsOnTrackShareOfLoggedDays() {
-        let dates = days(fromJanuary: 5, count: 7)
-        let entries = [
-            makeCalorieEntry(date: janDate(5), calories: 2_000),
-            makeCalorieEntry(date: janDate(6), calories: 2_000),
-            makeCalorieEntry(date: janDate(7), calories: 2_600)
-        ]
-
-        let projection = HistoryWeeklyConsistencyProjection(
-            summary: makeSummary(dates: dates, entries: entries)
+    @Test("given profile macro goals, when discovering patterns, then each macro carries its goal in grams")
+    func macroPatternsCarryTheirGoalGrams() throws {
+        let profile = makeProfile()
+        let analytics = HistoryAnalytics(
+            entries: [makeCalorieEntry(date: janDate(30), calories: 2_000)],
+            profile: profile,
+            range: .week,
+            endDate: janDate(30)
         )
 
-        #expect(projection.headlineText == "Best week had 2 of 3 logged days on track.")
-    }
+        let patterns = HistoryPatternDiscovery(analytics: analytics).macroPatterns.patterns
 
-    @Test("given no macro patterns, when discovering the least consistent macro, then nothing is reported")
-    func noMacroPatternsReportNothing() {
-        #expect(HistoryMacroPatternsProjection(patterns: []).summaryText == nil)
-    }
-
-    @Test("given macro patterns with no logged days, when discovering the least consistent macro, then nothing is reported")
-    func macroPatternsWithoutLoggedDaysReportNothing() {
-        let projection = HistoryMacroPatternsProjection(patterns: [
-            makeMacroPattern(nutrient: .protein, loggedDays: 0, hitDays: 0),
-            makeMacroPattern(nutrient: .carbs, loggedDays: 0, hitDays: 0)
-        ])
-
-        #expect(projection.summaryText == nil)
-    }
-
-    @Test("given macro patterns with different hit days, when discovering the least consistent macro, then the fewest hit days is reported")
-    func leastConsistentMacroIsTheFewestHitDays() {
-        let projection = HistoryMacroPatternsProjection(patterns: [
-            makeMacroPattern(nutrient: .protein, loggedDays: 5, hitDays: 4),
-            makeMacroPattern(nutrient: .carbs, loggedDays: 5, hitDays: 1),
-            makeMacroPattern(nutrient: .fat, loggedDays: 5, hitDays: 3)
-        ])
-
-        #expect(projection.summaryText == "Carbs was the least consistent macro at 1 of 5 logged days.")
-    }
-
-    @Test("given a nutrient with a compact display name, when discovering the least consistent macro, then the compact name is used")
-    func leastConsistentMacroUsesCompactNutrientName() {
-        let projection = HistoryMacroPatternsProjection(patterns: [
-            makeMacroPattern(nutrient: .protein, loggedDays: 3, hitDays: 3),
-            makeMacroPattern(nutrient: .saturatedFat, loggedDays: 3, hitDays: 0)
-        ])
-
-        #expect(projection.summaryText == "Sat Fat was the least consistent macro at 0 of 3 logged days.")
-    }
-
-    @Test("given macro patterns tied on hit days, when discovering the least consistent macro, then the first listed macro is reported")
-    func tiedMacroPatternsReportTheFirstListed() {
-        let projection = HistoryMacroPatternsProjection(patterns: [
-            makeMacroPattern(nutrient: .protein, loggedDays: 4, hitDays: 2),
-            makeMacroPattern(nutrient: .carbs, loggedDays: 4, hitDays: 2)
-        ])
-
-        #expect(projection.summaryText == "Protein was the least consistent macro at 2 of 4 logged days.")
-    }
-
-    @Test("given a macro pattern with no logged days alongside a logged one, when discovering the least consistent macro, then the unlogged macro is ignored")
-    func unloggedMacroPatternsAreIgnored() {
-        let projection = HistoryMacroPatternsProjection(patterns: [
-            makeMacroPattern(nutrient: .carbs, loggedDays: 0, hitDays: 0),
-            makeMacroPattern(nutrient: .fat, loggedDays: 2, hitDays: 1)
-        ])
-
-        #expect(projection.summaryText == "Fat was the least consistent macro at 1 of 2 logged days.")
+        #expect(patterns.map(\.nutrient) == [.protein, .carbs, .fat])
+        for pattern in patterns {
+            let goal = try #require(profile.target(for: pattern.nutrient))
+            #expect(pattern.target == goal)
+        }
     }
 
     @Test("given no profile targets, when discovering patterns, then macro patterns are absent while the calorie trend still projects")
@@ -867,11 +758,9 @@ struct HistoryPatternDiscoveryTests {
         let discovery = HistoryPatternDiscovery(analytics: analytics)
 
         #expect(discovery.macroPatterns.patterns.isEmpty)
-        #expect(discovery.macroPatterns.summaryText == nil)
         #expect(discovery.calorieTrend.points.count == 7)
         #expect(discovery.calorieTrend.dailyCalorieTarget == 2_000)
         #expect(discovery.weeklyConsistency.totalDayCount == 7)
-        #expect(discovery.weeklyConsistency.bestWeek == nil)
     }
 
     @Test("given a logged week, when discovering patterns, then the calorie trend and weekly consistency describe the same logged days")
@@ -896,7 +785,11 @@ struct HistoryPatternDiscoveryTests {
         #expect(discovery.weeklyConsistency.loggedDayCount == 3)
         #expect(discovery.calorieTrend.totalDayCount == discovery.weeklyConsistency.totalDayCount)
         #expect(discovery.calorieTrend.onTrackLoggedDayCount == 2)
-        #expect(discovery.weeklyConsistency.headlineText == "Best week had 2 of 3 logged days on track.")
+        #expect(discovery.weeklyConsistency.chart.weeks.last?.countText == "2/3")
+    }
+
+    private func dayTitle(_ day: Int) -> String {
+        janDate(day).formatted(pattern: "EEE d MMM", in: .current)
     }
 
     private func janDate(_ day: Int) -> Date {
@@ -967,28 +860,6 @@ struct HistoryPatternDiscoveryTests {
                 valuesByDayKey: valuesByDayKey
             ),
             calendar: calendar
-        )
-    }
-
-    private func makeMacroPattern(
-        nutrient: TrackedNutrient,
-        loggedDays: Int,
-        hitDays: Int,
-        averageValue: Double = 0
-    ) -> HistoryMacroPattern {
-        HistoryMacroPattern(
-            nutrient: nutrient,
-            goalKind: nutrient.defaultGoalKind,
-            current: HistoryNutrientPeriodSummary(
-                loggedDays: loggedDays,
-                hitDays: hitDays,
-                averageValue: averageValue
-            ),
-            previous: HistoryNutrientPeriodSummary(
-                loggedDays: 0,
-                hitDays: 0,
-                averageValue: 0
-            )
         )
     }
 }

@@ -302,7 +302,10 @@ final class ComponentSnapshotTests: XCTestCase {
     }
 
     func testHistoryDayPlateGridAtMonthSizeAcrossAppearances() {
-        let grid = HistoryDayPlateGrid(strip: dayPlateStrip(dayCount: 30, columnCount: 10, plateSize: 28))
+        let grid = HistoryDayPlateGrid(
+            strip: dayPlateStrip(dayCount: 30, columnCount: 10, plateSize: 28),
+            loggedDaysText: "28 of 30 days logged"
+        )
             .padding(CalorynTheme.pagePadding)
             .frame(width: 402, height: 230)
             .background(CalorynTheme.backgroundPrimary)
@@ -311,7 +314,10 @@ final class ComponentSnapshotTests: XCTestCase {
     }
 
     func testHistoryDayPlateGridAtWeekSizeAcrossAppearances() {
-        let grid = HistoryDayPlateGrid(strip: dayPlateStrip(dayCount: 14, columnCount: 7, plateSize: 40))
+        let grid = HistoryDayPlateGrid(
+            strip: dayPlateStrip(dayCount: 14, columnCount: 7, plateSize: 40),
+            loggedDaysText: "13 of 14 days logged"
+        )
             .padding(CalorynTheme.pagePadding)
             .frame(width: 402, height: 200)
             .background(CalorynTheme.backgroundPrimary)

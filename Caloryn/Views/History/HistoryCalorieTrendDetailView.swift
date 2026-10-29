@@ -63,62 +63,43 @@ struct HistoryCalorieTrendDetailView: View {
 private struct HistoryCalorieTrendRangeSummary: View {
     let projection: HistoryCalorieTrendProjection
 
-    private var summary: HistoryCalorieTrendCardSummary {
-        HistoryCalorieTrendCardSummary(
-            range: projection.range,
-            dailyCalorieTarget: projection.dailyCalorieTarget,
-            totalDayCount: projection.totalDayCount,
-            loggedDayCount: projection.loggedDayCount,
-            onTrackLoggedDayCount: projection.onTrackLoggedDayCount,
-            hasLoggedData: projection.hasLoggedData,
-            averageCaloriesPerLoggedDay: projection.averageCaloriesPerLoggedDay,
-            averageTargetPerLoggedDay: projection.averageTargetPerLoggedDay,
-            totalCalories: projection.totalCalories,
-            loggedDayTargetTotal: projection.loggedDayTargetTotal
-        )
-    }
-
     var body: some View {
-        let summary = summary
-
-        return VStack(alignment: .leading, spacing: 12) {
-            HistorySectionTitle("Range summary")
-
-            HStack(alignment: .top, spacing: 16) {
-                HistoryDetailMetric(
-                    value: summary.onTrackRatioText,
-                    label: "logged days on track"
-                )
-
-                HistoryDetailMetric(
-                    value: summary.averageValueText,
-                    label: "kcal a day on average"
-                )
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                ForEach(projection.rangeStats.stats) { stat in
+                    HistoryDetailMetric(value: stat.value, label: stat.label)
+                }
             }
 
             HistoryHairline()
 
             VStack(alignment: .leading, spacing: 6) {
-                summaryLine(projection.totalTargetDeltaText)
-
-                if let biggestInconsistencyText = projection.biggestInconsistencyText {
-                    summaryLine(biggestInconsistencyText)
+                if let furthestFromGoal = projection.furthestFromGoal {
+                    HistoryFurthestFromGoalLine(furthest: furthestFromGoal)
                 }
 
                 if let estimatedTargetNoteText = projection.estimatedTargetNoteText {
-                    summaryLine(estimatedTargetNoteText)
+                    Text(estimatedTargetNoteText)
+                        .font(CalorynTheme.cardSubtitle)
+                        .foregroundStyle(CalorynTheme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
     }
+}
 
-    private func summaryLine(_ text: String) -> some View {
-        Text(text)
-            .font(CalorynTheme.cardSubtitle)
+private struct HistoryFurthestFromGoalLine: View {
+    let furthest: HistoryCalorieTrendFurthestFromGoal
+
+    var body: some View {
+        Text("\(HistoryCalorieTrendFurthestFromGoal.prefix)\(Text(furthest.periodText).fontWeight(.semibold).foregroundStyle(CalorynTheme.textPrimary))\(furthest.suffix)")
+            .font(CalorynTheme.cardSubtitle.monospacedDigit())
             .foregroundStyle(CalorynTheme.textSecondary)
             .fixedSize(horizontal: false, vertical: true)
+            .accessibilityLabel(furthest.text)
     }
 }
 
@@ -132,7 +113,7 @@ private struct HistoryDetailMetric: View {
                 .font(CalorynTheme.compactNumber)
                 .foregroundStyle(CalorynTheme.textPrimary)
                 .lineLimit(1)
-                .minimumScaleFactor(0.75)
+                .minimumScaleFactor(0.6)
 
             Text(label)
                 .font(CalorynTheme.caption)
@@ -140,6 +121,7 @@ private struct HistoryDetailMetric: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -158,6 +140,7 @@ private struct HistoryCalorieTrendInteractiveChart: View {
 
     var body: some View {
         let layout = layout
+        let axisLabelFont = CalorynTheme.weeklyChartXAxisLabel(isDense: layout.usesDenseAxisLabels)
 
         return VStack(alignment: .leading, spacing: 14) {
             HistorySectionTitle("Calories")
@@ -210,7 +193,7 @@ private struct HistoryCalorieTrendInteractiveChart: View {
                         if let index = value.as(Double.self),
                            let point = projection.point(for: index) {
                             Text(point.xAxisLabel)
-                                .font(CalorynTheme.trendChartXAxisLabel(pointCount: projection.points.count))
+                                .font(axisLabelFont)
                                 .foregroundStyle(.clear)
                                 .accessibilityHidden(true)
                         }
@@ -241,7 +224,7 @@ private struct HistoryCalorieTrendInteractiveChart: View {
                             ForEach(projection.points) { point in
                                 if let xPosition = proxy.position(forX: point.index) {
                                     Text(point.xAxisLabel)
-                                        .font(CalorynTheme.trendChartXAxisLabel(pointCount: projection.points.count))
+                                        .font(axisLabelFont)
                                         .foregroundStyle(
                                             point.id == selectedPointID
                                                 ? CalorynTheme.textPrimary
@@ -354,18 +337,11 @@ private struct HistoryCalorieTrendSelectedAnalysis: View {
 
 private struct HistorySelectionHeader: View {
     let title: String
-    let caption: String
     let status: HistoryGoalStatus?
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
-            VStack(alignment: .leading, spacing: 2) {
-                HistorySectionTitle(title)
-
-                Text(caption)
-                    .font(CalorynTheme.caption)
-                    .foregroundStyle(CalorynTheme.textSecondary)
-            }
+            HistorySectionTitle(title)
 
             Spacer(minLength: 8)
 
@@ -373,6 +349,60 @@ private struct HistorySelectionHeader: View {
                 HistoryStatusBadge(status: status)
             }
         }
+    }
+}
+
+private struct HistoryGoalLineView: View {
+    let line: HistoryCalorieTrendGoalLine
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Text(line.valueText)
+                .font(CalorynTheme.compactNumber)
+                .foregroundStyle(CalorynTheme.textPrimary)
+                .lineLimit(1)
+
+            Text(line.goalText)
+                .font(CalorynTheme.cardSubtitle.monospacedDigit())
+                .foregroundStyle(CalorynTheme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+private struct HistoryMealShareRow: View {
+    let row: HistoryCalorieTrendDayBreakdown.MealRow
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                Text(row.title)
+                    .font(CalorynTheme.cardSubtitle.weight(.semibold))
+                    .foregroundStyle(row.mealType.ink)
+                    .lineLimit(1)
+
+                Spacer(minLength: 8)
+
+                Text(row.caloriesText)
+                    .font(CalorynTheme.cardSubtitle.weight(.semibold).monospacedDigit())
+                    .foregroundStyle(row.hasCalories ? CalorynTheme.textPrimary : CalorynTheme.textTertiary)
+            }
+
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(CalorynTheme.fillTrack)
+
+                    Capsule()
+                        .fill(row.mealType.fill)
+                        .frame(width: geometry.size.width * row.shareOfDay)
+                }
+            }
+            .frame(height: 4)
+            .accessibilityHidden(true)
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -451,7 +481,6 @@ private struct HistoryCalorieTrendSelectedDay: View {
         return VStack(alignment: .leading, spacing: 14) {
             HistorySelectionHeader(
                 title: projection.dayText(for: detail.date),
-                caption: "Selected day",
                 status: detail.status
             )
 
@@ -475,18 +504,13 @@ private struct HistoryCalorieTrendSelectedDay: View {
 
     private var metricStack: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(projection.targetDeltaText(detail.calorieDifference, unit: "kcal"))
-                .font(CalorynTheme.compactNumber)
-                .foregroundStyle(CalorynTheme.textPrimary)
-
-            if let averageDeltaText = projection.averageDeltaText(
-                value: detail.calories,
-                unit: "kcal"
-            ) {
-                Text(averageDeltaText)
-                    .font(CalorynTheme.cardSubtitle)
-                    .foregroundStyle(CalorynTheme.textSecondary)
-            }
+            HistoryGoalLineView(
+                line: HistoryCalorieTrendGoalLine(
+                    calories: detail.calories,
+                    target: detail.dailyCalorieTarget,
+                    period: .day
+                )
+            )
 
             if detail.isTargetEstimated {
                 Text("Compared with the goal in effect around this day — none was saved for it.")
@@ -498,21 +522,15 @@ private struct HistoryCalorieTrendSelectedDay: View {
     }
 
     private func mealSplit(_ breakdown: HistoryCalorieTrendDayBreakdown) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 12) {
             Text("Meal split")
                 .font(CalorynTheme.cardSubtitle.weight(.bold))
                 .foregroundStyle(CalorynTheme.textPrimary)
                 .accessibilityAddTraits(.isHeader)
                 .padding(.top, 6)
 
-            HistoryHairlineRows(items: breakdown.mealRows) { row in
-                HistoryDetailRow(
-                    title: row.title,
-                    titleColor: row.mealType.ink,
-                    titleFont: CalorynTheme.cardSubtitle.weight(.semibold),
-                    value: row.caloriesText,
-                    valueColor: row.hasCalories ? CalorynTheme.textPrimary : CalorynTheme.textTertiary
-                )
+            ForEach(breakdown.mealRows) { row in
+                HistoryMealShareRow(row: row)
             }
         }
     }
@@ -571,30 +589,22 @@ private struct HistoryCalorieTrendSelectedWeek: View {
         return VStack(alignment: .leading, spacing: 14) {
             HistorySelectionHeader(
                 title: breakdown.headerText,
-                caption: "Selected week",
                 status: breakdown.hasLoggedDays ? point.status : nil
             )
 
             if breakdown.hasLoggedDays {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(projection.targetDeltaText(point.targetDelta, unit: "kcal/day"))
-                        .font(CalorynTheme.compactNumber)
-                        .foregroundStyle(CalorynTheme.textPrimary)
+                HistoryGoalLineView(
+                    line: HistoryCalorieTrendGoalLine(
+                        calories: week.averageCaloriesPerLoggedDay,
+                        target: week.targetPerLoggedDay,
+                        period: .week
+                    )
+                )
 
-                    if let averageDeltaText = projection.averageDeltaText(
-                        value: week.averageCaloriesPerLoggedDay,
-                        unit: "kcal/day"
-                    ) {
-                        Text(averageDeltaText)
-                            .font(CalorynTheme.cardSubtitle)
-                            .foregroundStyle(CalorynTheme.textSecondary)
-                    }
-                }
-
-                HStack(alignment: .top, spacing: 16) {
+                HStack(alignment: .top, spacing: 12) {
                     HistoryDetailMetric(
                         value: breakdown.onTrackRatioText,
-                        label: "logged days on track"
+                        label: "days on track"
                     )
 
                     HistoryDetailMetric(
@@ -603,11 +613,8 @@ private struct HistoryCalorieTrendSelectedWeek: View {
                     )
                 }
 
-                if let biggestSwingText = breakdown.biggestSwingText {
-                    Text(biggestSwingText)
-                        .font(CalorynTheme.cardSubtitle)
-                        .foregroundStyle(CalorynTheme.textSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                if let furthestFromGoal = breakdown.furthestFromGoal {
+                    HistoryFurthestFromGoalLine(furthest: furthestFromGoal)
                 }
 
                 if breakdown.showsFoodSection {

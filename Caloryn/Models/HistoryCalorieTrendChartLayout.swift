@@ -43,6 +43,10 @@ struct HistoryCalorieTrendChartLayout: Equatable {
         }
     }
 
+    var usesDenseAxisLabels: Bool {
+        range == .twoWeeks || range == .quarter
+    }
+
     var xAxisDomain: ClosedRange<Double> {
         axis.domain
     }

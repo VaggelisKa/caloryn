@@ -153,13 +153,13 @@ struct HistoryView: View {
             let history = state.analytics
             let patternDiscovery = HistoryPatternDiscovery(analytics: history)
             let overview = HistoryOverviewSummary(
-                range: state.range,
                 loggedDayCount: history.current.loggedDayCount,
                 totalDayCount: history.current.totalDayCount,
                 averageCaloriesPerLoggedDay: history.current.averageCaloriesPerLoggedDay,
                 averageTargetPerLoggedDay: history.current.averageTargetPerLoggedDay,
-                onTrackLoggedDayCount: history.current.onTrackLoggedDayCount,
-                onTrackDayDelta: history.goalComparison.onTrackDayDelta
+                onTrackDayCount: history.current.count(for: .onTrack),
+                overDayCount: history.current.count(for: .over),
+                underDayCount: history.current.count(for: .under)
             )
             let selectedDetail = showsDetailInline ? currentPane.detail : nil
 
@@ -189,7 +189,7 @@ struct HistoryView: View {
                                 }
 
                                 if overview.hasLoggedDays {
-                                    HistoryOnTrackSection(overview: overview)
+                                    HistoryLoggedDaysSection(breakdown: overview.loggedDays)
                                 }
 
                                 if state.range.days >= HistoryRange.month.days {
@@ -385,7 +385,7 @@ struct HistoryView: View {
         case .recurringPattern, .recurringPatternExpanded:
             guard let pattern = state.recurringPattern else { return }
             var snapshot = HistoryRecurringCaloriePatternSnapshot(pattern: pattern)
-            if drillDown == .recurringPatternExpanded, let first = pattern.supportingDays.first {
+            if drillDown == .recurringPatternExpanded, let first = pattern.supportingDaysNewestFirst.first {
                 snapshot.initiallyExpandedDayIDs = [first.id]
             }
             open(.recurringPattern(snapshot))

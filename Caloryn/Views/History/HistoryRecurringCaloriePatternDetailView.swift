@@ -16,21 +16,42 @@ struct HistoryRecurringCaloriePatternDetailView: View {
         _expandedDayIDs = State(initialValue: initiallyExpandedDayIDs)
     }
 
+    private var summary: HistoryRecurringCaloriePatternDetailSummary {
+        HistoryRecurringCaloriePatternDetailSummary(
+            kind: pattern.kind,
+            outcome: pattern.outcome,
+            weekdayName: pattern.weekdayName,
+            mealType: pattern.mealType,
+            supportingDayCount: pattern.supportingDays.count,
+            cohortDayCount: pattern.cohortDayCount,
+            outcomeComparisonCount: pattern.outcomeComparisonCount,
+            outcomeComparisonDayCount: pattern.outcomeComparisonDayCount,
+            eligibleDayCount: pattern.eligibleDayCount,
+            windowDayCount: pattern.windowDayCount,
+            supportingMealAverageCalories: pattern.supportingMealAverageCalories,
+            comparisonMealAverageCalories: pattern.comparisonMealAverageCalories
+        )
+    }
+
     var body: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 26) {
+        let summary = summary
+        let days = pattern.supportingDaysNewestFirst
+
+        return ScrollView {
+            LazyVStack(alignment: .leading, spacing: 28) {
                 if presentation == .inline {
-                    HistoryDetailPaneTitle("Pattern details")
+                    HistoryDetailPaneTitle("Pattern")
                 }
 
-                HistoryPatternContextHeader(pattern: pattern)
-                HistoryPatternEvidence(pattern: pattern)
+                HistoryPatternContextHeader(headline: pattern.headline, summary: summary)
+                HistoryPatternOutcomeSection(summary: summary)
+                HistoryPatternMealSection(summary: summary, mealType: pattern.mealType)
 
                 VStack(alignment: .leading, spacing: 4) {
-                    HistorySectionTitle("Supporting days")
+                    HistorySectionTitle(summary.daysListTitle)
 
                     VStack(alignment: .leading, spacing: 0) {
-                        ForEach(pattern.supportingDays) { day in
+                        ForEach(days) { day in
                             HistoryPatternSupportingDayRow(
                                 day: day,
                                 dateText: pattern.dayText(for: day.date),
@@ -39,7 +60,7 @@ struct HistoryRecurringCaloriePatternDetailView: View {
                                 action: { toggleDay(day) }
                             )
 
-                            if day.id != pattern.supportingDays.last?.id {
+                            if day.id != days.last?.id {
                                 HistoryHairline()
                             }
                         }
@@ -52,7 +73,7 @@ struct HistoryRecurringCaloriePatternDetailView: View {
         }
         .historyDebugScrollAnchor()
         .calorynPageCanvas()
-        .historyDetailChrome("Pattern details", presentation: presentation)
+        .historyDetailChrome("Pattern", presentation: presentation)
         .accessibilityIdentifier("history.recurringPattern.details")
     }
 
@@ -68,23 +89,24 @@ struct HistoryRecurringCaloriePatternDetailView: View {
 }
 
 private struct HistoryPatternContextHeader: View {
-    let pattern: HistoryRecurringCaloriePattern
+    let headline: String
+    let summary: HistoryRecurringCaloriePatternDetailSummary
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(pattern.headline)
+            Text(headline)
                 .font(CalorynTheme.sectionTitle.weight(.heavy))
                 .tracking(-0.2)
                 .foregroundStyle(CalorynTheme.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Text(pattern.comparisonText)
+            Text(summary.differenceLead)
                 .font(CalorynTheme.cardSubtitle)
                 .foregroundStyle(CalorynTheme.textSecondary)
                 .lineSpacing(3)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Text(pattern.basisText)
+            Text(summary.basisText)
                 .font(CalorynTheme.caption)
                 .foregroundStyle(CalorynTheme.textSecondary)
                 .padding(.top, 2)
@@ -94,110 +116,93 @@ private struct HistoryPatternContextHeader: View {
     }
 }
 
-private struct HistoryPatternEvidence: View {
-    let pattern: HistoryRecurringCaloriePattern
+private struct HistoryPatternOutcomeSection: View {
+    let summary: HistoryRecurringCaloriePatternDetailSummary
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-    private var summary: HistoryRecurringCaloriePatternDetailSummary {
-        HistoryRecurringCaloriePatternDetailSummary(
-            kind: pattern.kind,
-            outcomeTargetText: pattern.outcome.targetText,
-            weekdayName: pattern.weekdayName,
-            mealType: pattern.mealType,
-            supportingDayCount: pattern.supportingDays.count,
-            cohortDayCount: pattern.cohortDayCount,
-            outcomeComparisonCount: pattern.outcomeComparisonCount,
-            outcomeComparisonDayCount: pattern.outcomeComparisonDayCount,
-            mealComparisonDayCount: pattern.mealComparisonDayCount,
-            mealDifferenceCalories: pattern.mealDifferenceCalories
-        )
+    private var layout: AnyLayout {
+        dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+            : AnyLayout(HStackLayout(alignment: .top, spacing: 16))
     }
 
     var body: some View {
-        let summary = summary
+        VStack(alignment: .leading, spacing: 10) {
+            HistorySectionTitle(summary.outcomeTitle)
 
-        return VStack(alignment: .leading, spacing: 26) {
-            VStack(alignment: .leading, spacing: 12) {
-                HistorySectionTitle("Outcome frequency")
-                frequencyComparison(summary)
+            layout {
+                ForEach(summary.outcomeStats) { stat in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(stat.value)
+                            .font(CalorynTheme.compactNumber)
+                            .foregroundStyle(CalorynTheme.textPrimary)
+
+                        Text(stat.label)
+                            .font(CalorynTheme.caption)
+                            .foregroundStyle(CalorynTheme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityElement(children: .combine)
+                }
             }
-
-            VStack(alignment: .leading, spacing: 4) {
-                HistorySectionTitle(summary.mealComparisonTitle)
-                    .padding(.bottom, 6)
-
-                Text(summary.mealDifferenceText)
-                    .font(CalorynTheme.compactNumber)
-                    .foregroundStyle(CalorynTheme.textPrimary)
-
-                Text(summary.mealDifferenceCaption)
-                    .font(CalorynTheme.caption)
-                    .foregroundStyle(CalorynTheme.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .accessibilityElement(children: .combine)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Pattern evidence")
-    }
-
-    @ViewBuilder
-    private func frequencyComparison(
-        _ summary: HistoryRecurringCaloriePatternDetailSummary
-    ) -> some View {
-        if dynamicTypeSize.isAccessibilitySize {
-            VStack(alignment: .leading, spacing: 12) {
-                frequencyStats(summary)
-            }
-        } else {
-            HStack(alignment: .top, spacing: 16) {
-                frequencyStats(summary)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func frequencyStats(
-        _ summary: HistoryRecurringCaloriePatternDetailSummary
-    ) -> some View {
-        HistoryPatternFrequencyStat(
-            title: summary.supportingTitle,
-            value: summary.supportingValue,
-            detail: summary.supportingDetail
-        )
-
-        HistoryPatternFrequencyStat(
-            title: summary.comparisonTitle,
-            value: summary.comparisonValue,
-            detail: summary.comparisonDetail
-        )
     }
 }
 
-private struct HistoryPatternFrequencyStat: View {
-    let title: String
-    let value: String
-    let detail: String
+private struct HistoryPatternMealSection: View {
+    let summary: HistoryRecurringCaloriePatternDetailSummary
+    let mealType: MealType
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title)
-                .font(CalorynTheme.caption)
-                .foregroundStyle(CalorynTheme.textSecondary)
-                .fixedSize(horizontal: false, vertical: true)
+        VStack(alignment: .leading, spacing: 14) {
+            HistorySectionTitle(summary.mealTitle)
 
-            Text(value)
-                .font(CalorynTheme.compactNumber)
-                .foregroundStyle(CalorynTheme.textPrimary)
+            ForEach(summary.mealBars) { bar in
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(bar.label)
+                            .font(CalorynTheme.cardSubtitle.weight(.medium))
+                            .foregroundStyle(bar.isPatternDays ? CalorynTheme.textPrimary : CalorynTheme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
 
-            Text(detail)
-                .font(CalorynTheme.caption)
-                .foregroundStyle(CalorynTheme.textSecondary)
+                        Spacer(minLength: 8)
+
+                        Text(bar.valueText)
+                            .font(CalorynTheme.cardSubtitle.weight(.semibold).monospacedDigit())
+                            .foregroundStyle(CalorynTheme.textPrimary)
+                    }
+
+                    HistoryPatternMealBar(ratio: bar.ratio, fill: mealType.fill)
+                }
+                .accessibilityElement(children: .combine)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
+    }
+}
+
+private struct HistoryPatternMealBar: View {
+    let ratio: Double
+    let fill: Color
+
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(CalorynTheme.fillTrack)
+
+                Capsule()
+                    .fill(fill)
+                    .frame(width: geometry.size.width * ratio)
+            }
+        }
+        .frame(height: 10)
+        .accessibilityHidden(true)
     }
 }
 
@@ -230,22 +235,24 @@ private struct HistoryPatternSupportingDayRow: View {
                             .font(CalorynTheme.bodyText.weight(.medium))
                             .foregroundStyle(CalorynTheme.textPrimary)
 
-                        Text(row.totalsText)
-                            .font(CalorynTheme.caption.monospacedDigit())
-                            .foregroundStyle(CalorynTheme.textSecondary)
-                            .fixedSize(horizontal: false, vertical: true)
+                        HistoryRecurringCaloriePatternPhraseText(
+                            phrase: row.totals,
+                            font: CalorynTheme.caption.monospacedDigit(),
+                            emphasisFont: CalorynTheme.caption.weight(.semibold).monospacedDigit()
+                        )
+                        .fixedSize(horizontal: false, vertical: true)
                     }
 
                     Spacer(minLength: 8)
 
                     VStack(alignment: .trailing, spacing: 2) {
-                        Text(row.mealCaloriesText)
-                            .font(CalorynTheme.bodyText.weight(.semibold).monospacedDigit())
-                            .foregroundStyle(CalorynTheme.textPrimary)
-
                         Text(row.mealName)
                             .font(CalorynTheme.caption.weight(.semibold))
                             .foregroundStyle(mealType.ink)
+
+                        Text(row.mealCaloriesText)
+                            .font(CalorynTheme.bodyText.weight(.semibold).monospacedDigit())
+                            .foregroundStyle(CalorynTheme.textPrimary)
                     }
 
                     Image(systemName: "chevron.down")

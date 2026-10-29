@@ -17,46 +17,35 @@ struct HistoryPatternDiscovery {
 
 struct HistoryMacroPatternsProjection {
     let patterns: [HistoryMacroPattern]
-
-    var summaryText: String? {
-        let loggedPatterns = patterns.filter { $0.current.loggedDays > 0 }
-        guard let weakest = loggedPatterns.min(by: { $0.current.hitDays < $1.current.hitDays }) else {
-            return nil
-        }
-
-        return "\(weakest.nutrient.compactName) was the least consistent macro at \(weakest.current.hitDays) of \(weakest.current.loggedDays) logged days."
-    }
 }
 
 struct HistoryWeeklyConsistencyProjection {
     let weeks: [HistoryWeekSummary]
     let loggedDayCount: Int
     let totalDayCount: Int
+    let calendar: Calendar
+    let today: Date
 
-    init(summary: HistoryPeriodSummary) {
+    init(summary: HistoryPeriodSummary, today: Date = .now) {
         weeks = summary.weeklyRollups
         loggedDayCount = summary.loggedDayCount
         totalDayCount = summary.totalDayCount
+        calendar = summary.calendar
+        self.today = today
     }
 
-    var bestWeek: HistoryWeekSummary? {
-        weeks
-            .filter { $0.loggedDays > 0 }
-            .max {
-                if $0.onTrackRatio == $1.onTrackRatio {
-                    return $0.loggedDays < $1.loggedDays
-                }
-                return $0.onTrackRatio < $1.onTrackRatio
-            }
-    }
-
-    var headlineText: String? {
-        guard let bestWeek else { return nil }
-        return "Best week had \(bestWeek.onTrackDays) of \(bestWeek.loggedDays) logged \(dayLabel(for: bestWeek.loggedDays)) on track."
-    }
-
-    private func dayLabel(for count: Int) -> String {
-        count == 1 ? "day" : "days"
+    var chart: HistoryWeeklyConsistencyChart {
+        HistoryWeeklyConsistencyChart(
+            tallies: weeks.map { week in
+                HistoryWeeklyConsistencyChart.Tally(
+                    startDate: week.startDate,
+                    onTrackDays: week.onTrackDays,
+                    loggedDays: week.loggedDays
+                )
+            },
+            calendar: calendar,
+            today: today
+        )
     }
 }
 
@@ -76,10 +65,10 @@ struct HistoryCalorieTrendProjection {
     let loggedDayTargetTotal: Int
     let hasEstimatedTargets: Bool
     let totalCalories: Double
-    let biggestInconsistencyText: String?
+    let furthestFromGoal: HistoryCalorieTrendFurthestFromGoal?
     let points: [HistoryCalorieTrendPoint]
 
-    init(range: HistoryRange, summary: HistoryPeriodSummary) {
+    init(range: HistoryRange, summary: HistoryPeriodSummary, today: Date = .now) {
         let calendar = summary.calendar
         self.range = range
         self.calendar = calendar
@@ -94,7 +83,7 @@ struct HistoryCalorieTrendProjection {
         totalCalories = summary.days
             .filter(\.isLogged)
             .reduce(0) { $0 + $1.calories }
-        biggestInconsistencyText = Self.biggestInconsistencyText(
+        furthestFromGoal = Self.furthestFromGoal(
             range: range,
             summary: summary,
             calendar: calendar
@@ -102,6 +91,7 @@ struct HistoryCalorieTrendProjection {
 
         switch range {
         case .quarter:
+            let weekAxis = HistoryWeeklyConsistencyProjection(summary: summary, today: today).chart.weeks
             points = summary.weeklyRollups.enumerated().map { offset, week in
                 let averageCalories = week.averageCaloriesPerLoggedDay
                 let status = HistoryGoalStatus.calorieStatus(
@@ -109,7 +99,7 @@ struct HistoryCalorieTrendProjection {
                     loggedCount: week.loggedDays,
                     targetCalories: week.targetPerLoggedDay
                 )
-                let label = "W\(offset + 1)"
+                let startText = week.startDate.dayMonthFormatted(in: calendar)
 
                 return HistoryCalorieTrendPoint(
                     id: "week-\(week.id.ISO8601Format())",
@@ -118,8 +108,8 @@ struct HistoryCalorieTrendProjection {
                     targetDelta: averageCalories.roundedCalories - week.targetPerLoggedDay,
                     status: status,
                     isLogged: week.loggedDays > 0,
-                    xAxisLabel: label,
-                    accessibilityLabel: "\(label), week of \(week.startDate.dayMonthFormatted(in: calendar))",
+                    xAxisLabel: weekAxis[offset].axisLabel ?? "",
+                    accessibilityLabel: "Week of \(startText)",
                     accessibilityValue: week.loggedDays == 0
                         ? "No calories logged"
                         : "\(averageCalories.rounded().truncatedSafely) average calories per logged day, \(status.label)",
@@ -135,7 +125,7 @@ struct HistoryCalorieTrendProjection {
                     targetDelta: day.calorieDifference,
                     status: day.status,
                     isLogged: day.isLogged,
-                    xAxisLabel: day.date.weekdayInitial(in: calendar),
+                    xAxisLabel: Self.dayAxisLabel(for: day.date, range: range, calendar: calendar),
                     accessibilityLabel: day.date.shortFormatted(in: calendar),
                     accessibilityValue: day.isLogged
                         ? "\(day.calories.rounded().truncatedSafely) calories, \(day.status.label)"
@@ -185,13 +175,17 @@ struct HistoryCalorieTrendProjection {
         return "Days without a saved daily goal are compared with the goal in effect around then."
     }
 
-    var totalTargetDeltaText: String {
-        if totalTargetDelta == 0 { return "On target total" }
-        return "\(Self.deltaText(totalTargetDelta, unit: "kcal")) target total"
+    var rangeStats: HistoryCalorieTrendRangeStats {
+        HistoryCalorieTrendRangeStats(
+            averageCaloriesPerLoggedDay: averageCaloriesPerLoggedDay,
+            loggedDayCount: loggedDayCount,
+            onTrackLoggedDayCount: onTrackLoggedDayCount,
+            totalTargetDelta: totalTargetDelta
+        )
     }
 
     func dayText(for date: Date) -> String {
-        date.shortFormatted(in: calendar)
+        Self.dayText(for: date, calendar: calendar)
     }
 
     func weekStartText(for date: Date) -> String {
@@ -218,38 +212,17 @@ struct HistoryCalorieTrendProjection {
         }
     }
 
-    func targetDeltaText(_ difference: Int, unit: String) -> String {
-        if difference == 0 { return "On target" }
-        return "\(Self.deltaText(difference, unit: unit)) target"
-    }
-
-    func averageDeltaText(value: Double, unit: String) -> String? {
-        guard averageCaloriesPerLoggedDay > 0 else { return nil }
-
-        let difference = (value - averageCaloriesPerLoggedDay).rounded().truncatedSafely
-        if difference == 0 {
-            return "Matches \(averageLabel) average"
-        }
-
-        return "\(abs(difference).formatted()) \(unit) \(difference > 0 ? "above" : "below") \(averageLabel) average"
-    }
-
     static func differenceText(_ difference: Int) -> String {
         if difference > 0 { return "+\(difference.formatted()) over target" }
         if difference < 0 { return "\(abs(difference).formatted()) under target" }
         return "On target"
     }
 
-    static func deltaText(_ difference: Int, unit: String) -> String {
-        if difference == 0 { return "On target" }
-        return "\(abs(difference).formatted()) \(unit) \(difference > 0 ? "over" : "under")"
-    }
-
-    private static func biggestInconsistencyText(
+    private static func furthestFromGoal(
         range: HistoryRange,
         summary: HistoryPeriodSummary,
         calendar: Calendar
-    ) -> String? {
+    ) -> HistoryCalorieTrendFurthestFromGoal? {
         switch range {
         case .quarter:
             let loggedWeeks = summary.weeklyRollups.filter { $0.loggedDays > 0 }
@@ -260,13 +233,11 @@ struct HistoryCalorieTrendProjection {
                 return nil
             }
 
-            if loggedWeeks.allSatisfy({
-                weeklyStatus($0, target: $0.targetPerLoggedDay) == .onTrack
-            }) {
-                return "Most stable: logged weeks stayed near target"
-            }
-
-            return "Biggest swing: week of \(week.startDate.dayMonthFormatted(in: calendar)), \(deltaText(weeklyDelta(week, target: week.targetPerLoggedDay), unit: "kcal/day"))"
+            return HistoryCalorieTrendFurthestFromGoal(
+                periodText: "week of \(week.startDate.dayMonthFormatted(in: calendar))",
+                calorieDifference: weeklyDelta(week, target: week.targetPerLoggedDay),
+                unit: "kcal/day"
+            )
 
         case .week, .twoWeeks, .month:
             let loggedDays = summary.days.filter(\.isLogged)
@@ -276,24 +247,26 @@ struct HistoryCalorieTrendProjection {
                 return nil
             }
 
-            if loggedDays.allSatisfy({ $0.status == .onTrack }) {
-                return "Most stable: logged days stayed near target"
-            }
-
-            return "Biggest swing: \(day.date.shortFormatted(in: calendar)), \(deltaText(day.calorieDifference, unit: "kcal"))"
+            return HistoryCalorieTrendFurthestFromGoal(
+                periodText: dayText(for: day.date, calendar: calendar),
+                calorieDifference: day.calorieDifference,
+                unit: nil
+            )
         }
+    }
+
+    private static func dayText(for date: Date, calendar: Calendar) -> String {
+        date.formatted(pattern: "EEE d MMM", in: calendar)
+    }
+
+    private static func dayAxisLabel(for date: Date, range: HistoryRange, calendar: Calendar) -> String {
+        guard range == .month else { return date.weekdayInitial(in: calendar) }
+        let isMonday = calendar.component(.weekday, from: date) == 2
+        return isMonday ? date.dayMonthFormatted(in: calendar) : ""
     }
 
     private static func weeklyDelta(_ week: HistoryWeekSummary, target: Int) -> Int {
         week.averageCaloriesPerLoggedDay.roundedCalories - target
-    }
-
-    private static func weeklyStatus(_ week: HistoryWeekSummary, target: Int) -> HistoryGoalStatus {
-        HistoryGoalStatus.calorieStatus(
-            calories: week.averageCaloriesPerLoggedDay,
-            loggedCount: week.loggedDays,
-            targetCalories: target
-        )
     }
 
     private func topFoods(for week: HistoryWeekSummary) -> [HistoryFoodSummary] {
@@ -317,19 +290,6 @@ struct HistoryCalorieTrendProjection {
                 }
                 return $0.calories > $1.calories
             }
-    }
-
-    private var averageLabel: String {
-        switch range {
-        case .week:
-            "7-day"
-        case .twoWeeks:
-            "14-day"
-        case .month:
-            "30-day"
-        case .quarter:
-            "90-day"
-        }
     }
 }
 

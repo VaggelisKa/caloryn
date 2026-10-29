@@ -5,76 +5,159 @@ import Testing
 @MainActor
 @Suite("History recurring calorie pattern coverage")
 struct HistoryRecurringCaloriePatternCoverageTests {
-    @Test("given a weekday pattern, when headlining it, then it names the weekday and the meal in the plural")
-    func weekdayHeadline() {
-        let pattern = makePattern(kind: .weekdayMeal, weekday: 6, mealType: .dinner)
+    @Test(
+        "given a weekday pattern, when headlining it, then it states which way that weekday runs",
+        arguments: [
+            (HistoryRecurringCalorieOutcome.above, "Fridays run over"),
+            (.below, "Fridays run under")
+        ]
+    )
+    func weekdayHeadline(outcome: HistoryRecurringCalorieOutcome, expected: String) {
+        let pattern = makePattern(kind: .weekdayMeal, outcome: outcome, weekday: 6, mealType: .dinner)
 
-        #expect(pattern.headline == "Friday dinners stood out")
+        #expect(pattern.headline == expected)
         #expect(pattern.weekdayName == "Friday")
     }
 
     @Test(
-        "given a meal-only pattern, when headlining it, then it names the meal and the outcome",
+        "given a meal-only pattern, when headlining it, then it names the meal, its size and the outcome",
         arguments: [
-            (MealType.breakfast, HistoryRecurringCalorieOutcome.above, "Breakfasts stood out on above target days"),
-            (.lunch, .below, "Lunches stood out on below target days"),
-            (.dinner, .above, "Dinners stood out on above target days"),
-            (.snack, .below, "Snacks stood out on below target days")
+            (MealType.breakfast, HistoryRecurringCalorieOutcome.above, 300.0, "Breakfast is bigger on over-goal days"),
+            (.lunch, .below, -300.0, "Lunch is smaller on under-goal days"),
+            (.dinner, .above, 300.0, "Dinner is bigger on over-goal days"),
+            (.dinner, .below, -300.0, "Dinner is smaller on under-goal days"),
+            (.snack, .below, -300.0, "Snacks are smaller on under-goal days"),
+            (.snack, .above, 300.0, "Snacks are bigger on over-goal days")
         ]
     )
-    func mealOnlyHeadline(mealType: MealType, outcome: HistoryRecurringCalorieOutcome, expected: String) {
-        let pattern = makePattern(kind: .mealOnly, outcome: outcome, weekday: nil, mealType: mealType)
+    func mealOnlyHeadline(
+        mealType: MealType,
+        outcome: HistoryRecurringCalorieOutcome,
+        difference: Double,
+        expected: String
+    ) {
+        let pattern = makePattern(
+            kind: .mealOnly,
+            outcome: outcome,
+            weekday: nil,
+            mealType: mealType,
+            supportingMealAverage: 500 + difference,
+            comparisonMealAverage: 500
+        )
 
         #expect(pattern.headline == expected)
     }
 
-    @Test("given a weekday pattern, when comparing it, then the cohort share and the rounded meal difference are stated")
-    func weekdayComparisonText() {
+    @Test("given a weekday pattern, when comparing its meal, then both rounded averages are stated and emphasised")
+    func weekdayMealComparison() {
         let pattern = makePattern(
             kind: .weekdayMeal,
             outcome: .above,
-            weekday: 2,
-            mealType: .lunch,
-            supportingDayCount: 4,
-            cohortDayCount: 5,
-            mealDifferenceCalories: 312.6
+            weekday: 6,
+            mealType: .dinner,
+            supportingMealAverage: 799.6,
+            comparisonMealAverage: 500.4
         )
 
-        #expect(
-            pattern.comparisonText
-                == "4 of 5 logged Mondays were above target. Lunch averaged 313 kcal more than on your other eligible logged days."
-        )
+        #expect(pattern.mealComparison.plainText == "Dinner averages 800 kcal on Fridays vs 500 other days")
+        #expect(pattern.mealComparison.runs.filter(\.isEmphasised).map(\.text) == ["800", "500"])
     }
 
-    @Test("given a meal-only pattern eating less, when comparing it, then the meal is lower case mid-sentence and the difference reads as less")
-    func mealOnlyComparisonText() {
+    @Test("given a meal-only pattern, when comparing its meal, then the pattern days are those days and the rest are others")
+    func mealOnlyMealComparison() {
         let pattern = makePattern(
             kind: .mealOnly,
             outcome: .below,
             weekday: nil,
-            mealType: .dinner,
-            supportingDayCount: 6,
-            mealDifferenceCalories: -449.5
+            mealType: .lunch,
+            supportingMealAverage: 150,
+            comparisonMealAverage: 600
         )
 
-        #expect(
-            pattern.comparisonText
-                == "Across 6 below target logged days, dinner averaged 450 kcal less than on your other eligible logged days."
-        )
+        #expect(pattern.mealComparison.plainText == "Lunch averages 150 kcal on those days vs 600 on others")
+        #expect(pattern.mealComparison.runs.filter(\.isEmphasised).map(\.text) == ["150", "600"])
     }
 
-    @Test("given a snack pattern, when comparing it, then snacks are named in the plural")
+    @Test("given a snack pattern, when comparing it, then snacks are named in the plural and the verb agrees")
     func snackComparisonIsPlural() {
-        let weekday = makePattern(kind: .weekdayMeal, weekday: 7, mealType: .snack, mealDifferenceCalories: 200)
-        let mealOnly = makePattern(kind: .mealOnly, weekday: nil, mealType: .snack, mealDifferenceCalories: 200)
+        let weekday = makePattern(kind: .weekdayMeal, weekday: 7, mealType: .snack)
+        let mealOnly = makePattern(kind: .mealOnly, weekday: nil, mealType: .snack)
 
-        #expect(weekday.comparisonText.contains("Saturdays were above target. Snacks averaged 200 kcal more"))
-        #expect(mealOnly.comparisonText.contains("logged days, snacks averaged 200 kcal more"))
+        #expect(weekday.mealComparison.plainText == "Snacks average \(1_300.formatted()) kcal on Saturdays vs 500 other days")
+        #expect(mealOnly.mealComparison.plainText == "Snacks average \(1_300.formatted()) kcal on those days vs 500 on others")
     }
 
-    @Test("given a pattern, when stating its basis, then it counts the eligible logged days in the 30-day window")
-    func basisText() {
-        #expect(makePattern(eligibleDayCount: 11).basisText == "Based on 11 logged days in the last 30 days")
+    @Test(
+        "given a weekday pattern, when stating how often it held, then every match reads as all and a partial one as a share",
+        arguments: [
+            (HistoryRecurringCalorieOutcome.above, 4, 4, "All 4 Fridays over goal"),
+            (.above, 3, 4, "3 of 4 Fridays over goal"),
+            (.below, 5, 5, "All 5 Fridays under goal"),
+            (.below, 4, 5, "4 of 5 Fridays under goal")
+        ]
+    )
+    func weekdayFrequency(
+        outcome: HistoryRecurringCalorieOutcome,
+        supporting: Int,
+        cohort: Int,
+        expected: String
+    ) {
+        let pattern = makePattern(
+            kind: .weekdayMeal,
+            outcome: outcome,
+            supportingDayCount: supporting,
+            cohortDayCount: cohort
+        )
+
+        #expect(pattern.frequencyText == expected)
+    }
+
+    @Test(
+        "given a meal-only pattern, when stating how often it held, then it counts the days on that side of goal",
+        arguments: [
+            (HistoryRecurringCalorieOutcome.above, "Across 4 over-goal days"),
+            (.below, "Across 4 under-goal days")
+        ]
+    )
+    func mealOnlyFrequency(outcome: HistoryRecurringCalorieOutcome, expected: String) {
+        let pattern = makePattern(kind: .mealOnly, outcome: outcome, weekday: nil, supportingDayCount: 4)
+
+        #expect(pattern.frequencyText == expected)
+    }
+
+    @Test("given a pattern, when counting its window, then it spans every calendar day from start to end")
+    func windowDayCount() {
+        #expect(makePattern().windowDayCount == 30)
+    }
+
+    @Test("given supporting days in date order, when listing them for the drill-down, then the newest comes first")
+    func supportingDaysListNewestFirst() {
+        let pattern = makePattern(supportingDayCount: 3)
+
+        #expect(pattern.supportingDaysNewestFirst.map(\.date) == pattern.supportingDays.map(\.date).reversed())
+    }
+
+    @Test("given a discovered pattern, when reading its meal averages, then the difference is the supporting average less the comparison one")
+    func mealDifferenceIsTheGapBetweenTheTwoAverages() throws {
+        let fridays = [2, 9, 16, 23, 30].map { Self.date(2026, 1, $0) }
+        let others = [3, 5, 6, 7, 8].map { Self.date(2026, 1, $0) }
+        var entries = fridays.prefix(4).flatMap { day(on: $0, breakfast: 700, lunch: 700, dinner: 900) }
+        entries += day(on: fridays[4], breakfast: 350, lunch: 350, dinner: 1_300)
+        entries += others.flatMap { day(on: $0, breakfast: 750, lunch: 750, dinner: 500) }
+
+        let pattern = try #require(discover(
+            entries,
+            exactTargets: fridays + others,
+            policy: HistoryRecurringCaloriePatternPolicy(minimumMealOnlyGroupCount: 100)
+        ))
+
+        #expect(pattern.id == "weekdayMeal|6|above|dinner")
+        #expect(pattern.supportingMealAverageCalories == 900)
+        #expect(abs(pattern.comparisonMealAverageCalories - (1_300 + 5 * 500) / 6.0) < 0.000_001)
+        #expect(
+            pattern.mealDifferenceCalories
+                == pattern.supportingMealAverageCalories - pattern.comparisonMealAverageCalories
+        )
     }
 
     @Test(
@@ -96,30 +179,16 @@ struct HistoryRecurringCaloriePatternCoverageTests {
         #expect(makePattern(weekday: weekday).weekdayName == expected)
     }
 
-    @Test("given each outcome, when describing it, then it maps to the day status it counts and reads as a target side")
+    @Test("given each outcome, when describing it, then it maps to the day status it counts and reads as a side of goal")
     func outcomeWording() {
         #expect(HistoryRecurringCalorieOutcome.above.status == .over)
         #expect(HistoryRecurringCalorieOutcome.below.status == .under)
-        #expect(HistoryRecurringCalorieOutcome.above.targetText == "above target")
-        #expect(HistoryRecurringCalorieOutcome.below.targetText == "below target")
-    }
-
-    @Test("given the drill-down's meal difference, when captioning it, then the baseline is the other eligible days")
-    func detailSummaryCaption() {
-        let summary = HistoryRecurringCaloriePatternDetailSummary(
-            kind: .mealOnly,
-            outcomeTargetText: "above target",
-            weekdayName: "",
-            mealType: .dinner,
-            supportingDayCount: 4,
-            cohortDayCount: 4,
-            outcomeComparisonCount: 0,
-            outcomeComparisonDayCount: 4,
-            mealComparisonDayCount: 4,
-            mealDifferenceCalories: 600
-        )
-
-        #expect(summary.mealDifferenceCaption == "Average difference versus other eligible logged days")
+        #expect(HistoryRecurringCalorieOutcome.above.goalText == "over goal")
+        #expect(HistoryRecurringCalorieOutcome.below.goalText == "under goal")
+        #expect(HistoryRecurringCalorieOutcome.above.goalTitle == "Over goal")
+        #expect(HistoryRecurringCalorieOutcome.below.goalTitle == "Under goal")
+        #expect(HistoryRecurringCalorieOutcome.above.goalDaysText == "over-goal days")
+        #expect(HistoryRecurringCalorieOutcome.below.goalDaysText == "under-goal days")
     }
 
     @Test("given a pattern from a zone whose midnight is the day before almost everywhere else, when labelling a supporting day, then the pattern's own calendar names it")
@@ -294,12 +363,10 @@ struct HistoryRecurringCaloriePatternCoverageTests {
         #expect(pattern.supportingDays.map { pattern.dayText(for: $0.date) } == [
             "Sat, 21 Feb", "Sun, 1 Mar", "Sun, 8 Mar", "Tue, 17 Mar"
         ])
-        #expect(pattern.headline == "Dinners stood out on above target days")
-        #expect(
-            pattern.comparisonText
-                == "Across 4 above target logged days, dinner averaged 400 kcal more than on your other eligible logged days."
-        )
-        #expect(pattern.basisText == "Based on 8 logged days in the last 30 days")
+        #expect(pattern.headline == "Dinner is bigger on over-goal days")
+        #expect(pattern.mealComparison.plainText == "Dinner averages 900 kcal on those days vs 500 on others")
+        #expect(pattern.frequencyText == "Across 4 over-goal days")
+        #expect(pattern.windowDayCount == 30)
     }
 
     private static let newYork: Calendar = {
@@ -378,7 +445,8 @@ struct HistoryRecurringCaloriePatternCoverageTests {
         outcomeComparisonDayCount: Int = 6,
         mealComparisonDayCount: Int = 7,
         eligibleDayCount: Int = 11,
-        mealDifferenceCalories: Double = 800,
+        supportingMealAverage: Double = 1_300,
+        comparisonMealAverage: Double = 500,
         calendar: Calendar = HistoryRecurringCaloriePatternCoverageTests.newYork
     ) -> HistoryRecurringCaloriePattern {
         let start = Self.date(2026, 1, 2, hour: 0)
@@ -403,8 +471,10 @@ struct HistoryRecurringCaloriePatternCoverageTests {
             outcomeComparisonDayCount: outcomeComparisonDayCount,
             mealComparisonDayCount: mealComparisonDayCount,
             eligibleDayCount: eligibleDayCount,
-            mealDifferenceCalories: mealDifferenceCalories,
-            targetRelativeMealDifference: mealDifferenceCalories / 2_000,
+            supportingMealAverageCalories: supportingMealAverage,
+            comparisonMealAverageCalories: comparisonMealAverage,
+            mealDifferenceCalories: supportingMealAverage - comparisonMealAverage,
+            targetRelativeMealDifference: (supportingMealAverage - comparisonMealAverage) / 2_000,
             rateSeparation: 1,
             windowStart: start,
             windowEnd: Self.date(2026, 1, 31, hour: 0),

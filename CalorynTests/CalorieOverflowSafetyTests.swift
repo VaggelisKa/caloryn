@@ -74,7 +74,7 @@ final class CalorieOverflowSafetyTests: XCTestCase {
         )
         let trend = HistoryPatternDiscovery(analytics: analytics).calorieTrend
 
-        XCTAssertNotNil(trend.biggestInconsistencyText)
+        XCTAssertNotNil(trend.furthestFromGoal)
     }
 
     func testHistoryPeriodTotalsSurviveATargetPastTheCalorieDomain() {

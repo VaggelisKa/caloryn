@@ -1,30 +1,37 @@
 import Foundation
 
 struct HistoryOverviewSummary: Equatable {
-    let range: HistoryRange
+    struct GoalGap: Equatable {
+        let emphasis: String
+        let remainder: String
+
+        var text: String { emphasis + remainder }
+    }
+
     let loggedDayCount: Int
     let totalDayCount: Int
     let averageCaloriesPerLoggedDay: Double
     let averageTargetPerLoggedDay: Int
-    let onTrackLoggedDayCount: Int
-    let onTrackDayDelta: Int
+    let loggedDays: HistoryLoggedDaysBreakdown
 
     init(
-        range: HistoryRange,
         loggedDayCount: Int,
         totalDayCount: Int,
         averageCaloriesPerLoggedDay: Double,
         averageTargetPerLoggedDay: Int,
-        onTrackLoggedDayCount: Int,
-        onTrackDayDelta: Int
+        onTrackDayCount: Int,
+        overDayCount: Int,
+        underDayCount: Int
     ) {
-        self.range = range
         self.loggedDayCount = loggedDayCount
         self.totalDayCount = totalDayCount
         self.averageCaloriesPerLoggedDay = averageCaloriesPerLoggedDay
         self.averageTargetPerLoggedDay = averageTargetPerLoggedDay
-        self.onTrackLoggedDayCount = onTrackLoggedDayCount
-        self.onTrackDayDelta = onTrackDayDelta
+        loggedDays = HistoryLoggedDaysBreakdown(
+            onTrackDayCount: onTrackDayCount,
+            overDayCount: overDayCount,
+            underDayCount: underDayCount
+        )
     }
 
     var hasLoggedDays: Bool { loggedDayCount > 0 }
@@ -33,64 +40,84 @@ struct HistoryOverviewSummary: Equatable {
         averageCaloriesPerLoggedDay.rounded().truncatedSafely.formatted()
     }
 
-    var averageUnitText: String { "kcal a day" }
+    var averageUnitText: String { "kcal / day on average" }
 
     var emptyHeadlineText: String { "Nothing logged" }
 
-    var supportText: String {
-        guard hasLoggedDays else {
-            return "No days logged in the last \(totalDayCount) days."
-        }
+    var goalGap: GoalGap? {
+        guard hasLoggedDays else { return nil }
 
-        let target = averageTargetPerLoggedDay.formatted()
+        let remainder = " your \(averageTargetPerLoggedDay.formatted()) goal"
         let difference = averageCaloriesPerLoggedDay.roundedCalories - averageTargetPerLoggedDay
-        let goalText: String
         if difference < 0 {
-            goalText = "\(abs(difference).formatted()) under your \(target) goal"
-        } else if difference > 0 {
-            goalText = "\(difference.formatted()) over your \(target) goal"
-        } else {
-            goalText = "Right on your \(target) goal"
+            return GoalGap(emphasis: "\(abs(difference).formatted()) under", remainder: remainder)
         }
+        if difference > 0 {
+            return GoalGap(emphasis: "\(difference.formatted()) over", remainder: remainder)
+        }
+        return GoalGap(emphasis: "Right on", remainder: remainder)
+    }
 
-        return "\(goalText), \(loggedDayCount) of \(totalDayCount) days logged"
+    var supportText: String {
+        goalGap?.text ?? "No days logged in the last \(totalDayCount) days."
+    }
+
+    var loggedDaysText: String? {
+        guard hasLoggedDays else { return nil }
+        return "\(loggedDayCount) of \(totalDayCount) \(totalDayCount == 1 ? "day" : "days") logged"
     }
 
     var averageAccessibilityLabel: String {
         guard hasLoggedDays else { return emptyHeadlineText }
-        return "\(averageValueText) \(averageUnitText) on average"
+        return "\(averageValueText) kcal a day on average"
     }
 
     var accessibilityLabel: String {
         guard hasLoggedDays else { return "\(emptyHeadlineText). \(supportText)" }
-        return "\(averageValueText) \(averageUnitText) on average. \(supportText)."
+        return "\(averageAccessibilityLabel). \(supportText)."
+    }
+}
+
+struct HistoryLoggedDaysBreakdown: Equatable {
+    struct Column: Equatable, Identifiable {
+        let status: HistoryGoalStatus
+        let count: Int
+
+        var id: HistoryGoalStatus { status }
+
+        var valueText: String { count.formatted() }
+
+        var label: String { status.sentenceLabel.lowercased() }
     }
 
-    var onTrackValueText: String {
-        onTrackLoggedDayCount.formatted()
+    let columns: [Column]
+
+    init(onTrackDayCount: Int, overDayCount: Int, underDayCount: Int) {
+        columns = [
+            Column(status: .onTrack, count: max(0, onTrackDayCount)),
+            Column(status: .over, count: max(0, overDayCount)),
+            Column(status: .under, count: max(0, underDayCount))
+        ]
     }
 
-    var onTrackSupportText: String {
-        let dayLabel = loggedDayCount == 1 ? "day" : "days"
-        return "of \(loggedDayCount) logged \(dayLabel), \(comparisonText)"
+    var title: String { "Logged days" }
+
+    var totalDayCount: Int {
+        columns.reduce(0) { $0 + $1.count }
     }
 
-    var onTrackAccessibilityLabel: String {
-        "On track: \(onTrackValueText) \(onTrackSupportText)."
+    var barSegments: [Column] {
+        columns.filter { $0.count > 0 }
     }
 
-    private var comparisonText: String {
-        let count = Self.countWord(abs(onTrackDayDelta))
-        let previous = range.previousPeriodText
-        if onTrackDayDelta > 0 { return "\(count) more than \(previous)" }
-        if onTrackDayDelta < 0 { return "\(count) fewer than \(previous)" }
-        return "the same as \(previous)"
+    func share(of column: Column) -> Double {
+        guard totalDayCount > 0 else { return 0 }
+        return Double(column.count) / Double(totalDayCount)
     }
 
-    static func countWord(_ count: Int) -> String {
-        let words = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"]
-        guard words.indices.contains(count) else { return count.formatted() }
-        return words[count]
+    var accessibilityLabel: String {
+        let counts = columns.map { "\($0.valueText) \($0.label)" }
+        return "\(title): \(counts.joined(separator: ", "))"
     }
 }
 
@@ -133,6 +160,7 @@ struct HistoryMacroRowSummary: Equatable, Identifiable {
     let name: String
     let goalKind: NutrientGoalKind
     let averageGrams: Double
+    let goalGrams: Double
     let hitDays: Int
     let loggedDays: Int
     let range: HistoryRange
@@ -143,6 +171,7 @@ struct HistoryMacroRowSummary: Equatable, Identifiable {
         name: String,
         goalKind: NutrientGoalKind,
         averageGrams: Double,
+        goalGrams: Double,
         hitDays: Int,
         loggedDays: Int,
         range: HistoryRange,
@@ -152,19 +181,28 @@ struct HistoryMacroRowSummary: Equatable, Identifiable {
         self.name = name
         self.goalKind = goalKind
         self.averageGrams = averageGrams
+        self.goalGrams = goalGrams
         self.hitDays = hitDays
         self.loggedDays = loggedDays
         self.range = range
         self.averageGramsChange = averageGramsChange
     }
 
-    var hitRatio: Double {
-        guard loggedDays > 0 else { return 0 }
-        return min(1, max(0, Double(hitDays) / Double(loggedDays)))
+    var averageText: String {
+        Self.wholeGrams(averageGrams)
     }
 
-    var detailText: String {
-        "\(averageGrams.rounded().truncatedSafely.formatted()) g a day, \(hitLabel) \(hitDays) of \(loggedDays)"
+    var goalText: String {
+        " / \(Self.wholeGrams(goalGrams)) g a day"
+    }
+
+    var averageRatio: Double {
+        guard goalGrams > 0, averageGrams.isFinite else { return 0 }
+        return min(1, max(0, averageGrams / goalGrams))
+    }
+
+    var metText: String {
+        "\(goalKindName) · \(metWording)"
     }
 
     var changeText: String? {
@@ -172,30 +210,37 @@ struct HistoryMacroRowSummary: Equatable, Identifiable {
     }
 
     var accessibilityLabel: String {
-        let base = "\(name), \(averageGrams.rounded().truncatedSafely.formatted()) grams a day, \(hitLabel) on \(hitDays) of \(loggedDays) logged days"
+        let base = "\(name), \(averageText) of \(Self.wholeGrams(goalGrams)) grams a day, \(goalKindName.lowercased()), \(metWording)"
         guard let change = changeWording(unit: "grams") else { return base }
-        return "\(base), \(change.prefix(1).lowercased())\(change.dropFirst())"
+        return "\(base), \(change)"
+    }
+
+    private var metWording: String {
+        "met on \(hitDays) of \(loggedDays) \(loggedDays == 1 ? "day" : "days")"
     }
 
     private func changeWording(unit: String) -> String? {
         guard let averageGramsChange else { return nil }
 
         let change = averageGramsChange.rounded().truncatedSafely
+        guard change != 0 else { return nil }
         let amount = change.magnitude.formatted()
-        let previous = range.previousPeriodText
-        if change > 0 { return "\(amount) \(unit) more than \(previous)" }
-        if change < 0 { return "\(amount) \(unit) less than \(previous)" }
-        return "Same as \(previous)"
+        let direction = change > 0 ? "more" : "less"
+        return "\(amount) \(unit) \(direction) than \(range.previousPeriodText)"
     }
 
-    private var hitLabel: String {
+    private var goalKindName: String {
         switch goalKind {
         case .minimum:
-            "hit"
+            "Minimum"
         case .target:
-            "on target"
+            "Target"
         case .maximum:
-            "under max"
+            "Maximum"
         }
+    }
+
+    private static func wholeGrams(_ grams: Double) -> String {
+        grams.rounded().truncatedSafely.formatted()
     }
 }

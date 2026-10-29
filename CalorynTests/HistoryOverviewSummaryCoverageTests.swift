@@ -19,25 +19,30 @@ struct HistoryOverviewSummaryCoverageTests {
         #expect(summary.averageAccessibilityLabel == "Nothing logged")
     }
 
-    @Test("given the on-track count, when spoken, then the count, its support and the comparison form one sentence")
-    func theOnTrackCountIsSpoken() {
-        let summary = makeSummary(loggedDayCount: 6, onTrackLoggedDayCount: 4, onTrackDayDelta: 2)
+    @Test("given a single day in one status, when breaking logged days down, then that status fills the whole bar")
+    func aSingleStatusFillsTheBar() {
+        let breakdown = makeSummary(loggedDayCount: 1, onTrackDayCount: 0, overDayCount: 0, underDayCount: 1).loggedDays
 
-        #expect(summary.onTrackAccessibilityLabel == "On track: 4 of 6 logged days, two more than last week.")
+        #expect(breakdown.accessibilityLabel == "Logged days: 0 on track, 0 over, 1 under")
+        #expect(breakdown.barSegments.map(\.status) == [.under])
+        #expect(breakdown.barSegments.map { breakdown.share(of: $0) } == [1])
     }
 
-    @Test("given nothing logged, when the on-track count is spoken, then it is zero of zero days and the same as before")
-    func anEmptyOnTrackCountIsSpoken() {
-        let summary = makeSummary(
-            range: .month,
-            loggedDayCount: 0,
-            averageCaloriesPerLoggedDay: 0,
-            onTrackLoggedDayCount: 0,
-            onTrackDayDelta: 0
-        )
+    @Test("given no days in any status, when drawing the bar, then it is an empty track rather than dividing by zero")
+    func noLoggedDaysLeaveAnEmptyTrack() {
+        let breakdown = makeSummary(loggedDayCount: 0, onTrackDayCount: 0, overDayCount: 0, underDayCount: 0).loggedDays
 
-        #expect(summary.onTrackValueText == "0")
-        #expect(summary.onTrackAccessibilityLabel == "On track: 0 of 0 logged days, the same as the 30 days before.")
+        #expect(breakdown.accessibilityLabel == "Logged days: 0 on track, 0 over, 0 under")
+        #expect(breakdown.barSegments.isEmpty)
+        #expect(breakdown.columns.allSatisfy { breakdown.share(of: $0) == 0 })
+    }
+
+    @Test("given a negative count, when breaking logged days down, then it counts as none")
+    func aNegativeCountIsNone() {
+        let breakdown = makeSummary(onTrackDayCount: 3, overDayCount: -2, underDayCount: 0).loggedDays
+
+        #expect(breakdown.columns.map(\.count) == [3, 0, 0])
+        #expect(breakdown.barSegments.map { breakdown.share(of: $0) } == [1])
     }
 
     @Test(
@@ -53,48 +58,14 @@ struct HistoryOverviewSummaryCoverageTests {
         let summary = makeSummary(averageCaloriesPerLoggedDay: average, averageTargetPerLoggedDay: 2_000)
 
         #expect(summary.averageValueText == headline.formatted())
-        #expect(summary.supportText.hasPrefix(supportPrefix))
+        #expect(summary.supportText == "\(supportPrefix) \(2_000.formatted()) goal")
     }
 
-    @Test(
-        "given a count, when wording it, then zero to nine are words and ten upwards are figures",
-        arguments: [
-            (0, "zero"),
-            (1, "one"),
-            (2, "two"),
-            (3, "three"),
-            (4, "four"),
-            (5, "five"),
-            (6, "six"),
-            (7, "seven"),
-            (8, "eight"),
-            (9, "nine"),
-            (10, "10"),
-            (90, "90")
-        ] as [(Int, String)]
-    )
-    func smallCountsAreWords(count: Int, expected: String) {
-        #expect(HistoryOverviewSummary.countWord(count) == expected)
-    }
+    @Test("given a gap of a thousand or more, when supporting the average, then the gap is grouped like the goal")
+    func largeGapsAreGrouped() {
+        let summary = makeSummary(averageCaloriesPerLoggedDay: 3_250, averageTargetPerLoggedDay: 2_000)
 
-    @Test("given a negative count, when wording it, then it is a figure rather than an out-of-range word")
-    func aNegativeCountIsAFigure() {
-        #expect(HistoryOverviewSummary.countWord(-3) == (-3).formatted())
-    }
-
-    @Test(
-        "given the change in on-track days, when comparing with the two weeks before, then the boundary between words and figures holds",
-        arguments: [
-            (9, "nine more than the two weeks before"),
-            (10, "10 more than the two weeks before"),
-            (-9, "nine fewer than the two weeks before"),
-            (-10, "10 fewer than the two weeks before")
-        ] as [(Int, String)]
-    )
-    func theComparisonSwitchesToFiguresAtTen(delta: Int, expected: String) {
-        let summary = makeSummary(range: .twoWeeks, loggedDayCount: 12, onTrackDayDelta: delta)
-
-        #expect(summary.onTrackSupportText == "of 12 logged days, \(expected)")
+        #expect(summary.supportText == "\(1_250.formatted()) over your \(2_000.formatted()) goal")
     }
 
     @Test(
@@ -111,28 +82,14 @@ struct HistoryOverviewSummaryCoverageTests {
     }
 
     @Test(
-        "given hit and logged counts out of step, when filling the bar, then the share stays between empty and full",
-        arguments: [
-            (5, 4, 1.0),
-            (-1, 4, 0.0),
-            (1, 4, 0.25)
-        ] as [(Int, Int, Double)]
-    )
-    func theHitShareIsClamped(hitDays: Int, loggedDays: Int, expected: Double) {
-        let row = makeMacroRow(hitDays: hitDays, loggedDays: loggedDays, averageGramsChange: nil)
-
-        #expect(row.hitRatio == expected)
-    }
-
-    @Test(
         "given a change of exactly half a gram, when comparing, then it rounds away from zero to a whole gram",
         arguments: [
             (0.5, "1 g more than last week"),
             (-0.5, "1 g less than last week"),
-            (0.49, "Same as last week")
-        ] as [(Double, String)]
+            (0.49, nil)
+        ] as [(Double, String?)]
     )
-    func halfGramChangesRoundAwayFromZero(change: Double, expected: String) {
+    func halfGramChangesRoundAwayFromZero(change: Double, expected: String?) {
         let row = makeMacroRow(hitDays: 2, loggedDays: 4, averageGramsChange: change)
 
         #expect(row.changeText == expected)
@@ -164,22 +121,22 @@ struct HistoryOverviewSummaryCoverageTests {
     }
 
     private func makeSummary(
-        range: HistoryRange = .week,
         loggedDayCount: Int = 6,
         totalDayCount: Int = 7,
         averageCaloriesPerLoggedDay: Double = 2_000,
         averageTargetPerLoggedDay: Int = 2_000,
-        onTrackLoggedDayCount: Int = 4,
-        onTrackDayDelta: Int = 0
+        onTrackDayCount: Int = 4,
+        overDayCount: Int = 1,
+        underDayCount: Int = 1
     ) -> HistoryOverviewSummary {
         HistoryOverviewSummary(
-            range: range,
             loggedDayCount: loggedDayCount,
             totalDayCount: totalDayCount,
             averageCaloriesPerLoggedDay: averageCaloriesPerLoggedDay,
             averageTargetPerLoggedDay: averageTargetPerLoggedDay,
-            onTrackLoggedDayCount: onTrackLoggedDayCount,
-            onTrackDayDelta: onTrackDayDelta
+            onTrackDayCount: onTrackDayCount,
+            overDayCount: overDayCount,
+            underDayCount: underDayCount
         )
     }
 
@@ -189,6 +146,7 @@ struct HistoryOverviewSummaryCoverageTests {
             name: "Protein",
             goalKind: .minimum,
             averageGrams: 80,
+            goalGrams: 150,
             hitDays: hitDays,
             loggedDays: loggedDays,
             range: .week,

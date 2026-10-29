@@ -14,12 +14,21 @@ struct HistoryRecurringCaloriePatternCard: View {
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
 
-                    Text(pattern.comparisonText)
-                        .font(CalorynTheme.cardSubtitle)
+                    HistoryRecurringCaloriePatternPhraseText(
+                        phrase: pattern.mealComparison,
+                        font: CalorynTheme.cardSubtitle,
+                        emphasisFont: CalorynTheme.cardSubtitle.weight(.semibold)
+                    )
+                    .lineSpacing(3)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                    Text(pattern.frequencyText)
+                        .font(CalorynTheme.caption)
                         .foregroundStyle(CalorynTheme.textSecondary)
-                        .lineSpacing(3)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 2)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -38,6 +47,29 @@ struct HistoryRecurringCaloriePatternCard: View {
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("history.recurringPattern.card")
         .accessibilityHint("Shows the evidence behind this pattern")
+    }
+}
+
+struct HistoryRecurringCaloriePatternPhraseText: View {
+    let phrase: HistoryRecurringCaloriePatternPhrase
+    let font: Font
+    let emphasisFont: Font
+
+    var body: some View {
+        Text(attributed)
+            .font(font)
+            .foregroundStyle(CalorynTheme.textSecondary)
+    }
+
+    private var attributed: AttributedString {
+        phrase.runs.reduce(into: AttributedString()) { result, run in
+            var part = AttributedString(run.text)
+            if run.isEmphasised {
+                part.font = emphasisFont
+                part.foregroundColor = CalorynTheme.textPrimary
+            }
+            result += part
+        }
     }
 }
 
