@@ -100,11 +100,13 @@ private struct HistoryPatternContextHeader: View {
                 .foregroundStyle(CalorynTheme.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Text(summary.differenceLead)
-                .font(CalorynTheme.cardSubtitle)
-                .foregroundStyle(CalorynTheme.textSecondary)
-                .lineSpacing(3)
-                .fixedSize(horizontal: false, vertical: true)
+            HistoryRecurringCaloriePatternPhraseText(
+                phrase: summary.mealLead,
+                font: CalorynTheme.cardSubtitle,
+                emphasisFont: CalorynTheme.cardSubtitle.weight(.semibold)
+            )
+            .lineSpacing(3)
+            .fixedSize(horizontal: false, vertical: true)
 
             Text(summary.basisText)
                 .font(CalorynTheme.caption)

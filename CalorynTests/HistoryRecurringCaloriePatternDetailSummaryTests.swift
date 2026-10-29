@@ -4,34 +4,54 @@ import Testing
 
 @Suite("History recurring pattern detail summary")
 struct HistoryRecurringCaloriePatternDetailSummaryTests {
-    @Test("given a weekday pattern, when leading the detail, then the meal is the difference between that weekday and other days")
+    @Test("given every logged weekday matched, when leading the detail, then it states the card's meal averages with both numbers emphasised")
     func aWeekdayPatternLeadsWithTheMeal() {
         let summary = makeSummary(
             kind: .weekdayMeal,
             weekdayName: "Friday",
+            supportingDayCount: 4,
+            cohortDayCount: 4,
             supportingMealAverage: 800.4,
             comparisonMealAverage: 499.6
         )
 
-        #expect(summary.differenceLead == "Dinner is the difference: 800 kcal on Fridays, 500 on other days.")
+        #expect(summary.mealLead.plainText == "Dinner averages 800 kcal on Fridays, 500 on other days.")
+        #expect(summary.mealLead.runs.filter(\.isEmphasised).map(\.text) == ["800", "500"])
+    }
+
+    @Test(
+        "given only some logged weekdays matched, when leading the detail, then the matching weekdays are named by their side of goal",
+        arguments: [
+            (HistoryRecurringCalorieOutcome.above, "Dinner averages 800 kcal on over-goal Fridays, 500 on other days."),
+            (.below, "Dinner averages 800 kcal on under-goal Fridays, 500 on other days.")
+        ]
+    )
+    func aPartialWeekdayPatternLeadsWithItsSideOfGoal(outcome: HistoryRecurringCalorieOutcome, expected: String) {
+        let summary = makeSummary(kind: .weekdayMeal, outcome: outcome, supportingDayCount: 4, cohortDayCount: 5)
+
+        #expect(summary.mealLead.plainText == expected)
     }
 
     @Test(
         "given a meal-only pattern, when leading the detail, then the pattern days are named by their side of goal",
         arguments: [
-            (HistoryRecurringCalorieOutcome.above, "Dinner is the difference: 800 kcal on over-goal days, 500 on other days."),
-            (.below, "Dinner is the difference: 800 kcal on under-goal days, 500 on other days.")
+            (HistoryRecurringCalorieOutcome.above, "Dinner averages 800 kcal on over-goal days, 500 on other days."),
+            (.below, "Dinner averages 800 kcal on under-goal days, 500 on other days.")
         ]
     )
     func aMealOnlyPatternLeadsWithItsSideOfGoal(outcome: HistoryRecurringCalorieOutcome, expected: String) {
-        #expect(makeSummary(kind: .mealOnly, outcome: outcome).differenceLead == expected)
+        #expect(makeSummary(kind: .mealOnly, outcome: outcome).mealLead.plainText == expected)
     }
 
     @Test("given snacks, when leading the detail, then they are plural and the verb agrees")
     func snacksLeadInThePlural() {
         #expect(
-            makeSummary(mealType: .snack).differenceLead
-                == "Snacks are the difference: 800 kcal on Fridays, 500 on other days."
+            makeSummary(mealType: .snack).mealLead.plainText
+                == "Snacks average 800 kcal on Fridays, 500 on other days."
+        )
+        #expect(
+            makeSummary(kind: .mealOnly, mealType: .snack).mealLead.plainText
+                == "Snacks average 800 kcal on over-goal days, 500 on other days."
         )
     }
 
@@ -99,6 +119,36 @@ struct HistoryRecurringCaloriePatternDetailSummaryTests {
         #expect(bars.map(\.isPatternDays) == [true, false])
     }
 
+    @Test(
+        "given only some logged weekdays matched, when comparing the meal, then the first bar is the matching weekdays and the other bar is every other day",
+        arguments: [
+            (HistoryRecurringCalorieOutcome.above, "Over-goal Fridays"),
+            (.below, "Under-goal Fridays")
+        ]
+    )
+    func aPartialWeekdayBarNamesItsSideOfGoal(outcome: HistoryRecurringCalorieOutcome, expected: String) {
+        let bars = makeSummary(outcome: outcome, supportingDayCount: 4, cohortDayCount: 5).mealBars
+
+        #expect(bars.map(\.label) == [expected, "Other days"])
+    }
+
+    @Test("given only some logged weekdays matched, when counting the outcome, then the weekday is still set against every other weekday")
+    func aPartialWeekdayOutcomeComparesWeekdays() {
+        let summary = makeSummary(
+            kind: .weekdayMeal,
+            weekdayName: "Friday",
+            supportingDayCount: 4,
+            cohortDayCount: 5,
+            outcomeComparisonCount: 2,
+            outcomeComparisonDayCount: 25
+        )
+
+        #expect(summary.outcomeStats == [
+            .init(value: "4 of 5", label: "Fridays"),
+            .init(value: "2 of 25", label: "other days")
+        ])
+    }
+
     @Test("given a smaller meal on the pattern's days, when comparing the meal, then the other days fill their bar instead")
     func aSmallerMealScalesToTheOtherDays() {
         let bars = makeSummary(
@@ -123,24 +173,30 @@ struct HistoryRecurringCaloriePatternDetailSummaryTests {
     @Test(
         "given each kind of pattern, when titling the day list, then it names the days it lists",
         arguments: [
-            (HistoryRecurringCaloriePatternKind.weekdayMeal, HistoryRecurringCalorieOutcome.above, "Fridays"),
-            (.mealOnly, .above, "Over-goal days"),
-            (.mealOnly, .below, "Under-goal days")
+            (HistoryRecurringCaloriePatternKind.weekdayMeal, HistoryRecurringCalorieOutcome.above, 4, "Fridays"),
+            (.weekdayMeal, .below, 4, "Fridays"),
+            (.weekdayMeal, .above, 5, "Over-goal Fridays"),
+            (.weekdayMeal, .below, 5, "Under-goal Fridays"),
+            (.mealOnly, .above, 4, "Over-goal days"),
+            (.mealOnly, .below, 4, "Under-goal days")
         ]
     )
     func theDayListNamesItsDays(
         kind: HistoryRecurringCaloriePatternKind,
         outcome: HistoryRecurringCalorieOutcome,
+        cohortDayCount: Int,
         expected: String
     ) {
-        #expect(makeSummary(kind: kind, outcome: outcome).daysListTitle == expected)
+        let summary = makeSummary(kind: kind, outcome: outcome, supportingDayCount: 4, cohortDayCount: cohortDayCount)
+
+        #expect(summary.daysListTitle == expected)
     }
 
-    @Test("given a supporting day, when summarising it, then the logged total is emphasised against the day's own goal")
+    @Test("given a supporting day, when summarising it, then the logged total is emphasised against the day's own goal in kcal, as VoiceOver reads it")
     func aSupportingDayEmphasisesItsTotal() {
         let row = makeRow(totalCalories: 2_800.4, dailyCalorieTarget: 2_000)
 
-        #expect(row.totals.plainText == "\(2_800.formatted()) of \(2_000.formatted()) goal")
+        #expect(row.totals.plainText == "\(2_800.formatted()) of \(2_000.formatted()) kcal goal")
         #expect(row.totals.runs.filter(\.isEmphasised).map(\.text) == [2_800.formatted()])
         #expect(row.accessibilityLabel.hasPrefix("Mon, 3 Feb, \(2_800.formatted()) of \(2_000.formatted()) kcal goal"))
     }

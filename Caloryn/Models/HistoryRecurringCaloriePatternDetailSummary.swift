@@ -62,11 +62,15 @@ struct HistoryRecurringCaloriePatternDetailSummary: Equatable {
         HistoryRecurringCaloriePatternWording.mealName(for: mealType)
     }
 
-    var differenceLead: String {
-        let verb = HistoryRecurringCaloriePatternWording.agreeing(with: mealType, singular: "is", plural: "are")
-        let patternAverage = HistoryRecurringCaloriePatternWording.calories(supportingMealAverageCalories)
-        let otherAverage = HistoryRecurringCaloriePatternWording.calories(comparisonMealAverageCalories)
-        return "\(mealTitle) \(verb) the difference: \(patternAverage) kcal on \(patternDaysName), \(otherAverage) on other days."
+    var mealLead: HistoryRecurringCaloriePatternPhrase {
+        let verb = HistoryRecurringCaloriePatternWording.agreeing(with: mealType, singular: "averages", plural: "average")
+        return HistoryRecurringCaloriePatternPhrase(runs: [
+            .plain("\(mealTitle) \(verb) "),
+            .emphasised(HistoryRecurringCaloriePatternWording.calories(supportingMealAverageCalories)),
+            .plain(" kcal on \(patternDaysName), "),
+            .emphasised(HistoryRecurringCaloriePatternWording.calories(comparisonMealAverageCalories)),
+            .plain(" on other days."),
+        ])
     }
 
     var basisText: String {
@@ -125,7 +129,9 @@ struct HistoryRecurringCaloriePatternDetailSummary: Equatable {
         HistoryRecurringCaloriePatternWording.patternDaysName(
             kind: kind,
             weekdayName: weekdayName,
-            outcome: outcome
+            outcome: outcome,
+            supportingDayCount: supportingDayCount,
+            cohortDayCount: cohortDayCount
         )
     }
 
@@ -168,7 +174,7 @@ struct HistoryRecurringCaloriePatternDayRow: Equatable {
     var totals: HistoryRecurringCaloriePatternPhrase {
         HistoryRecurringCaloriePatternPhrase(runs: [
             .emphasised(loggedText),
-            .plain(" of \(dailyCalorieTarget.formatted()) goal"),
+            .plain(" of \(dailyCalorieTarget.formatted()) kcal goal"),
         ])
     }
 
