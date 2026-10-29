@@ -61,8 +61,9 @@ struct HistoryWeeklyRollupSection: View {
                         ForEach(chart.weeks) { week in
                             if let xPosition = proxy.position(forX: Double(week.index)) {
                                 if chart.showsCounts,
+                                   let countText = week.countText,
                                    let yPosition = proxy.position(forY: week.onTrackPercentage) {
-                                    Text(week.countText)
+                                    Text(countText)
                                         .font(CalorynTheme.microCaptionEmphasized.monospacedDigit())
                                         .foregroundStyle(CalorynTheme.textPrimary)
                                         .lineLimit(1)

@@ -102,12 +102,17 @@ struct HistoryWeeklyConsistencyChartTests {
 
     @Test(
         "given a week's tally, when stating it above the bar, then it reads on-track over logged",
-        arguments: [(4, 5, "4/5"), (6, 7, "6/7"), (3, 3, "3/3"), (0, 0, "0/0")]
+        arguments: [(4, 5, "4/5"), (6, 7, "6/7"), (3, 3, "3/3"), (0, 1, "0/1")]
     )
     func theCountReadsOnTrackOverLogged(onTrackDays: Int, loggedDays: Int, expected: String) {
         let week = makeWeek(onTrackDays: onTrackDays, loggedDays: loggedDays)
 
         #expect(week.countText == expected)
+    }
+
+    @Test("given a week with no logged days, when stating it above the bar, then there is no count")
+    func aWeekWithoutLoggedDaysHasNoCount() {
+        #expect(makeWeek(onTrackDays: 0, loggedDays: 0).countText == nil)
     }
 
     @Test(

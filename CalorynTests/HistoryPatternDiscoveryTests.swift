@@ -683,14 +683,14 @@ struct HistoryPatternDiscoveryTests {
         #expect(projection.totalDayCount == 14)
     }
 
-    @Test("given nothing logged in the range, when projecting weekly consistency, then every week reads 0/0 with an empty bar")
+    @Test("given nothing logged in the range, when projecting weekly consistency, then every week has no count and an empty bar")
     func weeklyConsistencyWithoutLoggedDaysShowsEmptyWeeks() {
         let projection = HistoryWeeklyConsistencyProjection(
             summary: makeSummary(dates: days(fromJanuary: 5, count: 14)),
             today: janDate(14)
         )
 
-        #expect(projection.chart.weeks.map(\.countText) == ["0/0", "0/0"])
+        #expect(projection.chart.weeks.map(\.countText) == [nil, nil])
         #expect(projection.chart.weeks.map(\.onTrackPercentage) == [0, 0])
     }
 
