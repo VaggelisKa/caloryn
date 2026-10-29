@@ -31,8 +31,9 @@ struct HistoryWeeklyConsistencyChart: Equatable {
             return isCurrent ? "This week" : startText
         }
 
-        var countText: String {
-            "\(onTrackDays)/\(loggedDays)"
+        var countText: String? {
+            guard loggedDays > 0 else { return nil }
+            return "\(onTrackDays)/\(loggedDays)"
         }
 
         var accessibilityLabel: String {
