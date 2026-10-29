@@ -767,60 +767,23 @@ struct HistoryPatternDiscoveryTests {
         ])
     }
 
-    @Test("given no macro patterns, when discovering the least consistent macro, then nothing is reported")
-    func noMacroPatternsReportNothing() {
-        #expect(HistoryMacroPatternsProjection(patterns: []).summaryText == nil)
-    }
+    @Test("given profile macro goals, when discovering patterns, then each macro carries its goal in grams")
+    func macroPatternsCarryTheirGoalGrams() throws {
+        let profile = makeProfile()
+        let analytics = HistoryAnalytics(
+            entries: [makeCalorieEntry(date: janDate(30), calories: 2_000)],
+            profile: profile,
+            range: .week,
+            endDate: janDate(30)
+        )
 
-    @Test("given macro patterns with no logged days, when discovering the least consistent macro, then nothing is reported")
-    func macroPatternsWithoutLoggedDaysReportNothing() {
-        let projection = HistoryMacroPatternsProjection(patterns: [
-            makeMacroPattern(nutrient: .protein, loggedDays: 0, hitDays: 0),
-            makeMacroPattern(nutrient: .carbs, loggedDays: 0, hitDays: 0)
-        ])
+        let patterns = HistoryPatternDiscovery(analytics: analytics).macroPatterns.patterns
 
-        #expect(projection.summaryText == nil)
-    }
-
-    @Test("given macro patterns with different hit days, when discovering the least consistent macro, then the fewest hit days is reported")
-    func leastConsistentMacroIsTheFewestHitDays() {
-        let projection = HistoryMacroPatternsProjection(patterns: [
-            makeMacroPattern(nutrient: .protein, loggedDays: 5, hitDays: 4),
-            makeMacroPattern(nutrient: .carbs, loggedDays: 5, hitDays: 1),
-            makeMacroPattern(nutrient: .fat, loggedDays: 5, hitDays: 3)
-        ])
-
-        #expect(projection.summaryText == "Carbs was the least consistent macro at 1 of 5 logged days.")
-    }
-
-    @Test("given a nutrient with a compact display name, when discovering the least consistent macro, then the compact name is used")
-    func leastConsistentMacroUsesCompactNutrientName() {
-        let projection = HistoryMacroPatternsProjection(patterns: [
-            makeMacroPattern(nutrient: .protein, loggedDays: 3, hitDays: 3),
-            makeMacroPattern(nutrient: .saturatedFat, loggedDays: 3, hitDays: 0)
-        ])
-
-        #expect(projection.summaryText == "Sat Fat was the least consistent macro at 0 of 3 logged days.")
-    }
-
-    @Test("given macro patterns tied on hit days, when discovering the least consistent macro, then the first listed macro is reported")
-    func tiedMacroPatternsReportTheFirstListed() {
-        let projection = HistoryMacroPatternsProjection(patterns: [
-            makeMacroPattern(nutrient: .protein, loggedDays: 4, hitDays: 2),
-            makeMacroPattern(nutrient: .carbs, loggedDays: 4, hitDays: 2)
-        ])
-
-        #expect(projection.summaryText == "Protein was the least consistent macro at 2 of 4 logged days.")
-    }
-
-    @Test("given a macro pattern with no logged days alongside a logged one, when discovering the least consistent macro, then the unlogged macro is ignored")
-    func unloggedMacroPatternsAreIgnored() {
-        let projection = HistoryMacroPatternsProjection(patterns: [
-            makeMacroPattern(nutrient: .carbs, loggedDays: 0, hitDays: 0),
-            makeMacroPattern(nutrient: .fat, loggedDays: 2, hitDays: 1)
-        ])
-
-        #expect(projection.summaryText == "Fat was the least consistent macro at 1 of 2 logged days.")
+        #expect(patterns.map(\.nutrient) == [.protein, .carbs, .fat])
+        for pattern in patterns {
+            let goal = try #require(profile.target(for: pattern.nutrient))
+            #expect(pattern.target == goal)
+        }
     }
 
     @Test("given no profile targets, when discovering patterns, then macro patterns are absent while the calorie trend still projects")
@@ -835,7 +798,6 @@ struct HistoryPatternDiscoveryTests {
         let discovery = HistoryPatternDiscovery(analytics: analytics)
 
         #expect(discovery.macroPatterns.patterns.isEmpty)
-        #expect(discovery.macroPatterns.summaryText == nil)
         #expect(discovery.calorieTrend.points.count == 7)
         #expect(discovery.calorieTrend.dailyCalorieTarget == 2_000)
         #expect(discovery.weeklyConsistency.totalDayCount == 7)
@@ -934,28 +896,6 @@ struct HistoryPatternDiscoveryTests {
                 valuesByDayKey: valuesByDayKey
             ),
             calendar: calendar
-        )
-    }
-
-    private func makeMacroPattern(
-        nutrient: TrackedNutrient,
-        loggedDays: Int,
-        hitDays: Int,
-        averageValue: Double = 0
-    ) -> HistoryMacroPattern {
-        HistoryMacroPattern(
-            nutrient: nutrient,
-            goalKind: nutrient.defaultGoalKind,
-            current: HistoryNutrientPeriodSummary(
-                loggedDays: loggedDays,
-                hitDays: hitDays,
-                averageValue: averageValue
-            ),
-            previous: HistoryNutrientPeriodSummary(
-                loggedDays: 0,
-                hitDays: 0,
-                averageValue: 0
-            )
         )
     }
 }

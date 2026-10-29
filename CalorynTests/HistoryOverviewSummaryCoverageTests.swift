@@ -111,28 +111,14 @@ struct HistoryOverviewSummaryCoverageTests {
     }
 
     @Test(
-        "given hit and logged counts out of step, when filling the bar, then the share stays between empty and full",
-        arguments: [
-            (5, 4, 1.0),
-            (-1, 4, 0.0),
-            (1, 4, 0.25)
-        ] as [(Int, Int, Double)]
-    )
-    func theHitShareIsClamped(hitDays: Int, loggedDays: Int, expected: Double) {
-        let row = makeMacroRow(hitDays: hitDays, loggedDays: loggedDays, averageGramsChange: nil)
-
-        #expect(row.hitRatio == expected)
-    }
-
-    @Test(
         "given a change of exactly half a gram, when comparing, then it rounds away from zero to a whole gram",
         arguments: [
             (0.5, "1 g more than last week"),
             (-0.5, "1 g less than last week"),
-            (0.49, "Same as last week")
-        ] as [(Double, String)]
+            (0.49, nil)
+        ] as [(Double, String?)]
     )
-    func halfGramChangesRoundAwayFromZero(change: Double, expected: String) {
+    func halfGramChangesRoundAwayFromZero(change: Double, expected: String?) {
         let row = makeMacroRow(hitDays: 2, loggedDays: 4, averageGramsChange: change)
 
         #expect(row.changeText == expected)
@@ -189,6 +175,7 @@ struct HistoryOverviewSummaryCoverageTests {
             name: "Protein",
             goalKind: .minimum,
             averageGrams: 80,
+            goalGrams: 150,
             hitDays: hitDays,
             loggedDays: loggedDays,
             range: .week,

@@ -320,7 +320,7 @@ final class HistoryAnalyticsTests: XCTestCase {
         XCTAssertEqual(foods.first?.calories ?? 0, 1_000, accuracy: 0.001)
     }
 
-    func testPatternDiscoverySurfacesLeastConsistentMacro() {
+    func testPatternDiscoveryCountsEachMacrosMetDays() {
         let profile = makeProfile()
         let endDate = makeTestDate(year: 2026, month: 1, day: 30)
         let entries = [
@@ -336,12 +336,10 @@ final class HistoryAnalyticsTests: XCTestCase {
             endDate: endDate
         )
 
-        let projection = HistoryPatternDiscovery(analytics: analytics).macroPatterns
+        let protein = HistoryPatternDiscovery(analytics: analytics).macroPatterns.patterns.first { $0.nutrient == .protein }
 
-        XCTAssertEqual(
-            projection.summaryText,
-            "Protein was the least consistent macro at 1 of 3 logged days."
-        )
+        XCTAssertEqual(protein?.current.hitDays, 1)
+        XCTAssertEqual(protein?.current.loggedDays, 3)
     }
 
     func testPatternDiscoveryCountsEachWeeksOnTrackDays() {

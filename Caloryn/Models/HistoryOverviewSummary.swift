@@ -133,6 +133,7 @@ struct HistoryMacroRowSummary: Equatable, Identifiable {
     let name: String
     let goalKind: NutrientGoalKind
     let averageGrams: Double
+    let goalGrams: Double
     let hitDays: Int
     let loggedDays: Int
     let range: HistoryRange
@@ -143,6 +144,7 @@ struct HistoryMacroRowSummary: Equatable, Identifiable {
         name: String,
         goalKind: NutrientGoalKind,
         averageGrams: Double,
+        goalGrams: Double,
         hitDays: Int,
         loggedDays: Int,
         range: HistoryRange,
@@ -152,19 +154,28 @@ struct HistoryMacroRowSummary: Equatable, Identifiable {
         self.name = name
         self.goalKind = goalKind
         self.averageGrams = averageGrams
+        self.goalGrams = goalGrams
         self.hitDays = hitDays
         self.loggedDays = loggedDays
         self.range = range
         self.averageGramsChange = averageGramsChange
     }
 
-    var hitRatio: Double {
-        guard loggedDays > 0 else { return 0 }
-        return min(1, max(0, Double(hitDays) / Double(loggedDays)))
+    var averageText: String {
+        Self.wholeGrams(averageGrams)
     }
 
-    var detailText: String {
-        "\(averageGrams.rounded().truncatedSafely.formatted()) g a day, \(hitLabel) \(hitDays) of \(loggedDays)"
+    var goalText: String {
+        " / \(Self.wholeGrams(goalGrams)) g a day"
+    }
+
+    var averageRatio: Double {
+        guard goalGrams > 0, averageGrams.isFinite else { return 0 }
+        return min(1, max(0, averageGrams / goalGrams))
+    }
+
+    var metText: String {
+        "\(goalKindName) · \(metWording)"
     }
 
     var changeText: String? {
@@ -172,30 +183,37 @@ struct HistoryMacroRowSummary: Equatable, Identifiable {
     }
 
     var accessibilityLabel: String {
-        let base = "\(name), \(averageGrams.rounded().truncatedSafely.formatted()) grams a day, \(hitLabel) on \(hitDays) of \(loggedDays) logged days"
+        let base = "\(name), \(averageText) of \(Self.wholeGrams(goalGrams)) grams a day, \(goalKindName.lowercased()), \(metWording)"
         guard let change = changeWording(unit: "grams") else { return base }
-        return "\(base), \(change.prefix(1).lowercased())\(change.dropFirst())"
+        return "\(base), \(change)"
+    }
+
+    private var metWording: String {
+        "met on \(hitDays) of \(loggedDays) \(loggedDays == 1 ? "day" : "days")"
     }
 
     private func changeWording(unit: String) -> String? {
         guard let averageGramsChange else { return nil }
 
         let change = averageGramsChange.rounded().truncatedSafely
+        guard change != 0 else { return nil }
         let amount = change.magnitude.formatted()
-        let previous = range.previousPeriodText
-        if change > 0 { return "\(amount) \(unit) more than \(previous)" }
-        if change < 0 { return "\(amount) \(unit) less than \(previous)" }
-        return "Same as \(previous)"
+        let direction = change > 0 ? "more" : "less"
+        return "\(amount) \(unit) \(direction) than \(range.previousPeriodText)"
     }
 
-    private var hitLabel: String {
+    private var goalKindName: String {
         switch goalKind {
         case .minimum:
-            "hit"
+            "Minimum"
         case .target:
-            "on target"
+            "Target"
         case .maximum:
-            "under max"
+            "Maximum"
         }
+    }
+
+    private static func wholeGrams(_ grams: Double) -> String {
+        grams.rounded().truncatedSafely.formatted()
     }
 }

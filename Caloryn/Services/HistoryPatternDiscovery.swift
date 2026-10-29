@@ -17,15 +17,6 @@ struct HistoryPatternDiscovery {
 
 struct HistoryMacroPatternsProjection {
     let patterns: [HistoryMacroPattern]
-
-    var summaryText: String? {
-        let loggedPatterns = patterns.filter { $0.current.loggedDays > 0 }
-        guard let weakest = loggedPatterns.min(by: { $0.current.hitDays < $1.current.hitDays }) else {
-            return nil
-        }
-
-        return "\(weakest.nutrient.compactName) was the least consistent macro at \(weakest.current.hitDays) of \(weakest.current.loggedDays) logged days."
-    }
 }
 
 struct HistoryWeeklyConsistencyProjection {

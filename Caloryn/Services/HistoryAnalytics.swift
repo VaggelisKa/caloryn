@@ -166,6 +166,7 @@ struct HistoryAnalytics {
             return HistoryMacroPattern(
                 nutrient: nutrient,
                 goalKind: goalKind,
+                target: target,
                 current: current.macroSummary(for: nutrient, target: target, goalKind: goalKind),
                 previous: previous.macroSummary(for: nutrient, target: target, goalKind: goalKind)
             )
@@ -662,6 +663,7 @@ struct HistoryNutrientPeriodSummary {
 struct HistoryMacroPattern: Identifiable {
     let nutrient: TrackedNutrient
     let goalKind: NutrientGoalKind
+    let target: Double
     let current: HistoryNutrientPeriodSummary
     let previous: HistoryNutrientPeriodSummary
 
