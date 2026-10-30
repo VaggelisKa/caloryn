@@ -38,6 +38,7 @@ final class ScannerViewController: UIViewController, AVCaptureMetadataOutputObje
     weak var delegate: ScannerViewControllerDelegate?
 
     private let captureSession = AVCaptureSession()
+    private let metadataOutput = AVCaptureMetadataOutput()
     private let sessionQueue = DispatchQueue(label: "Caloryn.BarcodeScanner.session", qos: .userInitiated)
     private var previewLayer: AVCaptureVideoPreviewLayer!
     private var hasScanned = false
@@ -104,7 +105,6 @@ final class ScannerViewController: UIViewController, AVCaptureMetadataOutputObje
 
         configureCameraDevice(device)
 
-        let metadataOutput = AVCaptureMetadataOutput()
         guard captureSession.canAddOutput(metadataOutput) else { return }
         captureSession.addOutput(metadataOutput)
 
@@ -121,7 +121,7 @@ final class ScannerViewController: UIViewController, AVCaptureMetadataOutputObje
         sessionQueue.async { [weak self, captureSession] in
             captureSession.startRunning()
             DispatchQueue.main.async {
-                self?.restrictScanArea(metadataOutput)
+                self?.restrictScanArea()
             }
         }
     }
@@ -142,7 +142,7 @@ final class ScannerViewController: UIViewController, AVCaptureMetadataOutputObje
 
     /// Restricts metadata detection to the visible cutout area.
     /// Must be called after the session is running so `metadataOutputRectConverted` works.
-    private func restrictScanArea(_ output: AVCaptureMetadataOutput) {
+    private func restrictScanArea() {
         guard let previewLayer else { return }
         let bounds = view.bounds
         let cutoutSize = CGSize(width: 280, height: 160)
@@ -152,7 +152,7 @@ final class ScannerViewController: UIViewController, AVCaptureMetadataOutputObje
             width: cutoutSize.width,
             height: cutoutSize.height
         )
-        output.rectOfInterest = previewLayer.metadataOutputRectConverted(fromLayerRect: cutoutRect)
+        metadataOutput.rectOfInterest = previewLayer.metadataOutputRectConverted(fromLayerRect: cutoutRect)
     }
 
     private func addScanOverlay() {
