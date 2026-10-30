@@ -3,6 +3,7 @@ import Testing
 @testable import Caloryn
 
 @Suite("Library food detail summary")
+@MainActor
 struct LibraryFoodDetailSummaryTests {
     private static let us = Locale(identifier: "en_US")
     private static let greek = Locale(identifier: "el_GR")

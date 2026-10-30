@@ -2,6 +2,7 @@ import UserNotifications
 import XCTest
 @testable import Caloryn
 
+@MainActor
 final class FakeReminderCenter: ReminderNotificationCenter, @unchecked Sendable {
     var status: UNAuthorizationStatus = .authorized
     var pending: [String] = []

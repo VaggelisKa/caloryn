@@ -2,6 +2,7 @@ import SwiftData
 import XCTest
 @testable import Caloryn
 
+@MainActor
 final class CalorynAppIntentsTests: XCTestCase {
     private let englishLocale = Locale(identifier: "en_US")
 

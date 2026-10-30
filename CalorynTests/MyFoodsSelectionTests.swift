@@ -3,6 +3,7 @@ import Testing
 @testable import Caloryn
 
 @Suite("My Foods selection")
+@MainActor
 struct MyFoodsSelectionTests {
     private let first = UUID()
     private let second = UUID()

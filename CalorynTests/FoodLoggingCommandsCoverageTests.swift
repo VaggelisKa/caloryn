@@ -3,12 +3,14 @@ import SwiftData
 import Testing
 @testable import Caloryn
 
+@MainActor
 private func fixedCalendar() -> Calendar {
     var calendar = Calendar(identifier: .gregorian)
     calendar.timeZone = TimeZone(secondsFromGMT: 0)!
     return calendar
 }
 
+@MainActor
 private func fixedDate(_ year: Int, _ month: Int, _ day: Int, _ hour: Int = 12, _ minute: Int = 0) -> Date {
     fixedCalendar().date(from: DateComponents(year: year, month: month, day: day, hour: hour, minute: minute))!
 }

@@ -3,6 +3,7 @@ import SwiftUI
 import XCTest
 @testable import Caloryn
 
+@MainActor
 final class ComponentSnapshotTests: XCTestCase {
     private let rowLayout = SwiftUISnapshotLayout.fixed(width: 390, height: 76)
 
@@ -732,6 +733,7 @@ final class ComponentSnapshotTests: XCTestCase {
     }
 }
 
+@MainActor
 private extension UITraitCollection {
     /// The environment every reference image is recorded in.
     ///

@@ -2,6 +2,7 @@ import Foundation
 import Testing
 @testable import Caloryn
 
+@MainActor
 struct FoodSearchScreenContentTests {
     private func content(
         isLookingUpBarcode: Bool = false,
@@ -171,6 +172,7 @@ struct FoodSearchScreenContentTests {
     }
 }
 
+@MainActor
 struct MultiAddSelectionLabelsTests {
     @Test("The review button pluralises on the item count, not the group count")
     func reviewButtonTitlePluralises() {

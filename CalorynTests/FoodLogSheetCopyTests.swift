@@ -3,6 +3,7 @@ import Testing
 @testable import Caloryn
 
 @Suite("Food row summary")
+@MainActor
 struct FoodRowSummaryTests {
     @Test("A food with a weighed serving prices that amount in plain kcal and says what 100 g is worth")
     func weighedServing() {
@@ -156,6 +157,7 @@ struct FoodRowSummaryTests {
 }
 
 @Suite("Food log sheet copy")
+@MainActor
 struct FoodLogSheetCopyTests {
     @Test(
         "The suggestions heading names the meal in sentence case",

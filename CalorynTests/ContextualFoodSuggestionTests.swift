@@ -2,6 +2,7 @@ import SwiftData
 import XCTest
 @testable import Caloryn
 
+@MainActor
 final class ContextualFoodSuggestionRankerTests: XCTestCase {
     private var calendar: Calendar {
         var calendar = Calendar(identifier: .gregorian)

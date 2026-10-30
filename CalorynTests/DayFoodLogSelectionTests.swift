@@ -1,6 +1,7 @@
 import XCTest
 @testable import Caloryn
 
+@MainActor
 final class DayFoodLogSelectionTests: XCTestCase {
     private struct Entry: Equatable {
         let name: String

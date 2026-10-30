@@ -17,6 +17,7 @@ private func auditPeople(calorieDeficit: Double) -> [OnboardingGoalSummaryDraft.
     ]
 }
 
+@MainActor
 private func auditLowercasingFirst(_ text: String) -> String {
     text.prefix(1).lowercased() + text.dropFirst()
 }

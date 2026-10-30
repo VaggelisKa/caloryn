@@ -4,6 +4,7 @@ import Testing
 @testable import Caloryn
 
 @Suite("History weekly consistency chart")
+@MainActor
 struct HistoryWeeklyConsistencyChartTests {
     @Test("given no weeks, when scaling the chart, then it still has a drawable domain")
     func noWeeksStillScales() {

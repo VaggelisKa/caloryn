@@ -3,6 +3,7 @@ import Testing
 @testable import Caloryn
 
 @Suite("History day plate strip")
+@MainActor
 struct HistoryDayPlateStripTests {
     @Test("given a day over its goal, when drawing its plate, then it is ringed in ink with an ink label")
     func anOverDayIsRinged() {

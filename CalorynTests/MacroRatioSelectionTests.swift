@@ -1,6 +1,7 @@
 import XCTest
 @testable import Caloryn
 
+@MainActor
 final class MacroRatioSelectionTests: XCTestCase {
     func testASplitThatTotalsOneHundredPercentIsValid() {
         XCTAssertTrue(makeSelection(protein: 0.30, carbs: 0.40, fat: 0.30).isValid)

@@ -2,6 +2,7 @@ import Foundation
 import Testing
 @testable import Caloryn
 
+@MainActor
 struct CalorieDonutSummaryTests {
     @Test("Under budget, meals fill the ring in meal order and the rest of the budget is one sector")
     func underBudget() {

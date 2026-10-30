@@ -2,6 +2,7 @@ import Foundation
 import Testing
 @testable import Caloryn
 
+@MainActor
 struct WidgetSnapshotModelTests {
     @Test("Given negative consumed calories, when building a summary, then consumed clamps to zero")
     func negativeConsumedClampsToZero() {

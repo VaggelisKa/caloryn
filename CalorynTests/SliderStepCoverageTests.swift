@@ -2,6 +2,7 @@ import Testing
 @testable import Caloryn
 
 @Suite("Slider step at the edges")
+@MainActor
 struct SliderStepCoverageTests {
     @Test(
         "Exactly half a step rounds up, counted from the lower bound",

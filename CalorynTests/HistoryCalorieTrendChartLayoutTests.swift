@@ -4,6 +4,7 @@ import Testing
 @testable import Caloryn
 
 @Suite("History chart axis and calorie trend layout")
+@MainActor
 struct HistoryCalorieTrendChartLayoutTests {
     @Test("given no slots, when scaling the axis, then a unit domain keeps the chart drawable")
     func emptyAxisFallsBackToAUnitDomain() {

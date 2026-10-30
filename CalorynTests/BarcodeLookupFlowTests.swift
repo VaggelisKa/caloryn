@@ -2,6 +2,7 @@ import Foundation
 import Testing
 @testable import Caloryn
 
+@MainActor
 struct BarcodeLookupFlowTests {
     private let barcode = "5711953150388"
     private let otherBarcode = "3017620422003"

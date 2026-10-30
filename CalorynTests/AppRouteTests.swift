@@ -1,6 +1,7 @@
 import XCTest
 @testable import Caloryn
 
+@MainActor
 final class AppRouteTests: XCTestCase {
     func testTodayRouteRoundTrips() {
         let route = AppRoute.today

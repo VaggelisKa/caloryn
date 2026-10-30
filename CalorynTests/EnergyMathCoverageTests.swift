@@ -2,11 +2,13 @@ import Foundation
 import Testing
 @testable import Caloryn
 
+@MainActor
 private func isNear(_ lhs: Double, _ rhs: Double, tolerance: Double = 1e-9) -> Bool {
     abs(lhs - rhs) <= tolerance * max(1, abs(lhs), abs(rhs))
 }
 
 @Suite("Energy maths, hand-computed")
+@MainActor
 struct EnergyMathHandComputedTests {
     @Test("BMR takes fractional weight and height at face value")
     func bmrWithFractionalBody() {
@@ -125,6 +127,7 @@ struct EnergyMathHandComputedTests {
 }
 
 @Suite("Activity level table")
+@MainActor
 struct ActivityLevelTableTests {
     @Test(
         "Each level carries its multiplier, name, description and symbol",
@@ -156,6 +159,7 @@ struct ActivityLevelTableTests {
 }
 
 @Suite("Sex copy")
+@MainActor
 struct SexCopyTests {
     @Test("Each sex names itself and is identified by its stored raw value", arguments: [
         (Sex.male, "male", "Male"),

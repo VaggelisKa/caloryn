@@ -1,5 +1,6 @@
 import XCTest
 
+@MainActor
 class UITestCase: XCTestCase {
     var app: XCUIApplication!
 
@@ -10,9 +11,9 @@ class UITestCase: XCTestCase {
         continueAfterFailure = false
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         app = nil
-        super.tearDown()
+        try await super.tearDown()
     }
 
     @discardableResult
@@ -37,6 +38,7 @@ class UITestCase: XCTestCase {
     }
 }
 
+@MainActor
 extension XCTestCase {
     func given(_ description: String, _ body: () throws -> Void) rethrows {
         try XCTContext.runActivity(named: "Given \(description)") { _ in try body() }

@@ -3,6 +3,7 @@ import Testing
 @testable import Caloryn
 
 @Suite("History calorie trend breakdown")
+@MainActor
 struct HistoryCalorieTrendBreakdownTests {
     @Test("given a day with two meals logged, when splitting it, then all four meals still get a row")
     func everyMealGetsARowInCanonicalOrder() {

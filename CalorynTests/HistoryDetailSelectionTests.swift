@@ -2,6 +2,7 @@ import Testing
 @testable import Caloryn
 
 @Suite("History detail pane selection")
+@MainActor
 struct HistoryDetailSelectionTests {
     @Test("With nothing chosen the calorie trend shows when it can drill down")
     func defaultsToCalorieTrend() {

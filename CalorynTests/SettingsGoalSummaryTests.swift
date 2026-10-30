@@ -1,6 +1,7 @@
 import XCTest
 @testable import Caloryn
 
+@MainActor
 final class SettingsGoalSummaryTests: XCTestCase {
     func testOnlyNutrientsWithASavedGoalGetARow() {
         let summary = SettingsGoalSummary(

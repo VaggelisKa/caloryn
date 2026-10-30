@@ -3,6 +3,7 @@ import Testing
 @testable import Caloryn
 
 @Suite("Ingredient amount draft")
+@MainActor
 struct IngredientAmountDraftTests {
     private var perHundredGrams: NutritionValues {
         NutritionValues(calories: 50, proteinG: 5, carbsG: 10, fatG: 2, fiberG: 1)

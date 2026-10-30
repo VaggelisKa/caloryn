@@ -2,6 +2,7 @@ import Foundation
 import Testing
 @testable import Caloryn
 
+@MainActor
 struct TodayPlateSummaryTests {
     private let us = Locale(identifier: "en_US")
     private let danish = Locale(identifier: "da_DK")

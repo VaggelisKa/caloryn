@@ -6,6 +6,7 @@ nonisolated private let auditUS = Locale(identifier: "en_US")
 
 nonisolated private let auditDayOffsets: [Double] = [-1, -0.6, -0.5, -0.4, 0, 0.4, 0.5, 0.6, 1]
 
+@MainActor
 private enum AuditBudgetKind: CaseIterable {
     case staticFloor
     case staticRound
@@ -39,6 +40,7 @@ private func auditEntries(total: Double) -> [SettingsGoalPlate.Entry] {
     ]
 }
 
+@MainActor
 private func auditTotals(around target: Int) -> [Double] {
     let target = Double(target)
     return [0, target / 2] + auditDayOffsets.map { target + $0 } + [target * 1.5, target * 3]

@@ -2,6 +2,7 @@ import CoreGraphics
 import Testing
 @testable import Caloryn
 
+@MainActor
 struct FoodSearchSkeletonTests {
     @Test("Asking twice yields the same rows")
     func widthsAreStable() {

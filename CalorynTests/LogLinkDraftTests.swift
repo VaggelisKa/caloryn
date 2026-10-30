@@ -4,7 +4,7 @@ import Testing
 
 @MainActor
 struct LogLinkDraftTests {
-    private static let specExample =
+    nonisolated private static let specExample =
         "caloryn://log?v=1&name=Greek%20yogurt&kcal=150&grams=170&protein=15&carbs=6&fat=4"
 
     private static let greekYogurt = LogLinkDraft(
@@ -611,6 +611,7 @@ struct LogLinkDraftTests {
     }
 }
 
+@MainActor
 private struct SplitMix64: RandomNumberGenerator {
     private var state: UInt64
 
@@ -627,6 +628,7 @@ private struct SplitMix64: RandomNumberGenerator {
     }
 }
 
+@MainActor
 private extension Result {
     var failureValue: Failure? {
         guard case .failure(let failure) = self else { return nil }

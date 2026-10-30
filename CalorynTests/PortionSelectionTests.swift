@@ -2,6 +2,7 @@ import Testing
 @testable import Caloryn
 
 @Suite("Portion selection")
+@MainActor
 struct PortionSelectionTests {
     private var plainFood: PortionSelection.Shape {
         PortionSelection.Shape()

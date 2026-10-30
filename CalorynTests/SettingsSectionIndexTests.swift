@@ -3,6 +3,7 @@ import Testing
 @testable import Caloryn
 
 @Suite("Settings section index")
+@MainActor
 struct SettingsSectionIndexTests {
     private static let english = Locale(identifier: "en_US")
     private static let greek = Locale(identifier: "el_GR")

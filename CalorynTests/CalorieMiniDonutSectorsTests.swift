@@ -2,6 +2,7 @@ import Foundation
 import Testing
 @testable import Caloryn
 
+@MainActor
 struct CalorieMiniDonutSectorsTests {
     private func sectors(
         _ meals: [MealType: Double],

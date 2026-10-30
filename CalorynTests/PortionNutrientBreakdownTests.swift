@@ -3,6 +3,7 @@ import Testing
 @testable import Caloryn
 
 @Suite("Portion nutrient breakdown")
+@MainActor
 struct PortionNutrientBreakdownTests {
     private static let us = Locale(identifier: "en_US")
 

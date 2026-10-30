@@ -1,6 +1,7 @@
 import XCTest
 @testable import Caloryn
 
+@MainActor
 final class NutriscoreDayDistributionTests: XCTestCase {
     func testGradesAreCountedInAToEOrder() {
         let distribution = NutriscoreDayDistribution.distribution(of: ["c", "a", "e", "a"])

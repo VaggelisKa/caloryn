@@ -1,6 +1,7 @@
 import XCTest
 @testable import Caloryn
 
+@MainActor
 final class ProfileEditMacroRatiosTests: XCTestCase {
     func testRatiosAreDerivedFromTheSavedGramsAndTarget() {
         let ratios = ProfileEditMacroRatios(

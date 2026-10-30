@@ -1,6 +1,7 @@
 import XCTest
 @testable import Caloryn
 
+@MainActor
 final class SettingsDataSectionRulesTests: XCTestCase {
     func testExportNeedsSomethingToExport() {
         XCTAssertFalse(SettingsDataSectionRules.isExportEnabled(loggedEntryCount: 0))

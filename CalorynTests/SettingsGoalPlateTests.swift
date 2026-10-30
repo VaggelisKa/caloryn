@@ -1,6 +1,7 @@
 import XCTest
 @testable import Caloryn
 
+@MainActor
 final class SettingsGoalPlateTests: XCTestCase {
     func testEachMealIsTheSumOfItsEntries() {
         let totals = SettingsGoalPlate.mealTotals([

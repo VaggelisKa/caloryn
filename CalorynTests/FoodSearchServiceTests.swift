@@ -3,9 +3,9 @@ import XCTest
 
 @MainActor
 final class FoodSearchServiceTests: XCTestCase {
-    override func tearDown() {
+    override func tearDown() async throws {
         URLProtocolStub.requestHandler = nil
-        super.tearDown()
+        try await super.tearDown()
     }
 
     func testAutomaticPolicyIsBoundedAndOrdered() {
@@ -646,6 +646,7 @@ private final class RecordingTelemetryReporter: FoodLookupTelemetryReporting {
     }
 }
 
+@MainActor
 private func response(
     _ request: URLRequest,
     status: Int,
@@ -662,6 +663,7 @@ private func response(
     )
 }
 
+@MainActor
 private final class URLProtocolStub: URLProtocol {
     static var requestHandler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
 

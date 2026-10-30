@@ -1,6 +1,7 @@
 import XCTest
 @testable import Caloryn
 
+@MainActor
 final class SettingsProfileSummaryTests: XCTestCase {
     func testMeasurementsRenderInMetricWithTheStoredPrecision() {
         let summary = makeSummary(age: 34, heightCm: 168, weightKg: 72.5)

@@ -2,6 +2,7 @@ import CoreData
 import XCTest
 @testable import Caloryn
 
+@MainActor
 final class FirstLaunchSyncGateTests: XCTestCase {
     func testALocalProfileOpensTheAppWhateverTheCloudIsDoing() {
         for syncs in [true, false] {

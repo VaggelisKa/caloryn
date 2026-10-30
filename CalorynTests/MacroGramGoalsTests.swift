@@ -3,6 +3,7 @@ import Testing
 @testable import Caloryn
 
 @Suite("Macro gram goals")
+@MainActor
 struct MacroGramGoalsTests {
     @Test("Typed grams report the calories they account for and their share of the calorie target")
     func summaryAndShares() {

@@ -2,6 +2,7 @@ import Foundation
 import Testing
 @testable import Caloryn
 
+@MainActor
 struct AppRouteParsingCoverageTests {
     private static func route(_ string: String) throws -> AppRoute? {
         AppRoute(url: try #require(URL(string: string)))

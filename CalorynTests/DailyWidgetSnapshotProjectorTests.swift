@@ -1,6 +1,7 @@
 import XCTest
 @testable import Caloryn
 
+@MainActor
 final class DailyWidgetSnapshotProjectorTests: XCTestCase {
     func testMissingProfileProducesOnboardingState() {
         let now = makeTestDate(year: 2026, month: 7, day: 15)

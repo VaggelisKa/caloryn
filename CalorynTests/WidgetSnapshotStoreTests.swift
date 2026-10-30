@@ -1,15 +1,16 @@
 import XCTest
 @testable import Caloryn
 
+@MainActor
 final class WidgetSnapshotStoreTests: XCTestCase {
     private var directoryURL: URL!
 
-    override func setUpWithError() throws {
+    override func setUp() async throws {
         directoryURL = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
     }
 
-    override func tearDownWithError() throws {
+    override func tearDown() async throws {
         if let directoryURL {
             try? FileManager.default.removeItem(at: directoryURL)
         }
