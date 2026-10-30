@@ -58,8 +58,9 @@ change before you commit.
 Snapshots compare pixels, so anything that differs between a laptop and CI
 shows up as an unexplained image diff. Three things are pinned:
 
-- **Device and runtime** — iPhone 17 / iOS 26.5, chosen by
-  `.github/actions/select-simulator`, which CI and local runs share.
+- **Device and runtime** — iPhone 17 / iOS 27.0, chosen by
+  `.github/actions/select-simulator`, which fails rather than fall back to
+  another model or runtime. Record locally on a simulator of the same pair.
 - **Layout** — a fixed width and height rather than a device profile, so the
   images do not depend on the simulator's screen at all.
 - **Dependency versions** — `Package.resolved` is tracked. It sits under

@@ -32,8 +32,10 @@ jobs:
 
   unit-tests:
     name: Unit tests
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 45
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.1.app/Contents/Developer
     outputs:
       device: ${{ steps.simulator.outputs.device }}
 
@@ -120,7 +122,7 @@ jobs:
           current="${{ steps.coverage.outputs.percent }}"
 
           if [ ! -f coverage-baseline.txt ]; then
-            echo "No baseline recorded yet; reporting ${current}% without gating."
+            echo "::warning::No coverage baseline from main for this simulator; reporting ${current}% without gating."
             exit 0
           fi
 
@@ -155,8 +157,10 @@ jobs:
 
   ui-tests:
     name: UI tests (${{ matrix.shard }})
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 45
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.1.app/Contents/Developer
     strategy:
       fail-fast: false
       matrix:
@@ -305,7 +309,7 @@ jobs:
           current="${{ steps.coverage.outputs.percent }}"
 
           if [ ! -f combined-coverage-baseline.txt ]; then
-            echo "No combined baseline recorded yet; reporting ${current}% without gating."
+            echo "::warning::No combined coverage baseline from main for these simulators; reporting ${current}% without gating."
             exit 0
           fi
 
