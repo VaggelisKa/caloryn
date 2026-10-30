@@ -116,7 +116,7 @@ enum TrackedNutrient: String, CaseIterable, Identifiable, Hashable {
     static let minimumSelectionCount = 3
     static let defaultSelection: [TrackedNutrient] = [.protein, .carbs, .fat]
     static let defaultSelectionRaw = rawSelection(from: defaultSelection)
-    static let editableGoalNutrients: [TrackedNutrient] = [
+    nonisolated static let editableGoalNutrients: [TrackedNutrient] = [
         .fiber,
         .sugars,
         .addedSugars,
@@ -233,7 +233,7 @@ enum TrackedNutrient: String, CaseIterable, Identifiable, Hashable {
         }
     }
 
-    var defaultGoalKind: NutrientGoalKind {
+    nonisolated var defaultGoalKind: NutrientGoalKind {
         switch self {
         case .protein, .fiber:
             .minimum

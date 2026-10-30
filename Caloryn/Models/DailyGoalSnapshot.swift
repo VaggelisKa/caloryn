@@ -82,7 +82,7 @@ final class DailyGoalSnapshot {
     }
 }
 
-struct DailyGoalSnapshotValues: Equatable {
+nonisolated struct DailyGoalSnapshotValues: Equatable {
     let calorieTarget: Int
     let isManualTarget: Bool
 }

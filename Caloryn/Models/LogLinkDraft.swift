@@ -11,7 +11,7 @@ struct LogLinkDraft: Equatable, Sendable {
         case fat
         case meal
 
-        var label: String {
+        nonisolated var label: String {
             switch self {
             case .version: "version number"
             case .name: "food name"

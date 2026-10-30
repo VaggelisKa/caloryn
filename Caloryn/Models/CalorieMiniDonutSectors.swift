@@ -1,13 +1,13 @@
 import Foundation
 
 struct CalorieMiniDonutSectors: Equatable {
-    enum Fill: Hashable {
+    nonisolated enum Fill: Hashable {
         case meal(MealType)
         case over
         case eaten
     }
 
-    struct Sector: Equatable {
+    nonisolated struct Sector: Equatable {
         let fill: Fill
         let start: Double
         let end: Double

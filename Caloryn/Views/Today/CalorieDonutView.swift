@@ -112,7 +112,7 @@ struct CalorieMiniDonutView: View {
     }
 }
 
-private struct PlateSector: Shape {
+nonisolated private struct PlateSector: Shape {
     private static let inset: Double = 1
 
     let sector: CalorieMiniDonutSectors.Sector

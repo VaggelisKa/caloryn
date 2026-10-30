@@ -1,11 +1,11 @@
 import Foundation
 
 extension Date {
-    var startOfDay: Date {
+    nonisolated var startOfDay: Date {
         startOfDay(in: .current)
     }
 
-    func startOfDay(in calendar: Calendar) -> Date {
+    nonisolated func startOfDay(in calendar: Calendar) -> Date {
         calendar.startOfDay(for: self)
     }
 

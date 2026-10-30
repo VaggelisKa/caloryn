@@ -1,7 +1,7 @@
 import Foundation
 
 struct PortionSelection: Equatable {
-    struct Shape: Equatable {
+    nonisolated struct Shape: Equatable {
         var isRecipe: Bool
         var servingGramsPerUnit: Double?
         var defaultServingGrams: Double?

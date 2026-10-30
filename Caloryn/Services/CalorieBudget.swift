@@ -1,6 +1,6 @@
 import Foundation
 
-struct CalorieBudget: Equatable {
+nonisolated struct CalorieBudget: Equatable {
     let consumed: Double
     let target: Int
     let isManualOverride: Bool

@@ -76,7 +76,7 @@ struct OpenFoodFactsProduct: Decodable, Identifiable, Hashable {
             + (nutritionGrades != nil ? 1 : 0)
     }
 
-    private var quantityGrams: Double? {
+    nonisolated private var quantityGrams: Double? {
         guard let quantity, !quantity.isEmpty else { return nil }
         let pattern = #"(\d+(?:[.,]\d+)?)\s*g\b"#
         guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
@@ -89,7 +89,7 @@ struct OpenFoodFactsProduct: Decodable, Identifiable, Hashable {
         return value
     }
 
-    var formattedServingDescription: String? {
+    nonisolated var formattedServingDescription: String? {
         if let servingSize, !servingSize.isEmpty {
             return servingSize
         }
@@ -99,7 +99,7 @@ struct OpenFoodFactsProduct: Decodable, Identifiable, Hashable {
         return nil
     }
 
-    var effectiveServingInfo: (defaultServingG: Double?, servingDescription: String?) {
+    nonisolated var effectiveServingInfo: (defaultServingG: Double?, servingDescription: String?) {
         if let servingQuantityG, servingQuantityG > 0 {
             return (servingQuantityG, formattedServingDescription)
         }

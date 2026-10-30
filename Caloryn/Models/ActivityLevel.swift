@@ -9,7 +9,7 @@ enum ActivityLevel: String, Codable, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    var multiplier: Double {
+    nonisolated var multiplier: Double {
         switch self {
         case .sedentary: 1.2
         case .lightlyActive: 1.375

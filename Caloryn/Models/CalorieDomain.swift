@@ -1,6 +1,6 @@
 import Foundation
 
-enum CalorieDomain {
+nonisolated enum CalorieDomain {
     static let maximum = 1_000_000_000
     static let minimum = -1_000_000_000
 
@@ -10,7 +10,7 @@ enum CalorieDomain {
 }
 
 extension Double {
-    var roundedCalories: Int {
+    nonisolated var roundedCalories: Int {
         CalorieDomain.clamped(rounded().truncatedSafely)
     }
 }
