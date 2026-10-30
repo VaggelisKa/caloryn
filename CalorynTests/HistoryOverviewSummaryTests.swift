@@ -123,7 +123,7 @@ struct HistoryOverviewSummaryTests {
         arguments: [
             (NutrientGoalKind.minimum, "Minimum · met on 0 of 29 days"),
             (.target, "Target · met on 0 of 29 days"),
-            (.maximum, "Maximum · under on 0 of 29 days")
+            (.maximum, "Maximum · at or under on 0 of 29 days")
         ]
     )
     func theCaptionNamesTheGoalKind(goalKind: NutrientGoalKind, expected: String) {
@@ -179,7 +179,7 @@ struct HistoryOverviewSummaryTests {
         arguments: [
             (NutrientGoalKind.minimum, "Protein, 80 of 150 grams a day, minimum, met on 0 of 29 days"),
             (.target, "Protein, 80 of 150 grams a day, target, met on 0 of 29 days"),
-            (.maximum, "Protein, 80 of 150 grams a day, maximum, under on 0 of 29 days")
+            (.maximum, "Protein, 80 of 150 grams a day, maximum, at or under on 0 of 29 days")
         ]
     )
     func eachGoalKindIsSpoken(goalKind: NutrientGoalKind, expected: String) {

@@ -62,7 +62,7 @@ struct HistoryCalorieTrendGoalLine: Equatable {
         case .day:
             "of \(target.formatted()) kcal goal"
         case .week:
-            "kcal a day of \(target.formatted()) goal"
+            "kcal a day vs a \(target.formatted()) kcal goal"
         }
     }
 }

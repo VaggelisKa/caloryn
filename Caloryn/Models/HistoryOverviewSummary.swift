@@ -215,7 +215,7 @@ struct HistoryMacroRowSummary: Equatable, Identifiable {
     }
 
     private var metWording: String {
-        "\(goalKind == .maximum ? "under" : "met") on \(hitDays) of \(loggedDays) \(loggedDays == 1 ? "day" : "days")"
+        "\(goalKind == .maximum ? "at or under" : "met") on \(hitDays) of \(loggedDays) \(loggedDays == 1 ? "day" : "days")"
     }
 
     private func changeWording(unit: String) -> String? {

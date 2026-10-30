@@ -44,7 +44,7 @@ struct HistoryCalorieTrendBreakdownTests {
         let line = HistoryCalorieTrendGoalLine(calories: 2_300, target: 2_000, period: .week)
 
         #expect(line.valueText == 2_300.formatted())
-        #expect(line.goalText == "kcal a day of \(2_000.formatted()) goal")
+        #expect(line.goalText == "kcal a day vs a \(2_000.formatted()) kcal goal")
     }
 
     @Test(
