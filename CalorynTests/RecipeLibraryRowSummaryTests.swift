@@ -1,6 +1,7 @@
 import XCTest
 @testable import Caloryn
 
+@MainActor
 final class RecipeLibraryRowSummaryTests: XCTestCase {
     func testASingleIngredientIsCountedInTheSingular() {
         XCTAssertEqual(makeSummary(ingredientCount: 1).ingredientLabel, "1 ingredient")

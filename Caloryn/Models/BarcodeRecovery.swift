@@ -1,7 +1,7 @@
 import Foundation
 import OSLog
 
-enum BarcodeIdentity {
+nonisolated enum BarcodeIdentity {
     static func normalized(_ rawValue: String?) -> String? {
         guard let rawValue else { return nil }
         let trimmed = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -235,7 +235,7 @@ extension FoodItem {
 }
 
 private extension OpenFoodFactsProduct {
-    func hasValue(for field: FoodField) -> Bool {
+    nonisolated func hasValue(for field: FoodField) -> Bool {
         switch field {
         case .name:
             productName?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false

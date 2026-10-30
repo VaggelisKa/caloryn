@@ -3,6 +3,7 @@ import Testing
 @testable import Caloryn
 
 @Suite("History recurring pattern detail summary")
+@MainActor
 struct HistoryRecurringCaloriePatternDetailSummaryTests {
     @Test("given every logged weekday matched, when leading the detail, then it states the card's meal averages with both numbers emphasised")
     func aWeekdayPatternLeadsWithTheMeal() {

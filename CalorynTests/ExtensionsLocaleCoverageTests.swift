@@ -66,6 +66,7 @@ struct DayTitleLocaleTests {
 }
 
 @Suite("Ambient future log limit")
+@MainActor
 struct AmbientFutureLogLimitTests {
     @Test("Today and three days out are inside the limit", arguments: [0, 3])
     func insideTheLimit(days: Int) {
@@ -87,6 +88,7 @@ struct AmbientFutureLogLimitTests {
 }
 
 @Suite("Decimal input and number formatting edges")
+@MainActor
 struct DecimalInputLocaleEdgeTests {
     @Test(
         "Keypad shapes with a leading or trailing separator, or a sign, still parse",
@@ -163,6 +165,7 @@ struct DecimalInputLocaleEdgeTests {
 }
 
 @Suite("Selected day rollover in an injected zone")
+@MainActor
 struct SelectedDayRolloverZoneTests {
     private static let auckland: Calendar = {
         var calendar = Calendar(identifier: .gregorian)

@@ -3,6 +3,7 @@ import Testing
 @testable import Caloryn
 
 @Suite("CalorieBudget")
+@MainActor
 struct CalorieBudgetTests {
     @Test("Given a zero target, when the budget reports, then everything eaten is over")
     func zeroTargetIsSafe() {

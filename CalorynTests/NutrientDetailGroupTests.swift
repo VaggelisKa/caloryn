@@ -1,6 +1,7 @@
 import XCTest
 @testable import Caloryn
 
+@MainActor
 final class NutrientDetailGroupTests: XCTestCase {
     func testANutrientWithNothingRecordedIsOmittedRatherThanShownAsZero() {
         let items = NutrientDetailGroup.carbs.items(in: NutritionValues(calories: 100))
@@ -100,6 +101,7 @@ final class NutrientDetailGroupTests: XCTestCase {
     }
 }
 
+@MainActor
 private extension NutrientDetailGroup {
     static func definitionIDsForTesting(_ group: NutrientDetailGroup) -> [String] {
         group.items(in: everyNutrientRecorded).map(\.id)

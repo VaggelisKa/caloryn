@@ -1,6 +1,7 @@
 import XCTest
 @testable import Caloryn
 
+@MainActor
 final class LibraryFoodRowSummaryTests: XCTestCase {
     func testTheDetailLineJoinsBrandAndServingWithAComma() {
         let summary = makeSummary(brand: "Arla", servingDescription: "1 pot 150 g")

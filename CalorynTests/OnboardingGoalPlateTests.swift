@@ -3,6 +3,7 @@ import Testing
 @testable import Caloryn
 
 @Suite("Onboarding goal plate")
+@MainActor
 struct OnboardingGoalPlateTests {
     @Test("The rows show the resting and daily burn truncated, like the target itself")
     func rowsTruncateTheBurn() {

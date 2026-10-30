@@ -3,6 +3,7 @@ import SwiftData
 import XCTest
 @testable import Caloryn
 
+@MainActor
 final class CloudKitSchemaContractTests: XCTestCase {
     private static let directory = URL(filePath: #filePath).deletingLastPathComponent()
     private static let productionSchemaURL = directory.appending(path: "ProductionSchema.ckdb")

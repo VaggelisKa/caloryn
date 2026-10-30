@@ -2,6 +2,7 @@ import Foundation
 import Testing
 @testable import Caloryn
 
+@MainActor
 private func distinctNutrition(scale: Double = 1) -> NutritionValues {
     NutritionValues(
         calories: 1 * scale,
@@ -45,6 +46,7 @@ private func distinctFood(defaultServingG: Double? = nil) -> FoodItem {
 }
 
 @Suite("Nutrition values scaling")
+@MainActor
 struct NutritionValuesScalingCoverageTests {
     @Test(
         "Each tracked nutrient reads its own field",

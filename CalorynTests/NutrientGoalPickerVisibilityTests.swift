@@ -1,6 +1,7 @@
 import XCTest
 @testable import Caloryn
 
+@MainActor
 final class NutrientGoalPickerVisibilityTests: XCTestCase {
     func testPickerIsHiddenWhileTheFieldIsEmpty() {
         XCTAssertFalse(NutrientGoalPickerVisibility.isVisible(targetText: ""))

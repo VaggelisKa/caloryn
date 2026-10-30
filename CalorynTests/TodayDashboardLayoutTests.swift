@@ -3,6 +3,7 @@ import Testing
 @testable import Caloryn
 
 @Suite("Today dashboard layout")
+@MainActor
 struct TodayDashboardLayoutTests {
     private static let pageMargins = 2 * CalorynTheme.pagePadding
 

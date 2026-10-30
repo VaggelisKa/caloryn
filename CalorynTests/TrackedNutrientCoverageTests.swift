@@ -3,10 +3,13 @@ import SwiftUI
 import Testing
 @testable import Caloryn
 
+@MainActor
 private let usLocale = Locale(identifier: "en_US")
+@MainActor
 private let danishLocale = Locale(identifier: "da_DK")
 
 @Suite("Nutrient goal kind copy")
+@MainActor
 struct NutrientGoalKindCopyTests {
     @Test(
         "Each goal kind has a name, a short label and a spoken phrase",
@@ -31,6 +34,7 @@ struct NutrientGoalKindCopyTests {
 }
 
 @Suite("Tracked nutrient unit conversions")
+@MainActor
 struct TrackedNutrientUnitCoverageTests {
     @Test("The input field is labelled with the unit the user types in")
     func inputUnitLabels() {
@@ -115,6 +119,7 @@ struct TrackedNutrientUnitCoverageTests {
 }
 
 @Suite("Tracked nutrient table")
+@MainActor
 struct TrackedNutrientTableTests {
     @Test(
         "Each nutrient's names, symbol, unit and default goal",
@@ -215,6 +220,7 @@ struct TrackedNutrientTableTests {
 }
 
 @Suite("Tracked nutrient metric")
+@MainActor
 struct TrackedNutrientMetricCoverageTests {
     private func metric(
         _ nutrient: TrackedNutrient = .protein,

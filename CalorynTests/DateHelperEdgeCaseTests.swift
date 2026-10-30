@@ -2,6 +2,7 @@ import Testing
 import Foundation
 @testable import Caloryn
 
+@MainActor
 struct DateHelperEdgeCaseTests {
     @Test(
         "startOfDay collapses any time of day to local midnight",

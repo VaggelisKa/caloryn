@@ -1,6 +1,6 @@
 import Foundation
 
-enum FoodSearchProvider: String, Codable, CaseIterable, Sendable {
+nonisolated enum FoodSearchProvider: String, Codable, CaseIterable, Sendable {
     case calorynAPI = "caloryn_api"
     case openFoodFacts = "open_food_facts"
 
@@ -12,7 +12,7 @@ enum FoodSearchProvider: String, Codable, CaseIterable, Sendable {
     }
 }
 
-enum FoodDataSource: String, Codable, Sendable {
+nonisolated enum FoodDataSource: String, Codable, Sendable {
     case calorynCatalog = "caloryn_catalog"
     case openFoodFactsCommunity = "open_food_facts_community"
     case userEntered = "user_entered"
@@ -32,7 +32,7 @@ enum FoodDataSource: String, Codable, Sendable {
     }
 }
 
-enum NutritionCompleteness: String, Codable, Sendable {
+nonisolated enum NutritionCompleteness: String, Codable, Sendable {
     case complete
     case partial
     case unknown
@@ -56,7 +56,7 @@ enum NutritionCompleteness: String, Codable, Sendable {
     }
 }
 
-struct FoodProvenance: Hashable, Sendable {
+nonisolated struct FoodProvenance: Hashable, Sendable {
     let provider: FoodSearchProvider?
     let source: FoodDataSource
     let completeness: NutritionCompleteness

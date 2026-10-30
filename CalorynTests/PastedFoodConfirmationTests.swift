@@ -5,8 +5,8 @@ import Testing
 @MainActor
 @Suite("Pasted food confirmation")
 struct PastedFoodConfirmationTests {
-    private static let english = Locale(identifier: "en_US")
-    private static let german = Locale(identifier: "de_DE")
+    nonisolated private static let english = Locale(identifier: "en_US")
+    nonisolated private static let german = Locale(identifier: "de_DE")
 
     private static func confirmation(
         name: String = "Greek yogurt",

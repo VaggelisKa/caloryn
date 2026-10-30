@@ -2,6 +2,7 @@ import Testing
 import Foundation
 @testable import Caloryn
 
+@MainActor
 struct FormattingEdgeCaseTests {
     @Test(
         "macroFormatted renders values whose .1f representation ends in .0 as a bare integer with no decimal",

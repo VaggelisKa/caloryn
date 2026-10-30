@@ -3,6 +3,7 @@ import Testing
 @testable import Caloryn
 
 @Suite("Regular-width split")
+@MainActor
 struct RegularWidthSplitTests {
     private func split(
         regularWidth: Bool = true,

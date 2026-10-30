@@ -1,6 +1,7 @@
 import XCTest
 @testable import Caloryn
 
+@MainActor
 final class FormattingAndDateHelperTests: XCTestCase {
     func testCalorieAndMacroFormattingUsesCompactUserFacingUnits() {
         XCTAssertEqual(123.9.kcalFormatted, "123 kcal")

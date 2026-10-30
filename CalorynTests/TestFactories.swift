@@ -108,6 +108,7 @@ func makeLegacyTestEntry(
     return entry
 }
 
+@MainActor
 func makeTestSearchResult(
     product: OpenFoodFactsProduct,
     provider: FoodSearchProvider = .openFoodFacts,

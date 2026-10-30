@@ -4,12 +4,14 @@ import Testing
 import UserNotifications
 @testable import Caloryn
 
+@MainActor
 private func goalCalendar(_ identifier: String) -> Calendar {
     var calendar = Calendar(identifier: .gregorian)
     calendar.timeZone = TimeZone(identifier: identifier)!
     return calendar
 }
 
+@MainActor
 private func goalDate(
     _ calendar: Calendar,
     _ year: Int,
@@ -23,6 +25,7 @@ private func goalDate(
     ))!
 }
 
+@MainActor
 private func goalValues(target: Int) -> DailyGoalSnapshotValues {
     DailyGoalSnapshotValues(
         calorieTarget: target,
@@ -229,6 +232,7 @@ struct DailyGoalSnapshotStoreCoverageTests {
 }
 
 @Suite("History day target resolution across time zones")
+@MainActor
 struct HistoryDayTargetResolverCoverageTests {
     @Test("A snapshot keyed in the local day is found only through that day's calendar")
     func lookupUsesTheInjectedCalendar() {
@@ -258,6 +262,7 @@ struct HistoryDayTargetResolverCoverageTests {
 }
 
 @Suite("Daily reminder planner: time zones, configurable time and the skip threshold")
+@MainActor
 struct DailyReminderPlannerCoverageTests {
     private let tokyo = goalCalendar("Asia/Tokyo")
     private let honolulu = goalCalendar("Pacific/Honolulu")
@@ -416,6 +421,7 @@ struct DailyReminderPlannerCoverageTests {
     }
 }
 
+@MainActor
 private final class CoverageReminderCenter: ReminderNotificationCenter, @unchecked Sendable {
     var status: UNAuthorizationStatus = .authorized
     var pending: [String] = []

@@ -1,6 +1,7 @@
 import XCTest
 @testable import Caloryn
 
+@MainActor
 final class NutritionDetailsSummaryTests: XCTestCase {
     func testTotalsAddUpAcrossEntries() {
         let summary = NutritionDetailsSummary(entries: [

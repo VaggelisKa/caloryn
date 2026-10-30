@@ -2,6 +2,7 @@ import Foundation
 import Testing
 @testable import Caloryn
 
+@MainActor
 struct FieldMutation<Model>: Sendable, CustomTestStringConvertible {
     let field: String
     let mutate: @MainActor (Model) -> Void

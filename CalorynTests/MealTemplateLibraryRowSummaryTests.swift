@@ -1,6 +1,7 @@
 import XCTest
 @testable import Caloryn
 
+@MainActor
 final class MealTemplateLibraryRowSummaryTests: XCTestCase {
     func testTheDetailLineNamesTheItemsInTheMealsOwnOrder() {
         let summary = makeSummary(items: [

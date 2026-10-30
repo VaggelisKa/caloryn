@@ -3,6 +3,7 @@ import Testing
 @testable import Caloryn
 
 @Suite("History overview summary")
+@MainActor
 struct HistoryOverviewSummaryTests {
     @Test("given logged days, when stating the average, then it is whole kcal a day on average")
     func theHeadlineIsTheRoundedDailyAverage() {

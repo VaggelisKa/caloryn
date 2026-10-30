@@ -1,6 +1,7 @@
 import XCTest
 @testable import Caloryn
 
+@MainActor
 final class NutritionValuesTests: XCTestCase {
     func testScalingPreservesMissingOptionalNutrients() {
         let values = NutritionValues(

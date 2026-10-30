@@ -4,7 +4,7 @@ import Testing
 
 @MainActor
 struct FoodLookupErrorCoverageTests {
-    struct Expectation: Sendable, CustomTestStringConvertible {
+    nonisolated struct Expectation: Sendable, CustomTestStringConvertible {
         let error: FoodLookupError
         let title: String
         let message: String
@@ -16,7 +16,7 @@ struct FoodLookupErrorCoverageTests {
         var testDescription: String { "\(error)" }
     }
 
-    static let matrix: [Expectation] = [
+    nonisolated static let matrix: [Expectation] = [
         Expectation(
             error: .cancelled,
             title: "Lookup cancelled",

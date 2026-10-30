@@ -267,7 +267,7 @@ enum TodayCaloriesIntentResponse: Equatable, Sendable {
     }
 }
 
-enum IntentNumberFormatting {
+nonisolated enum IntentNumberFormatting {
     static func grams(_ value: Double) -> String {
         value.formatted(
             .number

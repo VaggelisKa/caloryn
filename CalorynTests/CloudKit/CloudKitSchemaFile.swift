@@ -1,5 +1,6 @@
 import CoreData
 
+@MainActor
 enum CloudKitSchemaFile {
     typealias RecordTypes = [String: [String: String]]
 

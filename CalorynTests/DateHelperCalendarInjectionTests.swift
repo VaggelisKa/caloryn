@@ -2,6 +2,7 @@ import Testing
 import Foundation
 @testable import Caloryn
 
+@MainActor
 struct DateHelperCalendarInjectionTests {
     private static func calendar(
         _ timeZone: String,

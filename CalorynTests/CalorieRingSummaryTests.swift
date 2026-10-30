@@ -1,6 +1,7 @@
 import XCTest
 @testable import Caloryn
 
+@MainActor
 final class CalorieRingSummaryTests: XCTestCase {
     func testAnUnderBudgetDayCountsDownWhatIsLeft() {
         let summary = makeSummary(isOver: false, remaining: 480, roundedConsumed: 1_520)

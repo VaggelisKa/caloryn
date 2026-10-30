@@ -70,12 +70,14 @@ private func insertFavoriteFood(
     return food
 }
 
+@MainActor
 private func makeTemporarySnapshotStore() -> (WidgetSnapshotStore, URL) {
     let directory = FileManager.default.temporaryDirectory
         .appendingPathComponent("IntentDomainCoverage-\(UUID().uuidString)", isDirectory: true)
     return (WidgetSnapshotStore(directoryURL: directory), directory)
 }
 
+@MainActor
 private func readySnapshot(
     consumed: Double,
     target: Int,
@@ -93,6 +95,7 @@ private func readySnapshot(
     )
 }
 
+@MainActor
 private func mealSummary(_ snapshot: DailyWidgetSnapshot?) -> [String] {
     snapshot?.calories.meals.map { "\($0.meal.rawValue)=\($0.kcal)" } ?? []
 }

@@ -1,6 +1,7 @@
 import XCTest
 @testable import Caloryn
 
+@MainActor
 final class MealSectionSummaryTests: XCTestCase {
     func testAMealIsNamedAfterItself() {
         XCTAssertEqual(makeSummary(mealType: .breakfast).title, "Breakfast")

@@ -3,6 +3,7 @@ import Testing
 @testable import Caloryn
 
 @Suite("Portion selection at the edges")
+@MainActor
 struct PortionSelectionCoverageTests {
     private var recipe: PortionSelection.Shape {
         PortionSelection.Shape(isRecipe: true, defaultServingGrams: 800)

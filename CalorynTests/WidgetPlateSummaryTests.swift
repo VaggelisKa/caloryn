@@ -1,6 +1,7 @@
 import XCTest
 @testable import Caloryn
 
+@MainActor
 final class WidgetPlateSummaryTests: XCTestCase {
     func testUnderBudgetDrawsEachMealThenTheRestOfTheBudget() {
         let calories = WidgetCalorieSummary(

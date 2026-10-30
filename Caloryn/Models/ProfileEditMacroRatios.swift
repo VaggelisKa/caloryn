@@ -1,6 +1,6 @@
 import Foundation
 
-struct ProfileEditMacroRatios: Equatable {
+nonisolated struct ProfileEditMacroRatios: Equatable {
     static let defaultSplit = ProfileEditMacroRatios(protein: 0.30, carbs: 0.40, fat: 0.30)
 
     let protein: Double

@@ -1,5 +1,6 @@
 import XCTest
 
+@MainActor
 protocol Screen {
     var app: XCUIApplication { get }
 }

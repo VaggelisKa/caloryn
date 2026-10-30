@@ -2,6 +2,7 @@ import Foundation
 import Testing
 @testable import Caloryn
 
+@MainActor
 private func isNear(_ lhs: Double?, _ rhs: Double, tolerance: Double = 1e-9) -> Bool {
     guard let lhs else { return false }
     return abs(lhs - rhs) <= tolerance * max(1, abs(lhs), abs(rhs))

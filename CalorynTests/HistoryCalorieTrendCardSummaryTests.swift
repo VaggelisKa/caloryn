@@ -3,6 +3,7 @@ import Testing
 @testable import Caloryn
 
 @Suite("History calorie trend card summary")
+@MainActor
 struct HistoryCalorieTrendCardSummaryTests {
     @Test("given nothing logged, when describing the chart, then it says zero days rather than an average")
     func anEmptyRangeIsSpokenWithoutAnAverage() {

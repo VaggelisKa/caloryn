@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import Caloryn
 
-struct NutritionInvariantBody: Sendable, CustomStringConvertible {
+nonisolated struct NutritionInvariantBody: Sendable, CustomStringConvertible {
     let weightKg: Double
     let heightCm: Double
     let age: Int
@@ -12,7 +12,7 @@ struct NutritionInvariantBody: Sendable, CustomStringConvertible {
     }
 }
 
-struct NutritionInvariantMacroSplit: Sendable, CustomStringConvertible {
+nonisolated struct NutritionInvariantMacroSplit: Sendable, CustomStringConvertible {
     let protein: Double
     let carbs: Double
     let fat: Double
@@ -22,7 +22,7 @@ struct NutritionInvariantMacroSplit: Sendable, CustomStringConvertible {
     }
 }
 
-private let plausibleBodies: [NutritionInvariantBody] = [
+nonisolated private let plausibleBodies: [NutritionInvariantBody] = [
     NutritionInvariantBody(weightKg: 40, heightCm: 140, age: 18),
     NutritionInvariantBody(weightKg: 52, heightCm: 155, age: 25),
     NutritionInvariantBody(weightKg: 68, heightCm: 165, age: 34),
@@ -32,7 +32,7 @@ private let plausibleBodies: [NutritionInvariantBody] = [
     NutritionInvariantBody(weightKg: 250, heightCm: 220, age: 100),
 ]
 
-private let macroRatioPresets: [NutritionInvariantMacroSplit] = [
+nonisolated private let macroRatioPresets: [NutritionInvariantMacroSplit] = [
     NutritionInvariantMacroSplit(protein: 0.30, carbs: 0.40, fat: 0.30),
     NutritionInvariantMacroSplit(protein: 0.25, carbs: 0.50, fat: 0.25),
     NutritionInvariantMacroSplit(protein: 0.40, carbs: 0.30, fat: 0.30),
@@ -43,9 +43,9 @@ private let macroRatioPresets: [NutritionInvariantMacroSplit] = [
     NutritionInvariantMacroSplit(protein: 0.10, carbs: 0.40, fat: 0.50),
 ]
 
-private let calorieTargets: [Int] = [1_200, 1_450, 1_800, 2_000, 2_350, 3_000, 4_500]
+nonisolated private let calorieTargets: [Int] = [1_200, 1_450, 1_800, 2_000, 2_350, 3_000, 4_500]
 
-struct NutritionInvariantBMRGolden: Sendable, CustomStringConvertible {
+nonisolated struct NutritionInvariantBMRGolden: Sendable, CustomStringConvertible {
     let sex: Sex
     let weightKg: Double
     let heightCm: Double
@@ -57,22 +57,23 @@ struct NutritionInvariantBMRGolden: Sendable, CustomStringConvertible {
     }
 }
 
-struct NutritionInvariantTDEEGolden: Sendable, CustomStringConvertible {
+nonisolated struct NutritionInvariantTDEEGolden: Sendable, CustomStringConvertible {
     let activity: ActivityLevel
     let expected: Double
 
     var description: String { "\(activity.rawValue) -> \(expected)" }
 }
 
-private let proteinKcalPerGram = 4.0
-private let carbKcalPerGram = 4.0
-private let fatKcalPerGram = 9.0
+nonisolated private let proteinKcalPerGram = 4.0
+nonisolated private let carbKcalPerGram = 4.0
+nonisolated private let fatKcalPerGram = 9.0
 
-private func isClose(_ lhs: Double, _ rhs: Double, tolerance: Double = 1e-9) -> Bool {
+nonisolated private func isClose(_ lhs: Double, _ rhs: Double, tolerance: Double = 1e-9) -> Bool {
     abs(lhs - rhs) <= tolerance * max(1, abs(lhs), abs(rhs))
 }
 
 @Suite("NutritionCalculator BMR invariants")
+@MainActor
 struct NutritionCalculatorBMRInvariantTests {
     @Test(
         "Given identical height and age, when weight increases, then BMR increases",
@@ -208,6 +209,7 @@ struct NutritionCalculatorBMRInvariantTests {
 }
 
 @Suite("NutritionCalculator TDEE invariants")
+@MainActor
 struct NutritionCalculatorTDEEInvariantTests {
     @Test("Given the activity ladder, when each level is applied, then daily burn never decreases")
     func activityLadderIsMonotonic() {
@@ -279,6 +281,7 @@ struct NutritionCalculatorTDEEInvariantTests {
 }
 
 @Suite("NutritionCalculator macro invariants")
+@MainActor
 struct NutritionCalculatorMacroInvariantTests {
     @Test(
         "Given a macro split that totals 100%, when grams are converted back to calories, then they reconcile with the target",
@@ -392,6 +395,7 @@ struct NutritionCalculatorMacroInvariantTests {
 }
 
 @Suite("NutritionCalculator daily target invariants")
+@MainActor
 struct NutritionCalculatorDailyTargetInvariantTests {
     @Test("Given a rising energy expenditure, when the daily target is derived, then it never decreases")
     func targetIsMonotonicInExpenditure() {

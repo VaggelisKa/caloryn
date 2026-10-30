@@ -1,6 +1,6 @@
 import Foundation
 
-enum NutritionCalculator {
+nonisolated enum NutritionCalculator {
     static func bmr(sex: Sex, weightKg: Double, heightCm: Double, age: Int) -> Double {
         let base = 10 * weightKg + 6.25 * heightCm - 5 * Double(age)
         return sex == .male ? base + 5 : base - 161

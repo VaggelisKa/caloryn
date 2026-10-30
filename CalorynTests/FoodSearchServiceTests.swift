@@ -3,9 +3,9 @@ import XCTest
 
 @MainActor
 final class FoodSearchServiceTests: XCTestCase {
-    override func tearDown() {
+    override func tearDown() async throws {
         URLProtocolStub.requestHandler = nil
-        super.tearDown()
+        try await super.tearDown()
     }
 
     func testAutomaticPolicyIsBoundedAndOrdered() {
@@ -38,9 +38,9 @@ final class FoodSearchServiceTests: XCTestCase {
     }
 
     func testContextualSuggestionRankingDoesNotInvokeFoodProviders() {
-        var requestCount = 0
+        let requestLog = StubRequestLog()
         URLProtocolStub.requestHandler = { request in
-            requestCount += 1
+            requestLog.append(request)
             return try response(request, status: 200, body: #"{"hits":[]}"#)
         }
         let service = FoodSearchService(session: makeStubbedSession())
@@ -72,14 +72,14 @@ final class FoodSearchServiceTests: XCTestCase {
 
         XCTAssertEqual(suggestions.map(\.foodID), [food.id])
         XCTAssertTrue(service.searchResults.isEmpty)
-        XCTAssertEqual(requestCount, 0)
+        XCTAssertEqual(requestLog.requests.count, 0)
     }
 
     func testPrimarySearchSuccessDoesNotCallSecondary() async throws {
         let telemetry = RecordingTelemetryReporter()
-        var requestCount = 0
+        let requestLog = StubRequestLog()
         URLProtocolStub.requestHandler = { request in
-            requestCount += 1
+            requestLog.append(request)
             XCTAssertEqual(request.url?.host, "caloryn-api.vercel.app")
             XCTAssertEqual(request.url?.path, "/api/v1/search")
 
@@ -97,7 +97,7 @@ final class FoodSearchServiceTests: XCTestCase {
             return try response(
                 request,
                 status: 200,
-                body: self.searchBody(code: "123", name: "Greek Yogurt", complete: true)
+                body: Self.searchBody(code: "123", name: "Greek Yogurt", complete: true)
             )
         }
 
@@ -108,7 +108,7 @@ final class FoodSearchServiceTests: XCTestCase {
         )
         let results = try await service.searchImmediately(query: "greek yogurt")
 
-        XCTAssertEqual(requestCount, 1)
+        XCTAssertEqual(requestLog.requests.count, 1)
         XCTAssertEqual(results.first?.product.productName, "Greek Yogurt")
         XCTAssertEqual(results.first?.provenance.provider, .calorynAPI)
         XCTAssertEqual(results.first?.provenance.source, .calorynCatalog)
@@ -127,7 +127,7 @@ final class FoodSearchServiceTests: XCTestCase {
                 return try response(
                     request,
                     status: 200,
-                    body: self.searchBody(code: "123", name: "Yogurt", complete: true)
+                    body: Self.searchBody(code: "123", name: "Yogurt", complete: true)
                 )
             }
 
@@ -142,9 +142,9 @@ final class FoodSearchServiceTests: XCTestCase {
 
     func testBarcodeTransientFailureFallsBackExactlyOnce() async throws {
         let telemetry = RecordingTelemetryReporter()
-        var requestedHosts: [String] = []
+        let requestLog = StubRequestLog()
         URLProtocolStub.requestHandler = { request in
-            requestedHosts.append(try XCTUnwrap(request.url?.host))
+            requestLog.append(request)
             if request.url?.host == "caloryn-api.vercel.app" {
                 return try response(request, status: 503, body: "{}")
             }
@@ -155,7 +155,7 @@ final class FoodSearchServiceTests: XCTestCase {
             return try response(
                 request,
                 status: 200,
-                body: self.barcodeBody(code: "5711953150388", name: "Recovered Milk", complete: true)
+                body: Self.barcodeBody(code: "5711953150388", name: "Recovered Milk", complete: true)
             )
         }
 
@@ -165,7 +165,10 @@ final class FoodSearchServiceTests: XCTestCase {
         )
         let result = try await service.lookupBarcode("5711953150388")
 
-        XCTAssertEqual(requestedHosts, ["caloryn-api.vercel.app", "world.openfoodfacts.org"])
+        XCTAssertEqual(
+            requestLog.requests.compactMap(\.url?.host),
+            ["caloryn-api.vercel.app", "world.openfoodfacts.org"]
+        )
         XCTAssertEqual(result.product.productName, "Recovered Milk")
         XCTAssertEqual(result.provenance.provider, .openFoodFacts)
         XCTAssertEqual(result.provenance.source, .openFoodFactsCommunity)
@@ -177,23 +180,23 @@ final class FoodSearchServiceTests: XCTestCase {
     }
 
     func testSearchNotFoundFallsBackAndReturnsSecondaryResults() async throws {
-        var requestCount = 0
+        let requestLog = StubRequestLog()
         URLProtocolStub.requestHandler = { request in
-            requestCount += 1
+            requestLog.append(request)
             if request.url?.host == "caloryn-api.vercel.app" {
                 return try response(request, status: 200, body: #"{"hits": []}"#)
             }
             return try response(
                 request,
                 status: 200,
-                body: self.searchBody(code: "456", name: "Community Result", complete: true)
+                body: Self.searchBody(code: "456", name: "Community Result", complete: true)
             )
         }
 
         let service = FoodSearchService(session: makeStubbedSession())
         let results = try await service.searchImmediately(query: "rare food")
 
-        XCTAssertEqual(requestCount, 2)
+        XCTAssertEqual(requestLog.requests.count, 2)
         XCTAssertEqual(results.first?.product.productName, "Community Result")
         XCTAssertEqual(results.first?.provenance.provider, .openFoodFacts)
         XCTAssertTrue(try XCTUnwrap(results.first).provenance.recoveredByFallback)
@@ -201,9 +204,9 @@ final class FoodSearchServiceTests: XCTestCase {
 
     func testBothProvidersUnavailableReturnUnavailable() async {
         let telemetry = RecordingTelemetryReporter()
-        var requestCount = 0
+        let requestLog = StubRequestLog()
         URLProtocolStub.requestHandler = { request in
-            requestCount += 1
+            requestLog.append(request)
             return try response(request, status: 503, body: "{}")
         }
         let service = FoodSearchService(
@@ -213,21 +216,21 @@ final class FoodSearchServiceTests: XCTestCase {
 
         await assertBarcodeFailure(.unavailable, from: service)
 
-        XCTAssertEqual(requestCount, 2)
+        XCTAssertEqual(requestLog.requests.count, 2)
         XCTAssertEqual(telemetry.events.map(\.outcome), [.unavailable, .unavailable])
         XCTAssertEqual(telemetry.events.last?.fallbackSucceeded, false)
     }
 
     func testBothProvidersNotFoundReturnNotFound() async {
-        var requestCount = 0
+        let requestLog = StubRequestLog()
         URLProtocolStub.requestHandler = { request in
-            requestCount += 1
+            requestLog.append(request)
             return try response(request, status: 404, body: "{}")
         }
         let service = FoodSearchService(session: makeStubbedSession())
 
         await assertBarcodeFailure(.notFound, from: service)
-        XCTAssertEqual(requestCount, 2)
+        XCTAssertEqual(requestLog.requests.count, 2)
     }
 
     func testCancellationDoesNotFallBack() async {
@@ -251,32 +254,32 @@ final class FoodSearchServiceTests: XCTestCase {
     }
 
     func testMalformedProviderDataFallsBack() async throws {
-        var requestCount = 0
+        let requestLog = StubRequestLog()
         URLProtocolStub.requestHandler = { request in
-            requestCount += 1
+            requestLog.append(request)
             if request.url?.host == "caloryn-api.vercel.app" {
                 return try response(request, status: 200, body: #"{"unexpected": true}"#)
             }
             return try response(
                 request,
                 status: 200,
-                body: self.barcodeBody(code: "123456", name: "Valid Backup", complete: false)
+                body: Self.barcodeBody(code: "123456", name: "Valid Backup", complete: false)
             )
         }
         let service = FoodSearchService(session: makeStubbedSession())
 
         let result = try await service.lookupBarcode("123456")
 
-        XCTAssertEqual(requestCount, 2)
+        XCTAssertEqual(requestLog.requests.count, 2)
         XCTAssertEqual(result.product.productName, "Valid Backup")
         XCTAssertEqual(result.provenance.completeness, .partial)
     }
 
     func testInvalidBarcodeIsRejectedBeforeAnyProviderRequest() async {
         let telemetry = RecordingTelemetryReporter()
-        var requestCount = 0
+        let requestLog = StubRequestLog()
         URLProtocolStub.requestHandler = { request in
-            requestCount += 1
+            requestLog.append(request)
             return try response(request, status: 200, body: "{}")
         }
         let service = FoodSearchService(
@@ -293,15 +296,15 @@ final class FoodSearchServiceTests: XCTestCase {
             XCTFail("Unexpected error: \(error)")
         }
 
-        XCTAssertEqual(requestCount, 0)
+        XCTAssertEqual(requestLog.requests.count, 0)
         XCTAssertTrue(telemetry.events.isEmpty)
     }
 
     func testArabicIndicBarcodeDigitsAreRejectedBeforeAnyProviderRequest() async {
         let telemetry = RecordingTelemetryReporter()
-        var requestCount = 0
+        let requestLog = StubRequestLog()
         URLProtocolStub.requestHandler = { request in
-            requestCount += 1
+            requestLog.append(request)
             return try response(request, status: 200, body: "{}")
         }
         let service = FoodSearchService(
@@ -318,7 +321,7 @@ final class FoodSearchServiceTests: XCTestCase {
             XCTFail("Unexpected error: \(error)")
         }
 
-        XCTAssertEqual(requestCount, 0)
+        XCTAssertEqual(requestLog.requests.count, 0)
         XCTAssertTrue(telemetry.events.isEmpty)
     }
 
@@ -527,9 +530,9 @@ final class FoodSearchServiceTests: XCTestCase {
         urlError: URLError.Code
     ) async {
         let telemetry = RecordingTelemetryReporter()
-        var requestCount = 0
-        URLProtocolStub.requestHandler = { _ in
-            requestCount += 1
+        let requestLog = StubRequestLog()
+        URLProtocolStub.requestHandler = { request in
+            requestLog.append(request)
             throw URLError(urlError)
         }
         let service = FoodSearchService(
@@ -538,7 +541,7 @@ final class FoodSearchServiceTests: XCTestCase {
         )
 
         await assertBarcodeFailure(expected, from: service)
-        XCTAssertEqual(requestCount, 1)
+        XCTAssertEqual(requestLog.requests.count, 1)
         XCTAssertEqual(telemetry.events.map(\.outcome), [expected.outcome])
     }
 
@@ -547,9 +550,9 @@ final class FoodSearchServiceTests: XCTestCase {
         status: Int
     ) async {
         let telemetry = RecordingTelemetryReporter()
-        var requestCount = 0
+        let requestLog = StubRequestLog()
         URLProtocolStub.requestHandler = { request in
-            requestCount += 1
+            requestLog.append(request)
             return try response(request, status: status, body: "{}")
         }
         let service = FoodSearchService(
@@ -558,7 +561,7 @@ final class FoodSearchServiceTests: XCTestCase {
         )
 
         await assertBarcodeFailure(expected, from: service)
-        XCTAssertEqual(requestCount, 1)
+        XCTAssertEqual(requestLog.requests.count, 1)
         XCTAssertEqual(telemetry.events.map(\.outcome), [expected.outcome])
     }
 
@@ -604,7 +607,7 @@ final class FoodSearchServiceTests: XCTestCase {
         )
     }
 
-    private func searchBody(code: String, name: String, complete: Bool) -> String {
+    nonisolated private static func searchBody(code: String, name: String, complete: Bool) -> String {
         let macros = complete
             ? #", "proteins_100g": 10, "carbohydrates_100g": 4, "fat_100g": 2"#
             : ""
@@ -619,7 +622,7 @@ final class FoodSearchServiceTests: XCTestCase {
         """
     }
 
-    private func barcodeBody(code: String, name: String, complete: Bool) -> String {
+    nonisolated private static func barcodeBody(code: String, name: String, complete: Bool) -> String {
         let macros = complete
             ? #", "proteins_100g": 10, "carbohydrates_100g": 4, "fat_100g": 2"#
             : ""
@@ -646,7 +649,7 @@ private final class RecordingTelemetryReporter: FoodLookupTelemetryReporting {
     }
 }
 
-private func response(
+nonisolated private func response(
     _ request: URLRequest,
     status: Int,
     body: String
@@ -662,8 +665,24 @@ private func response(
     )
 }
 
-private final class URLProtocolStub: URLProtocol {
-    static var requestHandler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
+nonisolated private final class URLProtocolStub: URLProtocol {
+    typealias Handler = @Sendable (URLRequest) throws -> (HTTPURLResponse, Data)
+
+    nonisolated private static let lock = NSLock()
+    nonisolated(unsafe) private static var storedHandler: Handler?
+
+    static var requestHandler: Handler? {
+        get {
+            lock.lock()
+            defer { lock.unlock() }
+            return storedHandler
+        }
+        set {
+            lock.lock()
+            storedHandler = newValue
+            lock.unlock()
+        }
+    }
 
     override class func canInit(with request: URLRequest) -> Bool {
         true
@@ -690,4 +709,21 @@ private final class URLProtocolStub: URLProtocol {
     }
 
     override func stopLoading() {}
+}
+
+nonisolated private final class StubRequestLog: @unchecked Sendable {
+    private let lock = NSLock()
+    private var stored: [URLRequest] = []
+
+    func append(_ request: URLRequest) {
+        lock.lock()
+        stored.append(request)
+        lock.unlock()
+    }
+
+    var requests: [URLRequest] {
+        lock.lock()
+        defer { lock.unlock() }
+        return stored
+    }
 }

@@ -3,6 +3,7 @@ import Testing
 @testable import Caloryn
 
 @Suite("The calorie target a day on the Today screen is measured against")
+@MainActor
 struct DayCalorieTargetTests {
     private static let utc: Calendar = {
         var calendar = Calendar(identifier: .gregorian)

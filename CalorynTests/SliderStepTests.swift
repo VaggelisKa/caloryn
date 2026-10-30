@@ -2,6 +2,7 @@ import Testing
 @testable import Caloryn
 
 @Suite("Slider step")
+@MainActor
 struct SliderStepTests {
     @Test("A value moves to the nearest step counted from the lower bound")
     func snapsToTheNearestStep() {

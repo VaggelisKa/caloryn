@@ -22,10 +22,10 @@ final class RegularWidthScreensTests: XCTestCase {
         unsafeBitCast(setter, to: SetAutomationEnabled.self)(1)
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         window?.isHidden = true
         window = nil
-        super.tearDown()
+        try await super.tearDown()
     }
 
     func testMyFoodsOnATallTabletShowsTheFirstFavouriteBesideTheList() throws {

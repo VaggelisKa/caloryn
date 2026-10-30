@@ -1,7 +1,7 @@
 import Foundation
 
 extension Double {
-    var truncatedSafely: Int {
+    nonisolated var truncatedSafely: Int {
         guard isFinite else { return 0 }
         if self >= Double(Int.max) { return .max }
         if self <= Double(Int.min) { return .min }

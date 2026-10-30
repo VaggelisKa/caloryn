@@ -1,7 +1,7 @@
 import Foundation
 import SwiftData
 
-struct FoodLogProduceItemSnapshot: Codable, Equatable {
+nonisolated struct FoodLogProduceItemSnapshot: Codable, Equatable {
     var name: String
     var kindRaw: String
 
@@ -30,7 +30,7 @@ struct FoodLogEntrySnapshot: Codable, Equatable {
     var nutritionCompletenessSnapshotRaw: String?
     var recoveredByFallbackSnapshotRaw: Bool?
 
-    init(entry: FoodLogEntry) {
+    nonisolated init(entry: FoodLogEntry) {
         sourceFoodID = entry.foodItem?.id
         mealType = entry.mealType
         snackIndex = entry.snackIndex
@@ -107,7 +107,7 @@ struct FoodLogEntrySnapshot: Codable, Equatable {
         recoveredByFallbackSnapshotRaw = provenance.recoveredByFallback
     }
 
-    func scaled(toPortionGrams newPortionGrams: Double) -> FoodLogEntrySnapshot {
+    nonisolated func scaled(toPortionGrams newPortionGrams: Double) -> FoodLogEntrySnapshot {
         guard portionGrams > 0 else { return self }
         var copy = self
         copy.portionGrams = newPortionGrams

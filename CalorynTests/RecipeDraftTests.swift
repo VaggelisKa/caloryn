@@ -3,6 +3,7 @@ import Testing
 @testable import Caloryn
 
 @Suite("Recipe draft")
+@MainActor
 struct RecipeDraftTests {
     private func ingredient(
         _ name: String = "Tomato",
