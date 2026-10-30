@@ -2,9 +2,8 @@
 
 SwiftUI + SwiftData iOS app. Deployment target **iOS 18.6**, built against the iOS 27 SDK —
 so `#available(iOS 26.0, *)` checks are live and their `else` branches ship. Do not delete
-them as dead code. **CI builds with Xcode 26.6 (Swift 6.3)**, so an iOS 27 API needs a
-`#if compiler(>=6.4)` (Xcode 27.1) guard around its `#available` check as well, or CI
-cannot compile it.
+them as dead code. CI builds with Xcode 27.1 (Swift 6.4), so an iOS 27 API needs only its
+`#available` check.
 
 ## Tests
 

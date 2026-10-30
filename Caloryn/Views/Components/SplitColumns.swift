@@ -7,7 +7,6 @@ import SwiftUI
 /// scroll on their own.
 ///
 /// The arrangement view is iOS 27.1; before it the same two regions sit in an `HStack`.
-/// The SDK has to know it too: Swift 6.4 is Xcode 27.1, and CI builds with Xcode 26.6.
 /// A page taller than wide always gets the `HStack`: it has no fold to arrange around, and an
 /// arrangement view would stack the regions instead, clipping the primary one.
 struct SplitColumns<Primary: View, Secondary: View>: View {
@@ -25,7 +24,6 @@ struct SplitColumns<Primary: View, Secondary: View>: View {
 
     @ViewBuilder
     private var arrangedAroundFold: some View {
-        #if compiler(>=6.4)
         if #available(iOS 27.1, *) {
             ArrangementView {
                 primary
@@ -45,9 +43,6 @@ struct SplitColumns<Primary: View, Secondary: View>: View {
         } else {
             sideBySide
         }
-        #else
-        sideBySide
-        #endif
     }
 
     private var sideBySide: some View {
