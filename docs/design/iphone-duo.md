@@ -49,10 +49,6 @@ app roughly half of 951 pt, which is compact width again.
 - **Today expands at regular width** instead of padding the phone page: a wider hero, and
   the first level of Nutrition Details promoted onto the page. See *Today at regular width*
   below for the breakpoints.
-- **The iOS 27 APIs are guarded at compile time too** (`#if compiler(>=6.4)`, the Xcode 27.1
-  compiler, around both the arrangement view and `.topBarPinnedTrailing`): CI builds with
-  Xcode 26.6, which is Swift 6.3 and whose SDK has neither, and `#available` alone does not
-  get past the type checker there.
 - **Toolbar items carry a title with their symbol** (`Label`, still drawn symbol-only), so
   the vertical bar and the overflow menu have something to show; the custom back button
   uses the `.cancellationAction` placement Apple names for it.

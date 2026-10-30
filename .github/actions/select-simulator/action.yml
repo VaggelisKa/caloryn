@@ -1,19 +1,22 @@
 name: Select simulator
 description: >
-  Boots an available iPhone simulator whose runtime satisfies the app's
-  deployment target, from a cached post-first-boot data directory when one
-  exists.
+  Boots an available iPhone simulator on a pinned iOS runtime, from a cached
+  post-first-boot data directory when one exists.
 
 inputs:
-  minimum-ios:
-    description: Lowest acceptable iOS major version.
-    required: false
-    default: "26"
-  preferred-device:
+  ios-runtime:
     description: >
-      Device model to prefer. Coverage of code that merely runs during app
-      start-up varies between simulator models, so pinning one keeps the
-      coverage ratchet comparing like with like.
+      iOS runtime to run on, as major.minor. Pinned rather than "newest" because
+      snapshots compare pixels and a different runtime renders differently, so
+      an image update that adds a runtime must not move the tests onto it.
+    required: false
+    default: "27.0"
+  device:
+    description: >
+      Device model to run on. Coverage of code that merely runs during app
+      start-up varies between simulator models, so the job fails rather than
+      fall back to another model, which would leave the coverage ratchet with
+      no baseline to compare against.
     required: false
     default: "iPhone 17"
   warm-cache:
@@ -32,9 +35,9 @@ outputs:
     value: ${{ steps.pick.outputs.id }}
   device:
     description: >
-      Model actually selected, slugified. Callers comparing measurements across
-      runs (the coverage ratchet) must include this in their cache key so a
-      fallback to a different model cannot compare unlike runs.
+      Model selected, slugified. Callers comparing measurements across runs
+      (the coverage ratchet) must include this in their cache key so a change
+      of model cannot compare unlike runs.
     value: ${{ steps.pick.outputs.device }}
 
 runs:
@@ -44,8 +47,8 @@ runs:
       id: pick
       shell: bash
       env:
-        MINIMUM_IOS: ${{ inputs.minimum-ios }}
-        PREFERRED_DEVICE: ${{ inputs.preferred-device }}
+        IOS_RUNTIME: ${{ inputs.ios-runtime }}
+        DEVICE: ${{ inputs.device }}
       run: |
         set -euo pipefail
 
@@ -53,50 +56,28 @@ runs:
         xcrun simctl list runtimes -j > "$RUNNER_TEMP/runtimes.json"
 
         selection="$(
-          python3 - "$RUNNER_TEMP/simulators.json" "$RUNNER_TEMP/runtimes.json" "$MINIMUM_IOS" "$PREFERRED_DEVICE" <<'PY'
+          python3 - "$RUNNER_TEMP/simulators.json" "$RUNNER_TEMP/runtimes.json" "$IOS_RUNTIME" "$DEVICE" <<'PY'
         import json
         import sys
 
-        path, runtimes_path, minimum, preferred = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4]
+        path, runtimes_path, pinned, model = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+        runtime_id = "com.apple.CoreSimulator.SimRuntime.iOS-" + pinned.replace(".", "-")
 
         with open(path, encoding="utf-8") as file:
             payload = json.load(file)
         with open(runtimes_path, encoding="utf-8") as file:
             builds = {r["identifier"]: r["buildversion"] for r in json.load(file)["runtimes"]}
 
-        candidates = []
-        for runtime, devices in payload["devices"].items():
-            if "SimRuntime.iOS-" not in runtime:
-                continue
-            version_part = runtime.split("SimRuntime.iOS-", 1)[1]
-            pieces = version_part.split("-")
-            try:
-                major = int(pieces[0])
-                minor = int(pieces[1]) if len(pieces) > 1 else 0
-            except ValueError:
-                continue
-            if major < minimum:
-                continue
-            for device in devices:
-                if device.get("isAvailable") and device.get("name", "").startswith("iPhone"):
-                    candidates.append(((major, minor), dict(device, runtime=runtime)))
+        candidates = [
+            dict(device, runtime=runtime_id)
+            for device in payload["devices"].get(runtime_id, [])
+            if device.get("isAvailable") and device.get("name") == model
+        ]
 
         if not candidates:
-            sys.exit("No available iPhone simulator with iOS >= %d." % minimum)
+            sys.exit("No available %s simulator on iOS %s." % (model, pinned))
 
-        def rank(item):
-            (major, minor), device = item
-            exact = device.get("name") == preferred
-            return (1 if exact else 0, major, minor)
-
-        candidates.sort(key=rank, reverse=True)
-        selected = candidates[0][1]
-        if selected.get("name") != preferred:
-            print(
-                "Preferred device %r unavailable; using %r."
-                % (preferred, selected.get("name")),
-                file=sys.stderr,
-            )
+        selected = candidates[0]
         print(selected["udid"])
         print(selected.get("name", "unknown"))
         print(selected["dataPath"])

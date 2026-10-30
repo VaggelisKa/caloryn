@@ -2,9 +2,8 @@
 
 SwiftUI + SwiftData iOS app. Deployment target **iOS 18.6**, built against the iOS 27 SDK —
 so `#available(iOS 26.0, *)` checks are live and their `else` branches ship. Do not delete
-them as dead code. **CI builds with Xcode 26.6 (Swift 6.3)**, so an iOS 27 API needs a
-`#if compiler(>=6.4)` (Xcode 27.1) guard around its `#available` check as well, or CI
-cannot compile it.
+them as dead code. CI builds with Xcode 27.1 (Swift 6.4), so an iOS 27 API needs only its
+`#available` check.
 
 ## Tests
 
@@ -98,8 +97,11 @@ exit code and looks green.
 
 ## CI
 
-Simulator pinned to iPhone 17; the coverage-baseline cache keys include the model
-because start-up coverage varies by device. Two coverage gates: the unit plan is a
+Runner `xcode-27`, Xcode 27.1 pinned by `DEVELOPER_DIR`. Simulator pinned to iPhone 17 on
+**iOS 27.0** — the image's 27.1 runtime has only iPhone Duo — and the job fails rather than
+fall back. CI runs no iOS 26 runtime, so verify tap-target work on a 26.x sim yourself: iOS
+26 hit-tests a plain button's glyphs, 27 its frame. The coverage-baseline cache keys include
+the model because start-up coverage varies by device. Two coverage gates: the unit plan is a
 **ratchet** (fails only on a regression vs main, 0.5pp tolerance), and the **combined**
 unit + UI figure must also stay **≥ 70%** and not regress. The two use different
 counting and are not comparable — xccov's report counts SwiftUI lines once per closure;
