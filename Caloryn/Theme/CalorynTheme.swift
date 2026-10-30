@@ -80,9 +80,6 @@ extension CalorynTheme {
     static func weeklyChartXAxisLabel(isDense: Bool) -> Font {
         isDense ? denseChartXAxisLabel : chartXAxisLabel
     }
-    static func trendChartXAxisLabel(pointCount: Int) -> Font {
-        weeklyChartXAxisLabel(isDense: pointCount > 7)
-    }
     static let badgeText: Font = CalorynTypeface.text(.caption2, weight: .semibold)
     static let toolbarIcon: Font = .system(.body, weight: .medium)
     static let inlineIcon: Font = .system(.headline, weight: .semibold)

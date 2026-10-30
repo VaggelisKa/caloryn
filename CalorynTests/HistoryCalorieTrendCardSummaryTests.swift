@@ -15,11 +15,11 @@ struct HistoryCalorieTrendCardSummaryTests {
 
         #expect(
             summary.chartAccessibilityLabel
-                == "Calorie trend for 7 Days. 0 of 7 days logged. Target 2000 calories."
+                == "Calorie trend for 7 Days. 0 of 7 days logged. Goal \(2_000.formatted()) calories."
         )
     }
 
-    @Test("given logged days, when describing the chart, then the average per logged day is spoken")
+    @Test("given logged days, when describing the chart, then the average per logged day is spoken against the goal")
     func aLoggedRangeSpeaksItsAverage() {
         let summary = makeSummary(
             dailyCalorieTarget: 2_000,
@@ -30,7 +30,7 @@ struct HistoryCalorieTrendCardSummaryTests {
 
         #expect(
             summary.chartAccessibilityLabel
-                == "Calorie trend for 7 Days. 5 of 7 days logged. Average 1900 calories per logged day. Target 2000 calories."
+                == "Calorie trend for 7 Days. 5 of 7 days logged. Average \(1_900.formatted()) calories per logged day. Goal \(2_000.formatted()) calories."
         )
     }
 
@@ -45,28 +45,10 @@ struct HistoryCalorieTrendCardSummaryTests {
         )
     }
 
-    @Test("given a fractional average, when showing it, then it is rounded to whole calories")
-    func theAverageIsRoundedForDisplay() {
-        let summary = makeSummary(averageCaloriesPerLoggedDay: 949.6)
-
-        #expect(summary.averageValueText == "950")
-    }
-
-    @Test("given the on-track count, when showing it, then it is out of logged days, not calendar days")
-    func theOnTrackRatioCountsLoggedDays() {
-        let summary = makeSummary(
-            totalDayCount: 30,
-            loggedDayCount: 5,
-            onTrackLoggedDayCount: 3
-        )
-
-        #expect(summary.onTrackRatioText == "3/5")
-    }
-
     @Test(
-        "given a logged total, when supporting the section title, then only its distance from the same days' goals is told",
+        "given a logged total, when supporting the section title, then an unsigned amount and a direction tell its distance from the same days' goals",
         arguments: [
-            (15_200.0, 12_000, "+\(3_200.formatted()) kcal", " over goal in total"),
+            (15_200.0, 12_000, "\(3_200.formatted()) kcal", " over goal in total"),
             (10_800.0, 12_000, "\(1_200.formatted()) kcal", " under goal in total"),
             (12_000.4, 12_000, "Right on goal", " in total")
         ]
@@ -83,7 +65,7 @@ struct HistoryCalorieTrendCardSummaryTests {
     func theSupportLineDropsTheCumulativeTotal() {
         let support = makeSummary(totalCalories: 61_200, loggedDayTargetTotal: 58_000).totalSupport
 
-        #expect(support?.text == "+\(3_200.formatted()) kcal over goal in total")
+        #expect(support?.text == "\(3_200.formatted()) kcal over goal in total")
         #expect(support?.text.contains(61_200.formatted()) == false)
     }
 
@@ -97,10 +79,8 @@ struct HistoryCalorieTrendCardSummaryTests {
         dailyCalorieTarget: Int = 2_000,
         totalDayCount: Int = 7,
         loggedDayCount: Int = 5,
-        onTrackLoggedDayCount: Int = 3,
         hasLoggedData: Bool = true,
         averageCaloriesPerLoggedDay: Double = 2_000,
-        averageTargetPerLoggedDay: Int = 2_000,
         totalCalories: Double = 10_000,
         loggedDayTargetTotal: Int = 10_000
     ) -> HistoryCalorieTrendCardSummary {
@@ -109,10 +89,8 @@ struct HistoryCalorieTrendCardSummaryTests {
             dailyCalorieTarget: dailyCalorieTarget,
             totalDayCount: totalDayCount,
             loggedDayCount: loggedDayCount,
-            onTrackLoggedDayCount: onTrackLoggedDayCount,
             hasLoggedData: hasLoggedData,
             averageCaloriesPerLoggedDay: averageCaloriesPerLoggedDay,
-            averageTargetPerLoggedDay: averageTargetPerLoggedDay,
             totalCalories: totalCalories,
             loggedDayTargetTotal: loggedDayTargetTotal
         )

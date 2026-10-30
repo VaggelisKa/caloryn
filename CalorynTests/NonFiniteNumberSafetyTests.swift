@@ -66,9 +66,13 @@ final class NonFiniteNumberSafetyTests: XCTestCase {
         let day = analytics.current.days.first(where: \.isLogged)
         XCTAssertNotNil(day)
         XCTAssertEqual(day?.calorieDifference, -2_000)
-        let projection = HistoryPatternDiscovery(analytics: analytics).calorieTrend
-        XCTAssertFalse(projection.totalDifferenceText.isEmpty)
-        XCTAssertFalse(projection.averageDifferenceText.isEmpty)
+        let projection = HistoryPatternDiscovery(analytics: analytics, today: date).calorieTrend
+        XCTAssertEqual(projection.cardSummary.totalSupport?.text, "\(2_000.formatted()) kcal under goal in total")
+        XCTAssertEqual(projection.rangeStats.average.value, "0")
+        XCTAssertEqual(
+            projection.furthestFromGoal?.text,
+            "Furthest from goal: \(date.shortFormatted(in: analytics.calendar)), \(2_000.formatted()) kcal under"
+        )
     }
 
     func testHistoryAnalyticsRendersADayWhoseCaloriesExceedTheIntegerRange() {
@@ -80,9 +84,16 @@ final class NonFiniteNumberSafetyTests: XCTestCase {
             endDate: date
         )
 
-        let projection = HistoryPatternDiscovery(analytics: analytics).calorieTrend
+        let projection = HistoryPatternDiscovery(analytics: analytics, today: date).calorieTrend
+        let overage = (CalorieDomain.maximum - 2_000).formatted()
         XCTAssertEqual(projection.totalTargetDelta, CalorieDomain.maximum - 2_000)
-        XCTAssertFalse(projection.totalDifferenceText.isEmpty)
+        XCTAssertEqual(projection.cardSummary.totalSupport?.text, "\(overage) kcal over goal in total")
+        XCTAssertEqual(projection.rangeStats.totalDelta, HistoryCalorieTrendStat(value: overage, label: "kcal over goal in total"))
+        XCTAssertEqual(projection.rangeStats.average.value, CalorieDomain.maximum.formatted())
+        XCTAssertEqual(
+            projection.furthestFromGoal?.text,
+            "Furthest from goal: \(date.shortFormatted(in: analytics.calendar)), \(overage) kcal over"
+        )
     }
 
     func testCalorieTrendLookupIgnoresANonFiniteChartIndex() {
@@ -93,7 +104,7 @@ final class NonFiniteNumberSafetyTests: XCTestCase {
             range: .week,
             endDate: date
         )
-        let trend = HistoryPatternDiscovery(analytics: analytics).calorieTrend
+        let trend = HistoryPatternDiscovery(analytics: analytics, today: date).calorieTrend
 
         XCTAssertNotNil(trend.point(for: 0))
         XCTAssertNil(trend.point(for: .nan))

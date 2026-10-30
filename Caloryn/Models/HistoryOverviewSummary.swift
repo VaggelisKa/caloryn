@@ -40,7 +40,7 @@ struct HistoryOverviewSummary: Equatable {
         averageCaloriesPerLoggedDay.rounded().truncatedSafely.formatted()
     }
 
-    var averageUnitText: String { "kcal / day on average" }
+    var averageUnitText: String { "kcal a day on average" }
 
     var emptyHeadlineText: String { "Nothing logged" }
 
@@ -69,7 +69,7 @@ struct HistoryOverviewSummary: Equatable {
 
     var averageAccessibilityLabel: String {
         guard hasLoggedDays else { return emptyHeadlineText }
-        return "\(averageValueText) kcal a day on average"
+        return "\(averageValueText) \(averageUnitText)"
     }
 
     var accessibilityLabel: String {
@@ -116,8 +116,7 @@ struct HistoryLoggedDaysBreakdown: Equatable {
     }
 
     var accessibilityLabel: String {
-        let counts = columns.map { "\($0.valueText) \($0.label)" }
-        return "\(title): \(counts.joined(separator: ", "))"
+        columns.map { "\($0.valueText) \($0.label)" }.joined(separator: ", ")
     }
 }
 
@@ -216,7 +215,7 @@ struct HistoryMacroRowSummary: Equatable, Identifiable {
     }
 
     private var metWording: String {
-        "met on \(hitDays) of \(loggedDays) \(loggedDays == 1 ? "day" : "days")"
+        "\(goalKind == .maximum ? "at or under" : "met") on \(hitDays) of \(loggedDays) \(loggedDays == 1 ? "day" : "days")"
     }
 
     private func changeWording(unit: String) -> String? {

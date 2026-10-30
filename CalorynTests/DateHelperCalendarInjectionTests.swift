@@ -278,7 +278,7 @@ struct HistoryCalendarInjectionTests {
             endDate: date(utcYear: 2026, month: 1, day: 10),
             calendar: cal
         )
-        let discovery = HistoryPatternDiscovery(analytics: analytics)
+        let discovery = HistoryPatternDiscovery(analytics: analytics, today: date(utcYear: 2026, month: 1, day: 10))
         let labels = discovery.calorieTrend.points.map(\.xAxisLabel)
 
         #expect(labels == ["S", "M", "T", "W", "T", "F", "S"])
@@ -294,7 +294,7 @@ struct HistoryCalendarInjectionTests {
             endDate: date(utcYear: 2026, month: 1, day: 10),
             calendar: cal
         )
-        let discovery = HistoryPatternDiscovery(analytics: analytics)
+        let discovery = HistoryPatternDiscovery(analytics: analytics, today: date(utcYear: 2026, month: 1, day: 10))
 
         for (point, day) in zip(discovery.calorieTrend.points, analytics.current.days) {
             #expect(point.xAxisLabel == day.date.weekdayInitial(in: cal))
@@ -315,13 +315,14 @@ struct HistoryCalendarInjectionTests {
 
         let projection = HistoryCalorieTrendProjection(
             range: analytics.range,
-            summary: analytics.current
+            summary: analytics.current,
+            today: date(utcYear: 2026, month: 1, day: 10)
         )
 
         for (point, day) in zip(projection.points, analytics.current.days) {
             #expect(point.xAxisLabel == day.date.weekdayInitial(in: cal))
             #expect(point.accessibilityLabel == day.date.shortFormatted(in: cal))
-            #expect(projection.dayText(for: day.date) == day.date.formatted(pattern: "EEE d MMM", in: cal))
+            #expect(projection.dayText(for: day.date) == day.date.shortFormatted(in: cal))
         }
 
         #expect(projection.points.map(\.xAxisLabel) == ["M", "T", "W", "T", "F", "S", "S"])
@@ -339,7 +340,8 @@ struct HistoryCalendarInjectionTests {
         )
         let projection = HistoryCalorieTrendProjection(
             range: analytics.range,
-            summary: analytics.current
+            summary: analytics.current,
+            today: date(utcYear: 2026, month: 1, day: 10)
         )
 
         for (point, week) in zip(projection.points, analytics.current.weeklyRollups) {

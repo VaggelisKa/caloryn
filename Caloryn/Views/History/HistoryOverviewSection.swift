@@ -270,19 +270,21 @@ struct HistoryLoggedDaysSection: View {
         VStack(alignment: .leading, spacing: 10) {
             HistorySectionTitle(breakdown.title)
 
-            columnLayout {
-                ForEach(breakdown.columns) { column in
-                    columnView(column)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+            VStack(alignment: .leading, spacing: 10) {
+                columnLayout {
+                    ForEach(breakdown.columns) { column in
+                        columnView(column)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                 }
-            }
 
-            proportionBar
-                .padding(.top, 4)
+                proportionBar
+                    .padding(.top, 4)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(breakdown.accessibilityLabel)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(breakdown.accessibilityLabel)
     }
 
     private func columnView(_ column: HistoryLoggedDaysBreakdown.Column) -> some View {

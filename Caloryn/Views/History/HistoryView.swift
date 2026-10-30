@@ -151,7 +151,7 @@ struct HistoryView: View {
         ScrollView {
             let state = historyState
             let history = state.analytics
-            let patternDiscovery = HistoryPatternDiscovery(analytics: history)
+            let patternDiscovery = HistoryPatternDiscovery(analytics: history, today: analyticsDayStart)
             let overview = HistoryOverviewSummary(
                 loggedDayCount: history.current.loggedDayCount,
                 totalDayCount: history.current.totalDayCount,
@@ -231,7 +231,10 @@ struct HistoryView: View {
         let state = historyState
         return detailSelection.pane(
             range: state.range,
-            canDrillIntoCalorieTrend: HistoryPatternDiscovery(analytics: state.analytics).calorieTrend.canDrillDown,
+            canDrillIntoCalorieTrend: HistoryPatternDiscovery(
+                analytics: state.analytics,
+                today: analyticsDayStart
+            ).calorieTrend.canDrillDown,
             hasRecurringPattern: state.recurringPattern != nil
         )
     }
@@ -247,6 +250,7 @@ struct HistoryView: View {
                     HistoryCalorieTrendDetailView(
                         range: range,
                         summary: state.analytics.current,
+                        today: analyticsDayStart,
                         initialSelectedPointID: inlineTrendSeed(for: range)?.initialSelectedPointID,
                         presentation: .inline
                     )
@@ -329,7 +333,8 @@ struct HistoryView: View {
     private func openCalorieTrendDetail(range: HistoryRange, summary: HistoryPeriodSummary) {
         let snapshot = HistoryCalorieTrendSnapshot(
             range: range,
-            summary: summary
+            summary: summary,
+            today: analyticsDayStart
         )
         open(.calorieTrend(snapshot))
     }
@@ -372,12 +377,14 @@ struct HistoryView: View {
         case .calorieTrend, .calorieTrendSelected:
             var snapshot = HistoryCalorieTrendSnapshot(
                 range: state.range,
-                summary: state.analytics.current
+                summary: state.analytics.current,
+                today: analyticsDayStart
             )
             if drillDown == .calorieTrendSelected {
                 let projection = HistoryCalorieTrendProjection(
                     range: state.range,
-                    summary: state.analytics.current
+                    summary: state.analytics.current,
+                    today: analyticsDayStart
                 )
                 snapshot.initialSelectedPointID = projection.points.last(where: \.isLogged)?.id
             }
@@ -400,6 +407,7 @@ struct HistoryView: View {
             HistoryCalorieTrendDetailView(
                 range: snapshot.range,
                 summary: snapshot.summary,
+                today: snapshot.today,
                 initialSelectedPointID: snapshot.initialSelectedPointID
             )
         case .recurringPattern(let snapshot):
@@ -468,6 +476,7 @@ private struct HistoryCalorieTrendSnapshot: Hashable {
     let id = UUID()
     let range: HistoryRange
     let summary: HistoryPeriodSummary
+    let today: Date
     var initialSelectedPointID: String?
 
     static func == (lhs: HistoryCalorieTrendSnapshot, rhs: HistoryCalorieTrendSnapshot) -> Bool {

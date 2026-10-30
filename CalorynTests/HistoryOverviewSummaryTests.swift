@@ -10,7 +10,7 @@ struct HistoryOverviewSummaryTests {
 
         #expect(summary.hasLoggedDays)
         #expect(summary.averageValueText == 1_953.formatted())
-        #expect(summary.averageUnitText == "kcal / day on average")
+        #expect(summary.averageUnitText == "kcal a day on average")
     }
 
     @Test("given an average over the goal, when supporting it, then only the overshoot against the goal is stated")
@@ -78,7 +78,7 @@ struct HistoryOverviewSummaryTests {
         #expect(breakdown.title == "Logged days")
         #expect(breakdown.columns.map(\.valueText) == ["25", "4", "0"])
         #expect(breakdown.columns.map(\.label) == ["on track", "over", "under"])
-        #expect(breakdown.accessibilityLabel == "Logged days: 25 on track, 4 over, 0 under")
+        #expect(breakdown.accessibilityLabel == "25 on track, 4 over, 0 under")
     }
 
     @Test("given logged days by status, when drawing the bar, then each status with days takes its share")
@@ -119,11 +119,11 @@ struct HistoryOverviewSummaryTests {
     }
 
     @Test(
-        "given each goal kind, when stating met days, then the caption names the goal kind",
+        "given each goal kind, when stating met days, then the caption names the goal kind and a maximum is met by staying under",
         arguments: [
             (NutrientGoalKind.minimum, "Minimum · met on 0 of 29 days"),
             (.target, "Target · met on 0 of 29 days"),
-            (.maximum, "Maximum · met on 0 of 29 days")
+            (.maximum, "Maximum · at or under on 0 of 29 days")
         ]
     )
     func theCaptionNamesTheGoalKind(goalKind: NutrientGoalKind, expected: String) {
@@ -179,7 +179,7 @@ struct HistoryOverviewSummaryTests {
         arguments: [
             (NutrientGoalKind.minimum, "Protein, 80 of 150 grams a day, minimum, met on 0 of 29 days"),
             (.target, "Protein, 80 of 150 grams a day, target, met on 0 of 29 days"),
-            (.maximum, "Protein, 80 of 150 grams a day, maximum, met on 0 of 29 days")
+            (.maximum, "Protein, 80 of 150 grams a day, maximum, at or under on 0 of 29 days")
         ]
     )
     func eachGoalKindIsSpoken(goalKind: NutrientGoalKind, expected: String) {

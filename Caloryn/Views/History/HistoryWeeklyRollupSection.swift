@@ -4,6 +4,8 @@ import Charts
 struct HistoryWeeklyRollupSection: View {
     let projection: HistoryWeeklyConsistencyProjection
 
+    @ScaledMetric(relativeTo: .caption2) private var countHeadroom: CGFloat = 18
+
     var body: some View {
         let chart = projection.chart
 
@@ -61,8 +63,9 @@ struct HistoryWeeklyRollupSection: View {
                         ForEach(chart.weeks) { week in
                             if let xPosition = proxy.position(forX: Double(week.index)) {
                                 if chart.showsCounts,
+                                   let countText = week.countText,
                                    let yPosition = proxy.position(forY: week.onTrackPercentage) {
-                                    Text(week.countText)
+                                    Text(countText)
                                         .font(CalorynTheme.microCaptionEmphasized.monospacedDigit())
                                         .foregroundStyle(CalorynTheme.textPrimary)
                                         .lineLimit(1)
@@ -70,7 +73,7 @@ struct HistoryWeeklyRollupSection: View {
                                         .frame(width: slotWidth)
                                         .position(
                                             x: plotRect.minX + xPosition,
-                                            y: plotRect.minY + yPosition - 9
+                                            y: plotRect.minY + yPosition - countHeadroom / 2
                                         )
                                 }
 
@@ -94,7 +97,7 @@ struct HistoryWeeklyRollupSection: View {
             .chartYScale(domain: 0 ... 100)
             .chartXScale(domain: chart.xAxisDomain)
             .frame(height: 170)
-            .padding(.top, chart.showsCounts ? 18 : 4)
+            .padding(.top, chart.showsCounts ? countHeadroom : 4)
             .accessibilityLabel(
                 HistoryWeeklyConsistencyChart.accessibilityLabel(
                     loggedDayCount: projection.loggedDayCount,
