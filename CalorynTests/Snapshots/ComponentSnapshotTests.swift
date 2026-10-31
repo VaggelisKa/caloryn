@@ -604,28 +604,35 @@ final class ComponentSnapshotTests: XCTestCase {
         line: UInt = #line,
         column: UInt = #column
     ) {
-        let host = UIHostingController(rootView: view)
-        let stage = UIWindow(frame: CGRect(origin: .zero, size: size))
-        stage.rootViewController = host
-        stage.isHidden = false
-        RunLoop.main.run(until: Date(timeIntervalSinceNow: 1.5))
-        waitUntilFramesSettle(in: stage, deadline: Date(timeIntervalSinceNow: 10))
-        stage.rootViewController = nil
+        for (name, traits) in traits.sorted(by: { $0.key < $1.key }) {
+            let host = UIHostingController(rootView: view)
+            host.traitOverrides.userInterfaceStyle = traits.userInterfaceStyle
+            host.traitOverrides.preferredContentSizeCategory = traits.preferredContentSizeCategory
+            let stage = UIWindow(frame: CGRect(origin: .zero, size: size))
+            stage.rootViewController = host
+            stage.isHidden = false
+            RunLoop.main.run(until: Date(timeIntervalSinceNow: 1.5))
+            let settled = waitUntilFramesSettle(in: stage, deadline: Date(timeIntervalSinceNow: 10))
+            stage.rootViewController = nil
+            guard settled else {
+                XCTFail("The \(name) hero was still moving after 10 seconds", file: filePath, line: line)
+                continue
+            }
 
-        assertSnapshots(
-            of: host as UIViewController,
-            as: traits.mapValues { traits in
-                .image(precision: precision, perceptualPrecision: perceptualPrecision, size: size, traits: traits)
-            },
-            fileID: fileID,
-            file: filePath,
-            testName: testName,
-            line: line,
-            column: column
-        )
+            assertSnapshot(
+                of: host as UIViewController,
+                as: .image(precision: precision, perceptualPrecision: perceptualPrecision, size: size, traits: traits),
+                named: name,
+                fileID: fileID,
+                file: filePath,
+                testName: testName,
+                line: line,
+                column: column
+            )
+        }
     }
 
-    private func waitUntilFramesSettle(in window: UIWindow, deadline: Date) {
+    private func waitUntilFramesSettle(in window: UIWindow, deadline: Date) -> Bool {
         let unchangedSamplesLongerThanTheReveal = 4
         var previous = rendered(window)
         var unchangedSamples = 0
@@ -633,13 +640,16 @@ final class ComponentSnapshotTests: XCTestCase {
             RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.25))
             let current = rendered(window)
             unchangedSamples = current == previous ? unchangedSamples + 1 : 0
-            if unchangedSamples == unchangedSamplesLongerThanTheReveal { return }
+            if unchangedSamples == unchangedSamplesLongerThanTheReveal { return true }
             previous = current
         }
+        return false
     }
 
     private func rendered(_ window: UIWindow) -> Data {
-        UIGraphicsImageRenderer(bounds: window.bounds).pngData { context in
+        let format = UIGraphicsImageRendererFormat.preferred()
+        format.scale = 1
+        return UIGraphicsImageRenderer(bounds: window.bounds, format: format).pngData { context in
             window.layer.render(in: context.cgContext)
         }
     }
