@@ -29,7 +29,13 @@ final class RegularWidthScreensTests: XCTestCase {
     }
 
     func testMyFoodsOnATallTabletShowsTheFirstFavouriteBesideTheList() throws {
-        let screen = try host(MyFoodsView(), fixture: .customFoods, size: Self.tallTablet, isRegular: true)
+        let screen = try host(
+            MyFoodsView(),
+            fixture: .customFoods,
+            size: Self.tallTablet,
+            isRegular: true,
+            readyWhen: "myFoods.detail.name"
+        )
 
         XCTAssertEqual(screen.label(of: "myFoods.detail.name"), "Morning Smoothie")
         XCTAssertNotNil(screen.element("myFoods.detail.addToToday"))
@@ -44,7 +50,13 @@ final class RegularWidthScreensTests: XCTestCase {
     }
 
     func testSettingsOnATallTabletListsTheSectionsBesideTheChosenOne() throws {
-        let screen = try host(SettingsView(), fixture: .loggedDay, size: Self.tallTablet, isRegular: true)
+        let screen = try host(
+            SettingsView(),
+            fixture: .loggedDay,
+            size: Self.tallTablet,
+            isRegular: true,
+            readyWhen: "settings.section.goal"
+        )
 
         XCTAssertEqual(screen.traits(of: "settings.section.goal")?.contains(.selected), true)
         XCTAssertNotNil(screen.element("settings.section.about"))
@@ -67,7 +79,7 @@ final class RegularWidthScreensTests: XCTestCase {
             fixture: .historyPattern,
             size: Self.tallTablet,
             isRegular: true,
-            readyWhen: "history.calorieTrend.card"
+            readyWhen: "history.calorieTrend.details"
         )
 
         XCTAssertNotNil(screen.element("history.calorieTrend.card"))
