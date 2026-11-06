@@ -426,9 +426,7 @@ final class ComponentSnapshotTests: XCTestCase {
                 name: "Chicken Caesar salad with croutons, parmesan and extra dressing",
                 kcal: 640.5,
                 grams: nil,
-                proteinG: 38.5,
-                carbsG: nil,
-                fatG: 42,
+                nutrients: [.protein: 38.5, .fat: 42],
                 meal: nil
             ),
             locale: Locale(identifier: "en_US")

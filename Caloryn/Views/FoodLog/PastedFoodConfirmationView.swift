@@ -103,9 +103,7 @@ struct PastedFoodConfirmationView: View {
                 name: confirmation.name,
                 calories: confirmation.kcal,
                 portionGrams: portionGrams,
-                proteinG: confirmation.proteinG,
-                carbsG: confirmation.carbsG,
-                fatG: confirmation.fatG,
+                nutrients: confirmation.nutrients,
                 mealType: mealType,
                 snackIndex: snackIndex,
                 logDate: logDate,
@@ -157,11 +155,11 @@ struct PastedFoodConfirmationForm: View {
                 footer: "Totals for the whole portion, as your chatbot sent them. Changing the portion weight doesn’t change them."
             ) {
                 valueRow("Calories", value: confirmation.caloriesText(locale: locale), identifier: "pastedFood.calories")
-                ForEach(PastedFoodConfirmation.Macro.allCases, id: \.self) { macro in
+                ForEach(confirmation.shownNutrients, id: \.self) { nutrient in
                     valueRow(
-                        macro.label,
-                        value: confirmation.amountText(of: macro, locale: locale),
-                        identifier: "pastedFood.\(macro.label.lowercased())"
+                        nutrient.label,
+                        value: confirmation.amountText(of: nutrient, locale: locale),
+                        identifier: "pastedFood.\(nutrient.rawValue)"
                     )
                 }
             }
