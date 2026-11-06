@@ -58,9 +58,7 @@ enum DailyFoodLogCommands {
         name: String,
         calories: Double,
         portionGrams: Double,
-        proteinG: Double?,
-        carbsG: Double?,
-        fatG: Double?,
+        nutrients: [LogLinkNutrient: Double],
         mealType: MealType,
         snackIndex: Int?,
         logDate: Date,
@@ -70,8 +68,8 @@ enum DailyFoodLogCommands {
         guard !foodName.isEmpty,
               importedCalorieRange.contains(calories),
               FavoriteFoodLogging.isSafePortion(portionGrams),
-              [proteinG, carbsG, fatG].allSatisfy({
-                  isValidImportedMacro($0, portionGrams: portionGrams)
+              nutrients.values.allSatisfy({
+                  isValidImportedNutrient($0, portionGrams: portionGrams)
               }) else {
             throw CommandError.invalidImportedEntry
         }
@@ -79,19 +77,14 @@ enum DailyFoodLogCommands {
         let snapshot = FoodLogEntrySnapshot(
             foodName: foodName,
             portionGrams: portionGrams,
-            nutrition: NutritionValues(
-                calories: calories,
-                proteinG: proteinG ?? 0,
-                carbsG: carbsG ?? 0,
-                fatG: fatG ?? 0
-            ),
+            nutrition: LogLinkNutrient.nutrition(calories: calories, nutrients: nutrients),
             provenance: FoodProvenance(
                 provider: nil,
                 source: .linkImport,
                 completeness: .assessingCoreNutrition(
-                    protein: proteinG,
-                    carbohydrates: carbsG,
-                    fat: fatG
+                    protein: nutrients[.protein],
+                    carbohydrates: nutrients[.carbs],
+                    fat: nutrients[.fat]
                 ),
                 recoveredByFallback: false
             ),
@@ -246,9 +239,8 @@ enum DailyFoodLogCommands {
         return max(1, requestedSnackIndex ?? 1)
     }
 
-    private static func isValidImportedMacro(_ grams: Double?, portionGrams: Double) -> Bool {
-        guard let grams else { return true }
-        return grams >= 0 && grams <= portionGrams
+    private static func isValidImportedNutrient(_ grams: Double, portionGrams: Double) -> Bool {
+        grams >= 0 && grams <= portionGrams
     }
 
     private static func makeTransactionContext(from sourceContext: ModelContext) -> ModelContext {

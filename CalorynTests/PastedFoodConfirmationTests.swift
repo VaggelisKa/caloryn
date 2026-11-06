@@ -15,16 +15,16 @@ struct PastedFoodConfirmationTests {
         proteinG: Double? = 15,
         carbsG: Double? = 6,
         fatG: Double? = 4,
+        others: [LogLinkNutrient: Double] = [:],
         locale: Locale = english
     ) -> PastedFoodConfirmation {
-        PastedFoodConfirmation(
+        let core: [LogLinkNutrient: Double?] = [.protein: proteinG, .carbs: carbsG, .fat: fatG]
+        return PastedFoodConfirmation(
             draft: LogLinkDraft(
                 name: name,
                 kcal: kcal,
                 grams: grams,
-                proteinG: proteinG,
-                carbsG: carbsG,
-                fatG: fatG,
+                nutrients: core.compactMapValues { $0 }.merging(others) { $1 },
                 meal: nil
             ),
             locale: locale
@@ -92,6 +92,38 @@ struct PastedFoodConfirmationTests {
         #expect(confirmation.amountText(of: .protein, locale: Self.english) == "0 g")
         #expect(confirmation.amountText(of: .carbs, locale: Self.english) == "Not provided")
         #expect(confirmation.amountText(of: .fat, locale: Self.english) == "Not provided")
+    }
+
+    @Test("Only the core macros and the nutrients the link carries are shown, in the app's order")
+    func shownNutrients() {
+        let confirmation = Self.confirmation(
+            proteinG: nil,
+            carbsG: nil,
+            fatG: 4,
+            others: [.sodium: 0.48, .fiber: 2, .saturatedFat: 1.5, .sugars: 3]
+        )
+
+        #expect(confirmation.shownNutrients == [.protein, .carbs, .fat, .fiber, .sugars, .saturatedFat, .sodium])
+        #expect(confirmation.amountText(of: .protein, locale: Self.english) == "Not provided")
+        #expect(confirmation.amountText(of: .fiber, locale: Self.english) == "2 g")
+        #expect(confirmation.amountText(of: .saturatedFat, locale: Self.english) == "1.5 g")
+        #expect(confirmation.amountText(of: .sodium, locale: Self.english) == "480 mg")
+        #expect(confirmation.amountText(of: .cholesterol, locale: Self.english) == "Not provided")
+    }
+
+    @Test("A pasted link with extra nutrients carries them to the confirmation")
+    func pastedLinkWithExtraNutrients() throws {
+        let confirmation = try PastedFoodConfirmation.opening(
+            pasted: ["caloryn://log?v=2&name=Oatmeal&kcal=300&grams=250&protein=10&carbs=54&fat=5&fiber=8&sugars=1.5&saturated_fat=1&sodium_mg=115.5&cholesterol_mg=0"],
+            locale: Self.english
+        ).get()
+
+        #expect(confirmation.amountText(of: .fiber, locale: Self.english) == "8 g")
+        #expect(confirmation.amountText(of: .sugars, locale: Self.english) == "1.5 g")
+        #expect(confirmation.amountText(of: .saturatedFat, locale: Self.english) == "1 g")
+        #expect(confirmation.amountText(of: .sodium, locale: Self.english) == "115.5 mg")
+        #expect(confirmation.amountText(of: .cholesterol, locale: Self.english) == "0 mg")
+        #expect(confirmation.canAdd)
     }
 
     @Test("Values show every decimal the link carries, so the screen shows what is saved")
@@ -202,25 +234,24 @@ struct PastedFoodConfirmationTests {
     }
 
     @Test(
-        "Each macro alone is checked against the portion",
+        "Each nutrient alone is checked against the portion",
         arguments: [
-            (PastedFoodConfirmation.Macro.protein, 40.5, "The portion can’t weigh less than its 40.5 g of protein."),
+            (LogLinkNutrient.protein, 40.5, "The portion can’t weigh less than its 40.5 g of protein."),
             (.carbs, 41, "The portion can’t weigh less than its 41 g of carbs."),
             (.fat, 40.01, "The portion can’t weigh less than its 40.01 g of fat."),
-        ] as [(PastedFoodConfirmation.Macro, Double, String)]
+            (.sugars, 41, "The portion can’t weigh less than its 41 g of sugars."),
+            (.saturatedFat, 40.5, "The portion can’t weigh less than its 40.5 g of saturated fat."),
+            (.fiber, 45, "The portion can’t weigh less than its 45 g of fiber."),
+            (.sodium, 40.5, "The portion can’t weigh less than its 40,500 mg of sodium."),
+        ] as [(LogLinkNutrient, Double, String)]
     )
-    func eachMacroIsChecked(macro: PastedFoodConfirmation.Macro, grams: Double, reason: String) {
+    func eachNutrientIsChecked(nutrient: LogLinkNutrient, grams: Double, reason: String) {
         let confirmation = Self.withGrams(
             "40",
-            from: Self.confirmation(
-                grams: nil,
-                proteinG: macro == .protein ? grams : nil,
-                carbsG: macro == .carbs ? grams : nil,
-                fatG: macro == .fat ? grams : nil
-            )
+            from: Self.confirmation(grams: nil, proteinG: nil, carbsG: nil, fatG: nil, others: [nutrient: grams])
         )
 
-        #expect(confirmation.portionBlocker == .portionLighterThan(macro, grams: grams))
+        #expect(confirmation.portionBlocker == .portionLighterThan(nutrient, grams: grams))
         #expect(confirmation.portionBlockedReason(locale: Self.english) == reason)
     }
 
@@ -235,15 +266,15 @@ struct PastedFoodConfirmationTests {
         #expect(confirmation.portionGrams == 30)
     }
 
-    @Test("Changing the grams never rescales the calories or macros")
+    @Test("Changing the grams never rescales the calories or nutrients")
     func gramsDoNotRescale() {
-        let original = Self.confirmation()
+        let original = Self.confirmation(others: [.sugars: 5, .sodium: 0.09])
         let edited = Self.withGrams("340", from: original)
 
         #expect(edited.portionGrams == 340)
         #expect(edited.kcal == original.kcal)
         #expect(edited.caloriesText(locale: Self.english) == "150 kcal")
-        for macro in PastedFoodConfirmation.Macro.allCases {
+        for macro in LogLinkNutrient.allCases {
             #expect(edited.grams(of: macro) == original.grams(of: macro))
             #expect(edited.amountText(of: macro, locale: Self.english) == original.amountText(of: macro, locale: Self.english))
         }

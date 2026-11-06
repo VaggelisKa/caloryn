@@ -14,6 +14,12 @@ struct ImportedFoodLogEntryTests {
         var proteinG: Double? = 15
         var carbsG: Double? = 6
         var fatG: Double? = 4
+        var others: [LogLinkNutrient: Double] = [:]
+
+        var nutrients: [LogLinkNutrient: Double] {
+            let core: [LogLinkNutrient: Double?] = [.protein: proteinG, .carbs: carbsG, .fat: fatG]
+            return core.compactMapValues { $0 }.merging(others) { $1 }
+        }
 
         var testDescription: String { description }
     }
@@ -27,9 +33,7 @@ struct ImportedFoodLogEntryTests {
             name: "Greek yogurt",
             calories: 150,
             portionGrams: 170,
-            proteinG: 15,
-            carbsG: 6,
-            fatG: 4,
+            nutrients: [.protein: 15, .carbs: 6, .fat: 4],
             mealType: .lunch,
             snackIndex: nil,
             logDate: makeTestDate(year: 2026, month: 10, day: 24, hour: 13, minute: 20),
@@ -96,9 +100,7 @@ struct ImportedFoodLogEntryTests {
             name: "Apple",
             calories: 52,
             portionGrams: 100,
-            proteinG: 0.3,
-            carbsG: 14,
-            fatG: 0.2,
+            nutrients: [.protein: 0.3, .carbs: 14, .fat: 0.2],
             mealType: mealType,
             snackIndex: requested,
             logDate: makeTestDate(year: 2026, month: 10, day: 24),
@@ -157,6 +159,9 @@ struct ImportedFoodLogEntryTests {
             ImportInput(description: "NaN protein", proteinG: .nan),
             ImportInput(description: "infinite carbs", carbsG: .infinity),
             ImportInput(description: "negative infinite fat", fatG: -.infinity),
+            ImportInput(description: "sugars heavier than the portion", others: [.sugars: 170.01]),
+            ImportInput(description: "negative sodium", others: [.sodium: -0.001]),
+            ImportInput(description: "NaN saturated fat", others: [.saturatedFat: .nan]),
         ]
     )
     func rejectsInvalidInput(input: ImportInput) throws {
@@ -186,6 +191,50 @@ struct ImportedFoodLogEntryTests {
         try logImported(input, into: context)
 
         #expect(try context.fetch(FetchDescriptor<FoodLogEntry>()).count == 1)
+    }
+
+    @Test("Every nutrient beyond the core macros is saved on the entry and survives a reload")
+    func extraNutrientsRoundTrip() throws {
+        let container = try makeContainer()
+        let context = ModelContext(container)
+        let others = Dictionary(
+            uniqueKeysWithValues: LogLinkNutrient.allCases
+                .filter { !$0.isCore }
+                .enumerated()
+                .map { ($1, Double($0 + 1) / 10) }
+        )
+
+        try logImported(ImportInput(description: "everything", others: others), into: context)
+        try context.save()
+
+        let entry = try #require(ModelContext(container).fetch(FetchDescriptor<FoodLogEntry>()).first)
+        let expected = LogLinkNutrient.nutrition(
+            calories: 150,
+            nutrients: ImportInput(description: "everything", others: others).nutrients
+        )
+        #expect(entry.nutrition == expected)
+        #expect(entry.fiberG == others[.fiber])
+        #expect(entry.sugarsG == others[.sugars])
+        #expect(entry.saturatedFatG == others[.saturatedFat])
+        #expect(entry.sodiumG == others[.sodium])
+        #expect(entry.cholesterolG == others[.cholesterol])
+        #expect(entry.alcoholG == others[.alcohol])
+    }
+
+    @Test("Nutrients the link left out stay unknown rather than zero")
+    func omittedNutrientsStayUnknown() throws {
+        let context = ModelContext(try makeContainer())
+
+        let entry = try logImported(
+            ImportInput(description: "sodium only", others: [.sodium: 0.2]),
+            into: context
+        )
+
+        #expect(entry.sodiumG == 0.2)
+        #expect(entry.sugarsG == nil)
+        #expect(entry.saturatedFatG == nil)
+        #expect(entry.cholesterolG == nil)
+        #expect(entry.fiberG == 0)
     }
 
     @Test("The rejection explains itself to the user")
@@ -240,9 +289,7 @@ struct ImportedFoodLogEntryTests {
             name: input.name,
             calories: input.calories,
             portionGrams: input.portionGrams,
-            proteinG: input.proteinG,
-            carbsG: input.carbsG,
-            fatG: input.fatG,
+            nutrients: input.nutrients,
             mealType: .lunch,
             snackIndex: nil,
             logDate: makeTestDate(year: 2026, month: 10, day: 24),

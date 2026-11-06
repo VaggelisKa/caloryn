@@ -1,15 +1,37 @@
 import Foundation
 
 struct LogLinkDraft: Equatable, Sendable {
-    enum Field: String, CaseIterable, Sendable {
-        case version = "v"
+    enum Field: Hashable, Sendable, RawRepresentable {
+        case version
         case name
         case kcal
         case grams
-        case protein
-        case carbs
-        case fat
+        case nutrient(LogLinkNutrient)
         case meal
+
+        nonisolated init?(rawValue: String) {
+            switch rawValue {
+            case "v": self = .version
+            case "name": self = .name
+            case "kcal": self = .kcal
+            case "grams": self = .grams
+            case "meal": self = .meal
+            default:
+                guard let nutrient = LogLinkNutrient(rawValue: rawValue) else { return nil }
+                self = .nutrient(nutrient)
+            }
+        }
+
+        nonisolated var rawValue: String {
+            switch self {
+            case .version: "v"
+            case .name: "name"
+            case .kcal: "kcal"
+            case .grams: "grams"
+            case .nutrient(let nutrient): nutrient.rawValue
+            case .meal: "meal"
+            }
+        }
 
         nonisolated var label: String {
             switch self {
@@ -17,16 +39,15 @@ struct LogLinkDraft: Equatable, Sendable {
             case .name: "food name"
             case .kcal: "calorie value"
             case .grams: "portion weight"
-            case .protein: "protein amount"
-            case .carbs: "carbs amount"
-            case .fat: "fat amount"
+            case .nutrient(let nutrient): "\(nutrient.label.lowercased()) amount"
             case .meal: "meal"
             }
         }
     }
 
     static let linkPrefix = "caloryn://log?"
-    static let supportedVersion = "1"
+    static let currentVersion = "2"
+    static let supportedVersions: Set<String> = ["1", currentVersion]
     static let maximumNameLength = 100
     static let calorieRange: ClosedRange<Double> = 0...20_000
     static let macroRange: ClosedRange<Double> = 0...5_000
@@ -34,9 +55,7 @@ struct LogLinkDraft: Equatable, Sendable {
     let name: String
     let kcal: Double
     let grams: Double?
-    let proteinG: Double?
-    let carbsG: Double?
-    let fatG: Double?
+    let nutrients: [LogLinkNutrient: Double]
     let meal: WidgetMeal?
 
     static func parse(_ text: String) -> Result<LogLinkDraft, LogLinkRejection> {
@@ -113,7 +132,7 @@ struct LogLinkDraft: Equatable, Sendable {
         let versions = pairs.filter { $0.name == Field.version.rawValue }
         guard let version = versions.first else { throw .missingField(.version) }
         guard versions.count == 1 else { throw .duplicateField(.version) }
-        guard version.value == supportedVersion else { throw .unsupportedVersion }
+        guard supportedVersions.contains(version.value) else { throw .unsupportedVersion }
 
         var values: [Field: String] = [:]
         for pair in pairs {
@@ -142,9 +161,7 @@ struct LogLinkDraft: Equatable, Sendable {
             name: name,
             kcal: kcal,
             grams: grams,
-            proteinG: try macro(.protein, in: values, portionGrams: grams),
-            carbsG: try macro(.carbs, in: values, portionGrams: grams),
-            fatG: try macro(.fat, in: values, portionGrams: grams),
+            nutrients: try nutrients(in: values, portionGrams: grams),
             meal: try meal(in: values)
         )
     }
@@ -199,17 +216,22 @@ struct LogLinkDraft: Equatable, Sendable {
             && text.utf8.allSatisfy { (UInt8(ascii: "0")...UInt8(ascii: "9")).contains($0) }
     }
 
-    private static func macro(
-        _ field: Field,
+    private static func nutrients(
         in values: [Field: String],
         portionGrams: Double?
-    ) throws(LogLinkRejection) -> Double? {
-        guard let grams = try optionalAmount(field, in: values) else { return nil }
-        guard macroRange.contains(grams) else { throw .outOfRange(field) }
-        if let portionGrams, grams > portionGrams {
-            throw .exceedsPortion(field)
+    ) throws(LogLinkRejection) -> [LogLinkNutrient: Double] {
+        var nutrients: [LogLinkNutrient: Double] = [:]
+        for nutrient in LogLinkNutrient.allCases {
+            let field = Field.nutrient(nutrient)
+            guard let value = try optionalAmount(field, in: values) else { continue }
+            let grams = nutrient.grams(fromLinkValue: value)
+            guard macroRange.contains(grams) else { throw .outOfRange(field) }
+            if let portionGrams, grams > portionGrams {
+                throw .exceedsPortion(field)
+            }
+            nutrients[nutrient] = grams
         }
-        return grams
+        return nutrients
     }
 
     private static func meal(in values: [Field: String]) throws(LogLinkRejection) -> WidgetMeal? {
@@ -248,7 +270,7 @@ enum LogLinkRejection: LocalizedError, Equatable, Sendable {
         case .unsupportedVersion:
             "This link was made for a newer version of Caloryn. Update Caloryn, then paste it again."
         case .unknownField:
-            "The link has a field Caloryn doesn’t recognize. It may only contain v, name, kcal, grams, protein, carbs, fat and meal."
+            "The link has a field Caloryn doesn’t recognize. Copy the instructions in Settings › Log from a chatbot and paste them into your chatbot again."
         case .duplicateField(let field):
             "The link gives the \(field.label) more than once."
         case .missingField(let field):

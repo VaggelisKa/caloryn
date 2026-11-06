@@ -11,9 +11,7 @@ struct LogLinkDraftTests {
         name: "Greek yogurt",
         kcal: 150,
         grams: 170,
-        proteinG: 15,
-        carbsG: 6,
-        fatG: 4,
+        nutrients: [.protein: 15, .carbs: 6, .fat: 4],
         meal: nil
     )
 
@@ -21,9 +19,7 @@ struct LogLinkDraftTests {
         name: "Apple",
         kcal: 52,
         grams: nil,
-        proteinG: nil,
-        carbsG: nil,
-        fatG: nil,
+        nutrients: [:],
         meal: nil
     )
 
@@ -55,9 +51,7 @@ struct LogLinkDraftTests {
             name: "Chicken salad",
             kcal: 420.5,
             grams: 350.25,
-            proteinG: 38,
-            carbsG: 12.5,
-            fatG: 24.75,
+            nutrients: [.protein: 38, .carbs: 12.5, .fat: 24.75],
             meal: .lunch
         )
 
@@ -90,9 +84,9 @@ struct LogLinkDraftTests {
 
     @Test("A full stop straight after the link stays part of it, so the last value is rejected")
     func trailingFullStopIsPartOfTheLink() {
-        #expect(LogLinkDraft.parse("Tap to log: \(Self.specExample). Anything else?") == .failure(.invalidNumber(.fat)))
+        #expect(LogLinkDraft.parse("Tap to log: \(Self.specExample). Anything else?") == .failure(.invalidNumber(.nutrient(.fat))))
         #expect(LogLinkDraft.parse("Log caloryn://log?v=1&kcal=52&name=Apple.") == .success(
-            LogLinkDraft(name: "Apple.", kcal: 52, grams: nil, proteinG: nil, carbsG: nil, fatG: nil, meal: nil)
+            LogLinkDraft(name: "Apple.", kcal: 52, grams: nil, nutrients: [:], meal: nil)
         ))
     }
 
@@ -174,8 +168,14 @@ struct LogLinkDraftTests {
         #expect(Self.parse(query: "") == .failure(.missingField(.version)))
     }
 
-    @Test("Any version other than exactly 1 asks for a newer Caloryn", arguments: [
-        "v=2",
+    @Test("Both supported versions are accepted", arguments: ["1", "2"])
+    func supportedVersionIsAccepted(version: String) {
+        #expect(Self.parse(query: "v=\(version)&name=Apple&kcal=52") == .success(Self.apple))
+    }
+
+    @Test("Any version other than exactly 1 or 2 asks for a newer Caloryn", arguments: [
+        "v=3",
+        "v=02",
         "v=01",
         "v=1.0",
         "v=0",
@@ -192,8 +192,8 @@ struct LogLinkDraftTests {
 
     @Test("A newer version is reported before the fields this version does not know")
     func newerVersionWinsOverUnknownFields() {
-        #expect(Self.parse(query: "v=2&name=Apple&kcal=52&date=2026-10-24") == .failure(.unsupportedVersion))
-        #expect(Self.parse(query: "date=2026-10-24&v=2") == .failure(.unsupportedVersion))
+        #expect(Self.parse(query: "v=3&name=Apple&kcal=52&date=2026-10-24") == .failure(.unsupportedVersion))
+        #expect(Self.parse(query: "date=2026-10-24&v=3") == .failure(.unsupportedVersion))
     }
 
     @Test("A field given twice is rejected", arguments: [
@@ -202,9 +202,10 @@ struct LogLinkDraftTests {
         ("v=1&name=Apple&name=Pear&kcal=52", .name),
         ("v=1&name=Apple&kcal=52&kcal=52", .kcal),
         ("v=1&name=Apple&kcal=52&grams=100&grams=100", .grams),
-        ("v=1&name=Apple&kcal=52&protein=1&protein=1", .protein),
-        ("v=1&name=Apple&kcal=52&carbs=1&carbs=2", .carbs),
-        ("v=1&name=Apple&kcal=52&fat=1&fat=", .fat),
+        ("v=1&name=Apple&kcal=52&protein=1&protein=1", .nutrient(.protein)),
+        ("v=1&name=Apple&kcal=52&carbs=1&carbs=2", .nutrient(.carbs)),
+        ("v=1&name=Apple&kcal=52&fat=1&fat=", .nutrient(.fat)),
+        ("v=2&name=Apple&kcal=52&sodium_mg=1&sodium_mg=1", .nutrient(.sodium)),
         ("v=1&name=Apple&kcal=52&meal=lunch&meal=lunch", .meal),
     ])
     func duplicateFieldIsRejected(query: String, field: LogLinkDraft.Field) {
@@ -217,7 +218,10 @@ struct LogLinkDraftTests {
         ("v=1&Name=Apple&kcal=52", "Name"),
         ("v=1&name=Apple&KCAL=52", "KCAL"),
         ("v=1&name=Apple&kcal=52&calories=52", "calories"),
-        ("v=1&name=Apple&kcal=52&fiber=3", "fiber"),
+        ("v=2&name=Apple&kcal=52&fibre=3", "fibre"),
+        ("v=2&name=Apple&kcal=52&sodium=0.4", "sodium"),
+        ("v=2&name=Apple&kcal=52&saturatedFat=1", "saturatedFat"),
+        ("v=2&name=Apple&kcal=52&saturated%20fat=1", "saturated fat"),
         ("v=1&name=Apple&kcal=52&%20fat=1", " fat"),
         ("v=1&name=Apple&kcal=52&date=1&date=2", "date"),
     ])
@@ -362,9 +366,9 @@ struct LogLinkDraftTests {
         #expect(LogLinkDraft.parse("caloryn://log?v=1&name=Green apple&kcal=52") == .failure(.missingField(.kcal)))
     }
 
-    @Test("Every number field applies the same strict number format", arguments: [
-        LogLinkDraft.Field.grams, .protein, .carbs, .fat,
-    ])
+    @Test("Every number field applies the same strict number format", arguments:
+        [LogLinkDraft.Field.grams] + LogLinkNutrient.allCases.map(LogLinkDraft.Field.nutrient)
+    )
     func everyNumberFieldIsStrict(field: LogLinkDraft.Field) {
         for raw in ["1,5", "-1", "+1", "1e2", "NaN", ".5", "5.", "1.234", "1234567", "5g", ""] {
             #expect(
@@ -411,45 +415,84 @@ struct LogLinkDraftTests {
         }
     }
 
-    @Test("Each macro must lie between 0 and 5000 g", arguments: [
-        LogLinkDraft.Field.protein, .carbs, .fat,
+    @Test("Each nutrient in grams must lie between 0 and 5000 g", arguments: gramNutrients)
+    func gramNutrientRange(nutrient: LogLinkNutrient) {
+        let link = "v=2&name=Apple&kcal=52&\(nutrient.rawValue)="
+
+        #expect(Self.parse(query: link + "0").map { $0.nutrients[nutrient] } == .success(0))
+        #expect(Self.parse(query: link + "5000").map { $0.nutrients[nutrient] } == .success(5_000))
+        #expect(Self.parse(query: link + "5000.01") == .failure(.outOfRange(.nutrient(nutrient))))
+        #expect(Self.parse(query: link + "999999") == .failure(.outOfRange(.nutrient(nutrient))))
+    }
+
+    @Test("Sodium and cholesterol arrive in milligrams and are kept in grams", arguments: milligramNutrients)
+    func milligramNutrientIsConverted(nutrient: LogLinkNutrient) {
+        let link = "v=2&name=Apple&kcal=52&\(nutrient.rawValue)="
+
+        #expect(Self.parse(query: link + "480").map { $0.nutrients[nutrient] } == .success(0.48))
+        #expect(Self.parse(query: link + "0").map { $0.nutrients[nutrient] } == .success(0))
+        #expect(Self.parse(query: link + "2300").map { $0.nutrients[nutrient] } == .success(2.3))
+    }
+
+    @Test("A nutrient may not weigh more than the portion it belongs to", arguments: gramNutrients)
+    func gramNutrientCannotExceedGrams(nutrient: LogLinkNutrient) {
+        let link = "v=2&name=Apple&kcal=52&grams=10&\(nutrient.rawValue)="
+
+        #expect(Self.parse(query: link + "10").map { $0.nutrients[nutrient] } == .success(10))
+        #expect(Self.parse(query: link + "10.01") == .failure(.exceedsPortion(.nutrient(nutrient))))
+        #expect(Self.parse(query: link + "4000") == .failure(.exceedsPortion(.nutrient(nutrient))))
+    }
+
+    @Test("A milligram nutrient is compared with the portion after conversion to grams", arguments: milligramNutrients)
+    func milligramNutrientCannotExceedGrams(nutrient: LogLinkNutrient) {
+        let link = "v=2&name=Salt%20pinch&kcal=0&grams=1&\(nutrient.rawValue)="
+
+        #expect(Self.parse(query: link + "1000").map { $0.nutrients[nutrient] } == .success(1))
+        #expect(Self.parse(query: link + "1000.01") == .failure(.exceedsPortion(.nutrient(nutrient))))
+    }
+
+    @Test("Without grams a nutrient is checked only against its own range")
+    func nutrientWithoutGrams() {
+        #expect(Self.parse(query: "v=1&name=Oil&kcal=884&fat=4000").map { $0.nutrients[.fat] } == .success(4_000))
+    }
+
+    @Test("A nutrient given as 0 is a real 0, and an omitted nutrient stays unknown")
+    func zeroNutrientIsNotMissing() {
+        let zeros = Self.parse(query: "v=2&name=Water&kcal=0&protein=0&carbs=0&fat=0&sodium_mg=0&fiber=0")
+        let omitted = Self.parse(query: "v=2&name=Water&kcal=0")
+
+        #expect(zeros.map(\.nutrients) == .success([.protein: 0, .carbs: 0, .fat: 0, .sodium: 0, .fiber: 0]))
+        #expect(omitted.map(\.nutrients) == .success([:]))
+    }
+
+    @Test("A link with every nutrient the app shows carries each of them")
+    func everyNutrientIsCarried() throws {
+        let fields = LogLinkNutrient.allCases.enumerated().map { "\($1.rawValue)=\($0 + 1)" }
+        let draft = try Self.parse(query: "v=2&name=Everything&kcal=500&" + fields.joined(separator: "&")).get()
+
+        #expect(draft.nutrients.count == LogLinkNutrient.allCases.count)
+        for (offset, nutrient) in LogLinkNutrient.allCases.enumerated() {
+            #expect(draft.nutrients[nutrient] == nutrient.grams(fromLinkValue: Double(offset + 1)), "\(nutrient)")
+        }
+    }
+
+    @Test("The nutrients the user asked for by name are accepted", arguments: [
+        ("sodium_mg=480", LogLinkNutrient.sodium, 0.48),
+        ("fiber=3.5", .fiber, 3.5),
+        ("sugars=12", .sugars, 12),
+        ("added_sugars=8", .addedSugars, 8),
+        ("saturated_fat=2.25", .saturatedFat, 2.25),
+        ("cholesterol_mg=35", .cholesterol, 0.035),
+        ("salt=1.2", .salt, 1.2),
+        ("trans_fat=0.1", .transFat, 0.1),
+        ("omega_3_fat=0.5", .omega3Fat, 0.5),
+        ("alcohol=14", .alcohol, 14),
     ])
-    func macroRange(field: LogLinkDraft.Field) {
-        let link = "v=1&name=Apple&kcal=52&\(field.rawValue)="
-
-        #expect(Self.parse(query: link + "0").map { Self.macro(field, of: $0) } == .success(0))
-        #expect(Self.parse(query: link + "5000").map { Self.macro(field, of: $0) } == .success(5_000))
-        #expect(Self.parse(query: link + "5000.01") == .failure(.outOfRange(field)))
-        #expect(Self.parse(query: link + "999999") == .failure(.outOfRange(field)))
-    }
-
-    @Test("A macro may not weigh more than the portion it belongs to", arguments: [
-        LogLinkDraft.Field.protein, .carbs, .fat,
-    ])
-    func macroCannotExceedGrams(field: LogLinkDraft.Field) {
-        let link = "v=1&name=Apple&kcal=52&grams=10&\(field.rawValue)="
-
-        #expect(Self.parse(query: link + "10").map { Self.macro(field, of: $0) } == .success(10))
-        #expect(Self.parse(query: link + "10.01") == .failure(.exceedsPortion(field)))
-        #expect(Self.parse(query: link + "4000") == .failure(.exceedsPortion(field)))
-    }
-
-    @Test("Without grams a macro is checked only against its own range")
-    func macroWithoutGrams() {
-        #expect(Self.parse(query: "v=1&name=Oil&kcal=884&fat=4000").map(\.fatG) == .success(4_000))
-    }
-
-    @Test("A macro given as 0 is a real 0, and an omitted macro stays unknown")
-    func zeroMacroIsNotMissing() {
-        let zeros = Self.parse(query: "v=1&name=Water&kcal=0&protein=0&carbs=0&fat=0")
-        let omitted = Self.parse(query: "v=1&name=Water&kcal=0")
-
-        #expect(zeros.map(\.proteinG) == .success(0))
-        #expect(zeros.map(\.carbsG) == .success(0))
-        #expect(zeros.map(\.fatG) == .success(0))
-        #expect(omitted.map(\.proteinG) == .success(nil))
-        #expect(omitted.map(\.carbsG) == .success(nil))
-        #expect(omitted.map(\.fatG) == .success(nil))
+    func namedNutrientIsAccepted(field: String, nutrient: LogLinkNutrient, grams: Double) {
+        #expect(
+            Self.parse(query: "v=2&name=Snack&kcal=200&grams=150&\(field)").map { $0.nutrients[nutrient] }
+                == .success(grams)
+        )
     }
 
     @Test("Each meal name in lowercase is accepted", arguments: WidgetMeal.allCases)
@@ -518,7 +561,7 @@ struct LogLinkDraftTests {
             if let grams = draft.grams {
                 #expect(grams > 0 && grams <= 100_000, "\(text)")
             }
-            for macro in [draft.proteinG, draft.carbsG, draft.fatG].compactMap({ $0 }) {
+            for macro in draft.nutrients.values {
                 #expect((0...5_000).contains(macro), "\(text)")
                 #expect(macro <= (draft.grams ?? .infinity), "\(text)")
             }
@@ -535,7 +578,7 @@ struct LogLinkDraftTests {
         (.containsFragment, "The link contains a “#”, which Caloryn doesn’t accept. Ask your chatbot for a new link."),
         (.unsupportedVersion, "This link was made for a newer version of Caloryn. Update Caloryn, then paste it again."),
         (.unknownField("date"),
-         "The link has a field Caloryn doesn’t recognize. It may only contain v, name, kcal, grams, protein, carbs, fat and meal."),
+         "The link has a field Caloryn doesn’t recognize. Copy the instructions in Settings › Log from a chatbot and paste them into your chatbot again."),
         (.duplicateField(.kcal), "The link gives the calorie value more than once."),
         (.missingField(.version), "The link has no version number."),
         (.missingField(.name), "The link has no food name."),
@@ -546,10 +589,14 @@ struct LogLinkDraftTests {
          "The portion weight isn’t a plain number. Use digits with up to two decimals, such as 150 or 12.5, without units, signs or commas."),
         (.outOfRange(.kcal), "The calorie value must be between 0 and 20,000."),
         (.outOfRange(.grams), "The portion weight must be more than 0 g and no more than 100,000 g."),
-        (.outOfRange(.protein), "The protein amount must be between 0 and 5,000 g."),
-        (.outOfRange(.carbs), "The carbs amount must be between 0 and 5,000 g."),
-        (.outOfRange(.fat), "The fat amount must be between 0 and 5,000 g."),
-        (.exceedsPortion(.fat), "The fat amount can’t be more than the portion weight."),
+        (.outOfRange(.nutrient(.protein)), "The protein amount must be between 0 and 5,000 g."),
+        (.outOfRange(.nutrient(.carbs)), "The carbs amount must be between 0 and 5,000 g."),
+        (.outOfRange(.nutrient(.fat)), "The fat amount must be between 0 and 5,000 g."),
+        (.outOfRange(.nutrient(.saturatedFat)), "The saturated fat amount must be between 0 and 5,000 g."),
+        (.exceedsPortion(.nutrient(.fat)), "The fat amount can’t be more than the portion weight."),
+        (.exceedsPortion(.nutrient(.sodium)), "The sodium amount can’t be more than the portion weight."),
+        (.invalidNumber(.nutrient(.cholesterol)),
+         "The cholesterol amount isn’t a plain number. Use digits with up to two decimals, such as 150 or 12.5, without units, signs or commas."),
         (.invalidMeal, "The meal must be breakfast, lunch, snack or dinner, in lowercase."),
     ])
     func rejectionMessage(rejection: LogLinkRejection, message: String) {
@@ -565,14 +612,8 @@ struct LogLinkDraftTests {
         #expect(rejection.errorDescription?.contains("evil") == false)
     }
 
-    private static func macro(_ field: LogLinkDraft.Field, of draft: LogLinkDraft) -> Double? {
-        switch field {
-        case .protein: draft.proteinG
-        case .carbs: draft.carbsG
-        case .fat: draft.fatG
-        default: nil
-        }
-    }
+    nonisolated private static let gramNutrients = LogLinkNutrient.allCases.filter { $0.unit == .grams }
+    nonisolated private static let milligramNutrients = LogLinkNutrient.allCases.filter { $0.unit == .milligrams }
 
     private static let arbitraryVersions = ["v=1", "v=1", "v=1", "v=2", ""]
 
@@ -586,6 +627,7 @@ struct LogLinkDraftTests {
     private static let arbitraryExtras = [
         "grams=100", "grams=10", "grams=0.01", "grams=0", "grams=100000.01",
         "protein=5", "protein=10.01", "protein=5000", "carbs=0", "carbs=150", "fat=4", "fat=",
+        "sodium_mg=480", "sodium_mg=10011", "sugars=12", "saturated_fat=11", "sodium=1",
         "meal=lunch", "meal=Lunch", "date=today", "%ZZ", "#x", "",
     ]
 
