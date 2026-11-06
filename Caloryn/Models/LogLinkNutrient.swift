@@ -86,7 +86,7 @@ nonisolated enum LogLinkNutrient: String, CaseIterable, Sendable {
     func grams(fromLinkValue value: Double) -> Double {
         switch unit {
         case .grams: value
-        case .milligrams: value / 1000
+        case .milligrams: (value * 100).rounded() / 100_000
         }
     }
 

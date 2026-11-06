@@ -434,6 +434,13 @@ struct LogLinkDraftTests {
         #expect(Self.parse(query: link + "2300").map { $0.nutrients[nutrient] } == .success(2.3))
     }
 
+    @Test("Milligrams convert to the exact decimal grams they name", arguments: [
+        ("1000.19", 1.00019), ("9.97", 0.00997), ("19.94", 0.01994), ("39.88", 0.03988), ("999999.99", 999.99999),
+    ])
+    func milligramsConvertExactly(raw: String, grams: Double) {
+        #expect(Self.parse(query: "v=2&name=Salt&kcal=0&sodium_mg=\(raw)").map { $0.nutrients[.sodium] } == .success(grams))
+    }
+
     @Test("A nutrient may not weigh more than the portion it belongs to", arguments: gramNutrients)
     func gramNutrientCannotExceedGrams(nutrient: LogLinkNutrient) {
         let link = "v=2&name=Apple&kcal=52&grams=10&\(nutrient.rawValue)="

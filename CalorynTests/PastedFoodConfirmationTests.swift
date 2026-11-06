@@ -111,6 +111,20 @@ struct PastedFoodConfirmationTests {
         #expect(confirmation.amountText(of: .cholesterol, locale: Self.english) == "Not provided")
     }
 
+    @Test("A portion typed equal to a milligram nutrient's weight can be added")
+    func portionEqualToAMilligramNutrient() throws {
+        let pasted = try PastedFoodConfirmation.opening(
+            pasted: ["caloryn://log?v=2&name=Salt&kcal=0&sodium_mg=1000.19"],
+            locale: Self.english
+        ).get()
+
+        let equal = Self.withGrams("1.00019", from: pasted)
+        let lighter = Self.withGrams("1.00018", from: pasted)
+
+        #expect(equal.canAdd)
+        #expect(lighter.portionBlocker == .portionLighterThan(.sodium, grams: 1.00019))
+    }
+
     @Test("A pasted link with extra nutrients carries them to the confirmation")
     func pastedLinkWithExtraNutrients() throws {
         let confirmation = try PastedFoodConfirmation.opening(
