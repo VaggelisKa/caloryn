@@ -43,6 +43,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Start resource sampler
+        run: nohup .github/scripts/resource_sampler.sh > "$RUNNER_TEMP/resources.log" 2>&1 &
+
       - name: Show Xcode version
         run: xcodebuild -version
 
@@ -147,6 +150,13 @@ jobs:
           path: coverage-baseline.txt
           key: coverage-baseline-main-${{ steps.simulator.outputs.device }}-${{ github.sha }}
 
+      - name: Upload resource samples
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-resources
+          path: ${{ runner.temp }}/resources.log
+
       - name: Upload results
         if: always()
         uses: actions/upload-artifact@v4
@@ -183,6 +193,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Start resource sampler
+        run: nohup .github/scripts/resource_sampler.sh > "$RUNNER_TEMP/resources.log" 2>&1 &
 
       - name: Cache Swift packages
         uses: actions/cache@v4
@@ -231,6 +244,13 @@ jobs:
           name: ui-${{ matrix.shard }}-line-coverage
           path: LineCoverage/ui-${{ matrix.shard }}-lines.json
           if-no-files-found: error
+
+      - name: Upload resource samples
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-${{ matrix.shard }}-resources
+          path: ${{ runner.temp }}/resources.log
 
       - name: Upload results
         if: always()
