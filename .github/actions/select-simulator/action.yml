@@ -140,4 +140,4 @@ runs:
           mv "$HOME/simulator-data" "$DATA_PATH"
         fi
         xcrun simctl boot "$SIMULATOR_ID" || true
-        nohup "$GITHUB_ACTION_PATH/quiet_services.sh" "$SIMULATOR_ID" > "$RUNNER_TEMP/quiet-services.log" 2>&1 &
+        "$GITHUB_ACTION_PATH/quiet_services.sh" "$SIMULATOR_ID"
