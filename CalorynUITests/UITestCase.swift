@@ -11,11 +11,6 @@ class UITestCase: XCTestCase {
         continueAfterFailure = false
     }
 
-    override func tearDown() async throws {
-        app = nil
-        try await super.tearDown()
-    }
-
     @discardableResult
     func launch(fixture: Fixture) -> XCUIApplication {
         let app = XCUIApplication()
