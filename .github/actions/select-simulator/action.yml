@@ -93,12 +93,13 @@ runs:
         device_slug="$(echo "$simulator_name" | tr ' ' '-' | tr -cd '[:alnum:]-')"
         runtime_build="$(echo "$selection" | sed -n 5p)"
         xcode_build="$(xcodebuild -version | sed -n 's/^Build version //p')"
+        core_simulator="$(defaults read /Library/Developer/PrivateFrameworks/CoreSimulator.framework/Resources/Info.plist CFBundleVersion)"
 
-        echo "Selected simulator $simulator_name ($simulator_id), runtime $runtime_build, Xcode $xcode_build"
+        echo "Selected simulator $simulator_name ($simulator_id), runtime $runtime_build, Xcode $xcode_build, CoreSimulator $core_simulator, image ${ImageVersion:-unknown}"
         echo "id=$simulator_id" >> "$GITHUB_OUTPUT"
         echo "device=$device_slug" >> "$GITHUB_OUTPUT"
         echo "data-path=$data_path" >> "$GITHUB_OUTPUT"
-        echo "cache-key=simulator-data-v2-${device_type##*.}-${runtime_build}-xcode-${xcode_build}" >> "$GITHUB_OUTPUT"
+        echo "cache-key=simulator-data-v3-${device_type##*.}-${runtime_build}-xcode-${xcode_build}-coresimulator-${core_simulator}" >> "$GITHUB_OUTPUT"
 
     - name: Restore settled simulator
       id: restore
