@@ -69,31 +69,6 @@ struct HistoryOverviewSummaryCoverageTests {
         #expect(row.changeText == expected)
     }
 
-    @Test(
-        "given each meal, when building its breakdown row, then the row is keyed by the meal and carries its icon",
-        arguments: [
-            (MealType.breakfast, "breakfast", "sunrise.fill"),
-            (.lunch, "lunch", "sun.max.fill"),
-            (.dinner, "dinner", "moon.fill"),
-            (.snack, "snack", "leaf.fill")
-        ]
-    )
-    func mealRowIdentity(mealType: MealType, id: String, iconName: String) {
-        let breakdown = HistoryCalorieTrendDayBreakdown(
-            isLogged: true,
-            calorieDifference: 0,
-            dailyCalorieTarget: 2_000,
-            mealCalories: [mealType: 420],
-            foods: []
-        )
-
-        let row = breakdown.mealRows.first { $0.mealType == mealType }
-        #expect(row?.id == id)
-        #expect(row?.iconName == iconName)
-        #expect(row?.caloriesText == "420 kcal")
-        #expect(breakdown.mealRows.map(\.id) == ["breakfast", "lunch", "snack", "dinner"])
-    }
-
     private func makeSummary(
         loggedDayCount: Int = 6,
         totalDayCount: Int = 7,

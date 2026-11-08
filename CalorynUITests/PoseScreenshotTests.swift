@@ -86,7 +86,7 @@ final class PoseScreenshotTests: UITestCase {
     private func captureHistory() {
         let app = launch(fixture: .historyPattern)
         guard openTab(.history, in: app) else { return }
-        guard HistoryScreen(app: app).calorieTrendCard.awaitExistence() else { return }
+        guard HistoryScreen(app: app).recurringPatternCard.awaitExistence() else { return }
         settle()
         attach(app, "06-history")
     }
@@ -95,11 +95,11 @@ final class PoseScreenshotTests: UITestCase {
         let app = launch(fixture: .historyPattern)
         guard openTab(.history, in: app) else { return }
         let history = HistoryScreen(app: app)
-        guard history.calorieTrendCard.awaitExistence() else { return }
-        history.calorieTrendCard.tap()
-        guard history.calorieTrendDetails.awaitExistence() else { return }
+        guard history.recurringPatternCard.awaitExistence() else { return }
+        history.recurringPatternCard.tap()
+        guard history.recurringPatternDetails.awaitExistence() else { return }
         settle()
-        attach(app, "07-history-trend")
+        attach(app, "07-history-pattern")
     }
 
     private func captureMyFoods() {

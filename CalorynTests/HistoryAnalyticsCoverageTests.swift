@@ -462,10 +462,8 @@ struct HistoryAnalyticsCoverageTests {
         }
 
         let day = HistoryDaySummary(date: date, entries: entries, dailyCalorieTarget: 2_000)
-        let detail = day.makeDetail()
 
         #expect(abs(day.value(for: nutrient) - expected) < 0.000_001)
-        #expect(abs(detail.value(for: nutrient) - expected) < 0.000_001)
     }
 
     @Test(
@@ -477,132 +475,16 @@ struct HistoryAnalyticsCoverageTests {
         let day = HistoryDaySummary(date: date, entries: [entry(at: date, calories: 500)], dailyCalorieTarget: 2_000)
 
         #expect(day.value(for: nutrient) == 0)
-        #expect(day.makeDetail().value(for: nutrient) == 0)
     }
 
-    @Test("given a day detail built without a status, when rating it, then it rates itself against its own target")
-    func aDetailWithoutAStatusRatesItself() {
-        let date = Self.date(2026, 1, 30)
-        let over = HistoryDayDetail(date: date, entries: [entry(at: date, calories: 2_500)], dailyCalorieTarget: 2_000)
-        let under = HistoryDayDetail(date: date, entries: [entry(at: date, calories: 1_000)], dailyCalorieTarget: 2_000)
-        let empty = HistoryDayDetail(date: date, entries: [], dailyCalorieTarget: 2_000)
-
-        #expect(over.status == .over)
-        #expect(over.calorieDifference == 500)
-        #expect(over.id == date)
-        #expect(over.isLogged)
-        #expect(under.status == .under)
-        #expect(under.calorieDifference == -1_000)
-        #expect(empty.status == .notLogged)
-        #expect(empty.isLogged == false)
-    }
-
-    @Test("given a day detail with a stated status, when built, then that status is kept even where its own rule would differ")
-    func aStatedStatusIsKept() {
-        let date = Self.date(2026, 1, 30)
-        let detail = HistoryDayDetail(
-            date: date,
-            entries: [entry(at: date, calories: 2_500)],
-            dailyCalorieTarget: 2_000,
-            status: .onTrack,
-            isTargetEstimated: true
-        )
-
-        #expect(detail.status == .onTrack)
-        #expect(detail.isTargetEstimated)
-    }
-
-    @Test("given an out-of-range target, when building a day or its detail, then the target is clamped into the calorie domain")
+    @Test("given an out-of-range target, when building a day, then the target is clamped into the calorie domain")
     func targetsAreClampedAtTheBoundary() {
         let date = Self.date(2026, 1, 30)
-        let day = HistoryDaySummary(date: date, entries: [], dailyCalorieTarget: Int.min)
-        let detail = HistoryDayDetail(date: date, entries: [], dailyCalorieTarget: Int.max)
+        let low = HistoryDaySummary(date: date, entries: [], dailyCalorieTarget: Int.min)
+        let high = HistoryDaySummary(date: date, entries: [], dailyCalorieTarget: Int.max)
 
-        #expect(day.dailyCalorieTarget == CalorieDomain.minimum)
-        #expect(detail.dailyCalorieTarget == CalorieDomain.maximum)
-    }
-
-    @Test("given portions across meals, when detailing the day, then grams are totalled and meals keep their canonical order")
-    func theDetailTotalsPortionsAndOrdersMeals() {
-        let date = Self.date(2026, 1, 30)
-        let entries = [
-            entry(at: date, calories: 300, mealType: .snack, portionGrams: 50),
-            entry(at: date, calories: 200, mealType: .breakfast, portionGrams: 120),
-            entry(at: date, calories: 100, mealType: .snack, portionGrams: 30)
-        ]
-
-        let detail = HistoryDayDetail(date: date, entries: entries, dailyCalorieTarget: 2_000)
-
-        #expect(detail.totalPortionGrams == 200)
-        #expect(detail.mealSummaries.map(\.id) == ["breakfast", "snack"])
-        #expect(detail.mealSummaries.map(\.entryCount) == [1, 2])
-    }
-
-    @Test("given foods with equal calories, when ranking the day's foods, then they are ordered by name, numbers numerically")
-    func equalCalorieFoodsAreOrderedByName() {
-        let date = Self.date(2026, 1, 30)
-        let entries = [
-            entry(at: date, calories: 100, name: "Pear"),
-            entry(at: date, calories: 100, name: "Item 10"),
-            entry(at: date, calories: 100, name: "apple"),
-            entry(at: date, calories: 100, name: "Item 9"),
-            entry(at: date, calories: 400, name: "Toast")
-        ]
-
-        let foods = HistoryDayDetail(date: date, entries: entries, dailyCalorieTarget: 2_000).topFoods
-
-        #expect(foods.map(\.name) == ["Toast", "apple", "Item 9", "Item 10", "Pear"])
-    }
-
-    @Test("given the same food spelled with different case, accents and spacing, when ranking foods, then it is one food under its first spelling")
-    func foodsMergeAcrossCaseAndAccents() throws {
-        let date = Self.date(2026, 1, 30)
-        let entries = [
-            entry(at: date, calories: 120, name: "Café Latte", portionGrams: 250),
-            entry(at: date, calories: 120, name: "  cafe latte ", portionGrams: 250),
-            entry(at: date, calories: 90, name: "CAFÉ LATTE", portionGrams: 200)
-        ]
-
-        let foods = HistoryDayDetail(date: date, entries: entries, dailyCalorieTarget: 2_000).topFoods
-
-        let latte = try #require(foods.first)
-        #expect(foods.count == 1)
-        #expect(latte.name == "Café Latte")
-        #expect(latte.id == "cafe latte")
-        #expect(latte.entryCount == 3)
-        #expect(latte.portionGrams == 700)
-        #expect(latte.calories == 780)
-    }
-
-    @Test("given grades in either case and an unknown one, when distributing them, then they are counted a to e and the unknown is dropped")
-    func nutriscoreGradesAreCaseInsensitiveAndOrdered() {
-        let date = Self.date(2026, 1, 30)
-        let entries = ["E", "a", "x", "C", "A", nil, "e"].map { grade in
-            entry(at: date, calories: 100, nutriscoreGrade: grade)
-        }
-
-        let distribution = HistoryDayDetail(date: date, entries: entries, dailyCalorieTarget: 2_000).nutriscoreDistribution
-
-        #expect(distribution.map(\.grade) == ["a", "c", "e"])
-        #expect(distribution.map(\.id) == ["a", "c", "e"])
-        #expect(distribution.map(\.count) == [2, 1, 2])
-        #expect(distribution.reduce(0) { $0 + $1.count } == 5)
-    }
-
-    @Test("given a selected day or week, when identifying the selection, then it is keyed by kind and the UTC instant of its start")
-    func selectionsAreKeyedByKindAndInstant() throws {
-        let analytics = HistoryAnalytics(
-            entries: [],
-            profile: nil,
-            range: .week,
-            endDate: Self.date(2026, 3, 10),
-            calendar: Self.newYork
-        )
-        let monday = try #require(analytics.current.days.first { $0.date == Self.date(2026, 3, 9, hour: 0) })
-        let week = try #require(analytics.current.weeklyRollups.last)
-
-        #expect(HistoryCalorieTrendSelection.day(monday).id == "day-2026-03-09T04:00:00Z")
-        #expect(HistoryCalorieTrendSelection.week(week).id == "week-2026-03-09T04:00:00Z")
+        #expect(low.dailyCalorieTarget == CalorieDomain.minimum)
+        #expect(high.dailyCalorieTarget == CalorieDomain.maximum)
     }
 
     private static let newYork: Calendar = {

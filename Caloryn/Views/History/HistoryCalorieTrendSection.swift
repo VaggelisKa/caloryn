@@ -3,66 +3,23 @@ import Charts
 
 struct HistoryCalorieTrendSection: View {
     let projection: HistoryCalorieTrendProjection
-    let drillDownAction: (() -> Void)?
-
-    init(
-        projection: HistoryCalorieTrendProjection,
-        drillDownAction: (() -> Void)? = nil
-    ) {
-        self.projection = projection
-        self.drillDownAction = drillDownAction
-    }
 
     private var summary: HistoryCalorieTrendCardSummary {
         projection.cardSummary
     }
 
     private var layout: HistoryCalorieTrendChartLayout {
-        HistoryCalorieTrendChartLayout(
-            range: projection.range,
-            surface: .card,
-            pointCount: projection.points.count
-        )
+        HistoryCalorieTrendChartLayout(range: projection.range, pointCount: projection.points.count)
     }
 
     var body: some View {
-        if let drillDownAction {
-            Button(action: drillDownAction) {
-                content
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("View calorie trend details")
-            .accessibilityValue(summary.chartAccessibilityLabel)
-            .accessibilityIdentifier("history.calorieTrend.card")
-        } else {
-            content
-        }
-    }
-
-    private var content: some View {
         VStack(alignment: .leading, spacing: 10) {
-            header
+            HistorySectionTitle("Calorie trend")
             chart
                 .padding(.top, 4)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .contentShape(.rect)
         .accessibilityElement(children: .contain)
-    }
-
-    private var header: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            HistorySectionTitle("Calorie trend")
-
-            Spacer(minLength: 8)
-
-            if drillDownAction != nil {
-                Image(systemName: "chevron.right")
-                    .font(CalorynTheme.compactIcon)
-                    .foregroundStyle(CalorynTheme.textSecondary)
-                    .accessibilityHidden(true)
-            }
-        }
     }
 
     private var chart: some View {

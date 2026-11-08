@@ -303,34 +303,8 @@ struct HistoryCalendarInjectionTests {
         }
     }
 
-    @Test("a summary rebuilt into the detail projection keeps the calendar it was derived under")
-    func detailProjectionRebuiltFromASummaryKeepsItsCalendar() {
-        let cal = calendar("Pacific/Kiritimati")
-        let analytics = HistoryAnalytics(
-            entries: [],
-            profile: nil,
-            range: .week,
-            endDate: date(utcYear: 2026, month: 1, day: 10),
-            calendar: cal
-        )
-
-        let projection = HistoryCalorieTrendProjection(
-            range: analytics.range,
-            summary: analytics.current,
-            today: date(utcYear: 2026, month: 1, day: 10)
-        )
-
-        for (point, day) in zip(projection.points, analytics.current.days) {
-            #expect(point.xAxisLabel == day.date.weekdayInitial(in: cal))
-            #expect(point.accessibilityLabel == day.date.shortFormatted(in: cal))
-            #expect(projection.dayText(for: day.date) == day.date.shortFormatted(in: cal))
-        }
-
-        #expect(projection.points.map(\.xAxisLabel) == ["M", "T", "W", "T", "F", "S", "S"])
-    }
-
-    @Test("the detail projection's week labels name the week its rollups were bucketed into")
-    func detailProjectionWeekLabelsUseTheSummaryCalendar() {
+    @Test("the trend projection's week labels name the week its rollups were bucketed into")
+    func trendProjectionWeekLabelsUseTheSummaryCalendar() {
         let cal = calendar("Pacific/Kiritimati")
         let analytics = HistoryAnalytics(
             entries: [],
@@ -346,9 +320,7 @@ struct HistoryCalendarInjectionTests {
         )
 
         for (point, week) in zip(projection.points, analytics.current.weeklyRollups) {
-            #expect(point.accessibilityLabel.hasSuffix(week.startDate.dayMonthFormatted(in: cal)))
-            #expect(projection.weekStartText(for: week.startDate)
-                == week.startDate.dayMonthFormatted(in: cal))
+            #expect(point.accessibilityLabel == "Week of \(week.startDate.dayMonthFormatted(in: cal))")
         }
     }
 

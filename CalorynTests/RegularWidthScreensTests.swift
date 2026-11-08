@@ -71,7 +71,7 @@ final class RegularWidthScreensTests: XCTestCase {
         XCTAssertNil(screen.element("settings.section.goal"))
     }
 
-    func testHistoryOnATallTabletShowsTheCalorieTrendBesideThePage() throws {
+    func testHistoryOnATallTabletShowsTheRecurringPatternBesideThePage() throws {
         let router = AppRouter()
         router.selectedTab = .history
         let screen = try host(
@@ -79,11 +79,27 @@ final class RegularWidthScreensTests: XCTestCase {
             fixture: .historyPattern,
             size: Self.tallTablet,
             isRegular: true,
-            readyWhen: "history.calorieTrend.details"
+            readyWhen: "history.recurringPattern.details"
         )
 
-        XCTAssertNotNil(screen.element("history.calorieTrend.card"))
-        XCTAssertNotNil(screen.element("history.calorieTrend.details"))
+        XCTAssertNotNil(screen.element("history.recurringPattern.card"))
+        XCTAssertNotNil(screen.element("history.recurringPattern.details"))
+        XCTAssertNil(screen.element("history.detail.empty"))
+    }
+
+    func testHistoryOnATallTabletWithoutAPatternShowsTheEmptyDetail() throws {
+        let router = AppRouter()
+        router.selectedTab = .history
+        let screen = try host(
+            HistoryView().environment(router),
+            fixture: .history,
+            size: Self.tallTablet,
+            isRegular: true,
+            readyWhen: "history.detail.empty"
+        )
+
+        XCTAssertNotNil(screen.element("history.detail.empty"))
+        XCTAssertNil(screen.element("history.recurringPattern.details"))
     }
 
     func testHistoryOnAPhoneKeepsTheDetailForItsOwnPage() throws {
@@ -94,11 +110,11 @@ final class RegularWidthScreensTests: XCTestCase {
             fixture: .historyPattern,
             size: Self.phone,
             isRegular: false,
-            readyWhen: "history.calorieTrend.card"
+            readyWhen: "history.recurringPattern.card"
         )
 
-        XCTAssertNotNil(screen.element("history.calorieTrend.card"))
-        XCTAssertNil(screen.element("history.calorieTrend.details"))
+        XCTAssertNotNil(screen.element("history.recurringPattern.card"))
+        XCTAssertNil(screen.element("history.recurringPattern.details"))
     }
 
     private func host(

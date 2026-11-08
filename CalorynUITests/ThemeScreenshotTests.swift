@@ -23,7 +23,6 @@ final class ThemeScreenshotTests: UITestCase {
         capturePastedFoodConfirmation(appearance)
         captureMultiAddReview(appearance)
         captureHistoryDrillDown(appearance)
-        captureCalorieTrendDrillDown(appearance)
         captureSettingsAndMyFoods(appearance)
         captureEmptyMyFoods(appearance)
         captureCreationSheets(appearance)
@@ -271,24 +270,6 @@ final class ThemeScreenshotTests: UITestCase {
         )
         sleep(1)
         attach(app, "05-history-drilldown", appearance)
-    }
-
-    private func captureCalorieTrendDrillDown(_ appearance: Appearance) {
-        let app = launch(fixture: .historyPattern, appearance: appearance)
-        let tabs = TabBar(app: app)
-        let history = HistoryScreen(app: app)
-
-        XCTAssertTrue(tabs.isVisible, "Tab bar should render")
-        tabs.go(to: .history)
-
-        XCTAssertTrue(history.calorieTrendCard.awaitExistence(), "Calorie trend card missing")
-        history.calorieTrendCard.tap()
-        XCTAssertTrue(
-            history.calorieTrendDetails.awaitExistence(),
-            "Calorie Trend detail did not open, so its canvas was not captured"
-        )
-        sleep(1)
-        attach(app, "04b-history-calorie-trend", appearance)
     }
 
     private func captureMultiAddReview(_ appearance: Appearance) {
