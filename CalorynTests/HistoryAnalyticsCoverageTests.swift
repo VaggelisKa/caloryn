@@ -34,18 +34,6 @@ struct HistoryAnalyticsCoverageTests {
         #expect(status.label == label)
     }
 
-    @Test(
-        "given each coverage level, when naming it, then it reads as a confidence",
-        arguments: [
-            (HistoryCoverageLevel.high, "High confidence"),
-            (.medium, "Medium confidence"),
-            (.low, "Low confidence")
-        ]
-    )
-    func coverageLevelLabel(level: HistoryCoverageLevel, label: String) {
-        #expect(level.label == label)
-    }
-
     @Test("given a day with nothing logged, when rating it, then it is not logged whatever the calories say")
     func nothingLoggedIsNotLoggedEvenWithCalories() {
         #expect(HistoryGoalStatus.calorieStatus(calories: 2_500, loggedCount: 0, targetCalories: 2_000) == .notLogged)
@@ -74,36 +62,11 @@ struct HistoryAnalyticsCoverageTests {
         #expect(HistoryGoalStatus.calorieStatus(calories: calories, loggedCount: 1, targetCalories: 2_000) == expected)
     }
 
-    @Test(
-        "given a share of days logged, when grading coverage, then 80 percent is high and 50 percent medium",
-        arguments: [
-            (10, 10, 1.0, HistoryCoverageLevel.high),
-            (8, 10, 0.8, .high),
-            (7, 10, 0.7, .medium),
-            (5, 10, 0.5, .medium),
-            (4, 10, 0.4, .low),
-            (0, 10, 0.0, .low)
-        ] as [(Int, Int, Double, HistoryCoverageLevel)]
-    )
-    func coverageLevelThresholds(logged: Int, total: Int, ratio: Double, expected: HistoryCoverageLevel) {
-        let dates = Self.days(from: Self.date(2026, 1, 5), count: total)
-        let entries = dates.prefix(logged).map { entry(at: $0, calories: 2_000) }
-
-        let summary = makeSummary(dates: dates, entries: entries)
-
-        #expect(summary.totalDayCount == total)
-        #expect(summary.loggedDayCount == logged)
-        #expect(summary.coverageRatio == ratio)
-        #expect(summary.coverageLevel == expected)
-    }
-
     @Test("given a period with no days at all, when summarising it, then every ratio and average is zero rather than a division by zero")
     func aPeriodWithNoDaysHasZeroRatios() {
         let summary = makeSummary(dates: [], fallbackTarget: 1_850)
 
         #expect(summary.totalDayCount == 0)
-        #expect(summary.coverageRatio == 0)
-        #expect(summary.coverageLevel == .low)
         #expect(summary.averageCaloriesPerLoggedDay == 0)
         #expect(summary.loggedDayTargetTotal == 0)
         #expect(summary.dailyCalorieTarget == 1_850)
@@ -132,7 +95,6 @@ struct HistoryAnalyticsCoverageTests {
         #expect(analytics.current.averageCaloriesPerLoggedDay == 0)
         #expect(analytics.current.averageTargetPerLoggedDay == 2_000)
         #expect(analytics.current.loggedDayTargetTotal == 0)
-        #expect(analytics.current.coverageRatio == 0)
         #expect(analytics.current.count(for: .notLogged) == 7)
         #expect(analytics.goalComparison.onTrackDayDelta == 0)
 
@@ -152,8 +114,6 @@ struct HistoryAnalyticsCoverageTests {
         #expect(week.totalDays == 0)
         #expect(week.loggedDays == 0)
         #expect(week.onTrackDays == 0)
-        #expect(week.onTrackRatio == 0)
-        #expect(week.coverageRatio == 0)
         #expect(week.averageCaloriesPerLoggedDay == 0)
         #expect(week.targetPerLoggedDay == 0)
         #expect(week.hasEstimatedTargets == false)
@@ -173,7 +133,6 @@ struct HistoryAnalyticsCoverageTests {
         let week = try #require(summary.weeklyRollups.first)
         #expect(week.targetPerLoggedDay == 1_801)
         #expect(week.loggedDays == 0)
-        #expect(week.onTrackRatio == 0)
     }
 
     @Test("given an unlogged week whose days have no saved goal, when rolling it up, then it is not flagged as using estimated targets")

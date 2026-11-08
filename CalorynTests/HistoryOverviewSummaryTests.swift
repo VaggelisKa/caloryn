@@ -93,25 +93,10 @@ struct HistoryOverviewSummaryTests {
         #expect(row.averageRatio == expected)
     }
 
-    @Test(
-        "given each goal kind, when stating met days, then the caption names the goal kind and a maximum is met by staying under",
-        arguments: [
-            (NutrientGoalKind.minimum, "Minimum · met on 0 of 29 days"),
-            (.target, "Target · met on 0 of 29 days"),
-            (.maximum, "Maximum · at or under on 0 of 29 days")
-        ]
-    )
-    func theCaptionNamesTheGoalKind(goalKind: NutrientGoalKind, expected: String) {
-        let row = makeMacroRow(goalKind: goalKind, hitDays: 0, loggedDays: 29)
-
-        #expect(row.metText == expected)
-    }
-
-    @Test("given a single logged day, when stating met days, then day is singular")
+    @Test("given a single logged day, when speaking met days, then day is singular")
     func aSingleLoggedDayIsSingularInTheCaption() {
         let row = makeMacroRow(hitDays: 1, loggedDays: 1)
 
-        #expect(row.metText == "Minimum · met on 1 of 1 day")
         #expect(row.accessibilityLabel == "Protein, 80 of 150 grams a day, minimum, met on 1 of 1 day")
     }
 

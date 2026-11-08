@@ -75,23 +75,6 @@ enum HistoryGoalStatus: String, CaseIterable, Identifiable {
     }
 }
 
-enum HistoryCoverageLevel: String {
-    case high
-    case medium
-    case low
-
-    var label: String {
-        switch self {
-        case .high:
-            "High confidence"
-        case .medium:
-            "Medium confidence"
-        case .low:
-            "Low confidence"
-        }
-    }
-}
-
 struct HistoryAnalytics {
     static let onTrackTolerance = 0.05
 
@@ -186,17 +169,6 @@ struct HistoryPeriodSummary {
 
     var loggedDayCount: Int {
         days.filter(\.isLogged).count
-    }
-
-    var coverageRatio: Double {
-        guard totalDayCount > 0 else { return 0 }
-        return Double(loggedDayCount) / Double(totalDayCount)
-    }
-
-    var coverageLevel: HistoryCoverageLevel {
-        if coverageRatio >= 0.8 { return .high }
-        if coverageRatio >= 0.5 { return .medium }
-        return .low
     }
 
     var averageCaloriesPerLoggedDay: Double {
@@ -625,16 +597,6 @@ struct HistoryWeekSummary: Identifiable {
     let hasEstimatedTargets: Bool
 
     var id: Date { startDate }
-
-    var onTrackRatio: Double {
-        guard loggedDays > 0 else { return 0 }
-        return Double(onTrackDays) / Double(loggedDays)
-    }
-
-    var coverageRatio: Double {
-        guard totalDays > 0 else { return 0 }
-        return Double(loggedDays) / Double(totalDays)
-    }
 
     init(startDate: Date, days: [HistoryDaySummary]) {
         self.startDate = startDate

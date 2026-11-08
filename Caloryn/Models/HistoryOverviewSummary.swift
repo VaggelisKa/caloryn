@@ -132,10 +132,6 @@ struct HistoryMacroRowSummary: Equatable, Identifiable {
         return min(1, max(0, averageGrams / goalGrams))
     }
 
-    var metText: String {
-        "\(goalKindName) · \(metWording)"
-    }
-
     var changeText: String? {
         changeWording(unit: "g")
     }

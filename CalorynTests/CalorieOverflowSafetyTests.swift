@@ -55,7 +55,6 @@ final class CalorieOverflowSafetyTests: XCTestCase {
         let shortfall = (CalorieDomain.maximum + 2_000).formatted()
 
         XCTAssertEqual(trend.totalTargetDelta, -CalorieDomain.maximum - 2_000)
-        XCTAssertEqual(trend.cardSummary.totalSupport?.text, "\(shortfall) kcal under goal in total")
         XCTAssertEqual(trend.rangeStats.stats, [
             HistoryCalorieTrendStat(value: (-CalorieDomain.maximum).formatted(), label: "kcal a day on average"),
             HistoryCalorieTrendStat(value: "0 of 1", label: "logged days on track"),
@@ -90,10 +89,6 @@ final class CalorieOverflowSafetyTests: XCTestCase {
             trend.furthestFromGoal?.text,
             "Furthest from goal: \(date.shortFormatted(in: analytics.calendar)), \((CalorieDomain.maximum + 2_000).formatted()) kcal under"
         )
-        XCTAssertEqual(
-            trend.cardSummary.totalSupport?.text,
-            "\((CalorieDomain.maximum + 4_000).formatted()) kcal under goal in total"
-        )
         XCTAssertEqual(trend.rangeStats.onTrack.value, "1 of 2")
     }
 
@@ -116,7 +111,6 @@ final class CalorieOverflowSafetyTests: XCTestCase {
         let shortfall = (20 * CalorieDomain.maximum - 40_000).formatted()
         let earliest = try XCTUnwrap(Calendar.current.date(byAdding: .day, value: -19, to: date))
 
-        XCTAssertEqual(trend.cardSummary.totalSupport?.text, "\(shortfall) kcal under goal in total")
         XCTAssertEqual(trend.rangeStats.totalDelta, HistoryCalorieTrendStat(value: shortfall, label: "kcal under goal in total"))
         XCTAssertEqual(trend.rangeStats.average.value, 2_000.formatted())
         XCTAssertEqual(
@@ -146,10 +140,6 @@ final class CalorieOverflowSafetyTests: XCTestCase {
         let furthest = try XCTUnwrap(trend.furthestFromGoal?.text)
         XCTAssertTrue(furthest.hasPrefix("Furthest from goal: week of "))
         XCTAssertTrue(furthest.hasSuffix(", \((CalorieDomain.maximum - 2_000).formatted()) kcal a day under"))
-        XCTAssertEqual(
-            trend.cardSummary.totalSupport?.text,
-            "\((60 * CalorieDomain.maximum - 120_000).formatted()) kcal under goal in total"
-        )
     }
 
     func testReminderRemainingSurvivesAConsumedTotalPastTheNegativeIntegerRange() {

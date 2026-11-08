@@ -111,8 +111,6 @@ final class HistoryAnalyticsTests: XCTestCase {
         XCTAssertEqual(middleWeek.totalDays, 7)
         XCTAssertEqual(middleWeek.loggedDays, 3)
         XCTAssertEqual(middleWeek.onTrackDays, 2)
-        XCTAssertEqual(middleWeek.onTrackRatio, 2.0 / 3.0, accuracy: 0.001)
-        XCTAssertEqual(middleWeek.coverageRatio, 3.0 / 7.0, accuracy: 0.001)
         XCTAssertEqual(middleWeek.averageCaloriesPerLoggedDay, 2_100, accuracy: 0.001)
         XCTAssertEqual(middleWeek.days.count, 7)
         XCTAssertEqual(middleWeek.days[0].makeDetail().calories, 2_000, accuracy: 0.001)
