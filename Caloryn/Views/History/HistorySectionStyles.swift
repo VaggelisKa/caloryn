@@ -36,6 +36,42 @@ struct HistoryInkBar: View {
     }
 }
 
+struct HistoryGoalBar: View {
+    let fill: Double
+    let goal: Double
+    let tint: Color
+
+    private let barHeight: CGFloat = 8
+    private let markerSize = CGSize(width: 2, height: 14)
+
+    var body: some View {
+        GeometryReader { geometry in
+            let width = geometry.size.width
+
+            ZStack(alignment: .leading) {
+                ZStack(alignment: .leading) {
+                    Rectangle()
+                        .fill(CalorynTheme.fillTrack)
+
+                    Rectangle()
+                        .fill(tint)
+                        .frame(width: width * fill)
+                }
+                .frame(height: barHeight)
+                .clipShape(Capsule())
+
+                Capsule()
+                    .fill(CalorynTheme.dataReference)
+                    .frame(width: markerSize.width, height: markerSize.height)
+                    .offset(x: min(width - markerSize.width, max(0, width * goal - markerSize.width / 2)))
+            }
+            .frame(width: width, height: geometry.size.height)
+        }
+        .frame(height: markerSize.height)
+        .accessibilityHidden(true)
+    }
+}
+
 struct HistoryHairline: View {
     var body: some View {
         Rectangle()

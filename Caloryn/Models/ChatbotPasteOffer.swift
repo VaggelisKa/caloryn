@@ -1,20 +1,21 @@
 import Foundation
 
 struct ChatbotPasteOffer: Equatable {
-    private(set) var changeCount: Int?
     private(set) var generation: Int?
     private(set) var foundLink: Bool?
+    private var latestCheck = 0
 
-    mutating func beginCheck(changeCount: Int, generation: Int) -> Bool {
-        guard changeCount != self.changeCount else { return false }
-        self.changeCount = changeCount
-        self.generation = generation
-        foundLink = nil
-        return true
+    mutating func beginCheck(generation: Int) -> Int {
+        latestCheck += 1
+        if generation != self.generation {
+            self.generation = generation
+            foundLink = nil
+        }
+        return latestCheck
     }
 
-    mutating func finishCheck(changeCount: Int, foundLink: Bool) {
-        guard changeCount == self.changeCount else { return }
+    mutating func finishCheck(_ check: Int, foundLink: Bool) {
+        guard check == latestCheck else { return }
         self.foundLink = foundLink
     }
 

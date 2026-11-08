@@ -142,3 +142,31 @@ func makeTestEntry(
         snackIndex: snackIndex
     )
 }
+
+nonisolated func makeTestHistoryAveragesCalendar() -> Calendar {
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = TimeZone(identifier: "UTC") ?? .gmt
+    calendar.locale = Locale(identifier: "en_GB")
+    return calendar
+}
+
+@MainActor
+func makeTestHistoryAverages(
+    dayCount: Int,
+    endingOn end: (year: Int, month: Int, day: Int) = (2026, 11, 8),
+    calories: (Int) -> Double? = { _ in 2_000 },
+    target: (Int) -> Int = { _ in 2_000 }
+) -> HistoryAverages {
+    let calendar = makeTestHistoryAveragesCalendar()
+    let lastDay = calendar.date(from: DateComponents(year: end.year, month: end.month, day: end.day)) ?? .distantPast
+    let days = (0..<dayCount).map { offset in
+        let value = calories(offset)
+        return HistoryAverages.Day(
+            date: calendar.date(byAdding: .day, value: offset - (dayCount - 1), to: lastDay) ?? lastDay,
+            calories: value ?? 0,
+            target: target(offset),
+            isLogged: value != nil
+        )
+    }
+    return HistoryAverages(days: days, calendar: calendar)
+}

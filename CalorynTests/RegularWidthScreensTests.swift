@@ -83,7 +83,10 @@ final class RegularWidthScreensTests: XCTestCase {
         )
 
         XCTAssertNotNil(screen.element("history.recurringPattern.card"))
-        XCTAssertNotNil(screen.element("history.recurringPattern.details"))
+        XCTAssertNotNil(
+            screen.element("history.recurringPattern.details"),
+            "window \(screen.root.window?.bounds.size ?? .zero), root \(screen.root.bounds.size), on screen: \(screen.identifiers(containing: "history"))"
+        )
         XCTAssertNil(screen.element("history.detail.empty"))
     }
 
@@ -98,7 +101,10 @@ final class RegularWidthScreensTests: XCTestCase {
             readyWhen: "history.detail.empty"
         )
 
-        XCTAssertNotNil(screen.element("history.detail.empty"))
+        XCTAssertNotNil(
+            screen.element("history.detail.empty"),
+            "window \(screen.root.window?.bounds.size ?? .zero), root \(screen.root.bounds.size), on screen: \(screen.identifiers(containing: "history"))"
+        )
         XCTAssertNil(screen.element("history.recurringPattern.details"))
     }
 
@@ -168,6 +174,12 @@ private struct HostedScreen {
         Self.find(identifier, in: root, depth: 0)
     }
 
+    func identifiers(containing fragment: String) -> [String] {
+        var found: Set<String> = []
+        Self.collect(fragment, in: root, depth: 0, into: &found)
+        return found.sorted()
+    }
+
     func label(of identifier: String) -> String? {
         element(identifier)?.accessibilityLabel
     }
@@ -188,6 +200,18 @@ private struct HostedScreen {
             }
         }
         return nil
+    }
+
+    private static func collect(_ fragment: String, in object: NSObject, depth: Int, into found: inout Set<String>) {
+        guard depth < 60 else { return }
+        if object.responds(to: #selector(getter: UIAccessibilityIdentification.accessibilityIdentifier)),
+           let identifier = object.value(forKey: "accessibilityIdentifier") as? String,
+           identifier.contains(fragment) {
+            found.insert(identifier)
+        }
+        for child in children(of: object) {
+            collect(fragment, in: child, depth: depth + 1, into: &found)
+        }
     }
 
     private static func children(of object: NSObject) -> [NSObject] {
