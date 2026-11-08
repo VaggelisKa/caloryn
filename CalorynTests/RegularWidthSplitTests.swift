@@ -8,9 +8,15 @@ struct RegularWidthSplitTests {
     private func split(
         regularWidth: Bool = true,
         regularHeight: Bool = true,
-        page: CGSize
+        page: CGSize,
+        splitsShortPages: Bool = false
     ) -> RegularWidthSplit {
-        RegularWidthSplit(isRegularWidth: regularWidth, isRegularHeight: regularHeight, pageSize: page)
+        RegularWidthSplit(
+            isRegularWidth: regularWidth,
+            isRegularHeight: regularHeight,
+            pageSize: page,
+            splitsShortPages: splitsShortPages
+        )
     }
 
     @Test("A compact-width page never gets columns, however wide")
@@ -18,9 +24,42 @@ struct RegularWidthSplitTests {
         #expect(!split(regularWidth: false, page: CGSize(width: 1_200, height: 800)).showsColumns)
     }
 
-    @Test("A compact-height page never gets columns, however wide")
+    @Test("A compact-height page never gets columns, however wide, unless the screen splits short pages")
     func compactHeight() {
-        #expect(!split(regularHeight: false, page: CGSize(width: 956, height: 440)).showsColumns)
+        #expect(!split(regularHeight: false, page: CGSize(width: 832, height: 419)).showsColumns)
+    }
+
+    @Test("A short page that splits sits side by side, since a phone held landscape has no fold")
+    func shortSplitIsSideBySide() {
+        let proMax = split(regularHeight: false, page: CGSize(width: 832, height: 419), splitsShortPages: true)
+
+        #expect(proMax.showsColumns)
+        #expect(!proMax.arrangesAroundFold)
+    }
+
+    @Test("A short page splits from exactly the short-split width, and not a point less")
+    func shortSplitThreshold() {
+        let width = RegularWidthSplit.shortSplitMinimumPageWidth
+
+        #expect(split(regularHeight: false, page: CGSize(width: width, height: 419), splitsShortPages: true).showsColumns)
+        #expect(!split(regularHeight: false, page: CGSize(width: width - 1, height: 419), splitsShortPages: true).showsColumns)
+    }
+
+    @Test("A short page never splits at compact width or when taller than wide")
+    func shortSplitNeedsRegularWidthAndLandscape() {
+        #expect(!split(regularWidth: false, regularHeight: false, page: CGSize(width: 832, height: 419), splitsShortPages: true).showsColumns)
+        #expect(!split(regularHeight: false, page: CGSize(width: 1_100, height: 1_200), splitsShortPages: true).showsColumns)
+    }
+
+    @Test("The short split leaves the meals at least a portrait phone's content width")
+    func shortSplitLeavesTheSecondaryColumnItsMinimum() {
+        let width = RegularWidthSplit.shortSplitMinimumPageWidth
+
+        #expect(
+            width - RegularWidthSplit.primaryColumnWidth(forPageWidth: width)
+                >= RegularWidthSplit.shortSecondaryColumnMinimumWidth
+        )
+        #expect(RegularWidthSplit.shortSecondaryColumnMinimumWidth >= 402 - 2 * CalorynTheme.pagePadding)
     }
 
     @Test("The inner display in portrait keeps one page")

@@ -49,7 +49,12 @@ struct TodayDashboardLayout: Equatable {
         isLargeText: Bool,
         hasTargets: Bool
     ) {
-        let split = RegularWidthSplit(isRegularWidth: isRegularWidth, isRegularHeight: isRegularHeight, pageSize: pageSize)
+        let split = RegularWidthSplit(
+            isRegularWidth: isRegularWidth,
+            isRegularHeight: isRegularHeight,
+            pageSize: pageSize,
+            splitsShortPages: true
+        )
         let breakpoint: Breakpoint = if !isRegularWidth {
             .compact
         } else if split.showsColumns {

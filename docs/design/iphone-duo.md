@@ -66,13 +66,12 @@ the device — so the same rules serve iPad.
 | Breakpoint | When | Today shows |
 |---|---|---|
 | **compact** | compact width: every iPhone in portrait, the closed Duo, narrow iPad windows | unchanged: one list with the date, the two-column hero (legend under the number), a full-width Nutri-Score or Copy Yesterday row, then the meals |
-| **narrow-regular** | regular width, unless wide-regular: the inner display in portrait (669×951), an iPad mini in portrait (744pt), half an iPad in Split View, a regular-width iPhone held landscape (compact height, too short to split) | one list. The hero takes three columns (donut 168 + figures 200 + legend 220pt) once the content is 624pt wide. Under it the targets panel, with the Nutri-Score chips or Copy Yesterday as a 240pt trailing cluster |
-| **wide-regular** | regular width *and* height, and either wider than tall (the inner display in landscape, 951×669; a full iPad in landscape) or at least 820pt wide (an 11" or 13" iPad in portrait) | the dashboard column (40%, never under 380pt) beside the meals. It holds the date, the two-column hero, the targets panel and the cluster. Wider than tall, the two sit in the split arrangement (an `HStack` before iOS 27.1). Taller than wide, they always sit in the `HStack`: with no fold to arrange around, an arrangement view would stack them and clip the dashboard |
+| **narrow-regular** | regular width, unless wide-regular: the inner display in portrait (669×951), an iPad mini in portrait (744pt), half an iPad in Split View, a regular-width iPhone held landscape on a page under 760pt | one list. The hero takes three columns (donut 168 + figures 200 + legend 220pt) once the content is 624pt wide. Under it the targets panel, with the Nutri-Score chips or Copy Yesterday as a 240pt trailing cluster |
+| **wide-regular** | regular width *and* height, and either wider than tall (the inner display in landscape, 951×669; a full iPad in landscape) or at least 820pt wide (an 11" or 13" iPad in portrait). Also a regular-width iPhone held landscape (compact height) whose page is at least 760pt: a Pro Max (832pt) or an Air (about 776pt) | the dashboard column (40%, never under 380pt) beside the meals. It holds the date, the two-column hero, the targets panel and the cluster. Wider than tall, the two sit in the split arrangement (an `HStack` before iOS 27.1). Taller than wide, they always sit in the `HStack`: with no fold to arrange around, an arrangement view would stack them and clip the dashboard |
 
 At regular width the meal rows stop at 672pt, the system's readable width, leading-aligned with
 their separators. The inner display never reaches it (629pt of content in portrait, about 530
-in the landscape split). An iPad mini in portrait, a Split View half and a regular-width iPhone
-in landscape do, and so does the landscape split's meal column with the iPad sidebar hidden.
+in the landscape split). An iPad mini in portrait and a Split View half do, and so does the landscape split's meal column with the iPad sidebar hidden.
 Large text lifts the cap.
 
 The dashboard column is 40% of the page but never under 380pt: the column the inner display's
@@ -90,7 +89,13 @@ Large text (xxxLarge and up, one step below the accessibility sizes) keeps the s
 two-column hero, even when three columns are asked for, and stacks the panel, its header
 and the cluster under it. The panel only appears when the profile has nutrient targets.
 Height is in the wide-regular gate because a split on a closed Duo in landscape shows only
-the primary view.
+the primary view. Today alone (`splitsShortPages`) lets a compact-height page split, and
+always as an `HStack`: a phone held landscape has no fold. History, My Foods and Settings
+have not been looked at on a 440pt-tall page and keep their single page there. In one list the hero and targets filled the whole 440pt screen and the
+meals started below the fold, under the tab bar. The short split needs 760pt, the 380pt
+dashboard plus a 380pt meal column, no narrower than a portrait phone's content. That takes
+in the Pro Max, the Plus and the Air, and leaves the closed Duo and the 736pt home-button
+Plus phones on the list.
 
 **iPad.** `MainTabView` uses `.sidebarAdaptable`: a top tab bar with a sidebar toggle in
 portrait, the sidebar in landscape; an iPhone, the Duo included, keeps its tab bar. Sheets
