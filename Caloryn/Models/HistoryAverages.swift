@@ -42,8 +42,6 @@ struct HistoryAverages: Equatable {
 
         var id: Date { startDate }
 
-        var hasLoggedDays: Bool { loggedDayCount > 0 }
-
         var roundedAverage: Int { averageCalories.roundedCalories }
 
         var status: HistoryGoalStatus {
@@ -54,24 +52,21 @@ struct HistoryAverages: Equatable {
             )
         }
 
-        var valueText: String? {
-            hasLoggedDays ? roundedAverage.formatted() : nil
-        }
+        var valueText: String { roundedAverage.formatted() }
 
         var unitText: String { " kcal a day" }
 
-        var gapText: String {
-            guard hasLoggedDays else { return "Nothing logged" }
-
-            let difference = roundedAverage - target
-            if difference < 0 { return "\(difference.magnitude.formatted()) under goal" }
-            if difference > 0 { return "\(difference.formatted()) over goal" }
-            return "Right on goal"
-        }
+        var gapText: String { "\(gap) goal" }
 
         var accessibilityLabel: String {
-            guard let valueText else { return "\(title), nothing logged" }
-            return "\(title), \(valueText) kcal a day on average, \(gapText) of \(target.formatted())"
+            "\(title), \(valueText) kcal a day on average, \(gapText) of \(target.formatted())"
+        }
+
+        private var gap: String {
+            let difference = roundedAverage - target
+            if difference < 0 { return "\(difference.magnitude.formatted()) under" }
+            if difference > 0 { return "\(difference.formatted()) over" }
+            return "Right on"
         }
     }
 
@@ -80,14 +75,13 @@ struct HistoryAverages: Equatable {
 
         private var scale: Double {
             let largest = periods
-                .map { max($0.hasLoggedDays ? $0.averageCalories : 0, Double($0.target)) }
+                .map { max($0.averageCalories, Double($0.target)) }
                 .max() ?? 0
             return largest.isFinite && largest > 0 ? largest : 1
         }
 
         func fillFraction(for period: Period) -> Double {
-            guard period.hasLoggedDays else { return 0 }
-            return Self.clamped(period.averageCalories / scale)
+            Self.clamped(period.averageCalories / scale)
         }
 
         func goalFraction(for period: Period) -> Double {
@@ -133,28 +127,26 @@ struct HistoryAverages: Equatable {
         while end > days.startIndex {
             let start = max(days.startIndex, end - blockLength)
             let block = Array(days[start..<end])
-            periods.append(
-                period(
-                    of: block,
-                    title: title(of: block, isNewest: periods.isEmpty, blockLength: blockLength, calendar: calendar)
-                )
-            )
+            let title = title(of: block, isNewest: end == days.endIndex, blockLength: blockLength, calendar: calendar)
+            if let period = period(of: block, title: title) {
+                periods.append(period)
+            }
             end = start
         }
 
-        return Series(periods: periods.filter(\.hasLoggedDays))
+        return Series(periods: periods)
     }
 
-    private static func period(of block: [Day], title: String) -> Period {
+    private static func period(of block: [Day], title: String) -> Period? {
         let logged = block.filter(\.isLogged)
-        let targetDays = logged.isEmpty ? block : logged
+        guard let first = block.first, !logged.isEmpty else { return nil }
 
         return Period(
-            startDate: block.first?.date ?? .distantPast,
+            startDate: first.date,
             title: title,
             loggedDayCount: logged.count,
             averageCalories: mean(of: logged.map(\.calories)),
-            target: mean(of: targetDays.map { Double($0.target) }).roundedCalories
+            target: mean(of: logged.map { Double($0.target) }).roundedCalories
         )
     }
 
