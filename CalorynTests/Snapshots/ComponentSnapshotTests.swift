@@ -463,24 +463,32 @@ final class ComponentSnapshotTests: XCTestCase {
 
     func testHistoryWeeklyAveragesAcrossAppearances() {
         let section = HistoryAveragesSection(
-            averages: historyAverages(dayCount: 14) { offset in offset < 7 ? 905 : 850 },
+            averages: makeTestHistoryAverages(
+                dayCount: 14,
+                calories: { offset in offset < 7 ? 905 : 850 },
+                target: { _ in 900 }
+            ),
             grouping: .constant(.week)
         )
-            .padding(CalorynTheme.pagePadding)
-            .frame(width: 402, height: 230, alignment: .top)
-            .background(CalorynTheme.backgroundPrimary)
+        .padding(CalorynTheme.pagePadding)
+        .frame(width: 402, height: 230, alignment: .top)
+        .background(CalorynTheme.backgroundPrimary)
 
         assertAppearances(of: section, layout: .fixed(width: 402, height: 230))
     }
 
     func testHistoryMonthlyAveragesWithTheGroupingChipsAcrossAppearances() {
         let section = HistoryAveragesSection(
-            averages: historyAverages(dayCount: 60) { offset in offset < 30 ? 850 : 990 },
+            averages: makeTestHistoryAverages(
+                dayCount: 60,
+                calories: { offset in offset < 30 ? 850 : 990 },
+                target: { _ in 900 }
+            ),
             grouping: .constant(.month)
         )
-            .padding(CalorynTheme.pagePadding)
-            .frame(width: 402, height: 250, alignment: .top)
-            .background(CalorynTheme.backgroundPrimary)
+        .padding(CalorynTheme.pagePadding)
+        .frame(width: 402, height: 250, alignment: .top)
+        .background(CalorynTheme.backgroundPrimary)
 
         assertAppearances(of: section, layout: .fixed(width: 402, height: 250))
     }
@@ -536,22 +544,6 @@ final class ComponentSnapshotTests: XCTestCase {
         .background(CalorynTheme.backgroundPrimary)
 
         assertAppearances(of: view, layout: .fixed(width: 390, height: 240))
-    }
-
-    private func historyAverages(dayCount: Int, calories: (Int) -> Double) -> HistoryAverages {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(identifier: "UTC") ?? .gmt
-        calendar.locale = Locale(identifier: "en_GB")
-        let lastDay = calendar.date(from: DateComponents(year: 2026, month: 11, day: 8)) ?? .distantPast
-        let days = (0..<dayCount).map { offset in
-            HistoryAverages.Day(
-                date: calendar.date(byAdding: .day, value: offset - (dayCount - 1), to: lastDay) ?? lastDay,
-                calories: calories(offset),
-                target: 900,
-                isLogged: true
-            )
-        }
-        return HistoryAverages(days: days, calendar: calendar)
     }
 
     private func assertAppearances(
