@@ -59,7 +59,7 @@ struct HistoryAverages: Equatable {
         var gapText: String { "\(gap) goal" }
 
         var accessibilityLabel: String {
-            "\(title), \(valueText) kcal a day on average, \(gapText) of \(target.formatted())"
+            "\(title), \(valueText) kcal a day on average, \(gap) your \(target.formatted()) kcal goal"
         }
 
         private var gap: String {

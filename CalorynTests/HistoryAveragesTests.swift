@@ -141,13 +141,20 @@ struct HistoryAveragesTests {
         #expect(averages.series(for: .week).periods.map(\.title) == ["Last 7 days", "28 Dec 2026 – 3 Jan 2027"])
     }
 
-    @Test("given a logged block, when spoken, then it reads the title, the average and the gap to the goal")
-    func aBlockIsSpokenInFull() {
-        let period = makeTestHistoryAverages(dayCount: 14) { _ in 1_800 }.series(for: .week).periods[0]
+    @Test(
+        "given a logged block, when spoken, then it reads the title, the average and its gap to the named goal",
+        arguments: [
+            (1_800.0, "200 under your"),
+            (2_000.0, "Right on your"),
+            (2_150.0, "150 over your")
+        ] as [(Double, String)]
+    )
+    func aBlockIsSpokenInFull(calories: Double, gap: String) {
+        let period = makeTestHistoryAverages(dayCount: 14) { _ in calories }.series(for: .week).periods[0]
 
         #expect(
             period.accessibilityLabel
-                == "Last 7 days, \(1_800.formatted()) kcal a day on average, 200 under goal of \(2_000.formatted())"
+                == "Last 7 days, \(period.valueText) kcal a day on average, \(gap) \(2_000.formatted()) kcal goal"
         )
     }
 
