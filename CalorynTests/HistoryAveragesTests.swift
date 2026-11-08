@@ -151,6 +151,17 @@ struct HistoryAveragesTests {
         )
     }
 
+    @Test(
+        "given averages either side of the rounded edge of the on-track band, when tinting them, then the tint follows the number shown",
+        arguments: [2_099.6, 2_100.4]
+    )
+    func theTintFollowsTheRoundedAverage(calories: Double) {
+        let period = makeTestHistoryAverages(dayCount: 14) { _ in calories }.series(for: .week).periods[0]
+
+        #expect(period.gapText == "100 over goal")
+        #expect(period.status == .onTrack)
+    }
+
     @Test("given fifteen days, when averaging by week, then the oldest single day is its own block named by that day")
     func aSingleDayBlockIsNamedByItsDay() {
         let titles = makeTestHistoryAverages(dayCount: 15).series(for: .week).periods.map(\.title)

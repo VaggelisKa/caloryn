@@ -46,7 +46,7 @@ struct HistoryAverages: Equatable {
 
         var status: HistoryGoalStatus {
             HistoryGoalStatus.calorieStatus(
-                calories: averageCalories,
+                calories: Double(roundedAverage),
                 loggedCount: loggedDayCount,
                 targetCalories: target
             )
