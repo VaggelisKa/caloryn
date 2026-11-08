@@ -340,10 +340,9 @@ struct FoodSearchView: View {
     }
 
     private func checkPasteboardForLink() async {
-        let changeCount = UIPasteboard.general.changeCount
-        guard pasteOffer.beginCheck(changeCount: changeCount, generation: pasteboardGeneration) else { return }
+        let check = pasteOffer.beginCheck(generation: pasteboardGeneration)
         let patterns = try? await UIPasteboard.general.detectedPatterns(for: [\.probableWebURL, \.links])
-        pasteOffer.finishCheck(changeCount: changeCount, foundLink: !(patterns ?? []).isEmpty)
+        pasteOffer.finishCheck(check, foundLink: !(patterns ?? []).isEmpty)
     }
 
     private func receivePaste(_ strings: [String]) {
