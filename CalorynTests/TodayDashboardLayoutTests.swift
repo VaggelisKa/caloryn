@@ -121,14 +121,36 @@ struct TodayDashboardLayoutTests {
         #expect(half.showsTargetsPanel)
     }
 
-    @Test("A regular-width phone held landscape is narrow-regular: too short to split")
+    @Test("A regular-width phone held landscape puts the dashboard beside the meals")
     func regularWidthCompactHeight() {
-        let maxLandscape = layout(regularHeight: false, page: CGSize(width: 956, height: 440))
+        let pages = [
+            CGSize(width: 832, height: 419),
+            CGSize(width: 776, height: 399),
+        ]
 
-        #expect(maxLandscape.breakpoint == .narrowRegular)
-        #expect(!maxLandscape.showsMealsBesideDashboard)
-        #expect(maxLandscape.heroColumns == .three)
-        #expect(maxLandscape.detailsPlacement == .besideEachOtherBelowHero)
+        for page in pages {
+            let landscape = layout(regularHeight: false, page: page)
+
+            #expect(landscape.breakpoint == .wideRegular)
+            #expect(landscape.showsMealsBesideDashboard)
+            #expect(!landscape.split.arrangesAroundFold)
+            #expect(landscape.heroColumns == .two)
+            #expect(landscape.showsTargetsPanel)
+            #expect(landscape.detailsPlacement == .belowHero)
+        }
+    }
+
+    @Test("A landscape page too narrow for both columns keeps the single list")
+    func compactHeightBelowTheShortSplit() {
+        let short = layout(
+            regularHeight: false,
+            page: CGSize(width: RegularWidthSplit.shortSplitMinimumPageWidth - 1, height: 414)
+        )
+
+        #expect(short.breakpoint == .narrowRegular)
+        #expect(!short.showsMealsBesideDashboard)
+        #expect(short.heroColumns == .three)
+        #expect(short.detailsPlacement == .besideEachOtherBelowHero)
     }
 
     @Test("The hero takes three columns from exactly their width, and not a point less")
@@ -182,7 +204,8 @@ struct TodayDashboardLayoutTests {
             layout(page: CGSize(width: 951, height: 669)),
             layout(page: CGSize(width: 1032, height: 1376)),
             layout(page: CGSize(width: 1376, height: 1032)),
-            layout(regularHeight: false, page: CGSize(width: 956, height: 440)),
+            layout(regularHeight: false, page: CGSize(width: 832, height: 419)),
+            layout(regularHeight: false, page: CGSize(width: 736, height: 414)),
         ]
 
         for page in pages {
