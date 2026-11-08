@@ -151,6 +151,50 @@ struct HistoryAveragesTests {
         )
     }
 
+    @Test("given fifteen days, when averaging by week, then the oldest single day is its own block named by that day")
+    func aSingleDayBlockIsNamedByItsDay() {
+        let titles = makeAverages(dayCount: 15).series(for: .week).periods.map(\.title)
+
+        #expect(titles == ["Last 7 days", "26 Oct – 1 Nov", "25 Oct (1 day)"])
+    }
+
+    @Test("given seventy-five days, when averaging by month, then the oldest block holds the fifteen days left over")
+    func aShortOldestMonthSaysHowManyDays() {
+        let titles = makeAverages(dayCount: 75).series(for: .month).periods.map(\.title)
+
+        #expect(titles == ["Last 30 days", "10 Sep – 9 Oct", "26 Aug – 9 Sep (15 days)"])
+    }
+
+    @Test("given a period summary, when averaging it, then each day's calories, goal and logged state carry over")
+    func aPeriodSummaryCarriesItsDays() {
+        let calendar = Self.calendar
+        let lastDay = calendar.date(from: DateComponents(year: 2026, month: 11, day: 8, hour: 12)) ?? .now
+        let dates = (0..<14).map { calendar.date(byAdding: .day, value: $0 - 13, to: lastDay) ?? lastDay }
+        let entries = dates.enumerated().compactMap { offset, date -> FoodLogEntry? in
+            guard offset != 13 else { return nil }
+            let entry = makeTestEntry(
+                date: date,
+                foodItem: makeTestFoodItem(caloriesPer100g: offset < 7 ? 1_600 : 2_400),
+                portionGrams: 100
+            )
+            entry.date = date
+            return entry
+        }
+        let summary = HistoryPeriodSummary(
+            dates: dates.map { calendar.startOfDay(for: $0) },
+            entriesByDate: Dictionary(grouping: entries) { calendar.startOfDay(for: $0.date) },
+            targetResolver: HistoryDayTargetResolver(fallbackTarget: 2_200),
+            calendar: calendar
+        )
+
+        let periods = HistoryAverages(summary: summary).series(for: .week).periods
+
+        #expect(periods.map(\.title) == ["Last 7 days", "26 Oct – 1 Nov"])
+        #expect(periods.map(\.loggedDayCount) == [6, 7])
+        #expect(periods.map(\.roundedAverage) == [2_400, 1_600])
+        #expect(periods.map(\.target) == [2_200, 2_200])
+    }
+
     private static let calendar: Calendar = {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "UTC") ?? .gmt
