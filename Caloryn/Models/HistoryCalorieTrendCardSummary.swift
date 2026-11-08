@@ -7,8 +7,6 @@ struct HistoryCalorieTrendCardSummary: Equatable {
     let loggedDayCount: Int
     let hasLoggedData: Bool
     let averageCaloriesPerLoggedDay: Double
-    let totalCalories: Double
-    let loggedDayTargetTotal: Int
 
     init(
         range: HistoryRange,
@@ -16,9 +14,7 @@ struct HistoryCalorieTrendCardSummary: Equatable {
         totalDayCount: Int,
         loggedDayCount: Int,
         hasLoggedData: Bool,
-        averageCaloriesPerLoggedDay: Double,
-        totalCalories: Double,
-        loggedDayTargetTotal: Int
+        averageCaloriesPerLoggedDay: Double
     ) {
         self.range = range
         self.dailyCalorieTarget = dailyCalorieTarget
@@ -26,25 +22,6 @@ struct HistoryCalorieTrendCardSummary: Equatable {
         self.loggedDayCount = loggedDayCount
         self.hasLoggedData = hasLoggedData
         self.averageCaloriesPerLoggedDay = averageCaloriesPerLoggedDay
-        self.totalCalories = totalCalories
-        self.loggedDayTargetTotal = loggedDayTargetTotal
-    }
-
-    struct TotalSupport: Equatable {
-        let emphasis: String
-        let remainder: String
-
-        var text: String { emphasis + remainder }
-    }
-
-    var totalSupport: TotalSupport? {
-        guard hasLoggedData else { return nil }
-
-        let difference = totalCalories.roundedCalories - loggedDayTargetTotal
-        let amount = "\(difference.magnitude.formatted()) kcal"
-        if difference > 0 { return TotalSupport(emphasis: amount, remainder: " over goal in total") }
-        if difference < 0 { return TotalSupport(emphasis: amount, remainder: " under goal in total") }
-        return TotalSupport(emphasis: "Right on goal", remainder: " in total")
     }
 
     var chartAccessibilityLabel: String {

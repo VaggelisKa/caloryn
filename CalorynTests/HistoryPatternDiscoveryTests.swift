@@ -350,7 +350,6 @@ struct HistoryPatternDiscoveryTests {
             projection.rangeStats.totalDelta
                 == .init(value: "0", label: "kcal off goal in total", spokenLabel: "Right on goal in total")
         )
-        #expect(projection.cardSummary.totalSupport?.text == "Right on goal in total")
     }
 
     @Test("given logged days under goal, when summarising the range, then the three stats read average, on-track share of logged days and total shortfall")
@@ -378,7 +377,6 @@ struct HistoryPatternDiscoveryTests {
             "2 of 3 logged days on track",
             "350 kcal under goal in total"
         ])
-        #expect(projection.cardSummary.totalSupport?.text == "350 kcal under goal in total")
     }
 
     @Test("given every logged day has a saved daily goal, when projecting the calorie trend, then no estimated-target note is shown")
@@ -681,67 +679,6 @@ struct HistoryPatternDiscoveryTests {
         #expect(projection.topFoods(for: selection).isEmpty)
     }
 
-    @Test("given a range spanning two calendar weeks, when projecting weekly consistency, then logged and total day counts cover the whole range")
-    func weeklyConsistencyCountsLoggedAndTotalDays() {
-        let dates = days(fromJanuary: 5, count: 14)
-        let entries = [
-            makeCalorieEntry(date: janDate(5), calories: 2_000),
-            makeCalorieEntry(date: janDate(12), calories: 2_000)
-        ]
-
-        let projection = HistoryWeeklyConsistencyProjection(
-            summary: makeSummary(dates: dates, entries: entries)
-        )
-
-        #expect(projection.weeks.count == 2)
-        #expect(projection.loggedDayCount == 2)
-        #expect(projection.totalDayCount == 14)
-    }
-
-    @Test("given nothing logged in the range, when projecting weekly consistency, then every week has no count and an empty bar")
-    func weeklyConsistencyWithoutLoggedDaysShowsEmptyWeeks() {
-        let projection = HistoryWeeklyConsistencyProjection(
-            summary: makeSummary(dates: days(fromJanuary: 5, count: 14)),
-            today: janDate(14)
-        )
-
-        #expect(projection.chart.weeks.map(\.countText) == [nil, nil])
-        #expect(projection.chart.weeks.map(\.onTrackPercentage) == [0, 0])
-    }
-
-    @Test("given a partial week and a full one, when projecting weekly consistency, then each bar carries its own on-track and logged counts")
-    func eachWeekCarriesItsOwnCounts() {
-        let dates = days(fromJanuary: 5, count: 14)
-        let entries = [
-            makeCalorieEntry(date: janDate(5), calories: 2_000),
-            makeCalorieEntry(date: janDate(6), calories: 2_600),
-            makeCalorieEntry(date: janDate(12), calories: 2_000),
-            makeCalorieEntry(date: janDate(13), calories: 2_000),
-            makeCalorieEntry(date: janDate(14), calories: 2_000)
-        ]
-
-        let projection = HistoryWeeklyConsistencyProjection(
-            summary: makeSummary(dates: dates, entries: entries),
-            today: janDate(14)
-        )
-
-        #expect(projection.chart.weeks.map(\.countText) == ["1/2", "3/3"])
-        #expect(projection.chart.weeks.map(\.onTrackPercentage) == [50, 100])
-    }
-
-    @Test("given the range ends this week, when projecting weekly consistency, then the older week shows its start date and the last reads This week")
-    func theWeekContainingTodayReadsThisWeek() {
-        let projection = HistoryWeeklyConsistencyProjection(
-            summary: makeSummary(dates: days(fromJanuary: 5, count: 14)),
-            today: janDate(14)
-        )
-
-        #expect(projection.chart.weeks.map(\.axisLabel) == [
-            janDate(5).dayMonthFormatted(in: .current),
-            "This week"
-        ])
-    }
-
     @Test("given profile macro goals, when discovering patterns, then each macro carries its goal in grams")
     func macroPatternsCarryTheirGoalGrams() throws {
         let profile = makeProfile()
@@ -762,7 +699,7 @@ struct HistoryPatternDiscoveryTests {
     }
 
     @Test("given no profile targets, when discovering patterns, then macro patterns are absent while the calorie trend still projects")
-    func missingProfileTargetsLeaveOnlyCalorieAndWeeklyPatterns() {
+    func missingProfileTargetsLeaveOnlyTheCalorieTrend() {
         let analytics = HistoryAnalytics(
             entries: [],
             profile: nil,
@@ -775,11 +712,10 @@ struct HistoryPatternDiscoveryTests {
         #expect(discovery.macroPatterns.patterns.isEmpty)
         #expect(discovery.calorieTrend.points.count == 7)
         #expect(discovery.calorieTrend.dailyCalorieTarget == 2_000)
-        #expect(discovery.weeklyConsistency.totalDayCount == 7)
     }
 
-    @Test("given a logged week, when discovering patterns, then the calorie trend and weekly consistency describe the same logged days")
-    func discoveryProjectionsAgreeOnLoggedDays() {
+    @Test("given a logged week, when discovering patterns, then the calorie trend counts its logged and on-track days")
+    func theCalorieTrendCountsLoggedAndOnTrackDays() {
         let profile = makeProfile()
         let entries = [
             makeCalorieEntry(date: janDate(26), calories: 2_000),
@@ -797,10 +733,8 @@ struct HistoryPatternDiscoveryTests {
         let discovery = HistoryPatternDiscovery(analytics: analytics, today: janDate(30))
 
         #expect(discovery.calorieTrend.loggedDayCount == 3)
-        #expect(discovery.weeklyConsistency.loggedDayCount == 3)
-        #expect(discovery.calorieTrend.totalDayCount == discovery.weeklyConsistency.totalDayCount)
+        #expect(discovery.calorieTrend.totalDayCount == 7)
         #expect(discovery.calorieTrend.onTrackLoggedDayCount == 2)
-        #expect(discovery.weeklyConsistency.chart.weeks.last?.countText == "2/3")
     }
 
     private func dayTitle(_ day: Int) -> String {

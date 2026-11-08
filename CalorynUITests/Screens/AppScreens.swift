@@ -254,6 +254,7 @@ struct HistoryScreen: Screen {
 
     var rangePicker: XCUIElement { element("history.rangePicker") }
     var averageCalories: XCUIElement { element("history.goalSummary.metric.kcal/day-avg") }
+    var averages: XCUIElement { element("history.averages") }
     var calorieTrendCard: XCUIElement { element("history.calorieTrend.card") }
     var calorieTrendDetails: XCUIElement { element("history.calorieTrend.details") }
     var recurringPatternCard: XCUIElement { element("history.recurringPattern.card") }

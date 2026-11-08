@@ -52,16 +52,10 @@ final class AdaptiveSummaryTests: UITestCase {
         )
         assertFitsHorizontally(goalSummary, in: window)
 
-        for identifier in [
-            "history.goalSummary.metric.days-logged",
-            "history.goalSummary.metric.kcal/day-avg",
-            "history.goalSummary.metric.coverage"
-        ] {
-            let metric = TodayScreen(app: app).element(identifier)
-            XCTAssertTrue(metric.awaitExistence(), "The large-text summary should show \(identifier)")
-            XCTAssertFalse(metric.label.isEmpty, "The large-text metric should remain readable")
-            assertFitsHorizontally(metric, in: window)
-        }
+        let metric = TodayScreen(app: app).element("history.goalSummary.metric.kcal/day-avg")
+        XCTAssertTrue(metric.awaitExistence(), "The large-text summary should show the daily average")
+        XCTAssertFalse(metric.label.isEmpty, "The large-text metric should remain readable")
+        assertFitsHorizontally(metric, in: window)
     }
 
     private func launch(fixture: Fixture, contentSizeCategory: String) -> XCUIApplication {

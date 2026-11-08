@@ -21,6 +21,7 @@ struct HistoryView: View {
     @State private var pageSize: CGSize = .zero
     @State private var detailSelection = HistoryDetailSelection()
     @State private var inlineDetailSeed: HistoryDrillDownRoute?
+    @State private var averagesGrouping: HistoryAverages.Grouping = .week
 
     #if DEBUG
     @State private var debugLaunch = HistoryDebugLaunch.current
@@ -156,11 +157,9 @@ struct HistoryView: View {
                 loggedDayCount: history.current.loggedDayCount,
                 totalDayCount: history.current.totalDayCount,
                 averageCaloriesPerLoggedDay: history.current.averageCaloriesPerLoggedDay,
-                averageTargetPerLoggedDay: history.current.averageTargetPerLoggedDay,
-                onTrackDayCount: history.current.count(for: .onTrack),
-                overDayCount: history.current.count(for: .over),
-                underDayCount: history.current.count(for: .under)
+                averageTargetPerLoggedDay: history.current.averageTargetPerLoggedDay
             )
+            let averages = HistoryAverages(summary: history.current)
             let selectedDetail = showsDetailInline ? currentPane.detail : nil
 
             VStack(alignment: .leading, spacing: 26) {
@@ -170,31 +169,7 @@ struct HistoryView: View {
 
                         crossfading(on: state.range) {
                             VStack(alignment: .leading, spacing: 26) {
-                                HistoryOverviewSection(
-                                    range: state.range,
-                                    summary: history.current,
-                                    overview: overview,
-                                    today: analyticsDayStart
-                                )
-
-                                if let recurringPattern = state.recurringPattern {
-                                    HistoryRecurringCaloriePatternCard(
-                                        pattern: recurringPattern,
-                                        action: { openPatternDetails(recurringPattern) }
-                                    )
-                                    .historyDetailSource(
-                                        isSelected: selectedDetail == .recurringPattern,
-                                        outset: 0
-                                    )
-                                }
-
-                                if overview.hasLoggedDays {
-                                    HistoryLoggedDaysSection(breakdown: overview.loggedDays)
-                                }
-
-                                if state.range.days >= HistoryRange.month.days {
-                                    HistoryWeeklyRollupSection(projection: patternDiscovery.weeklyConsistency)
-                                }
+                                HistoryOverviewSection(overview: overview)
 
                                 HistoryCalorieTrendSection(
                                     projection: patternDiscovery.calorieTrend,
@@ -206,6 +181,24 @@ struct HistoryView: View {
                                     isSelected: selectedDetail == .calorieTrend,
                                     outset: 12
                                 )
+
+                                if !averages.isEmpty {
+                                    HistoryAveragesSection(
+                                        averages: averages,
+                                        grouping: $averagesGrouping
+                                    )
+                                }
+
+                                if let recurringPattern = state.recurringPattern {
+                                    HistoryRecurringCaloriePatternCard(
+                                        pattern: recurringPattern,
+                                        action: { openPatternDetails(recurringPattern) }
+                                    )
+                                    .historyDetailSource(
+                                        isSelected: selectedDetail == .recurringPattern,
+                                        outset: 0
+                                    )
+                                }
 
                                 if history.macroPatterns.contains(where: { $0.current.loggedDays > 0 }) {
                                     HistoryMacroPatternsSection(

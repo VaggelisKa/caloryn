@@ -3,7 +3,6 @@ import Foundation
 struct HistoryPatternDiscovery {
     let calorieTrend: HistoryCalorieTrendProjection
     let macroPatterns: HistoryMacroPatternsProjection
-    let weeklyConsistency: HistoryWeeklyConsistencyProjection
 
     init(analytics: HistoryAnalytics, today: Date) {
         calorieTrend = HistoryCalorieTrendProjection(
@@ -12,42 +11,11 @@ struct HistoryPatternDiscovery {
             today: today
         )
         macroPatterns = HistoryMacroPatternsProjection(patterns: analytics.macroPatterns)
-        weeklyConsistency = HistoryWeeklyConsistencyProjection(summary: analytics.current, today: today)
     }
 }
 
 struct HistoryMacroPatternsProjection {
     let patterns: [HistoryMacroPattern]
-}
-
-struct HistoryWeeklyConsistencyProjection {
-    let weeks: [HistoryWeekSummary]
-    let loggedDayCount: Int
-    let totalDayCount: Int
-    let calendar: Calendar
-    let today: Date
-
-    init(summary: HistoryPeriodSummary, today: Date = .now) {
-        weeks = summary.weeklyRollups
-        loggedDayCount = summary.loggedDayCount
-        totalDayCount = summary.totalDayCount
-        calendar = summary.calendar
-        self.today = today
-    }
-
-    var chart: HistoryWeeklyConsistencyChart {
-        HistoryWeeklyConsistencyChart(
-            tallies: weeks.map { week in
-                HistoryWeeklyConsistencyChart.Tally(
-                    startDate: week.startDate,
-                    onTrackDays: week.onTrackDays,
-                    loggedDays: week.loggedDays
-                )
-            },
-            calendar: calendar,
-            today: today
-        )
-    }
 }
 
 struct HistoryCalorieTrendProjection {
@@ -92,7 +60,11 @@ struct HistoryCalorieTrendProjection {
 
         switch range {
         case .quarter:
-            let weekAxis = HistoryWeeklyConsistencyProjection(summary: summary, today: today).chart.weeks
+            let weekAxis = HistoryWeekAxis(
+                weekStarts: summary.weeklyRollups.map(\.startDate),
+                calendar: calendar,
+                today: today
+            ).weeks
             points = summary.weeklyRollups.enumerated().map { offset, week in
                 let averageCalories = week.averageCaloriesPerLoggedDay
                 let status = HistoryGoalStatus.calorieStatus(
@@ -109,7 +81,7 @@ struct HistoryCalorieTrendProjection {
                     targetDelta: averageCalories.roundedCalories - week.targetPerLoggedDay,
                     status: status,
                     isLogged: week.loggedDays > 0,
-                    xAxisLabel: weekAxis[offset].axisLabel ?? "",
+                    xAxisLabel: weekAxis[offset].label ?? "",
                     accessibilityLabel: "Week of \(startText)",
                     accessibilityValue: week.loggedDays == 0
                         ? "No calories logged"
@@ -182,9 +154,7 @@ struct HistoryCalorieTrendProjection {
             totalDayCount: totalDayCount,
             loggedDayCount: loggedDayCount,
             hasLoggedData: hasLoggedData,
-            averageCaloriesPerLoggedDay: averageCaloriesPerLoggedDay,
-            totalCalories: totalCalories,
-            loggedDayTargetTotal: loggedDayTargetTotal
+            averageCaloriesPerLoggedDay: averageCaloriesPerLoggedDay
         )
     }
 
