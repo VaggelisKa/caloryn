@@ -21,13 +21,12 @@ struct ChatbotPasteOfferTests {
 
     private func checked(
         _ offer: ChatbotPasteOffer = ChatbotPasteOffer(),
-        changeCount: Int,
         generation: Int = 1,
         foundLink: Bool
     ) -> ChatbotPasteOffer {
         var offer = offer
-        _ = offer.beginCheck(changeCount: changeCount, generation: generation)
-        offer.finishCheck(changeCount: changeCount, foundLink: foundLink)
+        let check = offer.beginCheck(generation: generation)
+        offer.finishCheck(check, foundLink: foundLink)
         return offer
     }
 
@@ -36,78 +35,77 @@ struct ChatbotPasteOfferTests {
         #expect(showsRow(ChatbotPasteOffer()) == false)
     }
 
-    @Test("Nothing is offered while a check has not answered yet")
-    func hiddenWhileCheckIsPending() {
+    @Test("Nothing is offered while the first check has not answered yet")
+    func hiddenWhileFirstCheckIsPending() {
         var offer = ChatbotPasteOffer()
-        let began = offer.beginCheck(changeCount: 7, generation: 1)
-        #expect(began)
+        _ = offer.beginCheck(generation: 1)
         #expect(offer.foundLink == nil)
         #expect(showsRow(offer) == false)
     }
 
     @Test("Paste is offered when the check found a link and not when it found none")
     func followsTheCheck() {
-        #expect(showsRow(checked(changeCount: 7, foundLink: true)))
-        #expect(showsRow(checked(changeCount: 7, foundLink: false)) == false)
+        #expect(showsRow(checked(foundLink: true)))
+        #expect(showsRow(checked(foundLink: false)) == false)
     }
 
-    @Test("An unchanged pasteboard is not checked again and keeps its answer")
-    func skipsAnUnchangedPasteboard() {
-        var offer = checked(changeCount: 7, foundLink: true)
-        let began = offer.beginCheck(changeCount: 7, generation: 2)
-        #expect(began == false)
-        #expect(offer.generation == 1)
+    @Test("A re-check in the same generation is answered, so a link that arrived unnoticed is offered")
+    func everyCheckIsAnswered() {
+        let noLink = checked(generation: 1, foundLink: false)
+        let relooked = checked(noLink, generation: 1, foundLink: true)
+        #expect(showsRow(relooked), "The sheet must not keep a stale \"no link\" until the app relaunches")
+    }
+
+    @Test("Within a generation the previous answer stays up while a re-check runs")
+    func keepsItsAnswerWhileRecheckingTheSameGeneration() {
+        var offer = checked(generation: 1, foundLink: true)
+        _ = offer.beginCheck(generation: 1)
         #expect(showsRow(offer))
     }
 
-    @Test("A changed pasteboard hides the offer until its own check answers")
-    func changedPasteboardHidesUntilAnswered() {
-        var offer = checked(changeCount: 7, foundLink: true)
-        let began = offer.beginCheck(changeCount: 8, generation: 1)
-        #expect(began)
-        #expect(showsRow(offer) == false, "The previous pasteboard's answer must not show for the new one")
-        offer.finishCheck(changeCount: 8, foundLink: true)
+    @Test("A new generation hides the offer until its own check answers")
+    func newGenerationHidesUntilAnswered() {
+        var offer = checked(generation: 1, foundLink: true)
+        let check = offer.beginCheck(generation: 2)
+        #expect(showsRow(offer) == false, "The previous generation's answer must not show for the new one")
+        offer.finishCheck(check, foundLink: true)
         #expect(showsRow(offer))
     }
 
-    @Test("An answer for a pasteboard that has since changed is ignored")
-    func ignoresAStaleAnswer() {
+    @Test("An answer from a check that has since been superseded is ignored")
+    func ignoresASupersededAnswer() {
         var offer = ChatbotPasteOffer()
-        _ = offer.beginCheck(changeCount: 7, generation: 1)
-        _ = offer.beginCheck(changeCount: 8, generation: 1)
-        offer.finishCheck(changeCount: 7, foundLink: true)
+        let first = offer.beginCheck(generation: 1)
+        let second = offer.beginCheck(generation: 1)
+        offer.finishCheck(first, foundLink: true)
         #expect(offer.foundLink == nil)
         #expect(showsRow(offer) == false)
-        offer.finishCheck(changeCount: 8, foundLink: false)
+        offer.finishCheck(second, foundLink: false)
         #expect(offer.foundLink == false)
     }
 
-    @Test("A refused pasteboard stays hidden through changeCount drift within its generation")
+    @Test("A refused pasteboard stays hidden through re-checks within its generation")
     func refusalHoldsWithinItsGeneration() {
-        let refused = checked(changeCount: 7, generation: 3, foundLink: true)
+        let refused = checked(generation: 3, foundLink: true)
         #expect(showsRow(refused, rejectedGeneration: 3) == false)
 
-        let drifted = checked(refused, changeCount: 11, generation: 3, foundLink: true)
-        #expect(showsRow(drifted, rejectedGeneration: 3) == false, "A changeCount alone does not lift a refusal")
+        let relooked = checked(refused, generation: 3, foundLink: true)
+        #expect(showsRow(relooked, rejectedGeneration: 3) == false, "A re-check alone does not lift a refusal")
     }
 
     @Test("A refusal is lifted only by a check that began in a later generation")
     func refusalLiftsOnALaterGenerationsCheck() {
-        var offer = checked(changeCount: 7, generation: 3, foundLink: true)
+        var offer = checked(generation: 3, foundLink: true)
 
-        let skipped = offer.beginCheck(changeCount: 7, generation: 4)
-        #expect(skipped == false)
-        #expect(showsRow(offer, rejectedGeneration: 3) == false, "An unchanged pasteboard stays refused")
-
-        _ = offer.beginCheck(changeCount: 12, generation: 4)
+        let check = offer.beginCheck(generation: 4)
         #expect(showsRow(offer, rejectedGeneration: 3) == false, "Hidden until the new check answers")
-        offer.finishCheck(changeCount: 12, foundLink: true)
+        offer.finishCheck(check, foundLink: true)
         #expect(showsRow(offer, rejectedGeneration: 3))
     }
 
     @Test("A link is still offered only while logging with the search idle and nothing being selected")
     func respectsTheScreen() {
-        let offer = checked(changeCount: 7, foundLink: true)
+        let offer = checked(foundLink: true)
         #expect(showsRow(offer, isSelectingMultiple: true) == false)
         #expect(showsRow(offer, mode: .ingredientSelection { _ in }) == false)
         #expect(showsRow(offer, mode: .mealComponentSelection { _ in }) == false)
