@@ -51,7 +51,7 @@ struct RegularWidthSplitTests {
         #expect(!split(regularHeight: false, page: CGSize(width: 1_100, height: 1_200), splitsShortPages: true).showsColumns)
     }
 
-    @Test("The short split leaves the meals at least a portrait phone's content width")
+    @Test("The short split gives the meal rows no less content width than the smallest iPhone in portrait")
     func shortSplitLeavesTheSecondaryColumnItsMinimum() {
         let width = RegularWidthSplit.shortSplitMinimumPageWidth
 
@@ -59,7 +59,11 @@ struct RegularWidthSplitTests {
             width - RegularWidthSplit.primaryColumnWidth(forPageWidth: width)
                 >= RegularWidthSplit.shortSecondaryColumnMinimumWidth
         )
-        #expect(RegularWidthSplit.shortSecondaryColumnMinimumWidth >= 402 - 2 * CalorynTheme.pagePadding)
+        let smallestPortraitPhoneWidth: CGFloat = 375
+        #expect(
+            RegularWidthSplit.shortSecondaryColumnMinimumWidth - 2 * CalorynTheme.pagePadding
+                >= smallestPortraitPhoneWidth - 2 * CalorynTheme.pagePadding
+        )
     }
 
     @Test("The inner display in portrait keeps one page")

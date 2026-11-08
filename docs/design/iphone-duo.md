@@ -93,7 +93,8 @@ the primary view. Today alone (`splitsShortPages`) lets a compact-height page sp
 always as an `HStack`: a phone held landscape has no fold. History, My Foods and Settings
 have not been looked at on a 440pt-tall page and keep their single page there. In one list the hero and targets filled the whole 440pt screen and the
 meals started below the fold, under the tab bar. The short split needs 760pt, the 380pt
-dashboard plus a 380pt meal column, no narrower than a portrait phone's content. That takes
+dashboard plus a 380pt meal column. That column's rows get 340pt of content, no less than
+the 335pt they get on the smallest supported iPhone in portrait (375pt, SE and mini). That takes
 in the Pro Max, the Plus and the Air, and leaves the closed Duo and the 736pt home-button
 Plus phones on the list.
 
