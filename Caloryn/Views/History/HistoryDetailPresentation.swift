@@ -27,7 +27,7 @@ struct HistoryDetailEmptyPane: View {
         VStack(alignment: .leading, spacing: 6) {
             HistoryDetailPaneTitle("Details")
 
-            Text("Log meals on a few more days to see the calorie trend in detail here.")
+            Text("When a calorie pattern repeats across your logged days, its details show up here.")
                 .font(CalorynTheme.cardSubtitle)
                 .foregroundStyle(CalorynTheme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)

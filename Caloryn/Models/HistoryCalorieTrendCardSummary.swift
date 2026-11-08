@@ -33,45 +33,4 @@ struct HistoryCalorieTrendCardSummary: Equatable {
         let average = averageCaloriesPerLoggedDay.roundedCalories.formatted()
         return "Calorie trend for \(range.label). \(loggedDayCount) of \(totalDayCount) days logged. Average \(average) calories per logged day. \(goal)"
     }
-
-    static func detailChartAccessibilityLabel(
-        range: HistoryRange,
-        loggedDayCount: Int,
-        totalDayCount: Int
-    ) -> String {
-        "Detailed calorie trend for \(range.label). \(loggedDayCount) of \(totalDayCount) days logged."
-    }
-}
-
-struct HistoryCalorieTrendRangeStats: Equatable {
-    let averageCaloriesPerLoggedDay: Double
-    let loggedDayCount: Int
-    let onTrackLoggedDayCount: Int
-    let totalTargetDelta: Int
-
-    var average: HistoryCalorieTrendStat {
-        HistoryCalorieTrendStat(
-            value: averageCaloriesPerLoggedDay.roundedCalories.formatted(),
-            label: "kcal a day on average"
-        )
-    }
-
-    var onTrack: HistoryCalorieTrendStat {
-        HistoryCalorieTrendStat(value: "\(onTrackLoggedDayCount) of \(loggedDayCount)", label: "logged days on track")
-    }
-
-    var totalDelta: HistoryCalorieTrendStat {
-        let value = totalTargetDelta.magnitude.formatted()
-        if totalTargetDelta > 0 {
-            return HistoryCalorieTrendStat(value: value, label: "kcal over goal in total")
-        }
-        if totalTargetDelta < 0 {
-            return HistoryCalorieTrendStat(value: value, label: "kcal under goal in total")
-        }
-        return HistoryCalorieTrendStat(value: value, label: "kcal off goal in total", spokenLabel: "Right on goal in total")
-    }
-
-    var stats: [HistoryCalorieTrendStat] {
-        [average, onTrack, totalDelta]
-    }
 }

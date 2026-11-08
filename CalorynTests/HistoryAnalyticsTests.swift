@@ -113,106 +113,10 @@ final class HistoryAnalyticsTests: XCTestCase {
         XCTAssertEqual(middleWeek.onTrackDays, 2)
         XCTAssertEqual(middleWeek.averageCaloriesPerLoggedDay, 2_100, accuracy: 0.001)
         XCTAssertEqual(middleWeek.days.count, 7)
-        XCTAssertEqual(middleWeek.days[0].makeDetail().calories, 2_000, accuracy: 0.001)
+        XCTAssertEqual(middleWeek.days[0].calories, 2_000, accuracy: 0.001)
     }
 
-    func testDayDetailSummarizesMealsAndTopFoods() {
-        let profile = makeProfile()
-        let date = makeTestDate(year: 2026, month: 1, day: 30)
-        let entries = [
-            makeEntry(date: date, name: "Oats", mealType: .breakfast, calories: 300),
-            makeEntry(date: date, name: "Pasta", mealType: .lunch, calories: 700),
-            makeEntry(date: date, name: "Oats", mealType: .snack, calories: 150)
-        ]
-
-        let analytics = HistoryAnalytics(
-            entries: entries,
-            profile: profile,
-            range: .week,
-            endDate: date
-        )
-
-        let detail = analytics.current.days.last!.makeDetail()
-        XCTAssertEqual(detail.entryCount, 3)
-        XCTAssertEqual(detail.mealSummaries.map(\.mealType), [.breakfast, .lunch, .snack])
-        XCTAssertEqual(detail.mealSummaries.first { $0.mealType == .lunch }?.calories ?? 0, 700, accuracy: 0.001)
-        XCTAssertEqual(detail.topFoods.map(\.name), ["Pasta", "Oats"])
-        XCTAssertEqual(detail.topFoods.first { $0.name == "Oats" }?.entryCount, 2)
-        XCTAssertEqual(detail.topFoods.first { $0.name == "Oats" }?.calories ?? 0, 450, accuracy: 0.001)
-    }
-
-    func testDayDetailIncludesProduceAndNutriscoreSummariesWhenPresent() {
-        let profile = makeProfile()
-        let date = makeTestDate(year: 2026, month: 1, day: 30)
-        let entries = [
-            makeEntry(date: date, name: "Apple", calories: 80, nutriscoreGrade: "a", produceKind: .fruit),
-            makeEntry(date: date, name: "Broccoli", calories: 60, nutriscoreGrade: "b", produceKind: .vegetable),
-            makeEntry(date: date, name: "Cereal", calories: 220, nutriscoreGrade: "c")
-        ]
-
-        let analytics = HistoryAnalytics(
-            entries: entries,
-            profile: profile,
-            range: .week,
-            endDate: date
-        )
-
-        let detail = analytics.current.days.last!.makeDetail()
-        XCTAssertEqual(detail.produceSummary.totalCount, 2)
-        XCTAssertEqual(detail.produceSummary.fruitCount, 1)
-        XCTAssertEqual(detail.produceSummary.vegetableCount, 1)
-        XCTAssertEqual(detail.nutriscoreDistribution.map(\.grade), ["a", "b", "c"])
-        XCTAssertEqual(detail.nutriscoreDistribution.map(\.count), [1, 1, 1])
-    }
-
-    func testNutriscoreDistributionSurvivesFoodEditAndDeletion() {
-        let profile = makeProfile()
-        let date = makeTestDate(year: 2026, month: 1, day: 30)
-        let apple = makeTestFoodItem(name: "Apple", nutriscoreGrade: "a", produceKind: .fruit)
-        let cereal = makeTestFoodItem(name: "Cereal", nutriscoreGrade: "c")
-        let appleEntry = makeTestEntry(date: date, foodItem: apple, portionGrams: 100)
-        let cerealEntry = makeTestEntry(date: date, foodItem: cereal, portionGrams: 50)
-
-        apple.nutriscoreGrade = "e"
-        cerealEntry.foodItem = nil
-
-        let analytics = HistoryAnalytics(
-            entries: [appleEntry, cerealEntry],
-            profile: profile,
-            range: .week,
-            endDate: date
-        )
-
-        let detail = analytics.current.days.last!.makeDetail()
-        XCTAssertEqual(detail.nutriscoreDistribution.map(\.grade), ["a", "c"])
-        XCTAssertEqual(detail.nutriscoreDistribution.map(\.count), [1, 1])
-    }
-
-    func testNutriscoreDistributionFallsBackToLiveFoodForLegacyEntries() {
-        let profile = makeProfile()
-        let date = makeTestDate(year: 2026, month: 1, day: 30)
-        let yogurt = makeTestFoodItem(name: "Yogurt", nutriscoreGrade: "b")
-        let legacyEntry = makeLegacyTestEntry(date: date, foodItem: yogurt, portionGrams: 150)
-        let detachedLegacyEntry = makeLegacyTestEntry(
-            date: date,
-            foodItem: makeTestFoodItem(name: "Gone Food", nutriscoreGrade: "d"),
-            portionGrams: 100
-        )
-        detachedLegacyEntry.foodItem = nil
-
-        let analytics = HistoryAnalytics(
-            entries: [legacyEntry, detachedLegacyEntry],
-            profile: profile,
-            range: .week,
-            endDate: date
-        )
-
-        let detail = analytics.current.days.last!.makeDetail()
-        XCTAssertEqual(detail.nutriscoreDistribution.map(\.grade), ["b"])
-        XCTAssertEqual(detail.nutriscoreDistribution.map(\.count), [1])
-    }
-
-    func testUnloggedDayDetailPreservesTargetAndEmptyCollections() {
+    func testUnloggedDayPreservesItsTarget() {
         let profile = makeProfile()
         let endDate = makeTestDate(year: 2026, month: 1, day: 30)
 
@@ -223,14 +127,11 @@ final class HistoryAnalyticsTests: XCTestCase {
             endDate: endDate
         )
 
-        let detail = analytics.current.days.last!.makeDetail()
-        XCTAssertFalse(detail.isLogged)
-        XCTAssertEqual(detail.dailyCalorieTarget, 2_000)
-        XCTAssertEqual(detail.status, .notLogged)
-        XCTAssertTrue(detail.mealSummaries.isEmpty)
-        XCTAssertTrue(detail.topFoods.isEmpty)
-        XCTAssertEqual(detail.produceSummary.totalCount, 0)
-        XCTAssertTrue(detail.nutriscoreDistribution.isEmpty)
+        let day = analytics.current.days.last!
+        XCTAssertFalse(day.isLogged)
+        XCTAssertEqual(day.dailyCalorieTarget, 2_000)
+        XCTAssertEqual(day.status, .notLogged)
+        XCTAssertEqual(day.calorieDifference, -2_000)
     }
 
     func testPatternDiscoveryProjectsDailyCalorieTrendPoints() throws {
@@ -251,8 +152,7 @@ final class HistoryAnalyticsTests: XCTestCase {
         let projection = HistoryPatternDiscovery(analytics: analytics, today: endDate).calorieTrend
 
         XCTAssertEqual(projection.points.count, 7)
-        XCTAssertEqual(projection.loggedPointCount, 2)
-        XCTAssertTrue(projection.canDrillDown)
+        XCTAssertEqual(projection.points.filter(\.isLogged).count, 2)
 
         let firstPoint = try XCTUnwrap(projection.points.first)
         XCTAssertFalse(firstPoint.isLogged)
@@ -262,60 +162,9 @@ final class HistoryAnalyticsTests: XCTestCase {
         let lastPoint = try XCTUnwrap(projection.points.last)
         XCTAssertTrue(lastPoint.isLogged)
         XCTAssertEqual(lastPoint.value, 2_200, accuracy: 0.001)
-        XCTAssertEqual(lastPoint.targetDelta, 200)
         XCTAssertEqual(lastPoint.status, .over)
         XCTAssertEqual(lastPoint.xAxisLabel, "F")
         XCTAssertEqual(lastPoint.accessibilityValue, "2200 calories, Over")
-    }
-
-    func testPatternDiscoverySurfacesTheDayFurthestFromGoal() {
-        let profile = makeProfile()
-        let endDate = makeTestDate(year: 2026, month: 1, day: 30)
-        let entries = [
-            makeEntry(date: endDate.yesterday.yesterday, calories: 2_000),
-            makeEntry(date: endDate.yesterday, calories: 2_100),
-            makeEntry(date: endDate, calories: 2_600)
-        ]
-
-        let analytics = HistoryAnalytics(
-            entries: entries,
-            profile: profile,
-            range: .week,
-            endDate: endDate
-        )
-
-        let projection = HistoryPatternDiscovery(analytics: analytics, today: endDate).calorieTrend
-
-        XCTAssertEqual(
-            projection.furthestFromGoal?.text,
-            "Furthest from goal: \(endDate.shortFormatted(in: .current)), 600 kcal over"
-        )
-    }
-
-    func testPatternDiscoveryAggregatesWeeklyFoodDrivers() throws {
-        let profile = makeProfile()
-        let endDate = makeTestDate(year: 2026, month: 1, day: 30)
-        let weekStart = makeTestDate(year: 2026, month: 1, day: 26)
-        let entries = [
-            makeEntry(date: weekStart, name: "Oats", calories: 300),
-            makeEntry(date: weekStart, name: "Pasta", calories: 600),
-            makeEntry(date: weekStart.tomorrow, name: "Pasta", calories: 400)
-        ]
-
-        let analytics = HistoryAnalytics(
-            entries: entries,
-            profile: profile,
-            range: .quarter,
-            endDate: endDate
-        )
-
-        let projection = HistoryPatternDiscovery(analytics: analytics, today: endDate).calorieTrend
-        let selectedWeek = try XCTUnwrap(projection.points.last)
-        let foods = projection.topFoods(for: selectedWeek.selection)
-
-        XCTAssertEqual(foods.map(\.name), ["Pasta", "Oats"])
-        XCTAssertEqual(foods.first?.entryCount, 2)
-        XCTAssertEqual(foods.first?.calories ?? 0, 1_000, accuracy: 0.001)
     }
 
     func testPatternDiscoveryCountsEachMacrosMetDays() {

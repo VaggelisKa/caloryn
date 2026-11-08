@@ -5,7 +5,7 @@ import Testing
 @MainActor
 @Suite("History Pattern Discovery")
 struct HistoryPatternDiscoveryTests {
-    @Test("given a range with no days, when projecting the calorie trend, then there is no logged data and no drill-down")
+    @Test("given a range with no days, when projecting the calorie trend, then there is no logged data")
     func emptyRangeHasNoPoints() {
         let projection = HistoryCalorieTrendProjection(
             range: .week,
@@ -14,12 +14,9 @@ struct HistoryPatternDiscoveryTests {
         )
 
         #expect(projection.points.isEmpty)
-        #expect(projection.loggedPointCount == 0)
         #expect(projection.hasLoggedData == false)
-        #expect(projection.canDrillDown == false)
         #expect(projection.totalDayCount == 0)
         #expect(projection.loggedDayCount == 0)
-        #expect(projection.furthestFromGoal == nil)
     }
 
     @Test(
@@ -97,7 +94,6 @@ struct HistoryPatternDiscoveryTests {
         let firstWeek = try #require(projection.points.first)
         #expect(firstWeek.isLogged)
         #expect(abs(firstWeek.value - 2_200) < 0.001)
-        #expect(firstWeek.targetDelta == 200)
         #expect(firstWeek.status == .over)
         #expect(firstWeek.xAxisLabel == janDate(5).startOfWeek.dayMonthFormatted)
         #expect(firstWeek.accessibilityLabel == "Week of \(janDate(5).startOfWeek.dayMonthFormatted)")
@@ -145,8 +141,8 @@ struct HistoryPatternDiscoveryTests {
         #expect(firstPoint.accessibilityLabel == janDate(26).shortFormatted)
     }
 
-    @Test("given a logged day over target, when projecting the calorie trend, then the point reports the calorie difference and Over status")
-    func loggedDayPointReportsTargetDelta() throws {
+    @Test("given a logged day over target, when projecting the calorie trend, then the point reports its calories and Over status")
+    func loggedDayPointReportsItsCaloriesAndStatus() throws {
         let dates = days(fromJanuary: 26, count: 5)
         let entries = [makeCalorieEntry(date: janDate(30), calories: 2_200)]
 
@@ -159,7 +155,6 @@ struct HistoryPatternDiscoveryTests {
         let lastPoint = try #require(projection.points.last)
         #expect(lastPoint.isLogged)
         #expect(abs(lastPoint.value - 2_200) < 0.001)
-        #expect(lastPoint.targetDelta == 200)
         #expect(lastPoint.status == .over)
         #expect(lastPoint.accessibilityValue == "2200 calories, Over")
     }
@@ -210,8 +205,8 @@ struct HistoryPatternDiscoveryTests {
         #expect(point.xAxisLabel == expectedLabel)
     }
 
-    @Test("given a single logged day, when projecting the calorie trend, then there is logged data but no drill-down")
-    func singleLoggedDayCannotDrillDown() {
+    @Test("given a single logged day, when projecting the calorie trend, then there is logged data")
+    func singleLoggedDayHasLoggedData() {
         let dates = days(fromJanuary: 26, count: 7)
         let entries = [makeCalorieEntry(date: janDate(28), calories: 2_000)]
 
@@ -221,31 +216,12 @@ struct HistoryPatternDiscoveryTests {
             today: janDate(31)
         )
 
-        #expect(projection.loggedPointCount == 1)
+        #expect(projection.points.filter(\.isLogged).count == 1)
         #expect(projection.hasLoggedData)
-        #expect(projection.canDrillDown == false)
     }
 
-    @Test("given two logged days, when projecting the calorie trend, then drill-down becomes available")
-    func twoLoggedDaysAllowDrillDown() {
-        let dates = days(fromJanuary: 26, count: 7)
-        let entries = [
-            makeCalorieEntry(date: janDate(28), calories: 2_000),
-            makeCalorieEntry(date: janDate(29), calories: 2_000)
-        ]
-
-        let projection = HistoryCalorieTrendProjection(
-            range: .week,
-            summary: makeSummary(dates: dates, entries: entries),
-            today: janDate(31)
-        )
-
-        #expect(projection.loggedPointCount == 2)
-        #expect(projection.canDrillDown)
-    }
-
-    @Test("given a 90-day range with several logged days inside one calendar week, when projecting the calorie trend, then one week is plotted but drill-down stays available")
-    func quarterPlotsWeeksButDrillsDownOnLoggedDays() {
+    @Test("given a 90-day range with several logged days inside one calendar week, when projecting the calorie trend, then one week is plotted while every logged day is counted")
+    func quarterPlotsWeeksButCountsLoggedDays() {
         let dates = days(fromJanuary: 5, count: 14)
         let entries = [
             makeCalorieEntry(date: janDate(5), calories: 2_000),
@@ -260,8 +236,7 @@ struct HistoryPatternDiscoveryTests {
         )
 
         #expect(projection.loggedDayCount == 3)
-        #expect(projection.loggedPointCount == 1)
-        #expect(projection.canDrillDown)
+        #expect(projection.points.filter(\.isLogged).count == 1)
     }
 
     @Test("given a projected chart index, when looking up a point, then the index is rounded to the nearest position")
@@ -310,140 +285,8 @@ struct HistoryPatternDiscoveryTests {
         #expect(abs(projection.yAxisUpperBound - 2_000 * 1.15) < 0.001)
     }
 
-    @Test("given logged and unlogged days, when projecting the calorie trend, then totals count only logged days")
-    func totalsCountOnlyLoggedDays() {
-        let dates = days(fromJanuary: 26, count: 7)
-        let entries = [
-            makeCalorieEntry(date: janDate(26), calories: 2_000),
-            makeCalorieEntry(date: janDate(27), calories: 2_400)
-        ]
-
-        let projection = HistoryCalorieTrendProjection(
-            range: .week,
-            summary: makeSummary(dates: dates, entries: entries),
-            today: janDate(31)
-        )
-
-        #expect(abs(projection.totalCalories - 4_400) < 0.001)
-        #expect(projection.loggedDayTargetTotal == 4_000)
-        #expect(projection.totalTargetDelta == 400)
-        #expect(projection.rangeStats.totalDelta == .init(value: "400", label: "kcal over goal in total"))
-        #expect(projection.rangeStats.totalDelta.spokenLabel == "400 kcal over goal in total")
-    }
-
-    @Test("given logged days that land exactly on their goals, when projecting the calorie trend, then the total reads as off goal by nothing")
-    func totalsOnGoalReadAsOnGoal() {
-        let dates = days(fromJanuary: 26, count: 3)
-        let entries = [
-            makeCalorieEntry(date: janDate(26), calories: 2_000),
-            makeCalorieEntry(date: janDate(27), calories: 2_000)
-        ]
-
-        let projection = HistoryCalorieTrendProjection(
-            range: .week,
-            summary: makeSummary(dates: dates, entries: entries),
-            today: janDate(31)
-        )
-
-        #expect(projection.totalTargetDelta == 0)
-        #expect(
-            projection.rangeStats.totalDelta
-                == .init(value: "0", label: "kcal off goal in total", spokenLabel: "Right on goal in total")
-        )
-    }
-
-    @Test("given logged days under goal, when summarising the range, then the three stats read average, on-track share of logged days and total shortfall")
-    func rangeStatsReadAverageShareAndShortfall() {
-        let dates = days(fromJanuary: 26, count: 7)
-        let entries = [
-            makeCalorieEntry(date: janDate(26), calories: 2_000),
-            makeCalorieEntry(date: janDate(27), calories: 1_600),
-            makeCalorieEntry(date: janDate(28), calories: 2_050)
-        ]
-
-        let projection = HistoryCalorieTrendProjection(
-            range: .week,
-            summary: makeSummary(dates: dates, entries: entries),
-            today: janDate(31)
-        )
-
-        #expect(projection.rangeStats.stats == [
-            .init(value: 1_883.formatted(), label: "kcal a day on average"),
-            .init(value: "2 of 3", label: "logged days on track"),
-            .init(value: "350", label: "kcal under goal in total")
-        ])
-        #expect(projection.rangeStats.stats.map(\.spokenLabel) == [
-            "\(1_883.formatted()) kcal a day on average",
-            "2 of 3 logged days on track",
-            "350 kcal under goal in total"
-        ])
-    }
-
-    @Test("given every logged day has a saved daily goal, when projecting the calorie trend, then no estimated-target note is shown")
-    func savedDailyGoalsSuppressEstimatedTargetNote() {
-        let dates = days(fromJanuary: 26, count: 3)
-        let entries = [makeCalorieEntry(date: janDate(26), calories: 2_000)]
-
-        let projection = HistoryCalorieTrendProjection(
-            range: .week,
-            summary: makeSummary(
-                dates: dates,
-                entries: entries,
-                snapshotTargets: [janDate(26): 2_000]
-            ),
-            today: janDate(31)
-        )
-
-        #expect(projection.hasEstimatedTargets == false)
-        #expect(projection.estimatedTargetNoteText == nil)
-    }
-
-    @Test("given a logged day without a saved daily goal, when projecting the calorie trend, then the estimated-target note is shown")
-    func missingDailyGoalSurfacesEstimatedTargetNote() {
-        let dates = days(fromJanuary: 26, count: 3)
-        let entries = [
-            makeCalorieEntry(date: janDate(26), calories: 2_000),
-            makeCalorieEntry(date: janDate(27), calories: 2_000)
-        ]
-
-        let projection = HistoryCalorieTrendProjection(
-            range: .week,
-            summary: makeSummary(
-                dates: dates,
-                entries: entries,
-                snapshotTargets: [janDate(26): 2_000]
-            ),
-            today: janDate(31)
-        )
-
-        #expect(projection.hasEstimatedTargets)
-        #expect(
-            projection.estimatedTargetNoteText
-                == "Days without a saved daily goal are compared with the goal in effect around then."
-        )
-    }
-
-    @Test("given only unlogged days lack a saved daily goal, when projecting the calorie trend, then no estimated-target note is shown")
-    func unloggedDaysDoNotTriggerEstimatedTargetNote() {
-        let dates = days(fromJanuary: 26, count: 5)
-        let entries = [makeCalorieEntry(date: janDate(26), calories: 2_000)]
-
-        let projection = HistoryCalorieTrendProjection(
-            range: .week,
-            summary: makeSummary(
-                dates: dates,
-                entries: entries,
-                snapshotTargets: [janDate(26): 2_000]
-            ),
-            today: janDate(31)
-        )
-
-        #expect(projection.hasEstimatedTargets == false)
-        #expect(projection.estimatedTargetNoteText == nil)
-    }
-
     @Test("given days with different saved daily goals, when projecting the calorie trend, then each day is compared with its own target")
-    func perDayTargetsDriveDayDeltas() throws {
+    func perDayTargetsDriveDayStatuses() throws {
         let dates = days(fromJanuary: 26, count: 2)
         let entries = [
             makeCalorieEntry(date: janDate(26), calories: 2_000),
@@ -462,221 +305,8 @@ struct HistoryPatternDiscoveryTests {
 
         let first = try #require(projection.points.first)
         let second = try #require(projection.points.last)
-        #expect(first.targetDelta == 200)
         #expect(first.status == .over)
-        #expect(second.targetDelta == 0)
         #expect(second.status == .onTrack)
-        #expect(projection.averageTargetPerLoggedDay == 1_900)
-    }
-
-    @Test(
-        "given nothing logged in the range, when finding the period furthest from goal, then there is none",
-        arguments: [HistoryRange.week, .twoWeeks, .month, .quarter]
-    )
-    func noLoggedDataReportsNoFurthestPeriod(range: HistoryRange) {
-        let projection = HistoryCalorieTrendProjection(
-            range: range,
-            summary: makeSummary(dates: days(fromJanuary: 5, count: 14)),
-            today: janDate(31)
-        )
-
-        #expect(projection.furthestFromGoal == nil)
-    }
-
-    @Test("given every logged day is on track, when finding the day furthest from goal, then the furthest of them is still named")
-    func allOnTrackDaysStillNameTheFurthest() {
-        let dates = days(fromJanuary: 26, count: 5)
-        let entries = [
-            makeCalorieEntry(date: janDate(26), calories: 2_000),
-            makeCalorieEntry(date: janDate(27), calories: 2_050),
-            makeCalorieEntry(date: janDate(28), calories: 1_950)
-        ]
-
-        let projection = HistoryCalorieTrendProjection(
-            range: .week,
-            summary: makeSummary(dates: dates, entries: entries),
-            today: janDate(31)
-        )
-
-        #expect(projection.furthestFromGoal?.text == "Furthest from goal: \(dayTitle(27)), 50 kcal over")
-    }
-
-    @Test("given one logged day far over target, when finding the day furthest from goal, then that day is named with the amount over")
-    func furthestNamesTheDayOverTarget() {
-        let dates = days(fromJanuary: 26, count: 5)
-        let entries = [
-            makeCalorieEntry(date: janDate(26), calories: 2_000),
-            makeCalorieEntry(date: janDate(27), calories: 2_100),
-            makeCalorieEntry(date: janDate(28), calories: 2_600)
-        ]
-
-        let projection = HistoryCalorieTrendProjection(
-            range: .week,
-            summary: makeSummary(dates: dates, entries: entries),
-            today: janDate(31)
-        )
-
-        #expect(
-            projection.furthestFromGoal?.text
-                == "Furthest from goal: \(dayTitle(28)), 600 kcal over"
-        )
-    }
-
-    @Test("given one logged day far under target, when finding the day furthest from goal, then that day is named with the amount under")
-    func furthestNamesTheDayUnderTarget() {
-        let dates = days(fromJanuary: 26, count: 5)
-        let entries = [
-            makeCalorieEntry(date: janDate(26), calories: 2_000),
-            makeCalorieEntry(date: janDate(27), calories: 1_200)
-        ]
-
-        let projection = HistoryCalorieTrendProjection(
-            range: .week,
-            summary: makeSummary(dates: dates, entries: entries),
-            today: janDate(31)
-        )
-
-        #expect(
-            projection.furthestFromGoal?.text
-                == "Furthest from goal: \(dayTitle(27)), 800 kcal under"
-        )
-    }
-
-    @Test("given two logged days with equally large opposite swings, when finding the day furthest from goal, then the earlier day is reported")
-    func equalSwingsReportTheEarlierDay() {
-        let dates = days(fromJanuary: 26, count: 5)
-        let entries = [
-            makeCalorieEntry(date: janDate(26), calories: 2_300),
-            makeCalorieEntry(date: janDate(27), calories: 1_700)
-        ]
-
-        let projection = HistoryCalorieTrendProjection(
-            range: .week,
-            summary: makeSummary(dates: dates, entries: entries),
-            today: janDate(31)
-        )
-
-        #expect(
-            projection.furthestFromGoal?.text
-                == "Furthest from goal: \(dayTitle(26)), 300 kcal over"
-        )
-    }
-
-    @Test("given a 90-day range where every logged week lands exactly on goal, when finding the week furthest from goal, then the line is hidden")
-    func weeksExactlyOnGoalHideTheFurthestLine() {
-        let dates = days(fromJanuary: 5, count: 14)
-        let entries = [
-            makeCalorieEntry(date: janDate(5), calories: 2_000),
-            makeCalorieEntry(date: janDate(12), calories: 2_000)
-        ]
-
-        let projection = HistoryCalorieTrendProjection(
-            range: .quarter,
-            summary: makeSummary(dates: dates, entries: entries),
-            today: janDate(31)
-        )
-
-        #expect(projection.furthestFromGoal == nil)
-    }
-
-    @Test("given a 90-day range with one week far off target, when finding the week furthest from goal, then that week is named with its distance per day")
-    func furthestWeekNamesTheWeek() {
-        let dates = days(fromJanuary: 5, count: 14)
-        let entries = [
-            makeCalorieEntry(date: janDate(5), calories: 2_000),
-            makeCalorieEntry(date: janDate(12), calories: 2_500)
-        ]
-
-        let projection = HistoryCalorieTrendProjection(
-            range: .quarter,
-            summary: makeSummary(dates: dates, entries: entries),
-            today: janDate(31)
-        )
-
-        #expect(
-            projection.furthestFromGoal?.text
-                == "Furthest from goal: week of \(janDate(12).startOfWeek.dayMonthFormatted), 500 kcal a day over"
-        )
-    }
-
-    @Test("given a selected logged day, when discovering its food drivers, then foods are merged by name and ranked by calories")
-    func dayDrillDownRanksTopFoods() throws {
-        let dates = days(fromJanuary: 26, count: 3)
-        let entries = [
-            makeCalorieEntry(date: janDate(26), name: "Oats", calories: 300),
-            makeCalorieEntry(date: janDate(26), name: "Pasta", calories: 700),
-            makeCalorieEntry(date: janDate(26), name: "Oats", calories: 150)
-        ]
-
-        let projection = HistoryCalorieTrendProjection(
-            range: .week,
-            summary: makeSummary(dates: dates, entries: entries),
-            today: janDate(31)
-        )
-
-        let selection = try #require(projection.points.first?.selection)
-        let foods = projection.topFoods(for: selection)
-
-        #expect(foods.map(\.name) == ["Pasta", "Oats"])
-        #expect(foods.first?.entryCount == 1)
-        #expect(foods.last?.entryCount == 2)
-        #expect(abs((foods.last?.calories ?? 0) - 450) < 0.001)
-    }
-
-    @Test("given a selected calendar week, when discovering its food drivers, then foods are aggregated across the week's logged days")
-    func weekDrillDownAggregatesFoodsAcrossDays() throws {
-        let dates = days(fromJanuary: 5, count: 7)
-        let entries = [
-            makeCalorieEntry(date: janDate(5), name: "Oats", calories: 300),
-            makeCalorieEntry(date: janDate(5), name: "Pasta", calories: 600),
-            makeCalorieEntry(date: janDate(6), name: "Pasta", calories: 400)
-        ]
-
-        let projection = HistoryCalorieTrendProjection(
-            range: .quarter,
-            summary: makeSummary(dates: dates, entries: entries),
-            today: janDate(31)
-        )
-
-        let selection = try #require(projection.points.first?.selection)
-        let foods = projection.topFoods(for: selection)
-
-        #expect(foods.map(\.name) == ["Pasta", "Oats"])
-        #expect(foods.first?.entryCount == 2)
-        #expect(abs((foods.first?.calories ?? 0) - 1_000) < 0.001)
-        #expect(abs((foods.first?.portionGrams ?? 0) - 200) < 0.001)
-    }
-
-    @Test("given two week foods with identical calories, when discovering food drivers, then they are ordered by name")
-    func equalCalorieFoodsAreOrderedByName() throws {
-        let dates = days(fromJanuary: 5, count: 7)
-        let entries = [
-            makeCalorieEntry(date: janDate(5), name: "Zucchini", calories: 200),
-            makeCalorieEntry(date: janDate(6), name: "Apple", calories: 200)
-        ]
-
-        let projection = HistoryCalorieTrendProjection(
-            range: .quarter,
-            summary: makeSummary(dates: dates, entries: entries),
-            today: janDate(31)
-        )
-
-        let selection = try #require(projection.points.first?.selection)
-        #expect(projection.topFoods(for: selection).map(\.name) == ["Apple", "Zucchini"])
-    }
-
-    @Test("given a selected week with no logged days, when discovering its food drivers, then no foods are reported")
-    func weekWithoutLoggedDaysHasNoFoodDrivers() throws {
-        let dates = days(fromJanuary: 5, count: 7)
-
-        let projection = HistoryCalorieTrendProjection(
-            range: .quarter,
-            summary: makeSummary(dates: dates),
-            today: janDate(31)
-        )
-
-        let selection = try #require(projection.points.first?.selection)
-        #expect(projection.topFoods(for: selection).isEmpty)
     }
 
     @Test("given profile macro goals, when discovering patterns, then each macro carries its goal in grams")
@@ -734,11 +364,7 @@ struct HistoryPatternDiscoveryTests {
 
         #expect(discovery.calorieTrend.loggedDayCount == 3)
         #expect(discovery.calorieTrend.totalDayCount == 7)
-        #expect(discovery.calorieTrend.onTrackLoggedDayCount == 2)
-    }
-
-    private func dayTitle(_ day: Int) -> String {
-        janDate(day).shortFormatted(in: .current)
+        #expect(discovery.calorieTrend.points.filter { $0.status == .onTrack }.count == 2)
     }
 
     private func janDate(_ day: Int) -> Date {

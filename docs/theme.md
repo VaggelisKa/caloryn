@@ -272,10 +272,10 @@ the expected colour instead.
 ./scripts/theme-screenshots.sh [output-dir]     # default /tmp/caloryn-theme-shots
 ```
 
-Captures 24 surfaces in both appearances — all six onboarding steps, Today, the food
+Captures 23 surfaces in both appearances — all six onboarding steps, Today, the food
 search sheet, its results, those results *while the search is still running*, the
 portion picker, the sheet's paste row (shown only with a link on the pasteboard, so the
-harness copies one first) and the pasted-food confirmation, History with both drill-downs,
+harness copies one first) and the pasted-food confirmation, History with its pattern drill-down,
 Settings with both editors, My Foods, multi-add review and its portion editor, the three
 creation sheets, and the ingredient amount picker — then prints how much of each screen is `backgroundPrimary`,
 `backgroundSecondary`, retired sage, and a system grey (`#F2F2F7` in light; `#1C1C1E`, `#000000`

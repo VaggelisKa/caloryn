@@ -35,17 +35,6 @@ struct HistoryCalorieTrendCardSummaryTests {
         )
     }
 
-    @Test("given the drill-down, when describing its chart, then only the coverage is spoken")
-    func theDrillDownChartSpeaksOnlyItsCoverage() {
-        #expect(
-            HistoryCalorieTrendCardSummary.detailChartAccessibilityLabel(
-                range: .quarter,
-                loggedDayCount: 40,
-                totalDayCount: 90
-            ) == "Detailed calorie trend for 90 Days. 40 of 90 days logged."
-        )
-    }
-
     private func makeSummary(
         range: HistoryRange = .week,
         dailyCalorieTarget: Int = 2_000,

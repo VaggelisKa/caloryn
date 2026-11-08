@@ -19,7 +19,6 @@ struct HistoryView: View {
     @State private var hasLoadedAnalytics = false
     @State private var isContentVisible = false
     @State private var pageSize: CGSize = .zero
-    @State private var detailSelection = HistoryDetailSelection()
     @State private var inlineDetailSeed: HistoryDrillDownRoute?
     @State private var averagesGrouping: HistoryAverages.Grouping = .week
 
@@ -160,7 +159,6 @@ struct HistoryView: View {
                 averageTargetPerLoggedDay: history.current.averageTargetPerLoggedDay
             )
             let averages = HistoryAverages(summary: history.current)
-            let selectedDetail = showsDetailInline ? currentPane.detail : nil
 
             VStack(alignment: .leading, spacing: 26) {
                 if hasLoadedAnalytics {
@@ -171,16 +169,7 @@ struct HistoryView: View {
                             VStack(alignment: .leading, spacing: 26) {
                                 HistoryOverviewSection(overview: overview)
 
-                                HistoryCalorieTrendSection(
-                                    projection: patternDiscovery.calorieTrend,
-                                    drillDownAction: patternDiscovery.calorieTrend.canDrillDown
-                                        ? { openCalorieTrendDetail(range: state.range, summary: history.current) }
-                                        : nil
-                                )
-                                .historyDetailSource(
-                                    isSelected: selectedDetail == .calorieTrend,
-                                    outset: 12
-                                )
+                                HistoryCalorieTrendSection(projection: patternDiscovery.calorieTrend)
 
                                 if !averages.isEmpty {
                                     HistoryAveragesSection(
@@ -194,10 +183,7 @@ struct HistoryView: View {
                                         pattern: recurringPattern,
                                         action: { openPatternDetails(recurringPattern) }
                                     )
-                                    .historyDetailSource(
-                                        isSelected: selectedDetail == .recurringPattern,
-                                        outset: 0
-                                    )
+                                    .historyDetailSource(isSelected: showsDetailInline, outset: 0)
                                 }
 
                                 if history.macroPatterns.contains(where: { $0.current.loggedDays > 0 }) {
@@ -220,55 +206,26 @@ struct HistoryView: View {
         .calorynPageCanvas()
     }
 
-    private var currentPane: HistoryDetailSelection.Pane {
-        let state = historyState
-        return detailSelection.pane(
-            range: state.range,
-            canDrillIntoCalorieTrend: HistoryPatternDiscovery(
-                analytics: state.analytics,
-                today: analyticsDayStart
-            ).calorieTrend.canDrillDown,
-            hasRecurringPattern: state.recurringPattern != nil
-        )
-    }
-
     private var inlineDetailPane: some View {
-        let state = historyState
-        let pane = currentPane
+        let pattern = historyState.recurringPattern
 
         return ZStack(alignment: .topLeading) {
             if hasLoadedAnalytics {
-                switch pane {
-                case .calorieTrend(let range):
-                    HistoryCalorieTrendDetailView(
-                        range: range,
-                        summary: state.analytics.current,
-                        today: analyticsDayStart,
-                        initialSelectedPointID: inlineTrendSeed(for: range)?.initialSelectedPointID,
+                if let pattern {
+                    HistoryRecurringCaloriePatternDetailView(
+                        pattern: pattern,
+                        initiallyExpandedDayIDs: inlinePatternSeed?.initiallyExpandedDayIDs ?? [],
                         presentation: .inline
                     )
-                case .recurringPattern:
-                    if let pattern = state.recurringPattern {
-                        HistoryRecurringCaloriePatternDetailView(
-                            pattern: pattern,
-                            initiallyExpandedDayIDs: inlinePatternSeed?.initiallyExpandedDayIDs ?? [],
-                            presentation: .inline
-                        )
-                    }
-                case .empty:
+                } else {
                     HistoryDetailEmptyPane()
                 }
             }
         }
-        .id(pane)
+        .id(pattern == nil)
         .transition(.opacity)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .opacity(isContentVisible ? 1 : 0)
-    }
-
-    private func inlineTrendSeed(for range: HistoryRange) -> HistoryCalorieTrendSnapshot? {
-        guard case .calorieTrend(let snapshot) = inlineDetailSeed, snapshot.range == range else { return nil }
-        return snapshot
     }
 
     private var inlinePatternSeed: HistoryRecurringCaloriePatternSnapshot? {
@@ -323,15 +280,6 @@ struct HistoryView: View {
         }
     }
 
-    private func openCalorieTrendDetail(range: HistoryRange, summary: HistoryPeriodSummary) {
-        let snapshot = HistoryCalorieTrendSnapshot(
-            range: range,
-            summary: summary,
-            today: analyticsDayStart
-        )
-        open(.calorieTrend(snapshot))
-    }
-
     private func openPatternDetails(_ pattern: HistoryRecurringCaloriePattern) {
         open(
             .recurringPattern(
@@ -352,12 +300,6 @@ struct HistoryView: View {
 
     private func showInline(_ route: HistoryDrillDownRoute) {
         inlineDetailSeed = route
-        switch route {
-        case .calorieTrend:
-            detailSelection.choose(.calorieTrend)
-        case .recurringPattern:
-            detailSelection.choose(.recurringPattern)
-        }
     }
 
     #if DEBUG
@@ -365,44 +307,18 @@ struct HistoryView: View {
         guard let drillDown = debugLaunch.drillDown else { return }
         debugLaunch.drillDown = nil
 
-        let state = historyState
-        switch drillDown {
-        case .calorieTrend, .calorieTrendSelected:
-            var snapshot = HistoryCalorieTrendSnapshot(
-                range: state.range,
-                summary: state.analytics.current,
-                today: analyticsDayStart
-            )
-            if drillDown == .calorieTrendSelected {
-                let projection = HistoryCalorieTrendProjection(
-                    range: state.range,
-                    summary: state.analytics.current,
-                    today: analyticsDayStart
-                )
-                snapshot.initialSelectedPointID = projection.points.last(where: \.isLogged)?.id
-            }
-            open(.calorieTrend(snapshot))
-        case .recurringPattern, .recurringPatternExpanded:
-            guard let pattern = state.recurringPattern else { return }
-            var snapshot = HistoryRecurringCaloriePatternSnapshot(pattern: pattern)
-            if drillDown == .recurringPatternExpanded, let first = pattern.supportingDaysNewestFirst.first {
-                snapshot.initiallyExpandedDayIDs = [first.id]
-            }
-            open(.recurringPattern(snapshot))
+        guard let pattern = historyState.recurringPattern else { return }
+        var snapshot = HistoryRecurringCaloriePatternSnapshot(pattern: pattern)
+        if drillDown == .recurringPatternExpanded, let first = pattern.supportingDaysNewestFirst.first {
+            snapshot.initiallyExpandedDayIDs = [first.id]
         }
+        open(.recurringPattern(snapshot))
     }
     #endif
 
     @ViewBuilder
     private func destination(for route: HistoryDrillDownRoute) -> some View {
         switch route {
-        case .calorieTrend(let snapshot):
-            HistoryCalorieTrendDetailView(
-                range: snapshot.range,
-                summary: snapshot.summary,
-                today: snapshot.today,
-                initialSelectedPointID: snapshot.initialSelectedPointID
-            )
         case .recurringPattern(let snapshot):
             HistoryRecurringCaloriePatternDetailView(
                 pattern: snapshot.pattern,
@@ -461,24 +377,7 @@ private struct HistoryViewState {
 }
 
 private enum HistoryDrillDownRoute: Hashable {
-    case calorieTrend(HistoryCalorieTrendSnapshot)
     case recurringPattern(HistoryRecurringCaloriePatternSnapshot)
-}
-
-private struct HistoryCalorieTrendSnapshot: Hashable {
-    let id = UUID()
-    let range: HistoryRange
-    let summary: HistoryPeriodSummary
-    let today: Date
-    var initialSelectedPointID: String?
-
-    static func == (lhs: HistoryCalorieTrendSnapshot, rhs: HistoryCalorieTrendSnapshot) -> Bool {
-        lhs.id == rhs.id
-    }
-
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(id)
-    }
 }
 
 private struct HistoryRecurringCaloriePatternSnapshot: Hashable {
@@ -501,8 +400,6 @@ private struct HistoryRecurringCaloriePatternSnapshot: Hashable {
 #if DEBUG
 struct HistoryDebugLaunch {
     enum DrillDown: String {
-        case calorieTrend
-        case calorieTrendSelected
         case recurringPattern
         case recurringPatternExpanded
     }

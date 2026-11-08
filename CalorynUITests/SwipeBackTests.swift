@@ -1,34 +1,6 @@
 import XCTest
 
 final class SwipeBackTests: UITestCase {
-    func testGivenAHistoryDetailWhenSwipedFromTheLeftEdgeThenHistoryReturns() {
-        let app = launch(fixture: .history)
-        let tabs = TabBar(app: app)
-        let history = HistoryScreen(app: app)
-
-        given("the calorie trend detail is open") {
-            XCTAssertTrue(tabs.isVisible)
-            tabs.go(to: .history)
-            history.tap(history.calorieTrendCard)
-            XCTAssertTrue(history.calorieTrendDetails.awaitExistence())
-        }
-
-        when("the user swipes back from the left edge") {
-            app.swipeBackFromLeftEdge()
-        }
-
-        then("History is showing again") {
-            XCTAssertTrue(
-                history.calorieTrendCard.awaitExistence(),
-                "Swiping back should return to History"
-            )
-            XCTAssertFalse(
-                history.calorieTrendDetails.exists,
-                "The detail screen should have been popped"
-            )
-        }
-    }
-
     func testGivenAPatternDetailWhenSwipedFromTheLeftEdgeThenHistoryReturns() {
         let app = launch(fixture: .historyPattern)
         let tabs = TabBar(app: app)
