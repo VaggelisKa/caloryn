@@ -54,18 +54,11 @@ private struct HistoryMacroPatternRow: View {
 
             HistoryInkBar(ratio: row.averageRatio)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(row.metText)
+            if let changeText = row.changeText {
+                Text(changeText)
                     .font(CalorynTheme.caption.monospacedDigit())
                     .foregroundStyle(CalorynTheme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
-
-                if let changeText = row.changeText {
-                    Text(changeText)
-                        .font(CalorynTheme.caption.monospacedDigit())
-                        .foregroundStyle(CalorynTheme.textSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
             }
         }
         .accessibilityElement(children: .ignore)

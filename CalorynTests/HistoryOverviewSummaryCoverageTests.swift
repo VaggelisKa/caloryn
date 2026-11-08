@@ -19,32 +19,6 @@ struct HistoryOverviewSummaryCoverageTests {
         #expect(summary.averageAccessibilityLabel == "Nothing logged")
     }
 
-    @Test("given a single day in one status, when breaking logged days down, then that status fills the whole bar")
-    func aSingleStatusFillsTheBar() {
-        let breakdown = makeSummary(loggedDayCount: 1, onTrackDayCount: 0, overDayCount: 0, underDayCount: 1).loggedDays
-
-        #expect(breakdown.accessibilityLabel == "0 on track, 0 over, 1 under")
-        #expect(breakdown.barSegments.map(\.status) == [.under])
-        #expect(breakdown.barSegments.map { breakdown.share(of: $0) } == [1])
-    }
-
-    @Test("given no days in any status, when drawing the bar, then it is an empty track rather than dividing by zero")
-    func noLoggedDaysLeaveAnEmptyTrack() {
-        let breakdown = makeSummary(loggedDayCount: 0, onTrackDayCount: 0, overDayCount: 0, underDayCount: 0).loggedDays
-
-        #expect(breakdown.accessibilityLabel == "0 on track, 0 over, 0 under")
-        #expect(breakdown.barSegments.isEmpty)
-        #expect(breakdown.columns.allSatisfy { breakdown.share(of: $0) == 0 })
-    }
-
-    @Test("given a negative count, when breaking logged days down, then it counts as none")
-    func aNegativeCountIsNone() {
-        let breakdown = makeSummary(onTrackDayCount: 3, overDayCount: -2, underDayCount: 0).loggedDays
-
-        #expect(breakdown.columns.map(\.count) == [3, 0, 0])
-        #expect(breakdown.barSegments.map { breakdown.share(of: $0) } == [1])
-    }
-
     @Test(
         "given an average with a half calorie, when stating it, then the headline and the difference round the same way",
         arguments: [
@@ -124,19 +98,13 @@ struct HistoryOverviewSummaryCoverageTests {
         loggedDayCount: Int = 6,
         totalDayCount: Int = 7,
         averageCaloriesPerLoggedDay: Double = 2_000,
-        averageTargetPerLoggedDay: Int = 2_000,
-        onTrackDayCount: Int = 4,
-        overDayCount: Int = 1,
-        underDayCount: Int = 1
+        averageTargetPerLoggedDay: Int = 2_000
     ) -> HistoryOverviewSummary {
         HistoryOverviewSummary(
             loggedDayCount: loggedDayCount,
             totalDayCount: totalDayCount,
             averageCaloriesPerLoggedDay: averageCaloriesPerLoggedDay,
-            averageTargetPerLoggedDay: averageTargetPerLoggedDay,
-            onTrackDayCount: onTrackDayCount,
-            overDayCount: overDayCount,
-            underDayCount: underDayCount
+            averageTargetPerLoggedDay: averageTargetPerLoggedDay
         )
     }
 

@@ -43,21 +43,13 @@ struct HistoryOverviewSummaryTests {
         #expect(summary.goalGap?.emphasis == "Right on")
     }
 
-    @Test("given logged days, when stating coverage, then it counts logged days out of the range")
-    func coverageCountsLoggedDaysOutOfTheRange() {
-        #expect(makeSummary(loggedDayCount: 29, totalDayCount: 30).loggedDaysText == "29 of 30 days logged")
-        #expect(makeSummary(loggedDayCount: 1, totalDayCount: 7).loggedDaysText == "1 of 7 days logged")
-        #expect(makeSummary(loggedDayCount: 1, totalDayCount: 1).loggedDaysText == "1 of 1 day logged")
-    }
-
-    @Test("given nothing logged, when heading the page, then it says so instead of a zero average or a coverage count")
+    @Test("given nothing logged, when heading the page, then it says so instead of a zero average")
     func anEmptyRangeHasNoAverage() {
         let summary = makeSummary(loggedDayCount: 0, totalDayCount: 30, averageCaloriesPerLoggedDay: 0)
 
         #expect(summary.hasLoggedDays == false)
         #expect(summary.emptyHeadlineText == "Nothing logged")
         #expect(summary.goalGap == nil)
-        #expect(summary.loggedDaysText == nil)
         #expect(summary.supportText == "No days logged in the last 30 days.")
         #expect(summary.accessibilityLabel == "Nothing logged. No days logged in the last 30 days.")
     }
@@ -70,24 +62,6 @@ struct HistoryOverviewSummaryTests {
             summary.accessibilityLabel
                 == "\(2_110.formatted()) kcal a day on average. 110 over your \(2_000.formatted()) goal."
         )
-    }
-
-    @Test("given logged days by status, when breaking them down, then on track, over and under are counted in that order")
-    func loggedDaysAreBrokenDownByStatus() {
-        let breakdown = makeSummary(onTrackDayCount: 25, overDayCount: 4, underDayCount: 0).loggedDays
-
-        #expect(breakdown.title == "Logged days")
-        #expect(breakdown.columns.map(\.valueText) == ["25", "4", "0"])
-        #expect(breakdown.columns.map(\.label) == ["on track", "over", "under"])
-        #expect(breakdown.accessibilityLabel == "25 on track, 4 over, 0 under")
-    }
-
-    @Test("given logged days by status, when drawing the bar, then each status with days takes its share")
-    func theBarSplitsByShare() {
-        let breakdown = makeSummary(onTrackDayCount: 25, overDayCount: 4, underDayCount: 0).loggedDays
-
-        #expect(breakdown.barSegments.map(\.status) == [.onTrack, .over])
-        #expect(breakdown.barSegments.map { breakdown.share(of: $0) } == [25.0 / 29.0, 4.0 / 29.0])
     }
 
     @Test("given the range chips, when titling them, then only the first carries the unit")
@@ -203,19 +177,13 @@ struct HistoryOverviewSummaryTests {
         loggedDayCount: Int = 6,
         totalDayCount: Int = 7,
         averageCaloriesPerLoggedDay: Double = 2_000,
-        averageTargetPerLoggedDay: Int = 2_000,
-        onTrackDayCount: Int = 4,
-        overDayCount: Int = 1,
-        underDayCount: Int = 1
+        averageTargetPerLoggedDay: Int = 2_000
     ) -> HistoryOverviewSummary {
         HistoryOverviewSummary(
             loggedDayCount: loggedDayCount,
             totalDayCount: totalDayCount,
             averageCaloriesPerLoggedDay: averageCaloriesPerLoggedDay,
-            averageTargetPerLoggedDay: averageTargetPerLoggedDay,
-            onTrackDayCount: onTrackDayCount,
-            overDayCount: overDayCount,
-            underDayCount: underDayCount
+            averageTargetPerLoggedDay: averageTargetPerLoggedDay
         )
     }
 

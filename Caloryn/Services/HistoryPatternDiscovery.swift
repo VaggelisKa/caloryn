@@ -3,7 +3,6 @@ import Foundation
 struct HistoryPatternDiscovery {
     let calorieTrend: HistoryCalorieTrendProjection
     let macroPatterns: HistoryMacroPatternsProjection
-    let weeklyConsistency: HistoryWeeklyConsistencyProjection
 
     init(analytics: HistoryAnalytics, today: Date) {
         calorieTrend = HistoryCalorieTrendProjection(
@@ -12,7 +11,6 @@ struct HistoryPatternDiscovery {
             today: today
         )
         macroPatterns = HistoryMacroPatternsProjection(patterns: analytics.macroPatterns)
-        weeklyConsistency = HistoryWeeklyConsistencyProjection(summary: analytics.current, today: today)
     }
 }
 

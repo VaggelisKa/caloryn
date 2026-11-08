@@ -302,30 +302,6 @@ final class ComponentSnapshotTests: XCTestCase {
         assertAppearances(of: plates, layout: .fixed(width: 390, height: 72))
     }
 
-    func testHistoryDayPlateGridAtMonthSizeAcrossAppearances() {
-        let grid = HistoryDayPlateGrid(
-            strip: dayPlateStrip(dayCount: 30, columnCount: 10, plateSize: 28),
-            loggedDaysText: "28 of 30 days logged"
-        )
-            .padding(CalorynTheme.pagePadding)
-            .frame(width: 402, height: 230)
-            .background(CalorynTheme.backgroundPrimary)
-
-        assertAppearances(of: grid, layout: .fixed(width: 402, height: 230))
-    }
-
-    func testHistoryDayPlateGridAtWeekSizeAcrossAppearances() {
-        let grid = HistoryDayPlateGrid(
-            strip: dayPlateStrip(dayCount: 14, columnCount: 7, plateSize: 40),
-            loggedDaysText: "13 of 14 days logged"
-        )
-            .padding(CalorynTheme.pagePadding)
-            .frame(width: 402, height: 200)
-            .background(CalorynTheme.backgroundPrimary)
-
-        assertAppearances(of: grid, layout: .fixed(width: 402, height: 200))
-    }
-
     func testSettingsGoalPlateAcrossAppearances() {
         let days: [(meals: [MealType: Double], isOver: Bool)] = [
             ([:], false),
@@ -717,28 +693,6 @@ final class ComponentSnapshotTests: XCTestCase {
         .background(CalorynTheme.backgroundPrimary)
     }
 
-    private func dayPlateStrip(dayCount: Int, columnCount: Int, plateSize: CGFloat) -> HistoryDayPlateStrip {
-        let calories: [Double] = [
-            0, 12, 40, 350, 963, 1_000, 1_500, 1_690, 1_990, 1_999.5, 2_000, 2_300, 1_240, 640, 1_810,
-        ]
-        let periods = (0..<dayCount).map { offset in
-            let kcal = calories[offset % calories.count]
-            return HistoryDayPlateStrip.Period(
-                start: Date(timeIntervalSinceReferenceDate: Double(offset) * 86_400),
-                label: "\(offset + 1)",
-                calories: kcal,
-                target: 2_000,
-                status: kcal == 0 ? .notLogged : (kcal > 2_000 ? .over : .onTrack),
-                isCurrent: offset == dayCount - 1
-            )
-        }
-        return HistoryDayPlateStrip(
-            periods: periods,
-            granularity: .day,
-            columnCount: columnCount,
-            plateSize: plateSize
-        )
-    }
 }
 
 @MainActor

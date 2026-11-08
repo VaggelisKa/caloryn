@@ -44,13 +44,6 @@ struct HistoryCalorieTrendSection: View {
             header
             chart
                 .padding(.top, 4)
-
-            if let estimatedTargetNoteText = projection.estimatedTargetNoteText {
-                Text(estimatedTargetNoteText)
-                    .font(CalorynTheme.caption)
-                    .foregroundStyle(CalorynTheme.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(.rect)
@@ -58,25 +51,16 @@ struct HistoryCalorieTrendSection: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                HistorySectionTitle("Calorie trend")
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            HistorySectionTitle("Calorie trend")
 
-                Spacer(minLength: 8)
+            Spacer(minLength: 8)
 
-                if drillDownAction != nil {
-                    Image(systemName: "chevron.right")
-                        .font(CalorynTheme.compactIcon)
-                        .foregroundStyle(CalorynTheme.textSecondary)
-                        .accessibilityHidden(true)
-                }
-            }
-
-            if let totalSupport = summary.totalSupport {
-                Text("\(Text(totalSupport.emphasis).fontWeight(.semibold).foregroundStyle(CalorynTheme.textPrimary))\(totalSupport.remainder)")
-                    .font(CalorynTheme.cardSubtitle.monospacedDigit())
+            if drillDownAction != nil {
+                Image(systemName: "chevron.right")
+                    .font(CalorynTheme.compactIcon)
                     .foregroundStyle(CalorynTheme.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityHidden(true)
             }
         }
     }

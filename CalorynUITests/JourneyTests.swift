@@ -346,6 +346,32 @@ final class JourneyTests: UITestCase {
         }
     }
 
+    func testGivenThirtyLoggedDaysWhenHistoryShowsAWeekThenAveragesAppearOnlyForLongerRanges() {
+        let app = launch(fixture: .history)
+        let tabs = TabBar(app: app)
+        let history = HistoryScreen(app: app)
+
+        when("the user opens History on seven days") {
+            tabs.go(to: .history)
+            history.selectRange("7 Days")
+            history.awaitRangeSelected("7 Days")
+        }
+
+        then("the headline average stands alone") {
+            XCTAssertTrue(history.averageCalories.awaitExistence(), "The headline average should render")
+            XCTAssertFalse(history.averages.exists, "A single week has no averages beyond the headline")
+        }
+
+        when("the user switches to thirty days") {
+            history.selectRange("30 Days")
+            history.awaitRangeSelected("30 Days")
+        }
+
+        then("the weekly averages appear") {
+            XCTAssertTrue(history.averages.awaitExistence(), "Thirty days should list weekly averages")
+        }
+    }
+
     func testGivenAQualifyingPatternWhenADayIsExpandedThenEvidenceStaysInPatternDetails() {
         let app = launch(fixture: .historyPattern)
         let tabs = TabBar(app: app)

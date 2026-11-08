@@ -12,27 +12,6 @@ struct HistoryOverviewSummary: Equatable {
     let totalDayCount: Int
     let averageCaloriesPerLoggedDay: Double
     let averageTargetPerLoggedDay: Int
-    let loggedDays: HistoryLoggedDaysBreakdown
-
-    init(
-        loggedDayCount: Int,
-        totalDayCount: Int,
-        averageCaloriesPerLoggedDay: Double,
-        averageTargetPerLoggedDay: Int,
-        onTrackDayCount: Int,
-        overDayCount: Int,
-        underDayCount: Int
-    ) {
-        self.loggedDayCount = loggedDayCount
-        self.totalDayCount = totalDayCount
-        self.averageCaloriesPerLoggedDay = averageCaloriesPerLoggedDay
-        self.averageTargetPerLoggedDay = averageTargetPerLoggedDay
-        loggedDays = HistoryLoggedDaysBreakdown(
-            onTrackDayCount: onTrackDayCount,
-            overDayCount: overDayCount,
-            underDayCount: underDayCount
-        )
-    }
 
     var hasLoggedDays: Bool { loggedDayCount > 0 }
 
@@ -62,11 +41,6 @@ struct HistoryOverviewSummary: Equatable {
         goalGap?.text ?? "No days logged in the last \(totalDayCount) days."
     }
 
-    var loggedDaysText: String? {
-        guard hasLoggedDays else { return nil }
-        return "\(loggedDayCount) of \(totalDayCount) \(totalDayCount == 1 ? "day" : "days") logged"
-    }
-
     var averageAccessibilityLabel: String {
         guard hasLoggedDays else { return emptyHeadlineText }
         return "\(averageValueText) \(averageUnitText)"
@@ -75,48 +49,6 @@ struct HistoryOverviewSummary: Equatable {
     var accessibilityLabel: String {
         guard hasLoggedDays else { return "\(emptyHeadlineText). \(supportText)" }
         return "\(averageAccessibilityLabel). \(supportText)."
-    }
-}
-
-struct HistoryLoggedDaysBreakdown: Equatable {
-    struct Column: Equatable, Identifiable {
-        let status: HistoryGoalStatus
-        let count: Int
-
-        var id: HistoryGoalStatus { status }
-
-        var valueText: String { count.formatted() }
-
-        var label: String { status.sentenceLabel.lowercased() }
-    }
-
-    let columns: [Column]
-
-    init(onTrackDayCount: Int, overDayCount: Int, underDayCount: Int) {
-        columns = [
-            Column(status: .onTrack, count: max(0, onTrackDayCount)),
-            Column(status: .over, count: max(0, overDayCount)),
-            Column(status: .under, count: max(0, underDayCount))
-        ]
-    }
-
-    var title: String { "Logged days" }
-
-    var totalDayCount: Int {
-        columns.reduce(0) { $0 + $1.count }
-    }
-
-    var barSegments: [Column] {
-        columns.filter { $0.count > 0 }
-    }
-
-    func share(of column: Column) -> Double {
-        guard totalDayCount > 0 else { return 0 }
-        return Double(column.count) / Double(totalDayCount)
-    }
-
-    var accessibilityLabel: String {
-        columns.map { "\($0.valueText) \($0.label)" }.joined(separator: ", ")
     }
 }
 

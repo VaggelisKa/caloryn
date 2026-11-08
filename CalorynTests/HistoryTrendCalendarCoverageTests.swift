@@ -126,33 +126,6 @@ struct HistoryTrendCalendarCoverageTests {
         #expect(projection.furthestFromGoal?.text == "Furthest from goal: Sun, 5 Apr, 600 kcal over")
     }
 
-    @Test("given 7 and 30 days in Auckland, when laying out plates, then weekday and day-of-month labels are Auckland's")
-    func plateLabelsUseTheInjectedCalendarRatherThanTheHost() {
-        let week = HistoryDayPlateStrip(
-            range: .week,
-            summary: aucklandAutumnWeek().current,
-            today: Self.aucklandDate(2026, 4, 7, hour: 23)
-        )
-        let month = HistoryDayPlateStrip(
-            range: .month,
-            summary: HistoryAnalytics(
-                entries: [],
-                profile: nil,
-                range: .month,
-                endDate: Self.aucklandDate(2026, 4, 20),
-                calendar: Self.auckland
-            ).current,
-            today: Self.aucklandDate(2026, 4, 20, hour: 23)
-        )
-
-        #expect(week.plates.map(\.label) == ["Wed", "Thu", "Fri", "Sat", "Sun", "Mon", "Tue"])
-        #expect(week.plates.map(\.outline) == [.standard, .standard, .standard, .standard, .over, .standard, .current])
-        let marchDays: [String] = (22...31).map { String($0) }
-        let aprilDays: [String] = (1...20).map { String($0) }
-        #expect(month.plates.map(\.label) == marchDays + aprilDays)
-        #expect(month.plates.last?.outline == .current)
-    }
-
     @Test("given 90 days in Auckland, when labelling week points, then each week is named by Auckland's Monday")
     func weekLabelsUseTheInjectedCalendarRatherThanTheHost() throws {
         let analytics = HistoryAnalytics(
@@ -174,59 +147,6 @@ struct HistoryTrendCalendarCoverageTests {
         #expect(overWeek.id == "week-2026-03-29T11:00:00Z")
         #expect(overWeek.value == 2_400)
         #expect(projection.furthestFromGoal?.text == "Furthest from goal: week of 30 Mar, 400 kcal a day over")
-    }
-
-    @Test("given a 30-day range across the spring change, when laying out plates, then each is labelled by its local day of the month")
-    func monthPlatesAreLabelledByLocalDay() {
-        let analytics = HistoryAnalytics(
-            entries: [],
-            profile: nil,
-            range: .month,
-            endDate: Self.date(2026, 3, 20),
-            calendar: Self.newYork
-        )
-
-        let strip = HistoryDayPlateStrip(
-            range: .month,
-            summary: analytics.current,
-            today: Self.date(2026, 3, 20, hour: 23)
-        )
-
-        let februaryDays: [String] = (19...28).map { String($0) }
-        let marchDays: [String] = (1...20).map { String($0) }
-        #expect(strip.plates.map(\.label) == februaryDays + marchDays)
-        #expect(strip.plates.count == 30)
-        #expect(strip.columnCount == 10)
-        #expect(strip.plates.last?.outline == .current)
-        #expect(strip.plates.dropLast().allSatisfy { $0.outline == .standard })
-        #expect(strip.statusCounts == [.notLogged: 30])
-    }
-
-    @Test("given a week across the spring change, when laying out plates, then they read as weekdays and only today is current")
-    func weekPlatesAreLabelledByWeekday() {
-        let strip = HistoryDayPlateStrip(
-            range: .week,
-            summary: springWeek().current,
-            today: Self.date(2026, 3, 10, hour: 23)
-        )
-
-        #expect(strip.plates.map(\.label) == ["Wed", "Thu", "Fri", "Sat", "Sun", "Mon", "Tue"])
-        #expect(strip.plates.map(\.outline) == [.standard, .standard, .standard, .standard, .over, .standard, .current])
-        #expect(strip.statusCounts.values.reduce(0, +) == 7)
-        #expect(strip.accessibilityLabel == "Goal consistency: 1 under, 1 on track, 1 over, 4 not logged.")
-    }
-
-    @Test("given a 90-day range, when laying out week plates, then the week holding today is current and the counts cover every day")
-    func quarterPlatesMarkTheCurrentWeek() {
-        let summary = springQuarter().current
-        let strip = HistoryDayPlateStrip(range: .quarter, summary: summary, today: Self.date(2026, 4, 30, hour: 23))
-
-        #expect(strip.plates.count == 14)
-        #expect(strip.plates.last?.outline == .current)
-        #expect(strip.plates.dropLast().allSatisfy { $0.outline != .current })
-        #expect(strip.plates.first?.consistencyText == "0/2 on track")
-        #expect(strip.plates.last?.consistencyText == "0/4 on track")
-        #expect(strip.statusCounts.values.reduce(0, +) == 14)
     }
 
     private static let newYork: Calendar = {

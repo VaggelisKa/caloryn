@@ -762,7 +762,7 @@ struct HistoryPatternDiscoveryTests {
     }
 
     @Test("given no profile targets, when discovering patterns, then macro patterns are absent while the calorie trend still projects")
-    func missingProfileTargetsLeaveOnlyCalorieAndWeeklyPatterns() {
+    func missingProfileTargetsLeaveOnlyTheCalorieTrend() {
         let analytics = HistoryAnalytics(
             entries: [],
             profile: nil,
@@ -775,11 +775,10 @@ struct HistoryPatternDiscoveryTests {
         #expect(discovery.macroPatterns.patterns.isEmpty)
         #expect(discovery.calorieTrend.points.count == 7)
         #expect(discovery.calorieTrend.dailyCalorieTarget == 2_000)
-        #expect(discovery.weeklyConsistency.totalDayCount == 7)
     }
 
-    @Test("given a logged week, when discovering patterns, then the calorie trend and weekly consistency describe the same logged days")
-    func discoveryProjectionsAgreeOnLoggedDays() {
+    @Test("given a logged week, when discovering patterns, then the calorie trend counts its logged and on-track days")
+    func theCalorieTrendCountsLoggedAndOnTrackDays() {
         let profile = makeProfile()
         let entries = [
             makeCalorieEntry(date: janDate(26), calories: 2_000),
@@ -797,10 +796,8 @@ struct HistoryPatternDiscoveryTests {
         let discovery = HistoryPatternDiscovery(analytics: analytics, today: janDate(30))
 
         #expect(discovery.calorieTrend.loggedDayCount == 3)
-        #expect(discovery.weeklyConsistency.loggedDayCount == 3)
-        #expect(discovery.calorieTrend.totalDayCount == discovery.weeklyConsistency.totalDayCount)
+        #expect(discovery.calorieTrend.totalDayCount == 7)
         #expect(discovery.calorieTrend.onTrackLoggedDayCount == 2)
-        #expect(discovery.weeklyConsistency.chart.weeks.last?.countText == "2/3")
     }
 
     private func dayTitle(_ day: Int) -> String {

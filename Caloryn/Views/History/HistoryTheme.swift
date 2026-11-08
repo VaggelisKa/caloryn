@@ -15,20 +15,10 @@ enum HistoryTheme {
             CalorynTheme.fillTrack
         }
     }
-
-    static func weeklyConsistencyColor(for week: HistoryWeekSummary) -> Color {
-        color(for: .weeklyConsistency(onTrackDays: week.onTrackDays, loggedDays: week.loggedDays))
-    }
 }
 
 extension HistoryGoalStatus {
     var tint: Color {
         HistoryTheme.color(for: self)
-    }
-}
-
-extension HistoryWeekSummary {
-    var consistencyTint: Color {
-        HistoryTheme.weeklyConsistencyColor(for: self)
     }
 }

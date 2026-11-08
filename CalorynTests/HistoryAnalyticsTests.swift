@@ -342,30 +342,6 @@ final class HistoryAnalyticsTests: XCTestCase {
         XCTAssertEqual(protein?.current.loggedDays, 3)
     }
 
-    func testPatternDiscoveryCountsEachWeeksOnTrackDays() {
-        let profile = makeProfile()
-        let endDate = makeTestDate(year: 2026, month: 1, day: 30)
-        let previousWeek = makeTestDate(year: 2026, month: 1, day: 19)
-        let currentWeek = makeTestDate(year: 2026, month: 1, day: 26)
-        let entries = [
-            makeEntry(date: previousWeek, calories: 2_000),
-            makeEntry(date: previousWeek.tomorrow, calories: 2_300),
-            makeEntry(date: currentWeek, calories: 2_000),
-            makeEntry(date: currentWeek.tomorrow, calories: 2_000)
-        ]
-
-        let analytics = HistoryAnalytics(
-            entries: entries,
-            profile: profile,
-            range: .month,
-            endDate: endDate
-        )
-
-        let weeks = HistoryPatternDiscovery(analytics: analytics, today: endDate).weeklyConsistency.chart.weeks
-
-        XCTAssertEqual(weeks.suffix(2).map(\.countText), ["1/2", "2/2"])
-    }
-
     private func makeProfile() -> UserProfile {
         UserProfile(
             age: 30,
