@@ -95,7 +95,9 @@ struct DayExportReport: Equatable {
         fileName = Self.fileName(for: day, in: calendar)
 
         let measures = Self.measures.filter { measure in
-            measure.isAlwaysShown || entries.contains { measure.value($0) != nil }
+            measure.isAlwaysShown
+                || entries.contains { measure.value($0) != nil }
+                || Self.targetValue(for: measure, in: targets) != nil
         }
         columns = measures.map(\.column)
 

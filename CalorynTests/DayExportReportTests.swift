@@ -142,6 +142,18 @@ final class DayExportReportTests: XCTestCase {
         )
     }
 
+    func testANutrientWithAGoalKeepsItsColumnWhenNoFoodRecordsIt() {
+        let report = makeReport(
+            [entry(.breakfast, "Oats")],
+            targets: DayExportReport.Targets(calories: 2_000, nutrients: [.sodium: 2.3, .sugars: 0])
+        )
+
+        XCTAssertEqual(report.columns.map(\.id), ["amount", "calories", "protein", "carbs", "fiber", "fat", "sodium"])
+        XCTAssertEqual(report.cell(report.meals[0].foods[0], column: "sodium"), "–")
+        XCTAssertEqual(report.cell(report.total, column: "sodium"), "–")
+        XCTAssertEqual(report.target.flatMap { report.cell($0, column: "sodium") }, "2300")
+    }
+
     func testNoTargetRowWithoutAnyTarget() {
         let report = makeReport([entry(.breakfast, "Oats")], targets: DayExportReport.Targets())
 
