@@ -11,6 +11,7 @@ struct NutritionDetailsView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @AppStorage("showNutriscore") private var showNutriscore = true
     @State private var exportedDay: ExportedDay?
+    @State private var copiedTable = false
 
     private struct ExportedDay: Identifiable {
         let url: URL
@@ -51,21 +52,11 @@ struct NutritionDetailsView: View {
                     mealType: $0.mealType,
                     foodName: $0.historicalFoodName,
                     portionGrams: $0.portionGrams,
-                    macros: DayExportReport.Macros(
-                        calories: $0.calories,
-                        proteinG: $0.proteinG,
-                        carbsG: $0.carbsG,
-                        fatG: $0.fatG
-                    ),
+                    nutrition: $0.nutrition,
                     createdAt: $0.createdAt
                 )
             },
-            targets: DayExportReport.Targets(
-                calories: calorieBudget.target,
-                proteinG: nutrientTargets[.protein],
-                carbsG: nutrientTargets[.carbs],
-                fatG: nutrientTargets[.fat]
-            )
+            targets: DayExportReport.Targets(calories: calorieBudget.target, nutrients: nutrientTargets)
         )
     }
 
@@ -128,6 +119,21 @@ struct NutritionDetailsView: View {
                 ToolbarItem(placement: .primaryAction) {
                     Menu {
                         Button {
+                            DayExportTable.copy(exportReport)
+                            copiedTable = true
+                        } label: {
+                            Label("Copy as Table", systemImage: "doc.on.doc")
+                        }
+                        .accessibilityIdentifier("nutritionDetails.exportDay.copyTable")
+
+                        Button {
+                            DayExportPDF.presentPrintDialog(for: exportReport)
+                        } label: {
+                            Label("Print", systemImage: "printer")
+                        }
+                        .accessibilityIdentifier("nutritionDetails.exportDay.print")
+
+                        Button {
                             share(DayExportPDF.exportURL(for: exportReport))
                         } label: {
                             Label("PDF", systemImage: "doc.text")
@@ -141,7 +147,7 @@ struct NutritionDetailsView: View {
                         }
                         .accessibilityIdentifier("nutritionDetails.exportDay.csv")
                     } label: {
-                        Image(systemName: "square.and.arrow.up")
+                        Image(systemName: copiedTable ? "checkmark" : "square.and.arrow.up")
                             .font(CalorynTheme.toolbarIcon)
                             .foregroundStyle(entries.isEmpty ? CalorynTheme.textTertiary : CalorynTheme.accent)
                     }
@@ -164,6 +170,12 @@ struct NutritionDetailsView: View {
             }
             .sheet(item: $exportedDay) { exported in
                 ShareSheet(url: exported.url)
+            }
+            .sensoryFeedback(.success, trigger: copiedTable) { _, copied in copied }
+            .task(id: copiedTable) {
+                guard copiedTable else { return }
+                try? await Task.sleep(for: .seconds(2))
+                copiedTable = false
             }
         }
     }

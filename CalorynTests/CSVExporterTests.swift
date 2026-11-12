@@ -81,6 +81,24 @@ final class CSVExporterTests: XCTestCase {
         XCTAssertEqual(foods, ["Oats", "Apple", "Soup", "Dessert"])
     }
 
+    func testEveryNutrientAnExportedEntryRecordsIsAppendedAsAColumn() {
+        let day = makeTestDate(year: 2026, month: 5, day: 6)
+        let cheese = makeTestEntry(
+            date: day,
+            foodItem: makeTestFoodItem(name: "Cheese", saturatedFatPer100g: 18, sodiumPer100g: 0.62),
+            portionGrams: 50
+        )
+        let bread = makeTestEntry(date: day, mealType: .lunch, foodItem: makeTestFoodItem(name: "Bread"), portionGrams: 50)
+
+        let lines = CSVExporter.generateCSV(from: [cheese, bread]).split(separator: "\n")
+
+        XCTAssertEqual(lines[0], "Date,Meal,Food,Portion (g),Calories,Protein (g),Carbs (g),Fat (g),Fiber (g),Saturated fat (g),Sodium (mg)")
+        XCTAssertTrue(lines[1].hasPrefix("2026-05-06,Breakfast,Cheese,"))
+        XCTAssertTrue(lines[1].hasSuffix(",9.0,310"))
+        XCTAssertTrue(lines[2].hasPrefix("2026-05-06,Lunch,Bread,"))
+        XCTAssertTrue(lines[2].hasSuffix(",,"))
+    }
+
     func testExportURLCanNameTheFileAfterTheExportedDay() throws {
         let entry = makeTestEntry(foodItem: makeTestFoodItem(name: "Oats"))
 
