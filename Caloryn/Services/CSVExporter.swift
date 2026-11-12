@@ -3,7 +3,7 @@ import Foundation
 enum CSVExporter {
     private static let formulaTriggers: Set<Unicode.Scalar> = ["=", "+", "-", "@", "\t", "\r"]
 
-    private static func neutralised(_ field: String) -> String {
+    static func neutralised(_ field: String) -> String {
         guard let first = field.unicodeScalars.first, formulaTriggers.contains(first) else { return field }
         return "'" + field
     }
