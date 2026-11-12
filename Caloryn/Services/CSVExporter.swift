@@ -18,7 +18,12 @@ enum CSVExporter {
     }
 
     static func generateCSV(from entries: [FoodLogEntry]) -> String {
-        var csv = "Date,Meal,Food,Portion (g),Calories,Protein (g),Carbs (g),Fat (g),Fiber (g)\n"
+        let recorded = DayExportReport.optionalNutrients.filter { nutrient in
+            entries.contains { $0.nutrition[keyPath: nutrient.keyPath] != nil }
+        }
+        var csv = "Date,Meal,Food,Portion (g),Calories,Protein (g),Carbs (g),Fat (g),Fiber (g)"
+            + recorded.map { "," + $0.column.header }.joined()
+            + "\n"
 
         let sorted = entries.sorted { lhs, rhs in
             if lhs.date != rhs.date { return lhs.date < rhs.date }
@@ -44,10 +49,26 @@ enum CSVExporter {
             let fat = String(format: "%.1f", entry.fatG)
             let fiber = String(format: "%.1f", entry.fiberG)
 
-            csv += "\(date),\(meal),\(food),\(portion),\(cal),\(protein),\(carbs),\(fat),\(fiber)\n"
+            let extras = recorded.map { nutrient in
+                "," + optionalValue(entry.nutrition[keyPath: nutrient.keyPath], unit: nutrient.column.unit)
+            }.joined()
+
+            csv += "\(date),\(meal),\(food),\(portion),\(cal),\(protein),\(carbs),\(fat),\(fiber)\(extras)\n"
         }
 
         return csv
+    }
+
+    private static func optionalValue(_ value: Double?, unit: DayExportReport.Unit) -> String {
+        guard let value, value.isFinite else { return "" }
+        switch unit {
+        case .milligrams:
+            return String(format: "%.0f", value * 1000)
+        case .wholeGrams, .kilocalories:
+            return String(format: "%.0f", value)
+        case .grams:
+            return String(format: abs(value) < 1 ? "%.2f" : "%.1f", value)
+        }
     }
 
     static func exportURL(from entries: [FoodLogEntry], fileName: String = "Caloryn_Export") -> URL? {
